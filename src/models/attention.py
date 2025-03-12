@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from typing import Optional, Tuple
+import inspect
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -45,6 +46,7 @@ class ScaledDotProductAttention(nn.Module):
             - Context vector after attention of shape [batch_size, num_queries, value_dim]
             - Attention weights of shape [batch_size, num_queries, num_keys]
         """
+        print(f"Function called: {inspect.currentframe().f_code.co_name}")
         # Get dimensions
         d_k = query.size(-1)
 
@@ -148,6 +150,7 @@ class SimpleAttention(nn.Module):
             - Output tensor after attention
             - Attention weights
         """
+        print(f"Function called: {inspect.currentframe().f_code.co_name}")
         # Handle self-attention case
         if key is None:
             key = query
