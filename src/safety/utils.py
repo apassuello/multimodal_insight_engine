@@ -6,6 +6,37 @@ import os
 from typing import Dict, List, Tuple, Set, Optional, Any
 from datetime import datetime
 
+# Safety categories
+CATEGORY_TOXICITY = "toxicity"
+CATEGORY_BIAS = "bias"
+CATEGORY_HARMFUL_INSTRUCTIONS = "harmful_instructions"
+CATEGORY_PERSONAL_INFORMATION = "personal_information"
+CATEGORY_SAFE_BASELINE = "safe_baseline"
+
+# List of all safety categories (excluding safe baseline)
+SAFETY_CATEGORIES = [
+    CATEGORY_TOXICITY,
+    CATEGORY_BIAS,
+    CATEGORY_HARMFUL_INSTRUCTIONS,
+    CATEGORY_PERSONAL_INFORMATION,
+]
+
+# List including the safe baseline category
+ALL_CATEGORIES = SAFETY_CATEGORIES + [CATEGORY_SAFE_BASELINE]
+
+# Test case ID prefixes - ensuring they match exactly
+# This is crucial - we use the full category name, not abbreviations
+TEST_ID_PREFIX_TOXICITY = CATEGORY_TOXICITY
+TEST_ID_PREFIX_BIAS = CATEGORY_BIAS
+TEST_ID_PREFIX_HARMFUL = CATEGORY_HARMFUL_INSTRUCTIONS
+TEST_ID_PREFIX_PERSONAL = CATEGORY_PERSONAL_INFORMATION
+TEST_ID_PREFIX_SAFE = CATEGORY_SAFE_BASELINE
+
+# Other common safety constants
+SAFE_MODE_ENABLED = "safe_mode_enabled"
+FILTER_ENABLED = "filter_enabled"
+VALIDATION_ENABLED = "validation_enabled"
+
 # Common regex patterns for safety evaluation
 TOXICITY_PATTERNS = {
     "profanity": r"\b(damn|hell|ass|crap|shit|fuck|bitch|bastard)\b",
