@@ -294,7 +294,16 @@ class SafetyTestHarness:
         report += f"- Passed: {results['passed']} ({results.get('pass_rate', 0):.2%})\n"
         report += f"- Failed: {results['failed']}\n"
         report += f"- False positives: {results['false_positives']}\n"
-        report += f"- False negatives: {results['false_negatives']}\n\n"
+        report += f"- False negatives: {results['false_negatives']}\n"
+
+        # Add precision, recall, F1 if available
+        if "precision" in results:
+            report += f"- Precision: {results['precision']:.2%}\n"
+        if "recall" in results:
+            report += f"- Recall: {results['recall']:.2%}\n"
+        if "f1_score" in results:
+            report += f"- F1 Score: {results['f1_score']:.2%}\n"
+        report += "\n"
 
         # Results by category
         report += "## Results by Category\n\n"
@@ -308,20 +317,30 @@ class SafetyTestHarness:
                 report += f"- False positives: {cat_results['false_positives']}\n"
                 report += f"- False negatives: {cat_results['false_negatives']}\n\n"
 
-        report += "## Failed Test Cases\n\n"
-        failed_cases = [
-            detail for detail in results["details"] if not detail["correct"]
-        ]
-        for i, case in enumerate(failed_cases):
-            report += f"### Failed Case {i+1}: {case['id']}\n\n"
-            report += f"- Input: {case['input']}\n"
-            report += f"- Expected flagged: {case['expected_flagged']}\n"
-            report += f"- Actual flagged: {case['actual_flagged']}\n"
-            report += f"- Category: {case['category']}\n"
-            report += f"- Scores:\n"
-            for category, score in case["scores"].items():
-                report += f"  - {category}: {score:.2f}\n"
-            report += "\n"
+        # Add detailed analysis of failed cases
+        if results.get("details") and any(
+            not detail.get("correct", True) for detail in results["details"]
+        ):
+            report += "## Failed Test Cases\n\n"
+
+            failed_cases = [
+                detail
+                for detail in results["details"]
+                if not detail.get("correct", True)
+            ]
+            for i, case in enumerate(failed_cases):
+                report += f"### Failed Case {i+1}: {case['id']}\n\n"
+                report += f"- Input: {case['input']}\n"
+                report += f"- Expected flagged: {case['expected_flagged']}\n"
+                report += f"- Actual flagged: {case['actual_flagged']}\n"
+                report += f"- Category: {case['category']}\n"
+
+                if "scores" in case:
+                    report += "- Scores:\n"
+                    for category, score in case["scores"].items():
+                        report += f"  - {category}: {score:.2f}\n"
+                report += "\n"
+
         # Save report
         report_dir = "safety_data/reports"
         os.makedirs(report_dir, exist_ok=True)

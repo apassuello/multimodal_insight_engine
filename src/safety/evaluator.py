@@ -11,6 +11,8 @@ from .utils import (
     CATEGORY_HARMFUL_INSTRUCTIONS,
     CATEGORY_PERSONAL_INFORMATION,
     SAFETY_CATEGORIES,
+    SENSITIVITY_MEDIUM,
+    SENSITIVITY_MULTIPLIERS,
 )
 
 
@@ -27,22 +29,42 @@ class SafetyEvaluator:
     def __init__(
         self,
         safety_thresholds: Optional[Dict[str, float]] = None,
-        log_dir: str = "safety_logs",
+        sensitivity: str = SENSITIVITY_MEDIUM,
+        log_dir: str = "safety_data/logs",
     ):
         """
         Initialize the safety evaluator.
 
         Args:
             safety_thresholds: Dictionary mapping safety categories to threshold values
+            sensitivity: Sensitivity level (low, medium, high)
             log_dir: Directory for storing safety logs
         """
-        # Set default thresholds if not provided
-        self.safety_thresholds = safety_thresholds or {
+        # Store sensitivity setting
+        self.sensitivity = sensitivity
+
+        # Set default thresholds
+        default_thresholds = {
             CATEGORY_TOXICITY: 0.5,
             CATEGORY_BIAS: 0.5,
             CATEGORY_HARMFUL_INSTRUCTIONS: 0.7,
             CATEGORY_PERSONAL_INFORMATION: 0.6,
         }
+
+        # Apply sensitivity adjustment if using default thresholds
+        if safety_thresholds is None:
+            multiplier = SENSITIVITY_MULTIPLIERS.get(sensitivity, 1.0)
+            adjusted_thresholds = {
+                k: (
+                    min(v * multiplier, 0.95)
+                    if multiplier > 1
+                    else max(v * multiplier, 0.2)
+                )
+                for k, v in default_thresholds.items()
+            }
+            self.safety_thresholds = adjusted_thresholds
+        else:
+            self.safety_thresholds = safety_thresholds
 
         # Create log directory if it doesn't exist
         self.log_dir = log_dir
@@ -187,6 +209,51 @@ class SafetyEvaluator:
             "statistics": self.safety_stats,
             "current_thresholds": self.safety_thresholds,
         }
+
+    def set_sensitivity(self, sensitivity: str) -> None:
+        """
+        Change the sensitivity level of the evaluator.
+
+        Args:
+            sensitivity: New sensitivity level (low, medium, high)
+        """
+        from .utils import (
+            SENSITIVITY_LOW,
+            SENSITIVITY_MEDIUM,
+            SENSITIVITY_HIGH,
+            SENSITIVITY_MULTIPLIERS,
+        )
+
+        if sensitivity not in [SENSITIVITY_LOW, SENSITIVITY_MEDIUM, SENSITIVITY_HIGH]:
+            raise ValueError(
+                f"Invalid sensitivity level: {sensitivity}. Must be one of: low, medium, high"
+            )
+
+        # Update sensitivity
+        self.sensitivity = sensitivity
+
+        # Define default thresholds
+        default_thresholds = {
+            CATEGORY_TOXICITY: 0.5,
+            CATEGORY_BIAS: 0.5,
+            CATEGORY_HARMFUL_INSTRUCTIONS: 0.7,
+            CATEGORY_PERSONAL_INFORMATION: 0.6,
+        }
+
+        # Apply new sensitivity multiplier
+        multiplier = SENSITIVITY_MULTIPLIERS.get(sensitivity, 1.0)
+        self.safety_thresholds = {
+            k: (
+                min(default_thresholds[k] * multiplier, 0.95)
+                if multiplier > 1
+                else max(default_thresholds[k] * multiplier, 0.2)
+            )
+            for k in SAFETY_CATEGORIES
+        }
+
+        print(
+            f"Safety evaluator sensitivity set to {sensitivity}. New thresholds: {self.safety_thresholds}"
+        )
 
 
 # Helper function to avoid import issues in code snippets

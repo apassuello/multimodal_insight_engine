@@ -1,8 +1,16 @@
-import torch
-import numpy as np
-from typing import Dict, List, Union, Optional, Any, Tuple
+# src/safety/filter.py
+
 import re
-from .evaluator import SafetyEvaluator  # Adjust the import path as necessary
+from typing import Dict, List, Union, Optional, Any, Tuple
+from .evaluator import SafetyEvaluator
+from .utils import (
+    CATEGORY_TOXICITY,
+    CATEGORY_BIAS,
+    CATEGORY_HARMFUL_INSTRUCTIONS,
+    CATEGORY_PERSONAL_INFORMATION,
+    PII_PATTERNS,
+    TOXICITY_PATTERNS,
+)
 
 
 class SafetyFilter:
@@ -121,35 +129,37 @@ class SafetyFilter:
 
         # For each flagged category, apply appropriate redaction
         for category in evaluation["flagged_categories"]:
-            if category == "personal_information":
+            if category == CATEGORY_PERSONAL_INFORMATION:
                 # Redact potential PII
-                pii_patterns = [
-                    r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b",  # SSN
-                    r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b",  # Phone
-                    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
-                ]
-                for pattern in pii_patterns:
-                    redacted_text = re.sub(pattern, "[REDACTED]", redacted_text)
-
-            elif category == "toxicity":
-                # Replace toxic words with asterisks
-                toxic_words = ["hate", "idiot", "stupid", "kill", "die", "attack"]
-                for word in toxic_words:
+                for pattern_name, pattern in PII_PATTERNS.items():
                     redacted_text = re.sub(
-                        r"\b" + word + r"\b",
-                        "*" * len(word),
-                        redacted_text,
-                        flags=re.IGNORECASE,
+                        pattern, "[REDACTED PII]", redacted_text, flags=re.IGNORECASE
                     )
 
-            elif category in ["harmful_instructions", "bias"]:
+            elif category == CATEGORY_TOXICITY:
+                # Replace toxic words with asterisks
+                for pattern_name, pattern in TOXICITY_PATTERNS.items():
+                    # Find all matches
+                    matches = re.finditer(pattern, redacted_text, re.IGNORECASE)
+
+                    # Create a list of replacements (to avoid modifying string while iterating)
+                    replacements = []
+                    for match in matches:
+                        word = match.group(0)
+                        replacements.append(
+                            (match.start(), match.end(), "*" * len(word))
+                        )
+
+                    # Apply replacements in reverse order to maintain indices
+                    for start, end, replacement in sorted(replacements, reverse=True):
+                        redacted_text = (
+                            redacted_text[:start] + replacement + redacted_text[end:]
+                        )
+
+            elif category in [CATEGORY_HARMFUL_INSTRUCTIONS, CATEGORY_BIAS]:
                 # More complex categories might require more sophisticated handling
                 # For now, add a disclaimer
-                disclaimer = (
-                    "\n\n[Note: This content has been identified as potentially "
-                    + category.replace("_", " ")
-                    + ".]"
-                )
+                disclaimer = f"\n\n[Note: This content has been identified as potentially containing {category.replace('_', ' ')}.]"
                 if disclaimer not in redacted_text:
                     redacted_text += disclaimer
 

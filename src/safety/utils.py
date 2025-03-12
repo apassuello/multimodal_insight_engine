@@ -322,3 +322,20 @@ def analyze_safety_logs(log_file: str) -> Dict[str, Any]:
             analysis["average_scores"][category] /= analysis["total_entries"]
 
     return analysis
+
+
+def categorize_safety_issues(text: str) -> Dict[str, Any]:
+    """
+    Categorize safety issues in text.
+
+    Args:
+        text: Text to evaluate
+
+    Returns:
+        Dictionary with categorized safety information
+    """
+    # This is a wrapper around evaluate_text_safety that returns more detailed categorization
+    results = evaluate_text_safety(text)
+
+    # Extract the detailed matches that were removed from the results in the evaluator
+    return results
