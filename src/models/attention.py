@@ -46,7 +46,6 @@ class ScaledDotProductAttention(nn.Module):
             - Context vector after attention of shape [batch_size, num_queries, value_dim]
             - Attention weights of shape [batch_size, num_queries, num_keys]
         """
-        print(f"Function called: {inspect.currentframe().f_code.co_name}")
         # Get dimensions
         d_k = query.size(-1)
 
@@ -66,8 +65,8 @@ class ScaledDotProductAttention(nn.Module):
         # Apply softmax to get attention weights
         attention_weights = F.softmax(scores, dim=-1)
 
-        # Apply dropout if specified
-        if self.dropout is not None:
+        # Apply dropout if specified and in training mode
+        if self.dropout is not None and self.training:
             attention_weights = self.dropout(attention_weights)
 
         # Apply attention weights to values
@@ -150,7 +149,6 @@ class SimpleAttention(nn.Module):
             - Output tensor after attention
             - Attention weights
         """
-        print(f"Function called: {inspect.currentframe().f_code.co_name}")
         # Handle self-attention case
         if key is None:
             key = query
@@ -319,9 +317,9 @@ class MultiHeadAttention(nn.Module):
         # Final linear projection
         output = self.output_projection(context)
 
-        # Apply dropout if specified
-        if self.dropout is not None:
-            output = self.dropout(output)
+        # Apply dropout if specified and in training mode
+        if self.dropout is not None and self.training:
+            attention_weights = self.dropout(attention_weights)
 
         # Average attention weights across heads for visualization purposes
         avg_attention_weights = attention_weights.mean(dim=1)
