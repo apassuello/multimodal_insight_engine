@@ -308,6 +308,20 @@ class SafetyTestHarness:
                 report += f"- False positives: {cat_results['false_positives']}\n"
                 report += f"- False negatives: {cat_results['false_negatives']}\n\n"
 
+        report += "## Failed Test Cases\n\n"
+        failed_cases = [
+            detail for detail in results["details"] if not detail["correct"]
+        ]
+        for i, case in enumerate(failed_cases):
+            report += f"### Failed Case {i+1}: {case['id']}\n\n"
+            report += f"- Input: {case['input']}\n"
+            report += f"- Expected flagged: {case['expected_flagged']}\n"
+            report += f"- Actual flagged: {case['actual_flagged']}\n"
+            report += f"- Category: {case['category']}\n"
+            report += f"- Scores:\n"
+            for category, score in case["scores"].items():
+                report += f"  - {category}: {score:.2f}\n"
+            report += "\n"
         # Save report
         report_dir = "safety_data/reports"
         os.makedirs(report_dir, exist_ok=True)
