@@ -77,11 +77,15 @@
 
 #     print("Predicted classes:", predicted_classes)
 #     print("Predicted probabilities:", predicted_probs)
-
+import os
+import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from src.models.feed_forward import FeedForwardClassifier
 from src.training.trainer import train_model
 
