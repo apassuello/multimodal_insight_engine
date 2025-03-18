@@ -1,3 +1,46 @@
 {
-    "markdown.validate.enabled": true
+    "markdown.validate.enabled": true,
+    "python.defaultInterpreterPath": "/Users/apa/miniconda3/envs/ml-project/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "jupyter.alwaysTrustNotebooks": true,
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "jupyter.interactiveWindow.creationMode": "perFile",
+    "terminal.integrated.profiles.osx": {
+        "zsh": {
+            "path": "/bin/zsh",
+            "args": [
+                "-l"
+            ],
+            "overrideName": true
+        }
+    },
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.env.osx": {
+        "CONDA_DEFAULT_ENV": "ml-project",
+        "PATH": "/Users/apa/miniconda3/envs/ml-project/bin:${env:PATH}"
+    },
+    "terminal.integrated.shellIntegration.enabled": true,
+    "terminal.integrated.shellIntegration.shell": "bash",
+    "terminal.integrated.shellIntegration.autoActivate": true,
+    "terminal.integrated.shellIntegration.autoActivateOnStartup": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewTerminal": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewWindow": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewWorkspace": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewFolder": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewFile": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewBuffer": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewPane": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewSplit": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewTab": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewGroup": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewGrouping": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewLayout": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewView": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditor": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorGroup": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorGrouping": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorLayout": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorView": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorWindow": true,
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorTab": true
 }
