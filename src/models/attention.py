@@ -163,6 +163,9 @@ class SimpleAttention(nn.Module):
         # Apply scaled dot-product attention
         context, attention_weights = self.attention(q, k, v, mask)
 
+        # Ensure attention weights are normalized
+        attention_weights = F.softmax(attention_weights, dim=-1)
+
         # Project back to input dimension
         output = self.output_projection(context)
 

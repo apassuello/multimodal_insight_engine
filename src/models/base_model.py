@@ -76,8 +76,8 @@ class BaseModel(nn.Module):
         Returns:
             Dictionary containing loaded information besides model weights
         """
-        # Load the state dictionary
-        checkpoint = torch.load(path, map_location=map_location)
+        # Load the state dictionary with weights_only=True for better security
+        checkpoint = torch.load(path, map_location=map_location, weights_only=True)
         
         # Check if the model type matches
         saved_model_type = checkpoint.get('model_type')
