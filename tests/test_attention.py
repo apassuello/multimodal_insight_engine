@@ -81,7 +81,9 @@ def test_scaled_dot_product_attention():
 
     visualize_attention_weights(attention_weights[0], "Scaled Dot-Product Attention")
 
-    return attention_weights
+    # Instead of returning, assert the expected properties
+    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
 
 
 def test_simple_attention():
@@ -156,7 +158,9 @@ def test_simple_attention():
     # Look for how the projection matrices change the attention distribution compared to the basic attention.
     visualize_attention_weights(attention_weights[0], "Simple Attention")
 
-    return attention_weights
+    # Instead of returning, assert the expected properties
+    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
 
 
 def test_multi_head_attention():
@@ -263,7 +267,10 @@ def test_multi_head_attention():
         masked_attention_weights[0], "Multi-Head Attention with Causal Mask"
     )
 
-    return attention_weights, masked_attention_weights
+    # Instead of returning, assert the expected properties
+    assert output.shape == (batch_size, seq_length, input_dim), "Incorrect output shape"
+    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
 
 
 def visualize_attention_weights(attention_weights, title):
@@ -346,11 +353,9 @@ def main():
     torch.manual_seed(42)
 
     # Test all attention mechanisms
-    dot_product_attn_weights = test_scaled_dot_product_attention()
-    simple_attn_weights = test_simple_attention()
-    multi_head_attn_weights, masked_multi_head_attn_weights = (
-        test_multi_head_attention()
-    )
+    test_scaled_dot_product_attention()
+    test_simple_attention()
+    test_multi_head_attention()
 
     # Test if attention can be trained
     test_attention_training()
