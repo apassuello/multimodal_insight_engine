@@ -56,26 +56,21 @@ class PositionalEncoding(nn.Module):
 
     def _init_sinusoidal_encoding(self):
         """Initialize sinusoidal positional encodings."""
-        # Explanation: "For sinusoidal encodings, we implement the formula from the original transformer paper"
-        pe = torch.zeros(self.max_seq_length, self.d_model)
-
+        pe = torch.zeros(1, self.max_seq_length, self.d_model)
         position = torch.arange(0, self.max_seq_length, dtype=torch.float).unsqueeze(1)
-
         div_term = torch.exp(
-            torch.arange(0, self.d_model, 2).float()
-            * (-math.log(10000.0) / self.d_model)
+            torch.arange(0, self.d_model, 2).float() * (-math.log(10000.0) / self.d_model)
         )
 
-        # Explanation: "using sine for even indices and cosine for odd indices"
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
+        # Apply sinusoidal pattern
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)
 
-        pe = pe.unsqueeze(0)
+        # Register as buffer (not a parameter)
         self.register_buffer("pe", pe)
 
     def _init_learned_encoding(self):
         """Initialize learned positional embeddings."""
-        # Explanation: "For learned encodings, we create a learnable parameter that can adapt during training"
         self.position_embeddings = nn.Parameter(
             torch.zeros(1, self.max_seq_length, self.d_model)
         )
@@ -87,20 +82,32 @@ class PositionalEncoding(nn.Module):
 
         Args:
             x: Input embeddings of shape [batch_size, seq_length, d_model]
+               or token indices of shape [batch_size, seq_length]
 
         Returns:
             Embeddings with positional information added
         """
-        # Explanation: "The forward method adds the positional information to the input embeddings"
-        seq_length = x.size(1)
-
+        # Handle input shape
+        if len(x.shape) == 2:
+            batch_size, seq_length = x.shape
+            # Expand to match expected dimensions
+            x = x.unsqueeze(-1).expand(batch_size, seq_length, self.d_model)
+        else:
+            batch_size, seq_length, d_model = x.shape
+            if d_model != self.d_model:
+                raise ValueError(
+                    f"Input dimension ({d_model}) does not match model dimension ({self.d_model})"
+                )
+        
         if seq_length > self.max_seq_length:
             raise ValueError(
                 f"Sequence length ({seq_length}) exceeds maximum length ({self.max_seq_length})"
             )
 
         if self.encoding_type == "sinusoidal":
-            x = x + self.pe[:, :seq_length, :]
+            # Expand pe to match batch size if needed
+            pe = self.pe.expand(batch_size, -1, -1)
+            x = x + pe[:, :seq_length, :]
         else:  # learned
             x = x + self.position_embeddings[:, :seq_length, :]
 

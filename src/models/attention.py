@@ -364,6 +364,9 @@ class GroupedQueryAttention(nn.Module):
     
     def __init__(self, d_model, num_heads, num_key_value_heads):
         super().__init__()
+        assert d_model % num_heads == 0, f"d_model {d_model} must be divisible by num_heads {num_heads}"
+        assert num_heads % num_key_value_heads == 0, f"num_heads {num_heads} must be divisible by num_key_value_heads {num_key_value_heads}"
+        
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_kv_heads = num_key_value_heads
@@ -373,8 +376,8 @@ class GroupedQueryAttention(nn.Module):
         self.q_proj = nn.Linear(d_model, d_model)
         
         # Key/Value projections (shared across groups of heads)
-        self.k_proj = nn.Linear(d_model, self.head_dim * num_key_value_heads)
-        self.v_proj = nn.Linear(d_model, self.head_dim * num_key_value_heads)
+        self.k_proj = nn.Linear(d_model, d_model)
+        self.v_proj = nn.Linear(d_model, d_model)
         
         # Output projection
         self.out_proj = nn.Linear(d_model, d_model)
@@ -393,43 +396,42 @@ class GroupedQueryAttention(nn.Module):
         batch_size, seq_len, _ = x.shape
         
         # Project queries, keys, values
-        q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
-        k = self.k_proj(x).view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
-        v = self.v_proj(x).view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        q = self.q_proj(x)  # [batch_size, seq_len, d_model]
+        k = self.k_proj(x)  # [batch_size, seq_len, d_model]
+        v = self.v_proj(x)  # [batch_size, seq_len, d_model]
         
-        # Transpose to [batch_size, num_heads, seq_len, head_dim]
+        # Reshape for multi-head attention
+        q = q.view(batch_size, seq_len, self.num_heads, self.head_dim)
+        k = k.view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        v = v.view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        
+        # Transpose to [batch_size, num_heads/num_kv_heads, seq_len, head_dim]
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
         
         # For each query head, determine which kv head to use
         heads_per_kv = self.num_heads // self.num_kv_heads
-        results = []
         
-        for i in range(self.num_heads):
-            kv_idx = i // heads_per_kv
-            head_q = q[:, i:i+1]
-            head_k = k[:, kv_idx:kv_idx+1]
-            head_v = v[:, kv_idx:kv_idx+1]
-            
-            # Compute attention scores
-            scores = torch.matmul(head_q, head_k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-            
-            if mask is not None:
-                scores = scores.masked_fill(mask == 0, -1e9)
-            
-            # Apply softmax to get attention weights
-            attn_weights = F.softmax(scores, dim=-1)
-            
-            # Apply attention weights to values
-            context = torch.matmul(attn_weights, head_v)
-            results.append(context)
+        # Repeat k and v for each query head in the group
+        k = k.repeat_interleave(heads_per_kv, dim=1)  # [batch_size, num_heads, seq_len, head_dim]
+        v = v.repeat_interleave(heads_per_kv, dim=1)  # [batch_size, num_heads, seq_len, head_dim]
         
-        # Concatenate results from all heads
-        context = torch.cat(results, dim=1)
+        # Compute attention scores
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        
+        # Apply softmax to get attention weights
+        attn_weights = F.softmax(scores, dim=-1)
+        
+        # Apply attention weights to values
+        context = torch.matmul(attn_weights, v)  # [batch_size, num_heads, seq_len, head_dim]
         
         # Reshape and apply output projection
-        context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
+        context = context.transpose(1, 2).contiguous()  # [batch_size, seq_len, num_heads, head_dim]
+        context = context.view(batch_size, seq_len, self.d_model)  # [batch_size, seq_len, d_model]
         output = self.out_proj(context)
         
         return output

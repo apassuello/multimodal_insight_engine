@@ -23,6 +23,9 @@ class TokenEmbedding(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.d_model = d_model
+        
+        # Initialize weights using Xavier uniform initialization
+        nn.init.xavier_uniform_(self.embedding.weight)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -35,4 +38,11 @@ class TokenEmbedding(nn.Module):
             Token embeddings of shape [batch_size, seq_length, d_model]
         """
         # Apply embedding and scale by sqrt(d_model)
-        return self.embedding(x) * math.sqrt(self.d_model)
+        embeddings = self.embedding(x)
+        
+        # Ensure embeddings have the correct shape and dimension
+        batch_size, seq_length = x.shape
+        embeddings = embeddings.view(batch_size, seq_length, self.d_model)
+        
+        # Scale embeddings
+        return embeddings * math.sqrt(self.d_model)
