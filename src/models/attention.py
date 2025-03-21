@@ -264,12 +264,15 @@ class MultiHeadAttention(nn.Module):
         # Reshape to [batch_size, seq_length, input_dim]
         return x.contiguous().view(batch_size, seq_length, self.input_dim)
 
+    # src/models/attention.py (updates to MultiHeadAttention class)
+
     def forward(
         self,
         query: torch.Tensor,
         key: Optional[torch.Tensor] = None,
         value: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
+        rotary_emb: Optional[nn.Module] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the multi-head attention mechanism.
@@ -279,6 +282,7 @@ class MultiHeadAttention(nn.Module):
             key: Optional key tensor of shape [batch_size, num_keys, input_dim]
             value: Optional value tensor of shape [batch_size, num_values, input_dim]
             mask: Optional mask tensor
+            rotary_emb: Optional rotary position embedding module
 
         Returns:
             Tuple containing:
@@ -294,14 +298,18 @@ class MultiHeadAttention(nn.Module):
         batch_size = query.size(0)
 
         # Linear projections
-        q = self.query_projection(query)
-        k = self.key_projection(key)
-        v = self.value_projection(value)
+        q = self.query_projection(query)  # [batch_size, num_queries, input_dim]
+        k = self.key_projection(key)      # [batch_size, num_keys, input_dim]
+        v = self.value_projection(value)  # [batch_size, num_values, input_dim]
 
         # Split heads
         q = self.split_heads(q)  # [batch_size, num_heads, num_queries, head_dim]
         k = self.split_heads(k)  # [batch_size, num_heads, num_keys, head_dim]
         v = self.split_heads(v)  # [batch_size, num_heads, num_values, head_dim]
+
+        # Apply rotary positional embeddings if provided
+        if rotary_emb is not None:
+            q, k = rotary_emb(q, k)
 
         # Adjust mask for multi-head attention if provided
         if mask is not None:
@@ -322,7 +330,7 @@ class MultiHeadAttention(nn.Module):
 
         # Apply dropout if specified and in training mode
         if self.dropout is not None and self.training:
-            attention_weights = self.dropout(attention_weights)
+            output = self.dropout(output)
 
         # Average attention weights across heads for visualization purposes
         avg_attention_weights = attention_weights.mean(dim=1)
