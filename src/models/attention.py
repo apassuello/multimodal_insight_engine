@@ -336,3 +336,100 @@ class MultiHeadAttention(nn.Module):
         avg_attention_weights = attention_weights.mean(dim=1)
 
         return output, avg_attention_weights
+
+class GroupedQueryAttention(nn.Module):
+    """Implements Grouped-Query Attention (GQA) mechanism as described in papers like PaLM-2.
+    
+    This attention mechanism reduces computational and memory costs by sharing key-value heads
+    across multiple query heads. Each key-value head serves a group of query heads, making it
+    more efficient than standard multi-head attention while maintaining model quality.
+    
+    Args:
+        d_model (int): Total dimension of the model (must be divisible by num_heads)
+        num_heads (int): Total number of attention heads (must be divisible by num_key_value_heads)
+        num_key_value_heads (int): Number of key/value heads to use (fewer than num_heads)
+        
+    Attributes:
+        head_dim (int): Dimension of each attention head (d_model // num_heads)
+        q_proj (nn.Linear): Query projection layer
+        k_proj (nn.Linear): Key projection layer (shared across groups)
+        v_proj (nn.Linear): Value projection layer (shared across groups)
+        out_proj (nn.Linear): Output projection layer
+        
+    Shape:
+        - Input: (batch_size, seq_len, d_model)
+        - Output: (batch_size, seq_len, d_model)
+        - mask (optional): (batch_size, seq_len, seq_len)
+    """
+    
+    def __init__(self, d_model, num_heads, num_key_value_heads):
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.num_kv_heads = num_key_value_heads
+        self.head_dim = d_model // num_heads
+        
+        # Query projections (one per head)
+        self.q_proj = nn.Linear(d_model, d_model)
+        
+        # Key/Value projections (shared across groups of heads)
+        self.k_proj = nn.Linear(d_model, self.head_dim * num_key_value_heads)
+        self.v_proj = nn.Linear(d_model, self.head_dim * num_key_value_heads)
+        
+        # Output projection
+        self.out_proj = nn.Linear(d_model, d_model)
+        
+    def forward(self, x, mask=None):
+        """Forward pass for the Grouped-Query Attention mechanism.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_len, d_model)
+            mask (torch.Tensor, optional): Attention mask of shape (batch_size, seq_len, seq_len).
+                                         Positions with 0 are masked out. Defaults to None.
+                                         
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_len, d_model)
+        """
+        batch_size, seq_len, _ = x.shape
+        
+        # Project queries, keys, values
+        q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
+        k = self.k_proj(x).view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        v = self.v_proj(x).view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        
+        # Transpose to [batch_size, num_heads, seq_len, head_dim]
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
+        
+        # For each query head, determine which kv head to use
+        heads_per_kv = self.num_heads // self.num_kv_heads
+        results = []
+        
+        for i in range(self.num_heads):
+            kv_idx = i // heads_per_kv
+            head_q = q[:, i:i+1]
+            head_k = k[:, kv_idx:kv_idx+1]
+            head_v = v[:, kv_idx:kv_idx+1]
+            
+            # Compute attention scores
+            scores = torch.matmul(head_q, head_k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            
+            if mask is not None:
+                scores = scores.masked_fill(mask == 0, -1e9)
+            
+            # Apply softmax to get attention weights
+            attn_weights = F.softmax(scores, dim=-1)
+            
+            # Apply attention weights to values
+            context = torch.matmul(attn_weights, head_v)
+            results.append(context)
+        
+        # Concatenate results from all heads
+        context = torch.cat(results, dim=1)
+        
+        # Reshape and apply output projection
+        context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
+        output = self.out_proj(context)
+        
+        return output
