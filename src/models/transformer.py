@@ -330,3 +330,256 @@ class Transformer(BaseModel):
         """
         return torch.optim.Adam(self.parameters(), lr=lr)
 
+
+class TransformerDecoderLayer(nn.Module):
+    """
+    A single transformer decoder layer.
+    
+    This implements one layer of the transformer decoder as described in
+    "Attention is All You Need" (Vaswani et al., 2017).
+    Each layer consists of:
+    1. Masked multi-head self-attention
+    2. Multi-head cross-attention to encoder outputs
+    3. Position-wise feed-forward network
+    All with residual connections and layer normalization.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        dropout: float = 0.1,
+        use_rotary_embeddings: bool = False,
+    ):
+        """
+        Initialize the transformer decoder layer.
+        
+        Args:
+            d_model: Dimension of model embeddings
+            num_heads: Number of attention heads
+            d_ff: Dimension of feed-forward network
+            dropout: Dropout probability
+            use_rotary_embeddings: Whether to use rotary positional embeddings
+        """
+        super().__init__()
+
+        self.use_rotary_embeddings = use_rotary_embeddings
+
+        # Ensure d_model is divisible by num_heads
+        assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
+        
+        # 1. Self-attention layer (masked to prevent looking at future tokens)
+        self.self_attn = MultiHeadAttention(
+            input_dim=d_model,
+            num_heads=num_heads,
+            dropout=dropout
+        )
+        
+        # 2. Cross-attention layer (to attend to encoder outputs)
+        self.cross_attn = MultiHeadAttention(
+            input_dim=d_model,
+            num_heads=num_heads,
+            dropout=dropout
+        )
+        
+        # Rotary embeddings if specified (applied within attention)
+        if use_rotary_embeddings:
+            self.rotary_emb = RotaryPositionEncoding(
+                head_dim=d_model // num_heads,  # head_dim
+                max_seq_length=5000
+            )
+        
+        # 3. Feed-forward block
+        self.feed_forward = FeedForwardBlock(
+            input_dim=d_model,
+            hidden_dim=d_ff,
+            output_dim=d_model,
+            activation="relu",
+            dropout=dropout,
+            use_layer_norm=False,
+        )
+        
+        # Layer normalization layers (pre-norm architecture)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        
+        # Dropout layers
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
+    
+    def forward(
+        self,
+        x: torch.Tensor,
+        memory: torch.Tensor,
+        tgt_mask: Optional[torch.Tensor] = None,
+        memory_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+        Forward pass for the decoder layer.
+        
+        Args:
+            x: Input tensor from previous decoder layer [batch_size, tgt_len, d_model]
+            memory: Output of the encoder [batch_size, src_len, d_model]
+            tgt_mask: Mask for target sequence (prevents attending to future tokens)
+            memory_mask: Mask for encoder outputs (usually for padding)
+            
+        Returns:
+            Output tensor of shape [batch_size, tgt_len, d_model]
+        """
+        # 1. Self-attention block with residual connection
+        # Apply layer norm before attention (pre-norm architecture)
+        norm_x = self.norm1(x)
+        
+        # Apply self-attention with rotary embeddings if specified
+        if self.use_rotary_embeddings and hasattr(self, 'rotary_emb'):
+            self_attn_output, _ = self.self_attn(
+                norm_x, norm_x, norm_x, mask=tgt_mask, rotary_emb=self.rotary_emb
+            )
+        else:
+            self_attn_output, _ = self.self_attn(norm_x, norm_x, norm_x, mask=tgt_mask)
+        
+        # Apply dropout and residual connection
+        x = x + self.dropout1(self_attn_output)
+        
+        # 2. Cross-attention block with residual connection
+        # Apply layer norm before attention
+        norm_x = self.norm2(x)
+        
+        # Apply cross-attention to encoder outputs
+        cross_attn_output, _ = self.cross_attn(norm_x, memory, memory, mask=memory_mask)
+        
+        # Apply dropout and residual connection
+        x = x + self.dropout2(cross_attn_output)
+        
+        # 3. Feed-forward block with residual connection
+        # Apply layer norm before feed-forward
+        norm_x = self.norm3(x)
+        ff_output = self.feed_forward(norm_x)
+        
+        # Apply dropout and residual connection
+        x = x + self.dropout3(ff_output)
+        
+        return x
+
+class TransformerDecoder(nn.Module):
+    """
+    Transformer decoder consisting of multiple decoder layers.
+    
+    This implements the decoder part of the transformer as described in
+    "Attention is All You Need" (Vaswani et al., 2017).
+    """
+    
+    def __init__(
+        self,
+        vocab_size: Optional[int] = None,
+        d_model: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 6,
+        d_ff: int = 2048,
+        dropout: float = 0.1,
+        max_seq_length: int = 5000,
+        positional_encoding: str = "sinusoidal",
+    ):
+        """
+        Initialize the transformer decoder.
+        
+        Args:
+            vocab_size: Size of vocabulary (if None, token embedding is not created)
+            d_model: Dimension of model embeddings
+            num_heads: Number of attention heads
+            num_layers: Number of decoder layers
+            d_ff: Dimension of feed-forward network
+            dropout: Dropout probability
+            max_seq_length: Maximum sequence length
+            positional_encoding: Type of positional encoding to use
+                ("sinusoidal", "learned", or "rotary")
+        """
+        super().__init__()
+        
+        self.d_model = d_model
+        self.positional_encoding_type = positional_encoding
+        
+        # Token embedding layer (optional)
+        self.has_embeddings = vocab_size is not None
+        if self.has_embeddings:
+            self.token_embedding = TokenEmbedding(vocab_size, d_model)
+        
+        # Positional encoding
+        if positional_encoding == "rotary":
+            self.use_rotary = True
+            # No separate positional encoding layer for rotary embeddings
+        else:
+            self.use_rotary = False
+            self.positional_encoding = PositionalEncoding(
+                d_model=d_model,
+                max_seq_length=max_seq_length,
+                dropout=dropout,
+                encoding_type="sinusoidal" if positional_encoding == "sinusoidal" else "learned"
+            )
+        
+        # Stack of decoder layers
+        self.layers = nn.ModuleList([
+            TransformerDecoderLayer(
+                d_model=d_model,
+                num_heads=num_heads,
+                d_ff=d_ff,
+                dropout=dropout,
+                use_rotary_embeddings=(positional_encoding == "rotary")
+            )
+            for _ in range(num_layers)
+        ])
+        
+        # Final layer normalization
+        self.norm = nn.LayerNorm(d_model)
+        
+        # Output projection (if vocab_size is provided)
+        if vocab_size is not None:
+            self.output_projection = nn.Linear(d_model, vocab_size)
+        else:
+            self.output_projection = None
+    
+    def forward(
+        self,
+        x: torch.Tensor,
+        memory: torch.Tensor,
+        tgt_mask: Optional[torch.Tensor] = None,
+        memory_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+        Forward pass for the decoder.
+        
+        Args:
+            x: Either token indices [batch_size, tgt_len] if self.has_embeddings is True,
+               or already embedded tokens [batch_size, tgt_len, d_model]
+            memory: Output of the encoder [batch_size, src_len, d_model]
+            tgt_mask: Mask for target sequence (prevents attending to future tokens)
+            memory_mask: Mask for encoder outputs (usually for padding)
+            
+        Returns:
+            Output tensor, either:
+            - [batch_size, tgt_len, d_model] if output_projection is None
+            - [batch_size, tgt_len, vocab_size] if output_projection is not None
+        """
+        # Apply token embeddings if needed
+        if self.has_embeddings:
+            x = self.token_embedding(x)
+        
+        # Apply positional encoding if not using rotary embeddings
+        if not self.use_rotary:
+            x = self.positional_encoding(x)
+        
+        # Apply each decoder layer
+        for layer in self.layers:
+            x = layer(x, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
+        
+        # Apply final layer normalization
+        x = self.norm(x)
+        
+        # Apply output projection if available
+        if self.output_projection is not None:
+            x = self.output_projection(x)
+        
+        return x
