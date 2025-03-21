@@ -433,3 +433,130 @@ class GroupedQueryAttention(nn.Module):
         output = self.out_proj(context)
         
         return output
+
+
+class ALiBiAttention(nn.Module):
+    """Attention Layer with Linear Biases (ALiBi) for enhanced position encoding.
+    
+    ALiBi replaces traditional positional embeddings with linear biases added to attention scores.
+    This approach has been shown to extrapolate better to longer sequences than learned or
+    sinusoidal position embeddings. The bias term decreases linearly with distance between
+    tokens, with different slopes for each attention head.
+    
+    Args:
+        hidden_size (int): Size of the hidden/embedding dimension. Must be divisible by num_heads.
+        num_heads (int): Number of attention heads.
+        max_seq_length (int, optional): Maximum sequence length to pre-compute biases for.
+            Defaults to 2048.
+            
+    Attributes:
+        head_dim (int): Dimension of each attention head (hidden_size // num_heads)
+        q_proj (nn.Linear): Query projection layer
+        k_proj (nn.Linear): Key projection layer
+        v_proj (nn.Linear): Value projection layer
+        out_proj (nn.Linear): Output projection layer
+        bias (torch.Tensor): Pre-computed ALiBi attention biases of shape 
+            [1, num_heads, max_seq_length, max_seq_length]
+            
+    References:
+        "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation"
+        https://arxiv.org/abs/2108.12409
+        
+    Shape:
+        - Input x: (batch_size, seq_length, hidden_size)
+        - Output: (batch_size, seq_length, hidden_size)
+        - mask (optional): (batch_size, seq_length, seq_length)
+    """
+    
+    def __init__(self, hidden_size, num_heads, max_seq_length=2048):
+        super().__init__()
+        
+        self.num_heads = num_heads
+        self.head_dim = hidden_size // num_heads
+        
+        # Linear projections
+        self.q_proj = nn.Linear(hidden_size, hidden_size)
+        self.k_proj = nn.Linear(hidden_size, hidden_size)
+        self.v_proj = nn.Linear(hidden_size, hidden_size)
+        self.out_proj = nn.Linear(hidden_size, hidden_size)
+        
+        # Create slope matrix for ALiBi
+        # Different slope for each head
+        slopes = torch.Tensor(self._get_slopes(num_heads))
+        
+        # Create distance matrix [seq_len, seq_len]
+        distances = torch.arange(max_seq_length).unsqueeze(0) - torch.arange(max_seq_length).unsqueeze(1)
+        
+        # Convert to bias matrix [1, num_heads, seq_len, seq_len]
+        self.alibi_bias = slopes.unsqueeze(1).unsqueeze(1) * distances.unsqueeze(0)
+        self.register_buffer("bias", self.alibi_bias)
+        
+    def _get_slopes(self, n):
+        """Calculate attention head-specific slopes for ALiBi position biases.
+        
+        The slopes are calculated using a geometric sequence, where each head gets
+        a different slope that decreases by a power of 2. For non-power-of-2 number
+        of heads, the slopes are interpolated from the nearest power of 2.
+        
+        Args:
+            n (int): Number of attention heads
+            
+        Returns:
+            list: List of n slopes, one for each attention head
+        """
+        def get_slopes_power_of_2(n):
+            start = 2**(-(2**-(math.log2(n)-3)))
+            return [start * 2**(-i) for i in range(n)]
+        
+        if math.log2(n).is_integer():
+            return get_slopes_power_of_2(n)
+        else:
+            closest_power_of_2 = 2**math.floor(math.log2(n))
+            return get_slopes_power_of_2(closest_power_of_2) + \
+                   get_slopes_power_of_2(2*closest_power_of_2)[0:n-closest_power_of_2]
+    
+    def forward(self, x, mask=None):
+        """Forward pass of the ALiBi attention layer.
+        
+        Computes multi-head attention with linear biases added to the attention scores.
+        The biases are pre-computed during initialization and depend on the relative
+        positions of queries and keys.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, hidden_size)
+            mask (torch.Tensor, optional): Attention mask of shape (batch_size, seq_length, seq_length).
+                                         Values of 0 indicate positions to mask out. Defaults to None.
+                                         
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_length, hidden_size)
+        """
+        batch_size, seq_len, hidden_size = x.shape
+        
+        # Linear projections
+        q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
+        k = self.k_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
+        v = self.v_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
+        
+        # Transpose for attention [batch, heads, seq_len, head_dim]
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
+        
+        # Calculate attention scores
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        
+        # Add ALiBi bias (only need the part up to current sequence length)
+        scores = scores + self.bias[:, :seq_len, :seq_len]
+        
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        
+        # Attention weights and context
+        attn_weights = F.softmax(scores, dim=-1)
+        context = torch.matmul(attn_weights, v)
+        
+        # Transpose back and reshape
+        context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, hidden_size)
+        output = self.out_proj(context)
+        
+        return output
