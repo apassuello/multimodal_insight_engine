@@ -7,6 +7,7 @@ from .base_model import BaseModel
 from .attention import MultiHeadAttention
 from .layers import FeedForwardBlock
 from .positional import PositionalEncoding, RotaryPositionEncoding
+from .embeddings import TokenEmbedding
 
 class TransformerEncoderLayer(nn.Module):
     """
@@ -53,7 +54,7 @@ class TransformerEncoderLayer(nn.Module):
         # Rotary embeddings if specified (applied within attention)
         if use_rotary_embeddings:
             self.rotary_emb = RotaryPositionEncoding(
-                d_model=d_model // num_heads,  # head_dim
+                head_dim=d_model // num_heads,  # head_dim
                 max_seq_length=5000
             )
         
@@ -120,6 +121,8 @@ class TransformerEncoderLayer(nn.Module):
         
         return x
 
+
+# Updated TransformerEncoder class
 class TransformerEncoder(nn.Module):
     """
     Transformer encoder consisting of multiple encoder layers.
@@ -130,10 +133,11 @@ class TransformerEncoder(nn.Module):
     
     def __init__(
         self,
-        d_model: int,
-        num_heads: int,
-        num_layers: int,
-        d_ff: int,
+        vocab_size: Optional[int] = None,
+        d_model: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 6,
+        d_ff: int = 2048,
         dropout: float = 0.1,
         max_seq_length: int = 5000,
         positional_encoding: str = "sinusoidal",
@@ -142,6 +146,7 @@ class TransformerEncoder(nn.Module):
         Initialize the transformer encoder.
         
         Args:
+            vocab_size: Size of vocabulary (if None, token embedding is not created)
             d_model: Dimension of model embeddings
             num_heads: Number of attention heads
             num_layers: Number of encoder layers
@@ -156,15 +161,15 @@ class TransformerEncoder(nn.Module):
         self.d_model = d_model
         self.positional_encoding_type = positional_encoding
         
-        # Input embedding layer
-        # Note: In practice, you'd have a separate embedding layer for converting tokens to vectors
-        # We'll assume that's done before passing to this encoder
+        # Token embedding layer (optional)
+        self.has_embeddings = vocab_size is not None
+        if self.has_embeddings:
+            self.token_embedding = TokenEmbedding(vocab_size, d_model)
         
         # Positional encoding
         if positional_encoding == "rotary":
             self.use_rotary = True
             # No separate positional encoding layer for rotary embeddings
-            # Instead, rotary embeddings are applied within each attention layer
         else:
             self.use_rotary = False
             self.positional_encoding = PositionalEncoding(
@@ -198,19 +203,28 @@ class TransformerEncoder(nn.Module):
         Forward pass for the encoder.
         
         Args:
-            x: Input tensor of shape [batch_size, seq_length, d_model]
-            mask: Optional mask tensor of shape [batch_size, seq_length, seq_length]
+            x: Either token indices [batch_size, seq_length] if self.has_embeddings is True,
+               or already embedded tokens [batch_size, seq_length, d_model]
+            mask: Optional mask tensor
             
         Returns:
             Output tensor of shape [batch_size, seq_length, d_model]
         """
+        # Apply token embeddings if needed
+        if self.has_embeddings:
+            x = self.token_embedding(x)
+        
         # Apply positional encoding if not using rotary embeddings
         if not self.use_rotary:
             x = self.positional_encoding(x)
         
         # Apply each encoder layer
+        attentions = []  # Store attention weights for visualization/interpretability
         for layer in self.layers:
             x = layer(x, mask=mask)
+            
+            # In practice, you'd collect attention weights from each layer
+            # We'll assume this is done within the layer for now
         
         # Apply final layer normalization
         x = self.norm(x)
@@ -315,3 +329,4 @@ class Transformer(BaseModel):
             Configured optimizer
         """
         return torch.optim.Adam(self.parameters(), lr=lr)
+
