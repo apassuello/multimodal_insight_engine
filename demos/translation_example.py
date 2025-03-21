@@ -25,6 +25,131 @@ from src.data.sequence_data import TransformerDataModule
 from src.training.transformer_trainer import TransformerTrainer
 from src.training.transformer_utils import create_padding_mask, create_causal_mask
 
+import unicodedata
+from typing import List
+
+class AdvancedTokenizer:
+    """
+    A comprehensive tokenization strategy that handles multiple language nuances.
+    
+    Design Philosophy:
+    - Preserve important linguistic information
+    - Handle multiple languages
+    - Create meaningful token representations
+    """
+    
+    @staticmethod
+    def normalize_text(text: str) -> str:
+        """
+        Normalize text by:
+        1. Converting to lowercase
+        2. Removing accents
+        3. Handling Unicode characters
+        
+        Args:
+            text (str): Input text to normalize
+        
+        Returns:
+            str: Normalized text
+        """
+        # Normalize Unicode characters
+        text = unicodedata.normalize('NFKD', text)
+        
+        # Remove accents and non-ASCII characters
+        text = text.encode('ascii', 'ignore').decode('utf-8')
+        
+        # Convert to lowercase
+        return text.lower()
+    
+    @classmethod
+    def tokenize(cls, text: str, 
+                 split_on_punct: bool = True, 
+                 split_on_hyphens: bool = True) -> List[str]:
+        """
+        Advanced tokenization with multiple strategies
+        
+        Args:
+            text (str): Text to tokenize
+            split_on_punct (bool): Whether to split on punctuation
+            split_on_hyphens (bool): Whether to split on hyphens
+        
+        Returns:
+            List[str]: List of tokens
+        """
+        # Normalize text first
+        text = cls.normalize_text(text)
+        
+        # Define tokenization pattern
+        if split_on_punct and split_on_hyphens:
+            # Split on whitespace, punctuation, and hyphens
+            pattern = r'\b\w+(?:[-\']\w+)*\b'
+        elif split_on_punct:
+            # Split on whitespace and punctuation
+            pattern = r'\b\w+\b'
+        elif split_on_hyphens:
+            # Split on whitespace and hyphens
+            pattern = r'\b\w+(?:-\w+)*\b'
+        else:
+            # Simple whitespace split
+            return text.split()
+        
+        # Find all tokens matching the pattern
+        tokens = re.findall(pattern, text)
+        
+        return tokens
+    
+    @classmethod
+    def build_vocabulary(cls, 
+                         sentences: List[str], 
+                         max_vocab_size: int = 10000, 
+                         min_freq: int = 1) -> dict:
+        """
+        Build a vocabulary from a list of sentences
+        
+        Args:
+            sentences (List[str]): List of sentences to process
+            max_vocab_size (int): Maximum vocabulary size
+            min_freq (int): Minimum frequency for a token to be included
+        
+        Returns:
+            dict: Vocabulary mapping tokens to indices
+        """
+        # Tokenize all sentences
+        all_tokens = [token for sentence in sentences 
+                      for token in cls.tokenize(sentence)]
+        
+        # Count token frequencies
+        token_freq = {}
+        for token in all_tokens:
+            token_freq[token] = token_freq.get(token, 0) + 1
+        
+        # Sort tokens by frequency
+        sorted_tokens = sorted(token_freq.items(), 
+                               key=lambda x: x[1], 
+                               reverse=True)
+        
+        # Create vocabulary with special tokens
+        vocab = {
+            '<pad>': 0,   # Padding token
+            '<unk>': 1,   # Unknown token
+            '<start>': 2, # Start of sequence
+            '<end>': 3    # End of sequence
+        }
+        
+        # Add tokens to vocabulary
+        next_index = len(vocab)
+        for token, freq in sorted_tokens:
+            if freq >= min_freq and token not in vocab:
+                vocab[token] = next_index
+                next_index += 1
+                
+                # Stop if we reach max vocabulary size
+                if len(vocab) >= max_vocab_size:
+                    break
+        
+        return vocab
+
+
 class SimpleTokenizer:
     """A simple tokenizer that splits on spaces and punctuation."""
     
@@ -520,6 +645,7 @@ def main():
         positional_encoding="sinusoidal",
         share_embeddings=True,  # Changed to True to reduce parameters and improve generalization
     )
+    model.load("models/iwslt_en_de_last.pt")
     
     model.to(device)
     

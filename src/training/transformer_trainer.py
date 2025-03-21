@@ -294,7 +294,8 @@ class TransformerTrainer:
             # Save checkpoint
             if save_path is not None and save_idx % 10 == 0:
                 self.save_checkpoint(f"{save_path}_epoch{epoch+1}.pt")
-                save_idx += 1
+            save_idx += 1
+        self.save_checkpoint(f"{save_path}_epoch{epoch+1}.pt")
         print("Training completed")
         return self.history
     
