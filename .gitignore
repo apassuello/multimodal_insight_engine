@@ -20,6 +20,11 @@
 *.tar
 *.zip
 
+# Local Data and Model #
+data/
+models/
+.data/
+.env
 # Logs and databases #
 ######################
 *.log
