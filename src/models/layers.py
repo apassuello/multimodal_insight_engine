@@ -56,6 +56,9 @@ class LinearLayer(nn.Module):
         Returns:
             Transformed output tensor
         """
+        # Move input to device
+        x = x.to(next(self.parameters()).device)
+        
         x = self.linear(x)
         
         # Apply layer normalization if specified
@@ -122,7 +125,7 @@ class FeedForwardBlock(nn.Module):
         )
         
         # Store the activation type
-        self.activation_type = activation
+        self.activation = activation
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -134,6 +137,9 @@ class FeedForwardBlock(nn.Module):
         Returns:
             Transformed output tensor
         """
+        # Move input to device
+        x = x.to(next(self.parameters()).device)
+        
         # Store input for residual connection
         residual = x
         
@@ -141,16 +147,16 @@ class FeedForwardBlock(nn.Module):
         x = self.linear1(x)
         
         # Apply activation function
-        if self.activation_type == 'relu':
+        if self.activation == 'relu':
             x = F.relu(x)
-        elif self.activation_type == 'gelu':
-            x = F.gelu(x)
-        elif self.activation_type == 'tanh':
+        elif self.activation == 'gelu':
+            x = torch.nn.GELU()(x)
+        elif self.activation == 'tanh':
             x = torch.tanh(x)
-        elif self.activation_type == 'sigmoid':
+        elif self.activation == 'sigmoid':
             x = torch.sigmoid(x)
         else:
-            raise ValueError(f"Unknown activation type: {self.activation_type}")
+            raise ValueError(f"Unknown activation function: {self.activation}")
         
         # Second linear layer
         x = self.linear2(x)

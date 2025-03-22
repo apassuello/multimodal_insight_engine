@@ -93,6 +93,11 @@ class TransformerEncoderLayer(nn.Module):
         Returns:
             Output tensor of shape [batch_size, seq_length, d_model]
         """
+        # Move input to device
+        x = x.to(next(self.parameters()).device)
+        if mask is not None:
+            mask = mask.to(next(self.parameters()).device)
+        
         # Self-attention block with residual connection
         # Apply layer norm before attention (pre-norm architecture)
         norm_x = self.norm1(x)
@@ -210,6 +215,11 @@ class TransformerEncoder(nn.Module):
         Returns:
             Output tensor of shape [batch_size, seq_length, d_model]
         """
+        # Move input to device
+        x = x.to(next(self.parameters()).device)
+        if mask is not None:
+            mask = mask.to(next(self.parameters()).device)
+        
         # Apply token embeddings if needed
         if self.has_embeddings:
             x = self.token_embedding(x)
@@ -305,6 +315,11 @@ class Transformer(BaseModel):
         Returns:
             Output tensor of shape [batch_size, seq_length, output_dim]
         """
+        # Move input to device
+        x = x.to(next(self.parameters()).device)
+        if mask is not None:
+            mask = mask.to(next(self.parameters()).device)
+        
         # Apply input projection if needed
         if self.input_projection is not None:
             x = self.input_projection(x)
@@ -429,6 +444,14 @@ class TransformerDecoderLayer(nn.Module):
         Returns:
             Output tensor of shape [batch_size, tgt_len, d_model]
         """
+        # Move inputs to device
+        x = x.to(next(self.parameters()).device)
+        memory = memory.to(next(self.parameters()).device)
+        if tgt_mask is not None:
+            tgt_mask = tgt_mask.to(next(self.parameters()).device)
+        if memory_mask is not None:
+            memory_mask = memory_mask.to(next(self.parameters()).device)
+        
         # 1. Self-attention block with residual connection
         # Apply layer norm before attention (pre-norm architecture)
         norm_x = self.norm1(x)
@@ -564,6 +587,14 @@ class TransformerDecoder(nn.Module):
             - [batch_size, tgt_len, d_model] if output_projection is None
             - [batch_size, tgt_len, vocab_size] if output_projection is not None
         """
+        # Move inputs to device
+        x = x.to(next(self.parameters()).device)
+        memory = memory.to(next(self.parameters()).device)
+        if tgt_mask is not None:
+            tgt_mask = tgt_mask.to(next(self.parameters()).device)
+        if memory_mask is not None:
+            memory_mask = memory_mask.to(next(self.parameters()).device)
+        
         # Apply token embeddings if needed
         if self.has_embeddings:
             x = self.token_embedding(x)
@@ -686,6 +717,16 @@ class EncoderDecoderTransformer(BaseModel):
         Returns:
             Output tensor of shape [batch_size, tgt_len, tgt_vocab_size]
         """
+        # Move inputs to device
+        src = src.to(next(self.parameters()).device)
+        tgt = tgt.to(next(self.parameters()).device)
+        if src_mask is not None:
+            src_mask = src_mask.to(next(self.parameters()).device)
+        if tgt_mask is not None:
+            tgt_mask = tgt_mask.to(next(self.parameters()).device)
+        if memory_mask is not None:
+            memory_mask = memory_mask.to(next(self.parameters()).device)
+        
         # Encode source sequence
         memory = self.encoder(src, mask=src_mask)
         

@@ -30,6 +30,7 @@ class ScaledDotProductAttention(nn.Module):
         key: torch.Tensor,
         value: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
+        device: Optional[torch.device] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -40,12 +41,21 @@ class ScaledDotProductAttention(nn.Module):
             value: Value tensor of shape [batch_size, num_values, value_dim]
             mask: Optional mask tensor of shape [batch_size, num_queries, num_keys]
                   or [num_queries, num_keys] to mask out certain positions
+            device: Optional device to move inputs to
 
         Returns:
             Tuple containing:
             - Context vector after attention of shape [batch_size, num_queries, value_dim]
             - Attention weights of shape [batch_size, num_queries, num_keys]
         """
+        # Move inputs to device if specified
+        if device is not None:
+            query = query.to(device)
+            key = key.to(device)
+            value = value.to(device)
+            if mask is not None:
+                mask = mask.to(device)
+
         # Get dimensions
         d_k = query.size(-1)
 
@@ -131,6 +141,7 @@ class SimpleAttention(nn.Module):
         key: Optional[torch.Tensor] = None,
         value: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
+        device: Optional[torch.device] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -143,12 +154,23 @@ class SimpleAttention(nn.Module):
             key: Optional key tensor of shape [batch_size, num_keys, input_dim]
             value: Optional value tensor of shape [batch_size, num_values, input_dim]
             mask: Optional mask tensor
+            device: Optional device to move inputs to
 
         Returns:
             Tuple containing:
             - Output tensor after attention
             - Attention weights
         """
+        # Move inputs to device if specified
+        if device is not None:
+            query = query.to(device)
+            if key is not None:
+                key = key.to(device)
+            if value is not None:
+                value = value.to(device)
+            if mask is not None:
+                mask = mask.to(device)
+
         # Handle self-attention case
         if key is None:
             key = query
@@ -161,7 +183,7 @@ class SimpleAttention(nn.Module):
         v = self.value_projection(value)
 
         # Apply scaled dot-product attention
-        context, attention_weights = self.attention(q, k, v, mask)
+        context, attention_weights = self.attention(q, k, v, mask, device)
 
         # Ensure attention weights are normalized
         attention_weights = F.softmax(attention_weights, dim=-1)
@@ -272,7 +294,8 @@ class MultiHeadAttention(nn.Module):
         key: Optional[torch.Tensor] = None,
         value: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
-        rotary_emb: Optional[nn.Module] = None
+        rotary_emb: Optional[nn.Module] = None,
+        device: Optional[torch.device] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the multi-head attention mechanism.
@@ -283,12 +306,23 @@ class MultiHeadAttention(nn.Module):
             value: Optional value tensor of shape [batch_size, num_values, input_dim]
             mask: Optional mask tensor
             rotary_emb: Optional rotary position embedding module
+            device: Optional device to move inputs to
 
         Returns:
             Tuple containing:
             - Output tensor after attention
             - Attention weights (averaged over heads for visualization)
         """
+        # Move inputs to device if specified
+        if device is not None:
+            query = query.to(device)
+            if key is not None:
+                key = key.to(device)
+            if value is not None:
+                value = value.to(device)
+            if mask is not None:
+                mask = mask.to(device)
+
         # Handle self-attention case
         if key is None:
             key = query
@@ -318,7 +352,7 @@ class MultiHeadAttention(nn.Module):
                 mask = mask.unsqueeze(1)  # [batch_size, 1, num_queries, num_keys]
 
         # Apply scaled dot-product attention to each head
-        context, attention_weights = self.attention(q, k, v, mask)
+        context, attention_weights = self.attention(q, k, v, mask, device)
         # context: [batch_size, num_heads, num_queries, head_dim]
         # attention_weights: [batch_size, num_heads, num_queries, num_keys]
 

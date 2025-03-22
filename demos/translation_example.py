@@ -299,7 +299,7 @@ class IWSLTDataset:
                 src_lines = src_content.count('\n') + 1
                 tgt_lines = tgt_content.count('\n') + 1
                 
-                min_examples = 5000 if self.split == "train" else 1000
+                min_examples = 500000 if self.split == "train" else 100000
                 
                 if src_lines >= min_examples and tgt_lines >= min_examples:
                     print(f"IWSLT {self.year} {self.src_lang}-{self.tgt_lang} {self.split} data already exists with {src_lines} examples")
@@ -492,7 +492,7 @@ class IWSLTDataset:
         random.seed(42)  # For reproducibility
         
         # Target number of examples
-        target_examples = 10000 if self.split == "train" else 2000
+        target_examples = 50000 if self.split == "train" else 10000
         
         # Generate the synthetic dataset
         en_sentences = []
@@ -807,17 +807,17 @@ def main():
     train_dataset = IWSLTDataset(
         src_lang="en",
         tgt_lang="de",
-        year="2016",  # Using 2016 version
+        year="2017",  # Changed from "2016" to "2017"
         split="train",
-        max_examples=1000000  # Increased from 5000 to 1000000
+        max_examples=500000
     )
-    
+
     val_dataset = IWSLTDataset(
         src_lang="en",
         tgt_lang="de",
-        year="2016",
+        year="2017",  # Changed from "2016" to "2017"
         split="valid",
-        max_examples=30000  # Increased from 500 to 30000
+        max_examples=100000
     )
     
     # Initialize simple tokenizers
@@ -889,13 +889,13 @@ def main():
     # Create model with larger capacity
     print("Creating transformer model...")
     model = EncoderDecoderTransformer(
-        src_vocab_size=len(src_vocab),
-        tgt_vocab_size=len(tgt_vocab),
+        src_vocab_size=8000,
+        tgt_vocab_size=8000,
         d_model=512,  # Increased from 256 to 512
         num_heads=8,
-        num_encoder_layers=6,  # Increased from 3 to 6
-        num_decoder_layers=6,  # Increased from 3 to 6
-        d_ff=2048,  # Increased from 512 to 2048
+        num_encoder_layers=4,  # Increased from 3 to 6
+        num_decoder_layers=4,  # Increased from 3 to 6
+        d_ff=1024,  # Increased from 512 to 2048
         dropout=0.1,
         max_seq_length=100,
         positional_encoding="sinusoidal",
@@ -913,7 +913,7 @@ def main():
         val_dataloader=val_data_module.get_train_dataloader(),
         pad_idx=src_vocab["<pad>"],
         lr=0.0001,  # Reduced from 0.0002 for more stable training
-        warmup_steps=4000,  # Increased from 2000 to 4000
+        warmup_steps=2000,  # Increased from 2000 to 4000
         label_smoothing=0.1,
         clip_grad=1.0,
         early_stopping_patience=10,  # Increased from 5 to 10
@@ -1065,10 +1065,11 @@ def main():
     # Calculate BLEU score
     bleu = calculate_bleu(candidate_corpus, reference_corpus)
     print(f"BLEU score on validation set: {bleu:.4f}")
+    return history
     
 
 if __name__ == "__main__":
-    main()
+    history = main()
 
     # Visualize Training History
     plt.figure(figsize=(15, 5))
