@@ -738,56 +738,70 @@ def main():
     # Test translation on some examples
     test_sentences = [
         # Basic sentences
-        "Guten Tag, wie geht es Ihnen?",
-        "Ich lerne maschinelle Übersetzung.",
+        ("Hallo, wie geht es dir?", "Hello, how are you?"),
+        ("Ich lerne maschinelle Übersetzung.", "I am learning machine translation."),
+        ("Das Wetter ist heute schön.", "The weather is nice today."),
+        ("Ich komme aus Deutschland.", "I come from Germany."),
         
-        # Technical / AI domain sentences
-        "Transformermodelle haben die natürliche Sprachverarbeitung revolutioniert.",
-        "Die Aufmerksamkeitsmechanismen helfen dem Modell, wichtige Teile des Inputs zu fokussieren.",
-        "Neuronale Netzwerke können komplexe Muster in Daten erkennen.",
-        "Byte-Pair-Encoding hilft bei der Behandlung von unbekannten Wörtern.",
+        # Medium complexity
+        ("Die künstliche Intelligenz verändert unsere Welt.", "Artificial intelligence is changing our world."),
+        ("Transformer-Modelle haben die natürliche Sprachverarbeitung revolutioniert.", 
+         "Transformer models have revolutionized natural language processing."),
+        ("Der Zug fährt um 15 Uhr vom Hauptbahnhof ab.", "The train departs from the main station at 3 PM."),
+        ("Wir sollten mehr Wert auf Nachhaltigkeit legen.", "We should place more value on sustainability."),
         
         # Complex sentences with subordinate clauses
-        "Obwohl das Modell nicht perfekt ist, liefert es beeindruckende Ergebnisse.",
-        "Wenn wir mehr Trainingsdaten hätten, könnten wir die Leistung des Systems verbessern.",
-        "Da die Rechenressourcen begrenzt sind, müssen wir Kompromisse bei der Modellgröße eingehen.",
+        ("Ich glaube, dass maschinelles Lernen in Zukunft noch wichtiger wird.", 
+         "I believe that machine learning will become even more important in the future."),
+        ("Obwohl es regnet, möchte ich spazieren gehen.", "Although it's raining, I want to go for a walk."),
+        ("Nachdem wir das Projekt abgeschlossen hatten, gingen wir alle zusammen essen.", 
+         "After we had completed the project, we all went to eat together."),
         
         # Questions
-        "Können Sprachmodelle wirklich menschenähnlichen Text generieren?",
-        "Wann werden selbstfahrende Autos zum Standard?",
-        "Warum ist maschinelles Lernen so rechenintensiv?",
+        ("Wann wurde der Transformer-Architekt veröffentlicht?", "When was the Transformer architecture published?"),
+        ("Wie funktioniert ein neuronales Netzwerk?", "How does a neural network work?"),
+        ("Warum ist Datenschutz so wichtig für KI-Systeme?", "Why is data protection so important for AI systems?"),
         
-        # Different tenses
-        "Ich werde morgen nach Berlin reisen.",
-        "Sie hat gestern eine neue Programmiersprache gelernt.",
-        "Wir hatten bereits mit dem Training begonnen, als der Stromausfall passierte.",
-        
-        # Compound nouns (German specialty)
-        "Die Datenschutzgrundverordnung stellt neue Anforderungen an Technologieunternehmen.",
-        "Der Klimawandel ist eine der größten Herausforderungen unserer Zeit.",
-        "Die Gesundheitsversorgung muss für alle zugänglich sein.",
+        # Technical content
+        ("Die Aufmerksamkeitsmechanismen ermöglichen es dem Modell, auf relevante Informationen zu fokussieren.", 
+         "The attention mechanisms allow the model to focus on relevant information."),
+        ("Gradientenabstieg ist ein Optimierungsalgorithmus zum Trainieren neuronaler Netze.", 
+         "Gradient descent is an optimization algorithm for training neural networks."),
+        ("Tokenisierung ist der erste Schritt bei der Verarbeitung von Texteingaben.", 
+         "Tokenization is the first step in processing text inputs."),
         
         # Idiomatic expressions
-        "Das ist nicht mein Bier.",
-        "Er hat Schwein gehabt.",
-        "Sie hat einen Vogel.",
+        ("Das ist ein Kinderspiel.", "That is child's play (easy)."),
+        ("Es ist mir Wurst.", "I don't care."),
+        ("Ich verstehe nur Bahnhof.", "It's all Greek to me."),
         
-        # Sentences with modal verbs
-        "Wir müssen die Umwelt schützen.",
-        "Du solltest mehr Wasser trinken.",
-        "Er darf heute früher nach Hause gehen.",
+        # Long sentences
+        ("Die Implementierung eines maschinellen Übersetzungssystems erfordert tiefes Verständnis von Sprachmodellen, Aufmerksamkeitsmechanismen und Tokenisierungsalgorithmen.", 
+         "Implementing a machine translation system requires a deep understanding of language models, attention mechanisms, and tokenization algorithms."),
+        ("Der Europarl-Datensatz enthält Übersetzungen von Debatten des Europäischen Parlaments und wird häufig zum Trainieren von Übersetzungsmodellen verwendet.", 
+         "The Europarl dataset contains translations of European Parliament debates and is frequently used to train translation models."),
         
-        # Sentences with separable verbs
-        "Ich rufe dich morgen an.",
-        "Sie macht die Tür zu.",
-        "Er fängt ein neues Projekt an.",
+        # Sentences with numbers and named entities
+        ("Berlin ist die Hauptstadt Deutschlands mit etwa 3,7 Millionen Einwohnern.", 
+         "Berlin is the capital of Germany with about 3.7 million inhabitants."),
+        ("Die Konferenz für maschinelles Lernen findet am 15. Mai 2023 in München statt.", 
+         "The machine learning conference takes place on May 15, 2023, in Munich."),
         
-        # Long, complex sentence
-        "Die Entwicklung von mehrsprachigen Übersetzungssystemen, die ohne Parallelkorpora trainiert werden können, ist ein vielversprechendes Forschungsgebiet, das die Art und Weise, wie wir Sprachbarrieren überwinden, grundlegend verändern könnte.",
+        # Sentences with compound words (challenging for BPE)
+        ("Datenschutzgrundverordnung ist ein langes deutsches Wort.", 
+         "General Data Protection Regulation is a long German word."),
+        ("Maschinelles Lernen und Computerlinguistik sind verwandte Forschungsgebiete.", 
+         "Machine learning and computational linguistics are related research fields."),
         
-        # Specialized vocabulary
-        "Die Quantenverschränkung ist ein faszinierendes Phänomen der Quantenphysik.",
-        "Die Photosynthese wandelt Lichtenergie in chemische Energie um."
+        # Sentences with different tenses
+        ("Ich habe gestern ein neues Buch gekauft.", "I bought a new book yesterday."),
+        ("Sie werden morgen nach Berlin reisen.", "They will travel to Berlin tomorrow."),
+        ("Wir hatten das Problem bereits gelöst, bevor der Chef davon erfuhr.", 
+         "We had already solved the problem before the boss found out about it."),
+        
+        # Domain-specific sentence (IT/programming)
+        ("Die Funktion gibt einen Fehler zurück, wenn die Eingabe ungültig ist.", 
+         "The function returns an error if the input is invalid.")
     ]
     def translate(text, max_len=100):
         """
@@ -844,11 +858,16 @@ def main():
         return translation
     
     print("\n=== Testing Translation ===")
-    for sentence in test_sentences:
-        translation = translate(sentence)
-        print(f"Source: {sentence}")
-        print(f"Translation: {translation}")
-        print()
+    for i, (source, reference) in enumerate(test_sentences):
+        # Translate the sentence
+        generated = translate(source)
+        
+        # Print the results
+        print(f"Example {i+1}:")
+        print(f"Source:     {source}")
+        print(f"Reference:  {reference}")
+        print(f"Generated:  {generated}")
+        print("-" * 80)  # Separator for better readability
     return history
     
 
