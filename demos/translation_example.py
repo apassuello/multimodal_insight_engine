@@ -24,221 +24,6 @@ from src.training.transformer_utils import create_padding_mask, create_causal_ma
 from src.data.tokenization import BPETokenizer
 import unicodedata
 
-class AdvancedTokenizer:
-    """
-    A comprehensive tokenization strategy that handles multiple language nuances.
-    
-    Design Philosophy:
-    - Preserve important linguistic information
-    - Handle multiple languages
-    - Create meaningful token representations
-    """
-    
-    @staticmethod
-    def normalize_text(text: str) -> str:
-        """
-        Normalize text by:
-        1. Converting to lowercase
-        2. Removing accents
-        3. Handling Unicode characters
-        
-        Args:
-            text (str): Input text to normalize
-        
-        Returns:
-            str: Normalized text
-        """
-        # Normalize Unicode characters
-        text = unicodedata.normalize('NFKD', text)
-        
-        # Remove accents and non-ASCII characters
-        text = text.encode('ascii', 'ignore').decode('utf-8')
-        
-        # Convert to lowercase
-        return text.lower()
-    
-    @classmethod
-    def tokenize(cls, text: str, 
-                 split_on_punct: bool = True, 
-                 split_on_hyphens: bool = True) -> List[str]:
-        """
-        Advanced tokenization with multiple strategies
-        
-        Args:
-            text (str): Text to tokenize
-            split_on_punct (bool): Whether to split on punctuation
-            split_on_hyphens (bool): Whether to split on hyphens
-        
-        Returns:
-            List[str]: List of tokens
-        """
-        # Normalize text first
-        text = cls.normalize_text(text)
-        
-        # Define tokenization pattern
-        if split_on_punct and split_on_hyphens:
-            # Split on whitespace, punctuation, and hyphens
-            pattern = r'\b\w+(?:[-\']\w+)*\b'
-        elif split_on_punct:
-            # Split on whitespace and punctuation
-            pattern = r'\b\w+\b'
-        elif split_on_hyphens:
-            # Split on whitespace and hyphens
-            pattern = r'\b\w+(?:-\w+)*\b'
-        else:
-            # Simple whitespace split
-            return text.split()
-        
-        # Find all tokens matching the pattern
-        tokens = re.findall(pattern, text)
-        
-        return tokens
-    
-    @classmethod
-    def build_vocabulary(cls, 
-                         sentences: List[str], 
-                         max_vocab_size: int = 10000, 
-                         min_freq: int = 1) -> dict:
-        """
-        Build a vocabulary from a list of sentences
-        
-        Args:
-            sentences (List[str]): List of sentences to process
-            max_vocab_size (int): Maximum vocabulary size
-            min_freq (int): Minimum frequency for a token to be included
-        
-        Returns:
-            dict: Vocabulary mapping tokens to indices
-        """
-        # Tokenize all sentences
-        all_tokens = [token for sentence in sentences 
-                      for token in cls.tokenize(sentence)]
-        
-        # Count token frequencies
-        token_freq = {}
-        for token in all_tokens:
-            token_freq[token] = token_freq.get(token, 0) + 1
-        
-        # Sort tokens by frequency
-        sorted_tokens = sorted(token_freq.items(), 
-                               key=lambda x: x[1], 
-                               reverse=True)
-        
-        # Create vocabulary with special tokens
-        vocab = {
-            '<pad>': 0,   # Padding token
-            '<unk>': 1,   # Unknown token
-            '<start>': 2, # Start of sequence
-            '<end>': 3    # End of sequence
-        }
-        
-        # Add tokens to vocabulary
-        next_index = len(vocab)
-        for token, freq in sorted_tokens:
-            if freq >= min_freq and token not in vocab:
-                vocab[token] = next_index
-                next_index += 1
-                
-                # Stop if we reach max vocabulary size
-                if len(vocab) >= max_vocab_size:
-                    break
-        
-        return vocab
-
-
-class SimpleTokenizer:
-    """A simple tokenizer that splits on spaces and punctuation."""
-    
-    def __init__(self, language="en"):
-        self.language = language
-        
-        # Patterns to use for tokenization
-        self.patterns = [
-            r'(?<=[.,!?;:])(?=[^\s])',  # Split after punctuation
-            r'\s+',                      # Split on whitespace
-        ]
-    
-    def __call__(self, text):
-        """Tokenize text into words."""
-        # Simple preprocessing
-        text = text.lower().strip()
-        
-        # Apply patterns
-        for pattern in self.patterns:
-            text = re.sub(pattern, ' ', text)
-        
-        # Split and filter empty tokens
-        tokens = [token for token in text.split() if token]
-        
-        return tokens
-
-class Vocabulary:
-    """A vocabulary class for managing word-to-index mappings."""
-    
-    def __init__(self, specials=None):
-        """
-        Initialize vocabulary.
-        
-        Args:
-            specials: List of special tokens to include
-        """
-        self.word2idx = {}
-        self.idx2word = []
-        self.word_counts = Counter()
-        
-        # Add special tokens if provided
-        if specials:
-            for token in specials:
-                self.add_token(token, count=float('inf'))  # Special tokens have infinite count
-    
-    def add_token(self, token, count=1):
-        """Add a token to the vocabulary or update its count."""
-        self.word_counts[token] += count
-        
-        # Add to vocabulary if not already present
-        if token not in self.word2idx:
-            self.word2idx[token] = len(self.idx2word)
-            self.idx2word.append(token)
-    
-    def build(self, min_freq=1):
-        """Build vocabulary from collected counts, filtering by minimum frequency."""
-        # Reset and re-add special tokens first
-        special_tokens = [word for word, count in self.word_counts.items() 
-                         if count == float('inf')]
-        
-        # Reset vocabulary
-        self.word2idx = {}
-        self.idx2word = []
-        
-        # Re-add special tokens
-        for token in special_tokens:
-            self.word2idx[token] = len(self.idx2word)
-            self.idx2word.append(token)
-        
-        # Add regular tokens that meet minimum frequency
-        for word, count in self.word_counts.items():
-            if count >= min_freq and word not in self.word2idx:
-                self.word2idx[word] = len(self.idx2word)
-                self.idx2word.append(word)
-        
-        return self
-    
-    def __getitem__(self, token):
-        """Get index for a token, returning the UNK index if not found."""
-        return self.word2idx.get(token, self.word2idx.get("<unk>", 0))
-    
-    def __len__(self):
-        """Get vocabulary size."""
-        return len(self.idx2word)
-    
-    def lookup_token(self, idx):
-        """Get token for an index."""
-        if idx < len(self.idx2word):
-            return self.idx2word[idx]
-        return "<unk>"
-
-# Fix for the IWSLT dataset loading in translation_example.py
-
 class IWSLTDataset:
     """Dataset class for the IWSLT translation dataset with enhanced fallback to synthetic data."""
     
@@ -952,10 +737,57 @@ def main():
     
     # Test translation on some examples
     test_sentences = [
-        "Hallo, wie geht es dir?",
+        # Basic sentences
+        "Guten Tag, wie geht es Ihnen?",
         "Ich lerne maschinelle Übersetzung.",
-        "Transformer sind leistungsstarke Modelle für die Verarbeitung natürlicher Sprache.",
-        "Dies ist ein Beispiel für die Übersetzung von Deutsch nach Englisch."
+        
+        # Technical / AI domain sentences
+        "Transformermodelle haben die natürliche Sprachverarbeitung revolutioniert.",
+        "Die Aufmerksamkeitsmechanismen helfen dem Modell, wichtige Teile des Inputs zu fokussieren.",
+        "Neuronale Netzwerke können komplexe Muster in Daten erkennen.",
+        "Byte-Pair-Encoding hilft bei der Behandlung von unbekannten Wörtern.",
+        
+        # Complex sentences with subordinate clauses
+        "Obwohl das Modell nicht perfekt ist, liefert es beeindruckende Ergebnisse.",
+        "Wenn wir mehr Trainingsdaten hätten, könnten wir die Leistung des Systems verbessern.",
+        "Da die Rechenressourcen begrenzt sind, müssen wir Kompromisse bei der Modellgröße eingehen.",
+        
+        # Questions
+        "Können Sprachmodelle wirklich menschenähnlichen Text generieren?",
+        "Wann werden selbstfahrende Autos zum Standard?",
+        "Warum ist maschinelles Lernen so rechenintensiv?",
+        
+        # Different tenses
+        "Ich werde morgen nach Berlin reisen.",
+        "Sie hat gestern eine neue Programmiersprache gelernt.",
+        "Wir hatten bereits mit dem Training begonnen, als der Stromausfall passierte.",
+        
+        # Compound nouns (German specialty)
+        "Die Datenschutzgrundverordnung stellt neue Anforderungen an Technologieunternehmen.",
+        "Der Klimawandel ist eine der größten Herausforderungen unserer Zeit.",
+        "Die Gesundheitsversorgung muss für alle zugänglich sein.",
+        
+        # Idiomatic expressions
+        "Das ist nicht mein Bier.",
+        "Er hat Schwein gehabt.",
+        "Sie hat einen Vogel.",
+        
+        # Sentences with modal verbs
+        "Wir müssen die Umwelt schützen.",
+        "Du solltest mehr Wasser trinken.",
+        "Er darf heute früher nach Hause gehen.",
+        
+        # Sentences with separable verbs
+        "Ich rufe dich morgen an.",
+        "Sie macht die Tür zu.",
+        "Er fängt ein neues Projekt an.",
+        
+        # Long, complex sentence
+        "Die Entwicklung von mehrsprachigen Übersetzungssystemen, die ohne Parallelkorpora trainiert werden können, ist ein vielversprechendes Forschungsgebiet, das die Art und Weise, wie wir Sprachbarrieren überwinden, grundlegend verändern könnte.",
+        
+        # Specialized vocabulary
+        "Die Quantenverschränkung ist ein faszinierendes Phänomen der Quantenphysik.",
+        "Die Photosynthese wandelt Lichtenergie in chemische Energie um."
     ]
     def translate(text, max_len=100):
         """
