@@ -32,12 +32,12 @@ def transformer_collate_fn(batch: List[Dict[str, List[int]]], pad_idx: int) -> D
         src_tokens = item["src_tokens"]
         tgt_tokens = item["tgt_tokens"]
         
-        src_batch[i, :len(src_tokens)] = torch.tensor(src_tokens, dtype=torch.long)
-        tgt_batch[i, :len(tgt_tokens)] = torch.tensor(tgt_tokens, dtype=torch.long)
+        src_batch[i, :len(src_tokens)] = torch.tensor(src_tokens, dtype=torch.long).clone().detach()
+        tgt_batch[i, :len(tgt_tokens)] = torch.tensor(tgt_tokens, dtype=torch.long).clone().detach()
     
     return {
-        "src": src_batch,
-        "tgt": tgt_batch,
+        "src": src_batch.to(torch.device("mps") if torch.backends.mps.is_available() else src_batch.device),
+        "tgt": tgt_batch.to(torch.device("mps") if torch.backends.mps.is_available() else tgt_batch.device),
     }
 
 class TransformerDataset(Dataset):
@@ -101,8 +101,8 @@ class TransformerDataset(Dataset):
             tgt_seq = tgt_seq[:self.max_tgt_len]
         
         return {
-            "src_tokens": src_seq,
-            "tgt_tokens": tgt_seq,
+            "src_tokens": torch.tensor(src_seq, dtype=torch.long).to(torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")),
+            "tgt_tokens": torch.tensor(tgt_seq, dtype=torch.long).to(torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")),
         }
 
 class TransformerCollator:
@@ -234,7 +234,7 @@ class TransformerDataModule:
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=self.shuffle,
-            num_workers=self.num_workers,
+            num_workers=0,  # Disable multiprocessing for MPS
             collate_fn=collator,
             pin_memory=True,
         )
@@ -244,7 +244,7 @@ class TransformerDataModule:
                 self.val_dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
-                num_workers=self.num_workers,
+                num_workers=0,  # Disable multiprocessing for MPS
                 collate_fn=collator,
                 pin_memory=True,
             )

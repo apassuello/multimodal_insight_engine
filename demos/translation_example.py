@@ -6,12 +6,9 @@ import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple
 import os
 import sys
-import time
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import requests
-import zipfile
-import io
 import random
 from tqdm import tqdm
 import re
@@ -24,9 +21,8 @@ from src.models.transformer import EncoderDecoderTransformer
 from src.data.sequence_data import TransformerDataModule
 from src.training.transformer_trainer import TransformerTrainer
 from src.training.transformer_utils import create_padding_mask, create_causal_mask
-
+from src.data.tokenization import BPETokenizer
 import unicodedata
-from typing import List
 
 class AdvancedTokenizer:
     """
@@ -789,6 +785,34 @@ def early_stopping(history, patience=10):
     # Using a 1% improvement threshold to prevent stopping too early
     return recent_losses[-1] > best_loss * 0.99
 
+def preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer):
+    """
+    Preprocess the dataset for training using BPE tokenizers.
+    
+    Args:
+        dataset: IWSLT dataset or EuroparlDataset
+        de_tokenizer: German BPE tokenizer
+        en_tokenizer: English BPE tokenizer
+        
+    Returns:
+        Lists of tokenized source and target sequences
+    """
+    src_sequences = []
+    tgt_sequences = []
+    
+    for src_text, tgt_text in zip(dataset.src_data, dataset.tgt_data):
+        # Tokenize with BPE
+        src_ids = de_tokenizer.encode(src_text)
+        tgt_ids = en_tokenizer.encode(tgt_text)
+        # Add special tokens
+        src_ids = [de_tokenizer.special_tokens["bos_token_idx"]] + src_ids + [de_tokenizer.special_tokens["eos_token_idx"]]
+        tgt_ids = [en_tokenizer.special_tokens["bos_token_idx"]] + tgt_ids + [en_tokenizer.special_tokens["eos_token_idx"]]
+        
+        src_sequences.append(src_ids)
+        tgt_sequences.append(tgt_ids)
+    
+    return src_sequences, tgt_sequences
+
 
 def main():
     # Set random seed for reproducibility
@@ -796,63 +820,52 @@ def main():
     random.seed(42)
     np.random.seed(42)
 
+    # Set device
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using device: {device}")
-    # # Set device
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # print(f"Using device: {device}")
     
-    # Load dataset
-    print("Loading IWSLT dataset...")
+    # Load dataset - can use either IWSLT or Europarl
+    print("Loading translation dataset...")
     train_dataset = IWSLTDataset(
-        src_lang="en",
-        tgt_lang="de",
-        year="2017",  # Changed from "2016" to "2017"
+        src_lang="de",  # German source
+        tgt_lang="en",  # English target
+        year="2016",
         split="train",
-        max_examples=500000
+        max_examples=50000
     )
-
+    
     val_dataset = IWSLTDataset(
-        src_lang="en",
-        tgt_lang="de",
-        year="2017",  # Changed from "2016" to "2017"
+        src_lang="de",  # German source
+        tgt_lang="en",  # English target
+        year="2016",
         split="valid",
-        max_examples=100000
+        max_examples=10000
     )
     
-    # Initialize simple tokenizers
-    src_tokenizer = SimpleTokenizer(language="en")
-    tgt_tokenizer = SimpleTokenizer(language="de")
+    # Load the pre-trained BPE tokenizers
+    print("Loading pre-trained BPE tokenizers...")
+    de_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/de")
+    en_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/en")
+    print(f"Loaded German tokenizer with vocab size: {de_tokenizer.vocab_size}")
+    print(f"Loaded English tokenizer with vocab size: {en_tokenizer.vocab_size}")
+
+    # Get special token indices for the transformer
+    src_pad_idx = de_tokenizer.special_tokens["pad_token_idx"]
+    tgt_pad_idx = en_tokenizer.special_tokens["pad_token_idx"]
+    src_bos_idx = de_tokenizer.special_tokens["bos_token_idx"]
+    tgt_bos_idx = en_tokenizer.special_tokens["bos_token_idx"]
+    src_eos_idx = de_tokenizer.special_tokens["eos_token_idx"]
+    tgt_eos_idx = en_tokenizer.special_tokens["eos_token_idx"]
     
-    # Build vocabularies
-    print("Building vocabularies...")
-    src_vocab, tgt_vocab = build_vocabs(
-        train_dataset,
-        src_tokenizer,
-        tgt_tokenizer,
-        min_freq=1  # Reduced from 2 to 1 to include more vocabulary
-    )
-    
-    print(f"Source vocabulary size: {len(src_vocab)}")
-    print(f"Target vocabulary size: {len(tgt_vocab)}")
-    
-    # Preprocess data
+    # Preprocess data with BPE tokenizers
     print("Preprocessing training data...")
-    train_src_sequences, train_tgt_sequences = preprocess_data(
-        train_dataset,
-        src_tokenizer,
-        tgt_tokenizer,
-        src_vocab,
-        tgt_vocab
+    train_src_sequences, train_tgt_sequences = preprocess_data_with_bpe(
+        train_dataset, de_tokenizer, en_tokenizer
     )
     
     print("Preprocessing validation data...")
-    val_src_sequences, val_tgt_sequences = preprocess_data(
-        val_dataset,
-        src_tokenizer,
-        tgt_tokenizer,
-        src_vocab,
-        tgt_vocab
+    val_src_sequences, val_tgt_sequences = preprocess_data_with_bpe(
+        val_dataset, de_tokenizer, en_tokenizer
     )
     
     # Create data module
@@ -860,13 +873,13 @@ def main():
     data_module = TransformerDataModule(
         source_sequences=train_src_sequences,
         target_sequences=train_tgt_sequences,
-        batch_size=128,  # Increased batch size for training efficiency
-        max_src_len=100,  # Limit sequence length for memory efficiency
+        batch_size=64,
+        max_src_len=100,
         max_tgt_len=100,
-        pad_idx=src_vocab["<pad>"],
-        bos_idx=src_vocab["<bos>"],
-        eos_idx=src_vocab["<eos>"],
-        val_split=0.0,  # We already have a separate validation set
+        pad_idx=src_pad_idx,
+        bos_idx=src_bos_idx,
+        eos_idx=src_eos_idx,
+        val_split=0.0,
         shuffle=True,
         num_workers=4
     )
@@ -875,160 +888,101 @@ def main():
     val_data_module = TransformerDataModule(
         source_sequences=val_src_sequences,
         target_sequences=val_tgt_sequences,
-        batch_size=128,
+        batch_size=64,
         max_src_len=100,
         max_tgt_len=100,
-        pad_idx=src_vocab["<pad>"],
-        bos_idx=src_vocab["<bos>"],
-        eos_idx=src_vocab["<eos>"],
-        val_split=0.0,  # All data is for validation
+        pad_idx=src_pad_idx,
+        bos_idx=src_bos_idx,
+        eos_idx=src_eos_idx,
+        val_split=0.0,
         shuffle=False,
         num_workers=4,
     )
     
-    # Create model with larger capacity
+    # Create transformer model using BPE vocabulary sizes
     print("Creating transformer model...")
     model = EncoderDecoderTransformer(
-        src_vocab_size=8000,
-        tgt_vocab_size=8000,
-        d_model=512,  # Increased from 256 to 512
+        src_vocab_size=de_tokenizer.vocab_size,
+        tgt_vocab_size=en_tokenizer.vocab_size,
+        d_model=512,
         num_heads=8,
-        num_encoder_layers=4,  # Increased from 3 to 6
-        num_decoder_layers=4,  # Increased from 3 to 6
-        d_ff=1024,  # Increased from 512 to 2048
+        num_encoder_layers=6,
+        num_decoder_layers=6,
+        d_ff=2048,
         dropout=0.1,
         max_seq_length=100,
         positional_encoding="sinusoidal",
-        share_embeddings=False,  # Changed to True to reduce parameters and improve generalization
+        share_embeddings=False,
     )
-    #model.load("models/iwslt_en_de_last.pt")
     
     model.to(device)
     
-    # Create trainer with adjusted parameters
+    # Create trainer
     print("Creating trainer...")
     trainer = TransformerTrainer(
         model=model,
         train_dataloader=data_module.get_train_dataloader(),
         val_dataloader=val_data_module.get_train_dataloader(),
-        pad_idx=src_vocab["<pad>"],
-        lr=0.0001,  # Reduced from 0.0002 for more stable training
-        warmup_steps=2000,  # Increased from 2000 to 4000
+        pad_idx=src_pad_idx,
+        lr=0.0001,
+        warmup_steps=4000,
         label_smoothing=0.1,
         clip_grad=1.0,
-        early_stopping_patience=10,  # Increased from 5 to 10
+        early_stopping_patience=10,
         device=device,
-        track_perplexity=True  # Add this to track perplexity
+        track_perplexity=True
     )
     
     # Create save directory
     os.makedirs("models", exist_ok=True)
     
-    # Train for more epochs
+    # Train model
     print("Training model...")
-    history = trainer.train(epochs=50, save_path="models/iwslt_en_de")  # Increased from 10 to 50 epochs
+    history = trainer.train(epochs=30, save_path="models/de_en_translation")
     
     # Plot training history
     trainer.plot_training_history()
-    plt.savefig("iwslt_training_history.png")
+    plt.savefig("de_en_training_history.png")
     plt.close()
     
     # Plot learning rate schedule
     trainer.plot_learning_rate()
-    plt.savefig("iwslt_learning_rate_schedule.png")
+    plt.savefig("de_en_learning_rate_schedule.png")
     plt.close()
-    
-    # Function to translate text
-    def translate(text, max_len=100):
-        """
-        Translate English text to German.
-        
-        Args:
-            text: English text to translate
-            max_len: Maximum length of generated translation
-            
-        Returns:
-            German translation
-        """
-        model.eval()
-        
-        # Tokenize source text
-        src_tokens = src_tokenizer(text)
-        src_indices = [src_vocab[token] for token in src_tokens]
-        src_tensor = torch.tensor([src_indices], dtype=torch.long).to(device)
-        
-        # Set start token
-        tgt = torch.tensor([[tgt_vocab["<bos>"]]], dtype=torch.long).to(device)
-        
-        # Create source mask
-        src_mask = create_padding_mask(src_tensor, pad_idx=src_vocab["<pad>"])
-        
-        # Encode source
-        memory = model.encode(src_tensor, src_mask=src_mask)
-        
-        # Generate translation auto-regressively
-        for i in range(max_len - 1):
-            # Create target mask to prevent attending to future tokens
-            tgt_mask = create_causal_mask(tgt.size(1), device)
-            
-            # Predict next token
-            output = model.decode(tgt, memory, tgt_mask=tgt_mask)
-            next_token_logits = output[:, -1, :]
-            next_token = next_token_logits.argmax(dim=-1, keepdim=True)
-            
-            # Append to output sequence
-            tgt = torch.cat([tgt, next_token], dim=1)
-            
-            # Stop if end token is generated
-            if next_token.item() == tgt_vocab["<eos>"]:
-                break
-        
-        # Convert token indices to words (skip BOS, include EOS)
-        tgt_indices = tgt[0].cpu().tolist()
-        tgt_tokens = []
-        for idx in tgt_indices[1:]:  # Skip BOS token
-            if idx == tgt_vocab["<eos>"]:
-                break
-            tgt_tokens.append(tgt_vocab.lookup_token(idx))
-        
-        return " ".join(tgt_tokens)
     
     # Test translation on some examples
     test_sentences = [
-        "Hello, how are you?",
-        "I am learning machine translation.",
-        "Transformers are powerful models for NLP.",
-        "This is an example of English to German translation."
+        "Hallo, wie geht es dir?",
+        "Ich lerne maschinelle Übersetzung.",
+        "Transformer sind leistungsstarke Modelle für die Verarbeitung natürlicher Sprache.",
+        "Dies ist ein Beispiel für die Übersetzung von Deutsch nach Englisch."
     ]
-    
-    print("\n=== Testing Translation ===")
-    for sentence in test_sentences:
-        translation = translate(sentence)
-        print(f"Source: {sentence}")
-        print(f"Translation: {translation}")
-        print()
-    
-    # Calculate BLEU score
-    print("Calculating BLEU score...")
-    candidate_corpus = []
-    reference_corpus = []
-    
-    # Use a smaller subset for evaluation to save time
-    for src_indices, tgt_indices in tqdm(list(zip(val_src_sequences, val_tgt_sequences))[:100], desc="Translating"):
-        # Create source tensor
-        src_tensor = torch.tensor([src_indices], dtype=torch.long).to(device)
+    def translate(text, max_len=100):
+        """
+        Translate German text to English using BPE tokenization.
         
-        # Set start token
-        tgt = torch.tensor([[tgt_vocab["<bos>"]]], dtype=torch.long).to(device)
+        Args:
+            text: German text to translate
+            max_len: Maximum length of generated translation
+            
+        Returns:
+            English translation
+        """
+        model.eval()
+        
+        # Tokenize source text with BPE
+        src_ids = de_tokenizer.encode(text)
+        src_ids = [src_bos_idx] + src_ids + [src_eos_idx]
+        src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
         
         # Create source mask
-        src_mask = create_padding_mask(src_tensor, pad_idx=src_vocab["<pad>"])
+        src_mask = create_padding_mask(src_tensor, pad_idx=src_pad_idx)
         
-        # Encode source
-        memory = model.encode(src_tensor, src_mask=src_mask)
+        # Set start token
+        tgt = torch.tensor([[tgt_bos_idx]], dtype=torch.long).to(device)
         
         # Generate translation auto-regressively
-        for i in range(100):  # Max length of 100
+        for i in range(max_len - 1):
             # Create target mask
             tgt_mask = create_causal_mask(tgt.size(1), device)
             
@@ -1041,30 +995,28 @@ def main():
             tgt = torch.cat([tgt, next_token], dim=1)
             
             # Stop if end token is generated
-            if next_token.item() == tgt_vocab["<eos>"]:
+            if next_token.item() == tgt_eos_idx:
                 break
         
-        # Convert token indices to words
-        predicted_indices = tgt[0].cpu().tolist()
-        predicted_tokens = []
-        for idx in predicted_indices[1:]:  # Skip BOS token
-            if idx == tgt_vocab["<eos>"]:
-                break
-            predicted_tokens.append(tgt_vocab.lookup_token(idx))
+        # Convert token indices to words (skip BOS, include EOS)
+        tgt_indices = tgt[0].cpu().tolist()
         
-        # Convert target indices to words
-        target_tokens = []
-        for idx in tgt_indices:
-            if idx == tgt_vocab["<eos>"]:
-                break
-            target_tokens.append(tgt_vocab.lookup_token(idx))
+        # Decode using BPE tokenizer
+        # Skip first token (BOS) and stop at EOS if present
+        decoded_indices = tgt_indices[1:]
+        if tgt_eos_idx in decoded_indices:
+            decoded_indices = decoded_indices[:decoded_indices.index(tgt_eos_idx)]
         
-        candidate_corpus.append(predicted_tokens)
-        reference_corpus.append(target_tokens)
+        translation = en_tokenizer.decode(decoded_indices)
+        
+        return translation
     
-    # Calculate BLEU score
-    bleu = calculate_bleu(candidate_corpus, reference_corpus)
-    print(f"BLEU score on validation set: {bleu:.4f}")
+    print("\n=== Testing Translation ===")
+    for sentence in test_sentences:
+        translation = translate(sentence)
+        print(f"Source: {sentence}")
+        print(f"Translation: {translation}")
+        print()
     return history
     
 
