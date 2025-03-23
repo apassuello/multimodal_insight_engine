@@ -21,8 +21,9 @@ from src.models.transformer import EncoderDecoderTransformer
 from src.data.sequence_data import TransformerDataModule
 from src.training.transformer_trainer import TransformerTrainer
 from src.training.transformer_utils import create_padding_mask, create_causal_mask
-from src.data.tokenization import BPETokenizer
+from src.data.tokenization import BPETokenizer, Vocabulary
 import unicodedata
+from src.data.europarl_dataset import EuroparlDataset  # Import the EuroparlDataset class
 
 class IWSLTDataset:
     """Dataset class for the IWSLT translation dataset with enhanced fallback to synthetic data."""
@@ -410,42 +411,6 @@ class IWSLTDataset:
         return src_data, tgt_data
 
 
-def build_vocabs(dataset, src_tokenizer, tgt_tokenizer, min_freq=2):
-    """
-    Build vocabularies for source and target languages.
-    
-    Args:
-        dataset: IWSLT dataset
-        src_tokenizer: Source language tokenizer
-        tgt_tokenizer: Target language tokenizer
-        min_freq: Minimum frequency for tokens to be included
-        
-    Returns:
-        Source vocabulary, target vocabulary
-    """
-    # Create vocabularies with special tokens
-    special_tokens = ["<pad>", "<bos>", "<eos>", "<unk>"]
-    src_vocab = Vocabulary(specials=special_tokens)
-    tgt_vocab = Vocabulary(specials=special_tokens)
-    
-    # Process all source texts
-    for text in tqdm(dataset.src_data, desc="Building source vocabulary"):
-        tokens = src_tokenizer(text)
-        for token in tokens:
-            src_vocab.add_token(token)
-    
-    # Process all target texts
-    for text in tqdm(dataset.tgt_data, desc="Building target vocabulary"):
-        tokens = tgt_tokenizer(text)
-        for token in tokens:
-            tgt_vocab.add_token(token)
-    
-    # Build final vocabularies with minimum frequency filter
-    src_vocab.build(min_freq=min_freq)
-    tgt_vocab.build(min_freq=min_freq)
-    
-    return src_vocab, tgt_vocab
-
 def preprocess_data(dataset, src_tokenizer, tgt_tokenizer, src_vocab, tgt_vocab):
     """
     Preprocess the dataset for training.
@@ -609,22 +574,18 @@ def main():
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    # Load dataset - can use either IWSLT or Europarl
-    print("Loading translation dataset...")
-    train_dataset = IWSLTDataset(
+    # Load Europarl dataset
+    print("Loading Europarl dataset...")
+    train_dataset = EuroparlDataset(
         src_lang="de",  # German source
         tgt_lang="en",  # English target
-        year="2016",
-        split="train",
-        max_examples=50000
+        max_examples=100000
     )
     
-    val_dataset = IWSLTDataset(
+    val_dataset = EuroparlDataset(
         src_lang="de",  # German source
         tgt_lang="en",  # English target
-        year="2016",
-        split="valid",
-        max_examples=10000
+        max_examples=20000
     )
     
     # Load the pre-trained BPE tokenizers
@@ -658,7 +619,7 @@ def main():
     data_module = TransformerDataModule(
         source_sequences=train_src_sequences,
         target_sequences=train_tgt_sequences,
-        batch_size=64,
+        batch_size=128,
         max_src_len=100,
         max_tgt_len=100,
         pad_idx=src_pad_idx,
@@ -673,7 +634,7 @@ def main():
     val_data_module = TransformerDataModule(
         source_sequences=val_src_sequences,
         target_sequences=val_tgt_sequences,
-        batch_size=64,
+        batch_size=128,
         max_src_len=100,
         max_tgt_len=100,
         pad_idx=src_pad_idx,
@@ -691,15 +652,15 @@ def main():
         tgt_vocab_size=en_tokenizer.vocab_size,
         d_model=512,
         num_heads=8,
-        num_encoder_layers=6,
-        num_decoder_layers=6,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
         d_ff=2048,
         dropout=0.1,
         max_seq_length=100,
         positional_encoding="sinusoidal",
         share_embeddings=False,
     )
-    
+    #model.load("models/de_en_translation_epoch30.pt")
     model.to(device)
     
     # Create trainer
@@ -710,10 +671,10 @@ def main():
         val_dataloader=val_data_module.get_train_dataloader(),
         pad_idx=src_pad_idx,
         lr=0.0001,
-        warmup_steps=4000,
+        warmup_steps=2000,
         label_smoothing=0.1,
         clip_grad=1.0,
-        early_stopping_patience=10,
+        early_stopping_patience=5,
         device=device,
         track_perplexity=True
     )
@@ -723,7 +684,7 @@ def main():
     
     # Train model
     print("Training model...")
-    history = trainer.train(epochs=30, save_path="models/de_en_translation")
+    history = trainer.train(epochs=10, save_path="models/de_en_translation")
     
     # Plot training history
     trainer.plot_training_history()
@@ -803,6 +764,7 @@ def main():
         ("Die Funktion gibt einen Fehler zurück, wenn die Eingabe ungültig ist.", 
          "The function returns an error if the input is invalid.")
     ]
+    
     def translate(text, max_len=100):
         """
         Translate German text to English using BPE tokenization.
@@ -824,6 +786,9 @@ def main():
         # Create source mask
         src_mask = create_padding_mask(src_tensor, pad_idx=src_pad_idx)
         
+        # Encode the source sequence
+        memory = model.encode(src_tensor, src_mask=src_mask)
+        
         # Set start token
         tgt = torch.tensor([[tgt_bos_idx]], dtype=torch.long).to(device)
         
@@ -831,9 +796,8 @@ def main():
         for i in range(max_len - 1):
             # Create target mask
             tgt_mask = create_causal_mask(tgt.size(1), device)
-            
             # Predict next token
-            output = model.decode(tgt, memory, tgt_mask=tgt_mask)
+            output = model.decode(tgt, memory=memory, tgt_mask=tgt_mask)
             next_token_logits = output[:, -1, :]
             next_token = next_token_logits.argmax(dim=-1, keepdim=True)
             

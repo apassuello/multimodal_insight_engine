@@ -56,6 +56,13 @@ class ScaledDotProductAttention(nn.Module):
             if mask is not None:
                 mask = mask.to(device)
 
+        # Ensure inputs are float
+        query = query.to(torch.float32)
+        if key is not None:
+            key = key.to(torch.float32)
+        if value is not None:
+            value = value.to(torch.float32)
+
         # Get dimensions
         d_k = query.size(-1)
 
@@ -170,6 +177,13 @@ class SimpleAttention(nn.Module):
                 value = value.to(device)
             if mask is not None:
                 mask = mask.to(device)
+
+        # Ensure inputs are float
+        query = query.to(torch.float32)
+        if key is not None:
+            key = key.to(torch.float32)
+        if value is not None:
+            value = value.to(torch.float32)
 
         # Handle self-attention case
         if key is None:
@@ -322,6 +336,13 @@ class MultiHeadAttention(nn.Module):
                 value = value.to(device)
             if mask is not None:
                 mask = mask.to(device)
+
+        # Ensure inputs are float
+        query = query.to(torch.float32)
+        if key is not None:
+            key = key.to(torch.float32)
+        if value is not None:
+            value = value.to(torch.float32)
 
         # Handle self-attention case
         if key is None:

@@ -444,6 +444,10 @@ class TransformerDecoderLayer(nn.Module):
         Returns:
             Output tensor of shape [batch_size, tgt_len, d_model]
         """
+        # Ensure memory is a tensor
+        if isinstance(memory, list):
+            memory = torch.tensor(memory, dtype=torch.float32)
+
         # Move inputs to device
         x = x.to(next(self.parameters()).device)
         memory = memory.to(next(self.parameters()).device)
@@ -587,6 +591,10 @@ class TransformerDecoder(nn.Module):
             - [batch_size, tgt_len, d_model] if output_projection is None
             - [batch_size, tgt_len, vocab_size] if output_projection is not None
         """
+        # Ensure memory is a tensor
+        if isinstance(memory, list):
+            memory = torch.tensor(memory, dtype=torch.float32)
+
         # Move inputs to device
         x = x.to(next(self.parameters()).device)
         memory = memory.to(next(self.parameters()).device)
