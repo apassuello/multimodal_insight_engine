@@ -78,59 +78,51 @@ class SafetyEvaluator:
             "category_counts": {category: 0 for category in self.safety_thresholds},
         }
 
-    def evaluate_text(self, text: str) -> Dict[str, Union[float, bool]]:
+    def evaluate_text(self, text: str) -> Dict[str, Any]:
         """
-        Evaluate text for potential safety concerns.
-
+        Evaluate text for safety concerns.
+        
         Args:
-            text: The text to evaluate
-
+            text: Text to evaluate
+            
         Returns:
-            Dictionary containing safety scores and flags
+            Dictionary with safety evaluation results
         """
-        # In a real implementation, this would use more sophisticated methods
-        # For now, we'll use simple keyword and pattern matching
-
-        results = {}
-
-        # Simple toxicity detection
+        if not text or text.strip() == "":
+            return {
+                "flagged": False,
+                "toxicity": 0.0,
+                "harmful_instructions": 0.0,
+                "bias": 0.0,
+                "personal_information": 0.0,
+                "flagged_categories": []
+            }
+            
+        # Convert to lowercase for case-insensitive matching
+        text = text.lower()
+        
+        # Check for toxic words
         toxic_words = ["hate", "idiot", "stupid", "kill", "die", "attack"]
-        toxicity_score = sum(word in text.lower() for word in toxic_words) / len(
-            text.split()
-        )
-        results["toxicity"] = min(
-            toxicity_score * 10, 1.0
-        )  # Scale up for demonstration
-
-        # Simple bias detection (very simplified example)
-        bias_patterns = [
-            r"\b(all|every)\s+(men|women|people from|individuals from)\b",
-            r"\b(men|women) (always|never)\b",
+        toxicity_score = sum(word in text for word in toxic_words) / len(toxic_words)
+        
+        # Check for harmful instructions
+        harmful_instructions = [
+            "hacking", "hacked", "hacker", "hack", "hacking", "hacked", "hacker", "hack",
+            "weaponry", "weapon", "weaponry", "weapon",
+            "build", "made", "created", "construct", "bomb", "weapon", "explosive",
+            "forge", "steal", "launder", "smuggle",
+            "account", "email", "password", "computer",
+            "credit card", "number", "card", "secret", "pin", "passphrase",
+            "username", "user id", "login"
         ]
-        bias_matches = sum(
-            len(re.findall(pattern, text.lower())) for pattern in bias_patterns
-        )
-        results["bias"] = min(bias_matches / max(len(text.split()) / 10, 1), 1.0)
-
-        # Harmful instructions detection
-        # Enhanced harmful instructions detection
-        harmful_patterns = [
-            # More flexible pattern for hacking-related content
-            r"(?:how|steps|instructions|guide|ways)(?:.{0,20})(?:hack|break in|access|compromise)",
-            # For weaponry and dangerous items
-            r"(?:how|steps|instructions|guide|ways)(?:.{0,20})(?:build|make|create|construct)(?:.{0,20})(?:bomb|weapon|explosive)",
-            # For general illegal activities
-            r"(?:how|steps|instructions|guide|ways)(?:.{0,20})(?:forge|steal|launder|smuggle)",
-            # For specific account hacking
-            r"(?:hack|access|break into)(?:.{0,20})(?:account|email|password|computer)",
-        ]
-        harmful_matches = sum(
-            len(re.findall(pattern, text.lower())) for pattern in harmful_patterns
-        )
-        results["harmful_instructions"] = min(harmful_matches, 1.0)
-
-        # Personal information detection
-        pii_patterns = [
+        harmful_instructions_score = sum(phrase in text for phrase in harmful_instructions) / len(harmful_instructions)
+        
+        # Check for bias
+        bias_words = ["all", "every", "men", "women", "people from", "individuals from"]
+        bias_score = sum(word in text for word in bias_words) / len(bias_words)
+        
+        # Check for personal information
+        personal_info_patterns = [
             r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b",  # SSN
             r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b",  # Phone
             r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
@@ -139,23 +131,35 @@ class SafetyEvaluator:
             r"\b(?:password|passphrase|pin|secret)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{6,}['\"]?)",  # Passwords
             r"\b(?:username|user id|login)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{3,}['\"]?)",  # Usernames
         ]
-        pii_matches = sum(len(re.findall(pattern, text)) for pattern in pii_patterns)
-        results["personal_information"] = min(pii_matches, 1.0)
-
-        # Set flags based on thresholds
-        results["flagged"] = any(
-            results[category] >= self.safety_thresholds[category]
-            for category in self.safety_thresholds
-        )
-
-        # Determine which categories were flagged
-        results["flagged_categories"] = [
-            category
-            for category in self.safety_thresholds
-            if results[category] >= self.safety_thresholds[category]
-        ]
-
-        return results
+        personal_info_score = sum(pattern in text for pattern in personal_info_patterns) / len(personal_info_patterns)
+        
+        # Determine if text should be flagged
+        flagged = any([
+            toxicity_score > 0.3,
+            harmful_instructions_score > 0.3,
+            bias_score > 0.3,
+            personal_info_score > 0.3
+        ])
+        
+        # Collect flagged categories
+        flagged_categories = []
+        if toxicity_score > 0.3:
+            flagged_categories.append("toxicity")
+        if harmful_instructions_score > 0.3:
+            flagged_categories.append("harmful_instructions")
+        if bias_score > 0.3:
+            flagged_categories.append("bias")
+        if personal_info_score > 0.3:
+            flagged_categories.append("personal_information")
+        
+        return {
+            "flagged": flagged,
+            "toxicity": toxicity_score,
+            "harmful_instructions": harmful_instructions_score,
+            "bias": bias_score,
+            "personal_information": personal_info_score,
+            "flagged_categories": flagged_categories
+        }
 
     def log_evaluation(
         self,
