@@ -22,7 +22,8 @@ class ModelLoader:
         local_models_dir: str = "./models/pretrained/",
         device: Optional[str] = None,
         max_length: int = 1024,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        verbose: bool = False
     ):
         """
         Initialize the model loader.
@@ -32,8 +33,10 @@ class ModelLoader:
             device: Device to load models on ('cpu', 'cuda', 'mps', or None for auto-detection)
             max_length: Maximum sequence length for generation
             temperature: Sampling temperature for text generation
+            verbose: Whether to print detailed information during loading and inference
         """
         self.local_models_dir = Path(local_models_dir)
+        self.verbose = verbose
         
         # Create directory if it doesn't exist
         os.makedirs(self.local_models_dir, exist_ok=True)
@@ -49,7 +52,8 @@ class ModelLoader:
         else:
             self.device = device
             
-        print(f"Using device: {self.device}")
+        if self.verbose:
+            print(f"Using device: {self.device}")
         
         # Generation parameters
         self.max_length = max_length
@@ -237,21 +241,25 @@ class ModelLoader:
         Returns:
             Function that takes text input and returns model output
         """
-        print(f"\nLoading Hugging Face model: {model_name}")
-        print(f"Model path exists: {os.path.exists(model_name)}")
-        print(f"Contents of model directory:")
-        if os.path.exists(model_name):
-            for file in os.listdir(model_name):
-                print(f"  - {file}")
+        if self.verbose:
+            print(f"\nLoading Hugging Face model: {model_name}")
+            print(f"Model path exists: {os.path.exists(model_name)}")
+            if os.path.exists(model_name):
+                print("Contents of model directory:")
+                for file in os.listdir(model_name):
+                    print(f"  - {file}")
         
         try:
-            print("\nLoading tokenizer...")
+            if self.verbose:
+                print("\nLoading tokenizer...")
             tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
-            print("Tokenizer loaded successfully")
+            if self.verbose:
+                print("Tokenizer loaded successfully")
             
-            print("\nLoading model...")
-            print(f"Device: {self.device}")
-            print(f"Using device_map: auto")
+            if self.verbose:
+                print("\nLoading model...")
+                print(f"Device: {self.device}")
+                print(f"Using device_map: auto")
             
             # Memory-efficient loading options
             model = AutoModelForCausalLM.from_pretrained(
@@ -262,30 +270,37 @@ class ModelLoader:
                 low_cpu_mem_usage=True,
                 offload_folder="offload",  # Enable disk offloading
                 offload_state_dict=True,  # Offload weights to disk when not in use
-                max_memory={0: "16GB"} if self.device == "mps" else None  # Limit GPU memory usage
+                max_memory={0: "28GB"} if self.device == "mps" else None  # Limit GPU memory usage
             )
-            print("Model loaded successfully")
+            if self.verbose:
+                print("Model loaded successfully")
             
             # Set to evaluation mode
             model.eval()
-            print("Model set to evaluation mode")
+            if self.verbose:
+                print("Model set to evaluation mode")
             
             # Create a wrapped function for inference
             def model_func(prompt: str) -> str:
                 try:
-                    print(f"\nProcessing prompt: {prompt[:50]}...")
+                    if self.verbose:
+                        print(f"\nProcessing prompt: {prompt[:50]}...")
                     with torch.no_grad():
                         # Tokenize input
-                        print("Tokenizing input...")
+                        if self.verbose:
+                            print("Tokenizing input...")
                         inputs = tokenizer(prompt, return_tensors="pt")
-                        print(f"Input shape: {inputs['input_ids'].shape}")
+                        if self.verbose:
+                            print(f"Input shape: {inputs['input_ids'].shape}")
                         
                         # Move inputs to device
                         inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                        print(f"Inputs moved to device: {self.device}")
+                        if self.verbose:
+                            print(f"Inputs moved to device: {self.device}")
                         
                         # Generate output
-                        print("Generating output...")
+                        if self.verbose:
+                            print("Generating output...")
                         outputs = model.generate(
                             **inputs,
                             max_length=min(self.max_length, tokenizer.model_max_length),
@@ -301,10 +316,12 @@ class ModelLoader:
                             top_k=50,  # Limit vocabulary choices
                             top_p=0.95  # Nucleus sampling
                         )
-                        print(f"Output shape: {outputs.shape}")
+                        if self.verbose:
+                            print(f"Output shape: {outputs.shape}")
                         
                         # Decode output
-                        print("Decoding output...")
+                        if self.verbose:
+                            print("Decoding output...")
                         output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
                         
                         # For some models, we need to remove the prompt from the output
@@ -315,23 +332,26 @@ class ModelLoader:
                         if not output_text or output_text.strip() == "":
                             output_text = "I apologize, but I cannot generate a response to that prompt."
                         
-                        print("\nModel Output:")
-                        print("-" * 50)
-                        print(output_text[:500] + "..." if len(output_text) > 500 else output_text)
-                        print("-" * 50)
-                        print("Generation complete")
+                        if self.verbose:
+                            print("\nModel Output:")
+                            print("-" * 50)
+                            print(output_text[:500] + "..." if len(output_text) > 500 else output_text)
+                            print("-" * 50)
+                            print("Generation complete")
                         
                         return output_text
                 except Exception as e:
-                    print(f"Error during inference: {str(e)}")
+                    if self.verbose:
+                        print(f"Error during inference: {str(e)}")
                     return f"Error generating response: {str(e)}"
             
             return model_func
             
         except Exception as e:
             error_msg = str(e)
-            print(f"\nError loading model from Hugging Face: {error_msg}")
-            print(f"Error type: {type(e).__name__}")
+            if self.verbose:
+                print(f"\nError loading model from Hugging Face: {error_msg}")
+                print(f"Error type: {type(e).__name__}")
             
             # Return a function that explains the error
             def error_func(prompt: str) -> str:
@@ -406,7 +426,8 @@ def load_model(
     is_local: bool = None,
     device: str = None,
     max_length: int = 1024,
-    temperature: float = 0.7
+    temperature: float = 0.7,
+    verbose: bool = False
 ) -> Callable[[str], str]:
     """
     Load a model by name and return a callable function.
@@ -420,6 +441,7 @@ def load_model(
         device: Device to load model on ('cpu', 'cuda', 'mps', or None for auto-detection)
         max_length: Maximum sequence length for generation
         temperature: Sampling temperature for text generation
+        verbose: Whether to print detailed information during loading and inference
         
     Returns:
         Function that takes text input and returns model output
@@ -427,7 +449,8 @@ def load_model(
     loader = ModelLoader(
         device=device,
         max_length=max_length,
-        temperature=temperature
+        temperature=temperature,
+        verbose=verbose
     )
     
     return loader.load_model(model_name, is_local=is_local)

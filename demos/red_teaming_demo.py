@@ -18,7 +18,8 @@ from src.safety.red_teaming.model_loader import load_model
 
 def main(args):
     """Demonstrate red teaming capabilities."""
-    print("===== AI Red Teaming Demonstration =====\n")
+    if args.verbose:
+        print("===== AI Red Teaming Demonstration =====\n")
     
     # Create output directory
     os.makedirs("red_team_results", exist_ok=True)
@@ -27,7 +28,8 @@ def main(args):
     framework = RedTeamingFramework(output_dir="red_team_results")
     
     # Register attack strategies
-    print("Registering attack strategies...")
+    if args.verbose:
+        print("Registering attack strategies...")
     framework.register_attack_strategy(
         "directive_smuggling", 
         AdversarialInputGenerator.directive_smuggling
@@ -44,7 +46,8 @@ def main(args):
         "goal_hijacking", 
         AdversarialInputGenerator.goal_hijacking
     )
-    print("Attack strategies registered.\n")
+    if args.verbose:
+        print("Attack strategies registered.\n")
     
     # Define some base prompts for testing
     base_prompts = [
@@ -56,35 +59,40 @@ def main(args):
     ]
     
     # Generate adversarial inputs
-    print("Generating adversarial inputs...")
+    if args.verbose:
+        print("Generating adversarial inputs...")
     adversarial_inputs = framework.generate_adversarial_inputs(
         base_prompts=base_prompts,
         num_variations=2  # Reduced for demonstration
     )
     
     total_inputs = sum(len(inputs) for inputs in adversarial_inputs.values())
-    print(f"Generated {total_inputs} adversarial inputs across {len(adversarial_inputs)} strategies.\n")
-    
-    # Show some example adversarial inputs
-    print("Example adversarial inputs:")
-    for strategy, inputs in adversarial_inputs.items():
-        print(f"\nStrategy: {strategy}")
-        for i in range(min(2, len(inputs))):
-            print(f"  {i+1}. {inputs[i][:100]}..." if len(inputs[i]) > 100 else f"  {i+1}. {inputs[i]}")
-    print()
+    if args.verbose:
+        print(f"Generated {total_inputs} adversarial inputs across {len(adversarial_inputs)} strategies.\n")
+        
+        # Show some example adversarial inputs
+        print("Example adversarial inputs:")
+        for strategy, inputs in adversarial_inputs.items():
+            print(f"\nStrategy: {strategy}")
+            for i in range(min(2, len(inputs))):
+                print(f"  {i+1}. {inputs[i][:100]}..." if len(inputs[i]) > 100 else f"  {i+1}. {inputs[i]}")
+        print()
     
     # Load the specified model
-    print(f"Loading model: {args.model}")
+    if args.verbose:
+        print(f"Loading model: {args.model}")
     model_func = load_model(
         model_name=args.model,
         is_local=args.local_model,
         device=args.device,
         max_length=args.max_length,
-        temperature=args.temperature
+        temperature=args.temperature,
+        verbose=args.verbose
     )
     
     # Initialize adversarial robustness evaluator
-    print("Initializing adversarial robustness evaluator...")
+    if args.verbose:
+        print("Initializing adversarial robustness evaluator...")
     safety_evaluator = SafetyEvaluator()
     robustness_evaluator = AdversarialRobustnessEvaluator(safety_evaluator=safety_evaluator)
     
@@ -94,7 +102,8 @@ def main(args):
         return results["summary"]
     
     # Evaluate model robustness
-    print("Evaluating model robustness...")
+    if args.verbose:
+        print("Evaluating model robustness...")
     evaluation_results = framework.evaluate_model_robustness(
         model_fn=model_func,
         adversarial_inputs=adversarial_inputs,
@@ -103,7 +112,8 @@ def main(args):
     )
     
     # Generate report
-    print("\nGenerating report...")
+    if args.verbose:
+        print("\nGenerating report...")
     report = framework.generate_report(evaluation_results, include_details=True)
     
     # Print report summary
@@ -114,13 +124,14 @@ def main(args):
     print(f"...\nTotal failures: {evaluation_results['total_failures']}")
     
     # Demonstrate prompt injection tester
-    print("\n\n===== Prompt Injection Testing =====\n")
-    
-    print("Initializing prompt injection tester...")
+    if args.verbose:
+        print("\n\n===== Prompt Injection Testing =====\n")
+        print("Initializing prompt injection tester...")
     injection_tester = PromptInjectionTester()
     
     # Run a basic test
-    print("Testing basic prompt injection...")
+    if args.verbose:
+        print("Testing basic prompt injection...")
     base_prompt = "What is the capital of France?"
     injected_prompt, metadata = injection_tester.generate_injection(
         prompt=base_prompt,
@@ -128,19 +139,23 @@ def main(args):
         injection_position="suffix"
     )
     
-    print(f"Original prompt: {base_prompt}")
-    print(f"Injected prompt: {injected_prompt}")
+    if args.verbose:
+        print(f"Original prompt: {base_prompt}")
+        print(f"Injected prompt: {injected_prompt}")
     
     # Get model response
     response = model_func(injected_prompt)
-    print(f"Model response: {response}")
+    if args.verbose:
+        print(f"Model response: {response}")
     
     # Evaluate response
     evaluation = injection_tester.evaluate_response(injected_prompt, response, metadata)
-    print(f"Evaluation results: {evaluation}")
+    if args.verbose:
+        print(f"Evaluation results: {evaluation}")
     
     # Run test suite
-    print("\nRunning full prompt injection test suite...")
+    if args.verbose:
+        print("\nRunning full prompt injection test suite...")
     test_results = injection_tester.run_test_suite(
         model_fn=model_func,
         model_name=args.model,
@@ -152,7 +167,8 @@ def main(args):
     print(f"Successful injections: {test_results['successful_injections']}")
     print(f"Injection success rate: {test_results['injection_success_rate']:.2%}")
     
-    print("\nRed teaming demonstration complete.")
+    if args.verbose:
+        print("\nRed teaming demonstration complete.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run red teaming evaluation on a language model")
@@ -189,6 +205,13 @@ if __name__ == "__main__":
         type=float, 
         default=0.7,
         help="Sampling temperature for generation"
+    )
+    
+    # Output control
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print detailed information during model loading and inference"
     )
     
     # Parse arguments
