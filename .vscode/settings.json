@@ -1,6 +1,6 @@
 {
     "markdown.validate.enabled": true,
-    "python.defaultInterpreterPath": "/Users/apa/miniconda3/envs/ml-project/bin/python",
+    "python.defaultInterpreterPath": "/Users/apa/miniconda3/envs/me/bin/python",
     "python.terminal.activateEnvironment": true,
     "jupyter.alwaysTrustNotebooks": true,
     "jupyter.notebookFileRoot": "${workspaceFolder}",
@@ -16,9 +16,12 @@
     },
     "terminal.integrated.defaultProfile.osx": "zsh",
     "terminal.integrated.env.osx": {
-        "CONDA_DEFAULT_ENV": "ml-project",
-        "PATH": "/Users/apa/miniconda3/envs/ml-project/bin:${env:PATH}"
+        "CONDA_DEFAULT_ENV": "me",
+        "PATH": "/Users/apa/miniconda3/envs/me/bin:${env:PATH}"
     },
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintPath": "pylint",
     "terminal.integrated.shellIntegration.enabled": true,
     "terminal.integrated.shellIntegration.shell": "bash",
     "terminal.integrated.shellIntegration.autoActivate": true,
