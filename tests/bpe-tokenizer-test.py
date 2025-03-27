@@ -28,7 +28,7 @@ def set_seed(seed=42):
 def train_bpe_tokenizers(
     en_texts: List[str],
     de_texts: List[str],
-    vocab_size: int = 8000,
+    vocab_size: int = 32000,
     min_frequency: int = 2,
     save_dir: str = "models/tokenizers",
 ) -> Tuple[BPETokenizer, BPETokenizer]:

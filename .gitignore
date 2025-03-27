@@ -1,47 +1,71 @@
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-*.pyc
-# Packages #
-############
-# it's better to unpack these files and commit the raw source
-# git has its own built in compression methods
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Local Data and Model #
-data/
-models/
-.data/
+# Python build files
+*.egg-info/
+dist/
+build/
+
+# Local environment files
 .env
-.snapshots/
-backups/
+.venv
+env/
+venv/
+
+# Local VSCode settings
+.vscode/
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints
+
+# Model checkpoint files
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+
+# Profiling outputs
 profiling_results/
+optimization_results/
+safety_logs/
 red_team_results/
 
-# Logs and databases #
-######################
+# Local cache and temporary folders
+offload/
+tokenizer_cache/
+data/
+models/
+backups/
+safety_data/logs/
+.snapshots/
+.data/
+# Temporary files
+*.tmp
 *.log
-*.sql
-*.sqlite
-
-# OS generated files #
-######################
+*.csv
+# macOS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+
+# IDE specific (PyCharm, IntelliJ, etc.)
+.idea/
+
+# Compiled documents
+*.rtf
+*.pdf
+
+# Images generated during testing
+tests/test_imgs/*.png
+*.png
+
+# Parquet files
+*.parquet
+
+# gzip and archive files
+*.gz
+*.zip
+*.tgz
+
+# Custom experimental notebooks
+notebooks/*
