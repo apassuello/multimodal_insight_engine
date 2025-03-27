@@ -25,6 +25,11 @@ data/
 models/
 .data/
 .env
+.snapshots/
+backups/
+profiling_results/
+red_team_results/
+
 # Logs and databases #
 ######################
 *.log
