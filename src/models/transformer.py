@@ -165,6 +165,7 @@ class TransformerEncoder(nn.Module):
         
         self.d_model = d_model
         self.positional_encoding_type = positional_encoding
+        self.vocab_size = vocab_size if vocab_size is not None else 0
         
         # Token embedding layer (optional)
         self.has_embeddings = vocab_size is not None
@@ -198,6 +199,13 @@ class TransformerEncoder(nn.Module):
         
         # Final layer normalization
         self.norm = nn.LayerNorm(d_model)
+        
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+        self.d_ff = d_ff
+        self.dropout = dropout
+        self.max_seq_length = max_seq_length
+        self.positional_encoding_type = positional_encoding
     
     def forward(
         self,
