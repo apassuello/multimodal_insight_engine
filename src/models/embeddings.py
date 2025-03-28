@@ -2,6 +2,14 @@ import torch
 import torch.nn as nn
 import math
 from typing import Optional
+import os
+
+"""MODULE: embeddings.py
+PURPOSE: Implements token embedding layers for transformer models with proper initialization and scaling
+KEY COMPONENTS:
+- TokenEmbedding: Neural network layer that converts token indices to dense vector representations
+DEPENDENCIES: torch, torch.nn, math, typing
+SPECIAL NOTES: Implements the embedding scaling factor of sqrt(d_model) as per the original transformer paper"""
 
 class TokenEmbedding(nn.Module):
     """
@@ -46,3 +54,40 @@ class TokenEmbedding(nn.Module):
         
         # Scale embeddings
         return embeddings * math.sqrt(self.d_model)
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements token embedding layers for transformer models with proper initialization and scaling",
+        "key_classes": [
+            {
+                "name": "TokenEmbedding",
+                "purpose": "Neural network layer that converts token indices to dense vector representations with proper scaling",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vocab_size: int, d_model: int)",
+                        "brief_description": "Initialize the embedding layer with Xavier uniform initialization"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Convert token indices to scaled embeddings"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "math"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 2,  # Simple module with straightforward embedding functionality
+    }

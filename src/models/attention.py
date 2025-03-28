@@ -4,6 +4,18 @@ import torch.nn.functional as F
 import math
 from typing import Optional, Tuple
 import inspect
+import os
+
+"""MODULE: attention.py
+PURPOSE: Implements various attention mechanisms for transformer architectures
+KEY COMPONENTS:
+- ScaledDotProductAttention: Core attention mechanism with scaling and masking
+- SimpleAttention: Basic attention with query/key/value projections
+- MultiHeadAttention: Multi-head attention for parallel attention computation
+- GroupedQueryAttention: Efficient attention with grouped query heads
+- ALiBiAttention: Attention with linear biases for better extrapolation
+DEPENDENCIES: torch, torch.nn, torch.nn.functional, math, typing, inspect
+SPECIAL NOTES: Provides a comprehensive set of attention mechanisms optimized for different use cases"""
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -617,3 +629,89 @@ class ALiBiAttention(nn.Module):
         output = self.out_proj(context)
         
         return output
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements various attention mechanisms for transformer architectures",
+        "key_classes": [
+            {
+                "name": "ScaledDotProductAttention",
+                "purpose": "Core attention mechanism with scaling and masking support",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Compute attention scores and context vectors"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "math"]
+            },
+            {
+                "name": "MultiHeadAttention",
+                "purpose": "Multi-head attention mechanism for parallel attention computation",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, query: torch.Tensor, key: Optional[torch.Tensor] = None, value: Optional[torch.Tensor] = None, mask: Optional[torch.Tensor] = None, rotary_emb: Optional[nn.Module] = None, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Compute multi-head attention with optional rotary embeddings"
+                    },
+                    {
+                        "name": "split_heads",
+                        "signature": "split_heads(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Split input tensor into multiple attention heads"
+                    },
+                    {
+                        "name": "combine_heads",
+                        "signature": "combine_heads(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Combine multiple attention heads into a single tensor"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+            },
+            {
+                "name": "GroupedQueryAttention",
+                "purpose": "Efficient attention mechanism with grouped query heads for reduced computation",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x, mask=None)",
+                        "brief_description": "Compute grouped query attention"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            },
+            {
+                "name": "ALiBiAttention",
+                "purpose": "Attention with linear biases for better sequence length extrapolation",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x, mask=None)",
+                        "brief_description": "Compute attention with ALiBi biases"
+                    },
+                    {
+                        "name": "_get_slopes",
+                        "signature": "_get_slopes(self, n)",
+                        "brief_description": "Compute attention slopes for ALiBi"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "math"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 8,  # High complexity due to multiple attention mechanisms and optimizations
+    }

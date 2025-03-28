@@ -1,4 +1,18 @@
-# src/models/transformer.py (new file)
+"""
+MODULE: transformer.py
+PURPOSE: Implements transformer models for sequence processing tasks.
+KEY COMPONENTS:
+- TransformerEncoderLayer: Implements a single transformer encoder layer.
+- TransformerEncoder: Implements the encoder part of the transformer.
+- Transformer: Implements a complete transformer model with encoder only.
+- TransformerDecoderLayer: Implements a single transformer decoder layer.
+- TransformerDecoder: Implements the decoder part of the transformer.
+- EncoderDecoderTransformer: Implements the full transformer architecture.
+DEPENDENCIES: torch, torch.nn, typing, base_model, attention, layers, positional, embeddings
+SPECIAL NOTES: This module follows the architecture described in "Attention is All You Need" (Vaswani et al., 2017).
+"""
+
+import os
 import torch
 import torch.nn as nn
 from typing import Optional, Dict, Any
@@ -169,7 +183,7 @@ class TransformerEncoder(nn.Module):
         
         # Token embedding layer (optional)
         self.has_embeddings = vocab_size is not None
-        if self.has_embeddings:
+        if self.has_embeddings and vocab_size is not None:
             self.token_embedding = TokenEmbedding(vocab_size, d_model)
         
         # Positional encoding
@@ -267,8 +281,8 @@ class Transformer(BaseModel):
         dropout: float = 0.1,
         max_seq_length: int = 5000,
         positional_encoding: str = "sinusoidal",
-        input_dim: int = None,
-        output_dim: int = None,
+        input_dim: Optional[int] = None,
+        output_dim: Optional[int] = None,
     ):
         """
         Initialize the transformer model.
@@ -290,10 +304,9 @@ class Transformer(BaseModel):
         self.d_model = d_model
         
         # Input projection (if needed)
+        self.input_projection = None
         if input_dim is not None and input_dim != d_model:
             self.input_projection = nn.Linear(input_dim, d_model)
-        else:
-            self.input_projection = None
         
         # Encoder
         self.encoder = TransformerEncoder(
@@ -307,10 +320,9 @@ class Transformer(BaseModel):
         )
         
         # Output projection (if needed)
+        self.output_projection = None
         if output_dim is not None and output_dim != d_model:
             self.output_projection = nn.Linear(d_model, output_dim)
-        else:
-            self.output_projection = None
     
     def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
@@ -537,10 +549,11 @@ class TransformerDecoder(nn.Module):
         
         self.d_model = d_model
         self.positional_encoding_type = positional_encoding
+        self.vocab_size = vocab_size if vocab_size is not None else 0
         
         # Token embedding layer (optional)
         self.has_embeddings = vocab_size is not None
-        if self.has_embeddings:
+        if self.has_embeddings and vocab_size is not None:
             self.token_embedding = TokenEmbedding(vocab_size, d_model)
         
         # Positional encoding
@@ -904,3 +917,84 @@ class EncoderDecoderTransformer(BaseModel):
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
         
         return {"optimizer": optimizer, "scheduler": scheduler}
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements transformer models for sequence processing tasks",
+        "key_classes": [
+            {
+                "name": "TransformerEncoderLayer",
+                "purpose": "Implements a single transformer encoder layer with self-attention and feed-forward networks",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the encoder layer with self-attention and feed-forward"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", ".attention", ".layers", ".positional"]
+            },
+            {
+                "name": "TransformerEncoder",
+                "purpose": "Implements the encoder part of the transformer with multiple layers and positional encoding",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the encoder with token embeddings and positional encoding"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", ".embeddings", ".positional"]
+            },
+            {
+                "name": "Transformer",
+                "purpose": "Implements a complete transformer model with encoder-only architecture",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the transformer"
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self, lr: float = 0.0001) -> torch.optim.Optimizer",
+                        "brief_description": "Configure the optimizer for training"
+                    }
+                ],
+                "inheritance": "BaseModel",
+                "dependencies": ["torch", "torch.nn", ".base_model"]
+            },
+            {
+                "name": "EncoderDecoderTransformer",
+                "purpose": "Implements the full transformer architecture with both encoder and decoder",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, src: torch.Tensor, tgt: torch.Tensor, src_mask: Optional[torch.Tensor] = None, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the encoder-decoder transformer"
+                    },
+                    {
+                        "name": "generate",
+                        "signature": "generate(self, src: torch.Tensor, max_len: int, bos_token_id: int, eos_token_id: int, src_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None, temperature: float = 1.0) -> torch.Tensor",
+                        "brief_description": "Generate output sequences using the trained model"
+                    }
+                ],
+                "inheritance": "BaseModel",
+                "dependencies": ["torch", "torch.nn", ".base_model"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 9,  # Very high complexity due to full transformer implementation with multiple components
+    }

@@ -3,6 +3,13 @@ import torch
 import torch.nn as nn
 from typing import Dict, Any, Union, Optional
 
+"""MODULE: base_model.py
+PURPOSE: Provides the foundational base class for all neural network models in the MultiModal Insight Engine
+KEY COMPONENTS:
+- BaseModel: Abstract base class providing common model functionality like saving/loading, parameter counting, and device management
+DEPENDENCIES: torch, torch.nn, os, typing
+SPECIAL NOTES: All model classes in the project should inherit from this base class to ensure consistent behavior"""
+
 class BaseModel(nn.Module):
     """
     Base class for all models in the MultiModal Insight Engine.
@@ -110,3 +117,45 @@ class BaseModel(nn.Module):
             torch.device: Device of the first parameter
         """
         return next(self.parameters()).device
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides the foundational base class for all neural network models in the MultiModal Insight Engine",
+        "key_classes": [
+            {
+                "name": "BaseModel",
+                "purpose": "Abstract base class providing common model functionality like saving/loading, parameter counting, and device management",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x)",
+                        "brief_description": "Abstract forward pass method that must be implemented by subclasses"
+                    },
+                    {
+                        "name": "save",
+                        "signature": "save(self, path: str, optimizer: Optional[torch.optim.Optimizer] = None, epoch: Optional[int] = None, loss: Optional[float] = None, additional_info: Optional[Dict[str, Any]] = None)",
+                        "brief_description": "Save model weights and training state to a file"
+                    },
+                    {
+                        "name": "load",
+                        "signature": "load(self, path: str, map_location: Optional[str] = None)",
+                        "brief_description": "Load model weights from a file"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "os", "typing"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 3,  # Relatively simple base class with straightforward functionality
+    }

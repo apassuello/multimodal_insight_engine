@@ -1,7 +1,17 @@
+"""MODULE: feed_forward.py
+PURPOSE: Implements various feed-forward neural network architectures with modern features
+KEY COMPONENTS:
+- FeedForwardNN: Base class for configurable feed-forward networks
+- FeedForwardClassifier: Specialized classifier with training utilities
+- MultiLayerPerceptron: Traditional MLP implementation with modern features
+DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing, .base_model, .layers
+SPECIAL NOTES: Provides flexible architectures with options for layer normalization, residual connections, and dropout"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, Literal
+import os
 
 from .base_model import BaseModel
 from .layers import LinearLayer, FeedForwardBlock
@@ -17,7 +27,7 @@ class FeedForwardNN(BaseModel):
         input_size: int,
         hidden_sizes: List[int],
         output_size: int,
-        activation: str = "relu",
+        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -96,7 +106,7 @@ class FeedForwardClassifier(FeedForwardNN):
         input_size: int,
         hidden_sizes: List[int],
         num_classes: int,
-        activation: str = "relu",
+        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -229,7 +239,7 @@ class MultiLayerPerceptron(nn.Module):
         input_dim: int,
         hidden_dims: List[int],
         output_dim: int,
-        activation: str = "relu",
+        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -295,3 +305,82 @@ class MultiLayerPerceptron(nn.Module):
         for layer in self.layers:
             x = layer(x)
         return x
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements various feed-forward neural network architectures with modern features",
+        "key_classes": [
+            {
+                "name": "FeedForwardNN",
+                "purpose": "Base class for configurable feed-forward networks with modern features",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, input_size: int, hidden_sizes: List[int], output_size: int, activation: str = 'relu', dropout: float = 0.0, use_layer_norm: bool = False, use_residual: bool = False)",
+                        "brief_description": "Initialize the feed-forward neural network with configurable architecture"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Forward pass through the network"
+                    }
+                ],
+                "inheritance": "BaseModel",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional", ".layers"]
+            },
+            {
+                "name": "FeedForwardClassifier",
+                "purpose": "Specialized classifier with training utilities and prediction methods",
+                "key_methods": [
+                    {
+                        "name": "predict",
+                        "signature": "predict(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Make class predictions on input data"
+                    },
+                    {
+                        "name": "predict_proba",
+                        "signature": "predict_proba(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Get class probabilities for input data"
+                    },
+                    {
+                        "name": "training_step",
+                        "signature": "training_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Perform a single training step"
+                    }
+                ],
+                "inheritance": "FeedForwardNN",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+            },
+            {
+                "name": "MultiLayerPerceptron",
+                "purpose": "Traditional MLP implementation with modern features like layer normalization and residual connections",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, input_dim: int, hidden_dims: List[int], output_dim: int, activation: str = 'relu', dropout: float = 0.0, use_layer_norm: bool = False, use_residual: bool = False)",
+                        "brief_description": "Initialize the multi-layer perceptron"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Forward pass through the MLP"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 5,  # Moderate complexity due to multiple architectures and training utilities
+    }

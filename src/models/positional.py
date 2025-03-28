@@ -2,8 +2,18 @@ import torch
 import torch.nn as nn
 import math
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 from typing import Optional, Literal
+import os
+
+"""MODULE: positional.py
+PURPOSE: Implements various positional encoding schemes for transformer models to handle sequence order information
+KEY COMPONENTS:
+- PositionalEncoding: Supports both fixed sinusoidal and learned positional encodings
+- RotaryPositionEncoding: Implements RoPE (Rotary Position Embedding) for enhanced position handling
+DEPENDENCIES: torch, torch.nn, math, matplotlib.pyplot, numpy, typing
+SPECIAL NOTES: Provides visualization tools for understanding encoding patterns"""
 
 
 class PositionalEncoding(nn.Module):
@@ -113,7 +123,7 @@ class PositionalEncoding(nn.Module):
 
         return self.dropout(x)
 
-    def visualize_encodings(self, seq_length: Optional[int] = None) -> plt.Figure:
+    def visualize_encodings(self, seq_length: Optional[int] = None) -> Figure:
         """
         Visualize the positional encodings as a heatmap.
 
@@ -297,13 +307,13 @@ class RotaryPositionEncoding(nn.Module):
         
         return q_new, k_new
     
-    def visualize_rotation(self, seq_length: int = 20) -> plt.Figure:
+    def visualize_rotation(self, seq_length: int = 20) -> Figure:
         """
-        Visualize how RoPE rotates vectors at different positions.
-        
+        Visualize the rotary position embeddings.
+
         Args:
             seq_length: Number of positions to visualize
-            
+
         Returns:
             Matplotlib figure with the visualization
         """
@@ -357,3 +367,68 @@ class RotaryPositionEncoding(nn.Module):
         
         plt.tight_layout()
         return fig
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements various positional encoding schemes for transformer models",
+        "key_classes": [
+            {
+                "name": "PositionalEncoding",
+                "purpose": "Provides both fixed sinusoidal and learned positional encodings for transformer models",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, d_model: int, max_seq_length: int = 5000, dropout: float = 0.1, encoding_type: Literal['sinusoidal', 'learned'] = 'sinusoidal')",
+                        "brief_description": "Initialize the positional encoding module with specified type"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Add positional encoding to input embeddings"
+                    },
+                    {
+                        "name": "visualize_encodings",
+                        "signature": "visualize_encodings(self, seq_length: Optional[int] = None) -> plt.Figure",
+                        "brief_description": "Visualize the positional encodings as a heatmap"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "math", "matplotlib.pyplot", "numpy"]
+            },
+            {
+                "name": "RotaryPositionEncoding",
+                "purpose": "Implements RoPE (Rotary Position Embedding) for enhanced position handling in transformers",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, head_dim: int, max_seq_length: int = 5000, base: int = 10000)",
+                        "brief_description": "Initialize the rotary position embeddings"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple",
+                        "brief_description": "Apply rotary position embeddings to query and key tensors"
+                    },
+                    {
+                        "name": "visualize_rotation",
+                        "signature": "visualize_rotation(self, seq_length: int = 20) -> plt.Figure",
+                        "brief_description": "Visualize the rotary position embeddings"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "math", "matplotlib.pyplot", "numpy"]
+            }
+        ],
+        "external_dependencies": ["torch", "matplotlib", "numpy"],
+        "complexity_score": 6,  # Moderate-high complexity due to multiple encoding types and visualization features
+    }

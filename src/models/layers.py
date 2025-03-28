@@ -2,6 +2,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Optional, Union, Literal
+import os
+
+"""MODULE: layers.py
+PURPOSE: Implements fundamental neural network layers with advanced features like initialization, normalization, and residual connections
+KEY COMPONENTS:
+- LinearLayer: Enhanced linear layer with configurable initialization, dropout, and layer normalization
+- FeedForwardBlock: Flexible feed-forward block with optional residual connections and multiple activation options
+DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing
+SPECIAL NOTES: Provides building blocks for transformer architectures with modern best practices"""
 
 class LinearLayer(nn.Module):
     """A linear layer with initialization, dropout, and normalization options."""
@@ -166,3 +175,63 @@ class FeedForwardBlock(nn.Module):
             x = x + residual
         
         return x
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements fundamental neural network layers with advanced features for transformer architectures",
+        "key_classes": [
+            {
+                "name": "LinearLayer",
+                "purpose": "Enhanced linear layer with configurable initialization, dropout, and layer normalization",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, in_features: int, out_features: int, bias: bool = True, init_type: str = 'kaiming_uniform', dropout: float = 0.0, use_layer_norm: bool = False)",
+                        "brief_description": "Initialize the enhanced linear layer with optional features"
+                    },
+                    {
+                        "name": "_init_weights",
+                        "signature": "_init_weights(self, init_type: str) -> None",
+                        "brief_description": "Initialize weights using specified method (kaiming/xavier)"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Apply linear transformation with optional normalization and dropout"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+            },
+            {
+                "name": "FeedForwardBlock",
+                "purpose": "Flexible feed-forward block with optional residual connections and multiple activation options",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, input_dim: int, hidden_dim: Optional[int] = None, output_dim: Optional[int] = None, activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu', dropout: float = 0.0, use_layer_norm: bool = False, use_residual: bool = False)",
+                        "brief_description": "Initialize the feed-forward block with configurable architecture"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Apply feed-forward transformation with optional residual connection"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 4,  # Moderate complexity due to multiple features and configurations
+    }
