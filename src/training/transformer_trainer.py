@@ -1,3 +1,29 @@
+"""MODULE: transformer_trainer.py
+PURPOSE: Implements a specialized trainer for transformer models with support for encoder-decoder architectures, including features like learning rate scheduling, label smoothing, and efficient masking.
+
+KEY COMPONENTS:
+- TransformerTrainer: Main trainer class for transformer model training with support for:
+  - Learning rate scheduling with warmup and inverse square root decay
+  - Label smoothing for improved generalization
+  - Efficient padding and causal masking
+  - Early stopping with patience
+  - Comprehensive training metrics tracking
+  - Training visualization capabilities
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+- NumPy
+- Matplotlib
+- tqdm
+- transformer_utils (internal module)
+
+SPECIAL NOTES:
+- Implements efficient masking for transformer attention
+- Supports both CPU and GPU training with automatic device selection
+- Includes early stopping mechanism to prevent overfitting
+- Provides comprehensive training visualization tools
+"""
+
 # src/training/transformer_trainer.py
 import torch
 import torch.nn as nn
@@ -8,6 +34,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import os
 
 from .transformer_utils import create_padding_mask, create_causal_mask, LabelSmoothing
 
@@ -258,132 +285,166 @@ class TransformerTrainer:
     
     def train(self, epochs: int, save_path: Optional[str] = None):
         """
-        Train the model for multiple epochs.
+        Train the model for the specified number of epochs.
         
         Args:
-            epochs: Number of epochs to train
-            save_path: Path to save model checkpoints
+            epochs: Number of epochs to train for
+            save_path: Optional path to save model checkpoints
             
         Returns:
-            Training history
+            Dictionary containing training history
         """
-        print(f"Starting training for {epochs} epochs on {self.device}")
-        print(f"Model has {sum(p.numel() for p in self.model.parameters() if p.requires_grad):,} trainable parameters")
-        save_idx = 0
+        print(f"Starting training on {self.device}...")
+        start_time = time.time()
+        
         for epoch in range(epochs):
             self.current_epoch = epoch
             
-            # Train for one epoch
+            # Train one epoch
             train_loss = self.train_epoch()
             
             # Validate
             val_loss = self.validate()
             
-            # Early stopping check
-            if val_loss is not None and self.early_stopping_patience is not None:
-                if val_loss < self.best_val_loss:
-                    self.best_val_loss = val_loss
-                    self.patience_counter = 0
-                    
-                    # Save best model
-                    # if save_path is not None:
-                    #     self.save_checkpoint(f"{save_path}_best.pt")
-                else:
-                    self.patience_counter += 1
-                    if self.patience_counter >= self.early_stopping_patience:
-                        print(f"Early stopping triggered after {epoch+1} epochs")
-                        break
-            
-            # Save checkpoint
-            if save_path is not None and save_idx % 10 == 0:
-                self.save_checkpoint(f"{save_path}_epoch{epoch+1}.pt")
-            save_idx += 1
-        self.save_checkpoint(f"{save_path}_epoch{epoch+1}.pt")
-        print("Training completed")
+            if val_loss is not None:
+                # Record validation metrics
+                self.history["val_loss"].append(val_loss)
+                self.history["val_ppl"].append(math.exp(min(val_loss, 100)))
+                
+                # Early stopping check
+                if self.early_stopping_patience is not None:
+                    if val_loss < self.best_val_loss:
+                        self.best_val_loss = val_loss
+                        self.patience_counter = 0
+                        if save_path:
+                            self.save_checkpoint(save_path)
+                    else:
+                        self.patience_counter += 1
+                        if self.patience_counter >= self.early_stopping_patience:
+                            print(f"Early stopping triggered after {epoch + 1} epochs")
+                            break
+        
+        # Print total training time
+        total_time = time.time() - start_time
+        print(f"Training completed in {total_time:.2f}s")
+        
         return self.history
     
     def save_checkpoint(self, path: str):
         """
-        Save a model checkpoint.
+        Save a training checkpoint to disk.
         
         Args:
-            path: Path to save the checkpoint
+            path: Path where the checkpoint should be saved
         """
         checkpoint = {
-            "model_state_dict": self.model.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "scheduler_state_dict": self.scheduler.state_dict(),
-            "epoch": self.current_epoch,
-            "global_step": self.global_step,
-            "best_val_loss": self.best_val_loss,
-            "history": self.history,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'current_epoch': self.current_epoch,
+            'global_step': self.global_step,
+            'best_val_loss': self.best_val_loss,
+            'patience_counter': self.patience_counter,
+            'history': self.history
         }
-        
         torch.save(checkpoint, path)
-        print(f"Checkpoint saved to {path}")
     
     def load_checkpoint(self, path: str):
         """
-        Load a model checkpoint.
+        Load a training checkpoint from disk.
         
         Args:
-            path: Path to the checkpoint
+            path: Path to the checkpoint file
         """
         checkpoint = torch.load(path, map_location=self.device)
-        
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        self.current_epoch = checkpoint["epoch"]
-        self.global_step = checkpoint["global_step"]
-        self.best_val_loss = checkpoint["best_val_loss"]
-        self.history = checkpoint["history"]
-        
-        print(f"Checkpoint loaded from {path}")
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        self.current_epoch = checkpoint['current_epoch']
+        self.global_step = checkpoint['global_step']
+        self.best_val_loss = checkpoint['best_val_loss']
+        self.patience_counter = checkpoint['patience_counter']
+        self.history = checkpoint['history']
     
     def plot_learning_rate(self):
         """
-        Plot the learning rate schedule.
-        
-        Returns:
-            Matplotlib figure
+        Plot the learning rate schedule over training steps.
         """
         plt.figure(figsize=(10, 5))
-        plt.plot(self.history["learning_rates"])
-        plt.xlabel("Step")
-        plt.ylabel("Learning Rate")
-        plt.title("Learning Rate Schedule")
+        plt.plot(self.history['learning_rates'])
+        plt.title('Learning Rate Schedule')
+        plt.xlabel('Steps')
+        plt.ylabel('Learning Rate')
         plt.grid(True)
-        return plt.gcf()
+        plt.show()
     
     def plot_training_history(self):
         """
-        Plot the training history.
-        
-        Returns:
-            Matplotlib figure
+        Plot training and validation metrics over epochs.
         """
-        fig, axs = plt.subplots(1, 2, figsize=(16, 6))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
         
-        # Plot loss
-        axs[0].plot(self.history["train_loss"], label="Train")
-        if self.val_dataloader is not None:
-            axs[0].plot(self.history["val_loss"], label="Validation")
-        axs[0].set_xlabel("Epoch")
-        axs[0].set_ylabel("Loss")
-        axs[0].set_title("Training and Validation Loss")
-        axs[0].legend()
-        axs[0].grid(True)
+        # Plot losses
+        ax1.plot(self.history['train_loss'], label='Train Loss')
+        if self.history['val_loss']:
+            ax1.plot(self.history['val_loss'], label='Val Loss')
+        ax1.set_title('Training and Validation Loss')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Loss')
+        ax1.legend()
+        ax1.grid(True)
         
-        # Plot perplexity
-        axs[1].plot(self.history["train_ppl"], label="Train")
-        if self.val_dataloader is not None:
-            axs[1].plot(self.history["val_ppl"], label="Validation")
-        axs[1].set_xlabel("Epoch")
-        axs[1].set_ylabel("Perplexity")
-        axs[1].set_title("Training and Validation Perplexity")
-        axs[1].legend()
-        axs[1].grid(True)
+        # Plot perplexities
+        ax2.plot(self.history['train_ppl'], label='Train Perplexity')
+        if self.history['val_ppl']:
+            ax2.plot(self.history['val_ppl'], label='Val Perplexity')
+        ax2.set_title('Training and Validation Perplexity')
+        ax2.set_xlabel('Epochs')
+        ax2.set_ylabel('Perplexity')
+        ax2.legend()
+        ax2.grid(True)
         
         plt.tight_layout()
-        return fig
+        plt.show()
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a specialized trainer for transformer models with support for encoder-decoder architectures and advanced training features",
+        "key_classes": [
+            {
+                "name": "TransformerTrainer",
+                "purpose": "Main trainer class for transformer model training with comprehensive training and evaluation capabilities",
+                "key_methods": [
+                    {
+                        "name": "train",
+                        "signature": "train(self, epochs: int, save_path: Optional[str] = None)",
+                        "brief_description": "Main training loop with support for validation and early stopping"
+                    },
+                    {
+                        "name": "train_epoch",
+                        "signature": "train_epoch(self)",
+                        "brief_description": "Trains the model for a single epoch with progress tracking"
+                    },
+                    {
+                        "name": "validate",
+                        "signature": "validate(self)",
+                        "brief_description": "Evaluates the model on validation data and returns loss metrics"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "torch.nn", "numpy", "matplotlib", "tqdm", "transformer_utils"]
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
+        "complexity_score": 8,  # High complexity due to comprehensive training loop, masking, and visualization features
+    }

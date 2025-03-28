@@ -1,3 +1,26 @@
+"""MODULE: language_model_trainer.py
+PURPOSE: Implements a specialized trainer for language modeling tasks with support for causal language modeling, evaluation, and generation.
+
+KEY COMPONENTS:
+- LanguageModelTrainer: Main trainer class for language model training with support for:
+  - Learning rate scheduling with warmup and decay
+  - Gradient clipping and optimization
+  - Training and validation loops
+  - Model checkpointing and loading
+  - Training visualization and metrics tracking
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn, torch.nn.functional)
+- NumPy
+- Matplotlib
+- tqdm
+
+SPECIAL NOTES:
+- Supports both CPU and GPU training with automatic device selection
+- Implements perplexity-based evaluation metrics
+- Includes comprehensive training visualization capabilities
+"""
+
 # src/training/language_model_trainer.py
 import torch
 import torch.nn as nn
@@ -106,7 +129,14 @@ class LanguageModelTrainer:
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
     
     def _log_training_step(self, loss, lr, step):
-        """Log training information."""
+        """
+        Log training metrics for a single step.
+        
+        Args:
+            loss: Current training loss value
+            lr: Current learning rate
+            step: Current training step number
+        """
         self.train_losses.append(loss)
         self.learning_rates.append(lr)
         
@@ -293,107 +323,123 @@ class LanguageModelTrainer:
     
     def save_model(self, path):
         """
-        Save model checkpoint.
+        Save the model checkpoint to disk.
         
         Args:
-            path: Path to save the model
+            path: Path where the model should be saved
         """
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        
-        # Create checkpoint
         checkpoint = {
-            "model_state_dict": self.model.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "scheduler_state_dict": self.scheduler.state_dict(),
-            "global_step": self.global_step,
-            "best_val_loss": self.best_val_loss,
-            "train_losses": self.train_losses,
-            "val_losses": self.val_losses,
-            "learning_rates": self.learning_rates,
-            "train_perplexities": self.train_perplexities,
-            "val_perplexities": self.val_perplexities,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'global_step': self.global_step,
+            'best_val_loss': self.best_val_loss,
+            'train_losses': self.train_losses,
+            'val_losses': self.val_losses,
+            'learning_rates': self.learning_rates,
+            'train_perplexities': self.train_perplexities,
+            'val_perplexities': self.val_perplexities,
         }
-        
-        # Save checkpoint
         torch.save(checkpoint, path)
     
     def load_model(self, path):
         """
-        Load model checkpoint.
+        Load a model checkpoint from disk.
         
         Args:
             path: Path to the model checkpoint
         """
-        # Load checkpoint
         checkpoint = torch.load(path, map_location=self.device)
-        
-        # Load model state
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        
-        # Load optimizer state
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        
-        # Load scheduler state
-        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        
-        # Load training state
-        self.global_step = checkpoint["global_step"]
-        self.best_val_loss = checkpoint["best_val_loss"]
-        self.train_losses = checkpoint["train_losses"]
-        self.val_losses = checkpoint["val_losses"]
-        self.learning_rates = checkpoint["learning_rates"]
-        self.train_perplexities = checkpoint["train_perplexities"]
-        self.val_perplexities = checkpoint["val_perplexities"]
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        self.global_step = checkpoint['global_step']
+        self.best_val_loss = checkpoint['best_val_loss']
+        self.train_losses = checkpoint['train_losses']
+        self.val_losses = checkpoint['val_losses']
+        self.learning_rates = checkpoint['learning_rates']
+        self.train_perplexities = checkpoint['train_perplexities']
+        self.val_perplexities = checkpoint['val_perplexities']
     
     def plot_training_curves(self, save_path=None):
         """
-        Plot training curves.
+        Plot training curves for loss, perplexity, and learning rate.
         
         Args:
-            save_path: Path to save the plot (optional)
-            
-        Returns:
-            Matplotlib figure
+            save_path: Optional path to save the plot. If None, displays the plot.
         """
-        fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
         
-        # Plot training and validation loss
-        axs[0, 0].plot(self.train_losses, label="Train")
+        # Plot losses
+        ax1.plot(self.train_losses, label='Train Loss')
         if self.val_losses:
-            val_indices = np.linspace(0, len(self.train_losses)-1, len(self.val_losses)).astype(int)
-            axs[0, 0].plot(val_indices, self.val_losses, label="Validation")
-        axs[0, 0].set_xlabel("Steps")
-        axs[0, 0].set_ylabel("Loss")
-        axs[0, 0].set_title("Training and Validation Loss")
-        axs[0, 0].legend()
-        axs[0, 0].grid(True)
+            ax1.plot(self.val_losses, label='Val Loss')
+        ax1.set_title('Training and Validation Loss')
+        ax1.set_xlabel('Steps')
+        ax1.set_ylabel('Loss')
+        ax1.legend()
         
-        # Plot training and validation perplexity
-        axs[0, 1].plot(self.train_perplexities, label="Train")
+        # Plot perplexities
+        ax2.plot(self.train_perplexities, label='Train Perplexity')
         if self.val_perplexities:
-            val_indices = np.linspace(0, len(self.train_perplexities)-1, len(self.val_perplexities)).astype(int)
-            axs[0, 1].plot(val_indices, self.val_perplexities, label="Validation")
-        axs[0, 1].set_xlabel("Steps")
-        axs[0, 1].set_ylabel("Perplexity")
-        axs[0, 1].set_title("Training and Validation Perplexity")
-        axs[0, 1].legend()
-        axs[0, 1].grid(True)
+            ax2.plot(self.val_perplexities, label='Val Perplexity')
+        ax2.set_title('Training and Validation Perplexity')
+        ax2.set_xlabel('Steps')
+        ax2.set_ylabel('Perplexity')
+        ax2.legend()
         
-        # Plot learning rate
-        axs[1, 0].plot(self.learning_rates)
-        axs[1, 0].set_xlabel("Steps")
-        axs[1, 0].set_ylabel("Learning Rate")
-        axs[1, 0].set_title("Learning Rate Schedule")
-        axs[1, 0].grid(True)
-        
-        # Keep the last subplot empty or use it for additional metrics
-        axs[1, 1].axis("off")
+        # Plot learning rates
+        ax3.plot(self.learning_rates, label='Learning Rate')
+        ax3.set_title('Learning Rate Schedule')
+        ax3.set_xlabel('Steps')
+        ax3.set_ylabel('Learning Rate')
+        ax3.legend()
         
         plt.tight_layout()
         
-        # Save plot if path is provided
         if save_path:
             plt.savefig(save_path)
+        else:
+            plt.show()
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
         
-        return fig
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a specialized trainer for language modeling tasks with support for causal language modeling, evaluation, and generation",
+        "key_classes": [
+            {
+                "name": "LanguageModelTrainer",
+                "purpose": "Main trainer class for language model training with comprehensive training and evaluation capabilities",
+                "key_methods": [
+                    {
+                        "name": "train",
+                        "signature": "train(self, num_epochs, save_dir='models/language', model_name='language_model')",
+                        "brief_description": "Main training loop with support for validation and checkpointing"
+                    },
+                    {
+                        "name": "evaluate",
+                        "signature": "evaluate(self)",
+                        "brief_description": "Evaluates the model on validation data and returns loss and perplexity"
+                    },
+                    {
+                        "name": "plot_training_curves",
+                        "signature": "plot_training_curves(self, save_path=None)",
+                        "brief_description": "Visualizes training metrics including loss, perplexity, and learning rate"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "numpy", "matplotlib", "tqdm"]
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
+        "complexity_score": 8,  # High complexity due to comprehensive training loop, evaluation, and visualization features
+    }

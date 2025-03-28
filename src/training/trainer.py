@@ -32,7 +32,7 @@ def train_model(
         device: Device to train on (will use CUDA if available if not specified)
         callbacks: List of callback functions to call after each epoch
 
-    Returns:
+    Returns:    
         Dictionary containing training history (losses, metrics, etc.)
     """
     # Set device
