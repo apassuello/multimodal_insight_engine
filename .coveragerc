@@ -1,0 +1,40 @@
+[run]
+# Specify the directory with your source code
+source = src
+
+# Exclude files you don't want to measure
+omit =
+    tests/*
+    demos/*
+    setup.py
+    setup_env.sh
+    .env
+    __init__.py
+    */__init__.py
+
+# Make sure to include partial branches for thorough coverage
+branch = True
+
+[report]
+# Regexes for lines to exclude from coverage
+exclude_lines =
+    # Have to skip for special cases
+    pragma: no cover
+    # Skip type hints
+    :type:
+    # Skip docstring examples
+    :example:
+    # Skip debug prints
+    print\(.*\)
+    # Skip logging
+    logger\.
+    # Skip error handling that's hard to test
+    except Exception as e:
+    # Skip main blocks
+    if __name__ == '__main__':
+
+# Show missing lines in the report
+show_missing = True
+
+[html]
+directory = coverage_html 

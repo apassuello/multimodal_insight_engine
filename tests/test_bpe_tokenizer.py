@@ -6,6 +6,7 @@ import random
 from typing import List, Dict, Tuple, Optional
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pytest
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.europarl_dataset import EuroparlDataset
@@ -16,6 +17,30 @@ from src.data.tokenization import (
     clean_text,
     create_transformer_dataloaders,
 )
+
+@pytest.fixture
+def en_tokenizer():
+    """Fixture for English BPE tokenizer."""
+    tokenizer = BPETokenizer(num_merges=100)  # Small vocab for testing
+    tokenizer.train(
+        texts=["Hello world", "This is a test", "Machine learning is fun"],
+        vocab_size=256,  # Small vocab for testing
+        min_frequency=1,
+        show_progress=False
+    )
+    return tokenizer
+
+@pytest.fixture
+def de_tokenizer():
+    """Fixture for German BPE tokenizer."""
+    tokenizer = BPETokenizer(num_merges=100)  # Small vocab for testing
+    tokenizer.train(
+        texts=["Hallo Welt", "Dies ist ein Test", "Maschinelles Lernen macht Spaß"],
+        vocab_size=256,  # Small vocab for testing
+        min_frequency=1,
+        show_progress=False
+    )
+    return tokenizer
 
 def set_seed(seed=42):
     """Set random seeds for reproducibility."""
@@ -278,7 +303,6 @@ def prepare_for_transformer(
 
 
 def main():
-    # Set seed for reproducibility
     # Set seed for reproducibility
     set_seed(42)
     
