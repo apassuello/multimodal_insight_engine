@@ -229,7 +229,8 @@ class BLEUScore:
         """
         if not self.hypotheses or not self.references:
             return 0.0
-        return float(corpus_bleu(self.references, self.hypotheses, weights=self.weights))
+        score: float = corpus_bleu(self.references, self.hypotheses, weights=self.weights)  # type: ignore
+        return score if score is not None else 0.0
 
 
 class CustomMetric:

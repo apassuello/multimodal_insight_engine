@@ -153,7 +153,7 @@ class SafetyFilter:
                     matches = re.finditer(pattern, redacted_text, re.IGNORECASE)
 
                     # Create a list of replacements (to avoid modifying string while iterating)
-                    replacements = []
+                    replacements: List[Tuple[int, int, str]] = []
                     for match in matches:
                         word = match.group(0)
                         replacements.append(
