@@ -3,6 +3,16 @@
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 from .filter import SafetyFilter
+import os
+
+"""MODULE: integration.py
+PURPOSE: Provides integration layer for augmenting models with safety mechanisms
+KEY COMPONENTS:
+- SafetyAugmentedModel: Wrapper class that adds safety checks to base models
+- predict(): Main method for safe model inference
+- _generate_rejection_message(): Handles safety rejection responses
+DEPENDENCIES: typing, datetime, filter (SafetyFilter)
+SPECIAL NOTES: Implements three-stage safety pipeline: input validation, model inference, output filtering"""
 
 
 class SafetyAugmentedModel:
@@ -164,3 +174,45 @@ class SafetyAugmentedModel:
             List of safety events
         """
         return self.safety_events
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides integration layer for augmenting models with safety mechanisms, including input validation, output filtering, and safety event logging",
+        "key_classes": [
+            {
+                "name": "SafetyAugmentedModel",
+                "purpose": "Wrapper class that adds safety checks and filtering to base models",
+                "key_methods": [
+                    {
+                        "name": "predict",
+                        "signature": "def predict(self, input_text: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]",
+                        "brief_description": "Main method for safe model inference with input validation and output filtering"
+                    },
+                    {
+                        "name": "_generate_rejection_message",
+                        "signature": "def _generate_rejection_message(self, validation_info: Dict[str, Any]) -> str",
+                        "brief_description": "Generates appropriate rejection messages based on safety violations"
+                    },
+                    {
+                        "name": "_log_safety_event",
+                        "signature": "def _log_safety_event(self, event_type: str, content: str, details: Dict[str, Any]) -> None",
+                        "brief_description": "Logs safety-related events for monitoring"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["typing", "datetime", "filter"]
+            }
+        ],
+        "external_dependencies": [],
+        "complexity_score": 8,  # Complex due to multi-stage safety pipeline, error handling, and event logging
+    }

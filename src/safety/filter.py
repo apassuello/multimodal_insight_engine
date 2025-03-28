@@ -11,6 +11,16 @@ from .utils import (
     PII_PATTERNS,
     TOXICITY_PATTERNS,
 )
+import os
+
+"""MODULE: filter.py
+PURPOSE: Implements safety filtering mechanisms for model inputs and outputs
+KEY COMPONENTS:
+- SafetyFilter: Main class for validating inputs and filtering outputs
+- validate_input(): Checks input text for safety concerns
+- filter_output(): Filters output text to ensure safety
+DEPENDENCIES: re, typing, evaluator (SafetyEvaluator), utils (safety categories and patterns)
+SPECIAL NOTES: Implements content redaction and filtering based on safety evaluation results"""
 
 
 class SafetyFilter:
@@ -164,3 +174,45 @@ class SafetyFilter:
                     redacted_text += disclaimer
 
         return redacted_text
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements safety filtering mechanisms for validating model inputs and filtering outputs based on safety evaluation results",
+        "key_classes": [
+            {
+                "name": "SafetyFilter",
+                "purpose": "Main class for validating inputs and filtering outputs based on safety concerns",
+                "key_methods": [
+                    {
+                        "name": "validate_input",
+                        "signature": "def validate_input(self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False) -> Tuple[bool, Dict[str, Any]]",
+                        "brief_description": "Validates input text for safety concerns with optional override"
+                    },
+                    {
+                        "name": "filter_output",
+                        "signature": "def filter_output(self, output_text: str, metadata: Optional[Dict[str, Any]] = None) -> Tuple[str, Dict[str, Any]]",
+                        "brief_description": "Filters output text to ensure safety and remove unsafe content"
+                    },
+                    {
+                        "name": "_redact_unsafe_content",
+                        "signature": "def _redact_unsafe_content(self, text: str, evaluation: Dict[str, Any]) -> str",
+                        "brief_description": "Redacts unsafe content from text based on safety evaluation"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["re", "typing", "evaluator", "utils"]
+            }
+        ],
+        "external_dependencies": [],
+        "complexity_score": 8,  # Complex due to content filtering, redaction, and safety evaluation integration
+    }

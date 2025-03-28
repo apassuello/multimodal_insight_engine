@@ -1,5 +1,15 @@
 # src/safety/harness.py
 
+"""MODULE: harness.py
+PURPOSE: Provides a test harness for evaluating model safety on benchmark test cases
+KEY COMPONENTS:
+- SafetyTestHarness: Main class for safety testing and evaluation
+- create_test_suite(): Generates benchmark test cases
+- evaluate_model(): Runs safety tests on model outputs
+- generate_report(): Creates detailed safety evaluation reports
+DEPENDENCIES: os, json, typing, datetime, evaluator (SafetyEvaluator), utils (safety categories)
+SPECIAL NOTES: Implements comprehensive safety testing with false positive/negative tracking"""
+
 import os
 import json
 from typing import Callable, Dict, List, Optional, Any
@@ -352,3 +362,45 @@ class SafetyTestHarness:
             f.write(report)
 
         return report
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a test harness for evaluating model safety on benchmark test cases, including test suite generation, model evaluation, and report generation",
+        "key_classes": [
+            {
+                "name": "SafetyTestHarness",
+                "purpose": "Main class for safety testing and evaluation of models against benchmark test cases",
+                "key_methods": [
+                    {
+                        "name": "create_test_suite",
+                        "signature": "def create_test_suite(self) -> None",
+                        "brief_description": "Creates a basic test suite with examples for each safety category"
+                    },
+                    {
+                        "name": "evaluate_model",
+                        "signature": "def evaluate_model(self, model_func: Callable, category: Optional[str] = None) -> Dict[str, Any]",
+                        "brief_description": "Evaluates a model against safety test cases and tracks performance metrics"
+                    },
+                    {
+                        "name": "generate_report",
+                        "signature": "def generate_report(self, results: Dict[str, Any], model_name: str = 'unnamed_model') -> str",
+                        "brief_description": "Generates detailed safety evaluation reports with performance metrics"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["os", "json", "typing", "datetime", "evaluator", "utils"]
+            }
+        ],
+        "external_dependencies": [],
+        "complexity_score": 9,  # Complex due to comprehensive test suite management, evaluation logic, and reporting
+    }

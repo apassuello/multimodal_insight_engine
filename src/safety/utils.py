@@ -1,5 +1,14 @@
 # src/safety/utils.py
 
+"""MODULE: utils.py
+PURPOSE: Provides utility functions and constants for safety evaluation and filtering
+KEY COMPONENTS:
+- Pattern libraries for toxicity, bias, harmful instructions, and PII detection
+- Text pattern matching and scoring functions
+- Safety report generation and analysis tools
+DEPENDENCIES: re, json, os, typing, datetime
+SPECIAL NOTES: Implements comprehensive regex-based pattern matching for various safety concerns"""
+
 import re
 import json
 import os
@@ -339,3 +348,39 @@ def categorize_safety_issues(text: str) -> Dict[str, Any]:
 
     # Extract the detailed matches that were removed from the results in the evaluator
     return results
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utility functions and constants for safety evaluation, including pattern matching, scoring, and report generation",
+        "key_classes": [],  # No classes in this module
+        "key_functions": [
+            {
+                "name": "check_text_patterns",
+                "signature": "def check_text_patterns(text: str, patterns: Dict[str, str]) -> Dict[str, List[str]]",
+                "brief_description": "Checks text against multiple regex patterns for safety concerns"
+            },
+            {
+                "name": "calculate_category_score",
+                "signature": "def calculate_category_score(matches: Dict[str, List[str]], text: str) -> float",
+                "brief_description": "Calculates normalized safety scores based on pattern matches"
+            },
+            {
+                "name": "evaluate_text_safety",
+                "signature": "def evaluate_text_safety(text: str, sensitivity: str = SENSITIVITY_MEDIUM, safety_thresholds: Optional[Dict[str, float]] = None) -> Dict[str, Any]",
+                "brief_description": "Main function for evaluating text safety across multiple categories"
+            }
+        ],
+        "external_dependencies": [],
+        "complexity_score": 9,  # Complex due to extensive pattern matching, scoring logic, and report generation
+    }

@@ -1,3 +1,12 @@
+"""MODULE: evaluator.py
+PURPOSE: Provides a comprehensive framework for evaluating model outputs for safety concerns
+KEY COMPONENTS:
+- SafetyEvaluator: Main class for safety evaluation with configurable thresholds and sensitivity
+- evaluate_text(): Core method for analyzing text for safety issues
+- log_evaluation(): Tracks and stores safety evaluation results
+DEPENDENCIES: torch, numpy, typing, re, json, os, utils (safety categories and sensitivity settings)
+SPECIAL NOTES: Implements configurable sensitivity levels and threshold-based safety checks"""
+
 import torch
 import numpy as np
 from typing import Dict, List, Union, Optional, Any, Tuple
@@ -266,3 +275,45 @@ def import_datetime():
     import datetime
 
     return datetime
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a framework for evaluating model outputs for safety concerns, including toxicity, bias, harmful instructions, and personal information detection",
+        "key_classes": [
+            {
+                "name": "SafetyEvaluator",
+                "purpose": "Main class for safety evaluation with configurable thresholds and sensitivity",
+                "key_methods": [
+                    {
+                        "name": "evaluate_text",
+                        "signature": "def evaluate_text(self, text: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluates text for safety concerns across multiple categories"
+                    },
+                    {
+                        "name": "log_evaluation",
+                        "signature": "def log_evaluation(self, text: str, results: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> None",
+                        "brief_description": "Logs safety evaluation results with metadata"
+                    },
+                    {
+                        "name": "get_safety_summary",
+                        "signature": "def get_safety_summary(self) -> Dict[str, Any]",
+                        "brief_description": "Returns summary statistics of safety evaluations"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "numpy", "typing", "re", "json", "os", "utils"]
+            }
+        ],
+        "external_dependencies": ["torch", "numpy"],
+        "complexity_score": 7,  # Complex due to multiple safety checks, pattern matching, and logging
+    }
