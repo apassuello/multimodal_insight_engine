@@ -1,8 +1,17 @@
 # src/optimization/pruning.py
+"""MODULE: pruning.py
+PURPOSE: Implements various pruning techniques for neural networks to reduce model size and improve inference speed.
+KEY COMPONENTS:
+- PruningConfig: Configuration class for model pruning settings.
+- ModelPruner: Implements various pruning techniques for neural networks.
+DEPENDENCIES: torch, typing, logging
+SPECIAL NOTES: Supports magnitude, structured, and iterative pruning methods."""
+
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 from typing import Dict, List, Optional, Union, Any
 import logging
+import os
 
 class PruningConfig:
     """
@@ -248,3 +257,68 @@ class ModelPruner:
             "iterations": len(self.pruning_history),
             "history": self.pruning_history,
         }
+
+def extract_file_metadata(file_path: str = __file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements various pruning techniques for neural networks.",
+        "key_classes": [
+            {
+                "name": "PruningConfig",
+                "purpose": "Configuration class for model pruning settings.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, method: str = 'magnitude', amount: Union[float, int] = 0.2, dim: Optional[int] = None, n_iterations: int = 1, pruning_dims: Optional[List[str]] = None, sparsity_distribution: str = 'uniform', reinitialize: bool = False)",
+                        "brief_description": "Initialize pruning configuration."
+                    },
+                    {
+                        "name": "__str__",
+                        "signature": "(self) -> str",
+                        "brief_description": "String representation of the configuration."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing"]
+            },
+            {
+                "name": "ModelPruner",
+                "purpose": "Implements various pruning techniques for neural networks.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, config: Optional[PruningConfig] = None)",
+                        "brief_description": "Initialize the model pruner."
+                    },
+                    {
+                        "name": "prune_model",
+                        "signature": "(self) -> nn.Module",
+                        "brief_description": "Apply pruning to the model."
+                    },
+                    {
+                        "name": "restore_model",
+                        "signature": "(self)",
+                        "brief_description": "Restore the model to its original unpruned state."
+                    },
+                    {
+                        "name": "get_pruning_info",
+                        "signature": "(self) -> Dict[str, Any]",
+                        "brief_description": "Get information about pruning results."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing", "logging"]
+            }
+        ],
+        "external_dependencies": ["torch", "typing", "logging"],
+        "complexity_score": 7,
+    }

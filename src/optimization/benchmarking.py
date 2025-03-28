@@ -9,6 +9,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+"""MODULE: benchmarking.py
+PURPOSE: Provides a framework for measuring and comparing model optimization techniques.
+KEY COMPONENTS:
+- OptimizationBenchmark: Framework for measuring and comparing model optimization techniques.
+DEPENDENCIES: torch, typing, json, os, numpy, matplotlib
+SPECIAL NOTES: Supports benchmarking for quantization, pruning, and mixed precision methods."""
+
 class OptimizationBenchmark:
     """
     Framework for measuring and comparing model optimization techniques.
@@ -504,3 +511,60 @@ class OptimizationBenchmark:
             recommendations.append("- For **Apple Silicon**, make sure to enable MPS acceleration and use FP16 precision for optimal performance.\n")
         
         return recommendations
+
+def extract_file_metadata(file_path: str = __file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a framework for measuring and comparing model optimization techniques.",
+        "key_classes": [
+            {
+                "name": "OptimizationBenchmark",
+                "purpose": "Framework for measuring and comparing model optimization techniques.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, input_generator: Callable[[int], torch.Tensor], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
+                        "brief_description": "Initialize the optimization benchmark."
+                    },
+                    {
+                        "name": "benchmark_original_model",
+                        "signature": "(self) -> Dict[str, Any]",
+                        "brief_description": "Benchmark the original unoptimized model."
+                    },
+                    {
+                        "name": "benchmark_optimized_model",
+                        "signature": "(self, model: nn.Module, name: str) -> Dict[str, Any]",
+                        "brief_description": "Benchmark an optimized model."
+                    },
+                    {
+                        "name": "compare_optimizations",
+                        "signature": "(self, save_plot: bool = True) -> Dict[str, Any]",
+                        "brief_description": "Compare all benchmarked optimizations."
+                    },
+                    {
+                        "name": "save_results",
+                        "signature": "(self, filename: str = 'optimization_benchmark.json')",
+                        "brief_description": "Save benchmark results to a file."
+                    },
+                    {
+                        "name": "generate_report",
+                        "signature": "(self) -> str",
+                        "brief_description": "Generate a report of the benchmark results."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing", "json", "os", "numpy", "matplotlib"]
+            }
+        ],
+        "external_dependencies": ["torch", "typing", "json", "os", "numpy", "matplotlib"],
+        "complexity_score": 6,
+    }

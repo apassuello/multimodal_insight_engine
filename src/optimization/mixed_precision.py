@@ -1,8 +1,18 @@
 # src/optimization/mixed_precision.py
+
+"""MODULE: mixed_precision.py
+PURPOSE: Converts models to use mixed precision formats for training and inference.
+KEY COMPONENTS:
+- MixedPrecisionConverter: Converts models to use mixed precision formats.
+- MixedPrecisionWrapper: Wrapper for mixed precision inference with autocast.
+DEPENDENCIES: torch, typing, logging
+SPECIAL NOTES: Supports FP16 and BF16 mixed precision, with special handling for Apple Silicon MPS acceleration."""
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Union, Any, Callable
 import logging
+import os
 
 class MixedPrecisionConverter:
     """
@@ -136,3 +146,69 @@ class MixedPrecisionWrapper(nn.Module):
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self.model, name)
+
+
+def extract_file_metadata(file_path: str = __file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Converts models to use mixed precision formats for training and inference.",
+        "key_classes": [
+            {
+                "name": "MixedPrecisionConverter",
+                "purpose": "Converts models to use mixed precision formats.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, dtype: torch.dtype = torch.float16, use_auto_cast: bool = True)",
+                        "brief_description": "Initialize the mixed precision converter."
+                    },
+                    {
+                        "name": "convert_to_mixed_precision",
+                        "signature": "(self) -> nn.Module",
+                        "brief_description": "Convert the model to use mixed precision."
+                    },
+                    {
+                        "name": "restore_original_precision",
+                        "signature": "(self)",
+                        "brief_description": "Restore the model to its original precision."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing", "logging"]
+            },
+            {
+                "name": "MixedPrecisionWrapper",
+                "purpose": "Wrapper for mixed precision inference with autocast.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, dtype: torch.dtype = torch.float16)",
+                        "brief_description": "Initialize the mixed precision wrapper."
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "(self, *args, **kwargs)",
+                        "brief_description": "Forward pass with automatic mixed precision."
+                    },
+                    {
+                        "name": "__getattr__",
+                        "signature": "(self, name)",
+                        "brief_description": "Delegate attribute access to the wrapped model."
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "typing", "logging"]
+            }
+        ],
+        "external_dependencies": ["torch", "typing", "logging"],
+        "complexity_score": 5,
+    }

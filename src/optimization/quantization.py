@@ -1,4 +1,13 @@
-# src/optimization/quantization.py
+"""MODULE: quantization.py
+PURPOSE: Implements various quantization techniques for neural networks to optimize model size and performance.
+KEY COMPONENTS:
+- QuantizationConfig: Configuration class for model quantization settings.
+- ModelOptimizer: Base class for model optimization techniques.
+- DynamicQuantizer: Implements dynamic quantization for PyTorch models.
+- StaticQuantizer: Implements static quantization for PyTorch models.
+DEPENDENCIES: torch, typing, logging
+SPECIAL NOTES: Supports dynamic, static, and quantization-aware training methods."""
+
 import torch
 import torch.nn as nn
 import torch.quantization as quantization
@@ -6,6 +15,7 @@ from typing import Dict, List, Optional, Union, Any, Callable, Type, Tuple
 import logging
 from torch.nn.intrinsic import ConvBnReLU2d, ConvBn2d, LinearReLU, LinearBn1d
 from torch.quantization import default_observer, MinMaxObserver
+import os
 
 class QuantizationConfig:
     """
@@ -524,3 +534,120 @@ class StaticQuantizer(ModelOptimizer):
             "backend": self.backend,
             "per_channel": self.config.per_channel,
         }
+
+
+def extract_file_metadata(file_path: str = __file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements various quantization techniques for neural networks.",
+        "key_classes": [
+            {
+                "name": "QuantizationConfig",
+                "purpose": "Configuration class for model quantization settings.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, quantization_type: str = 'dynamic', dtype: Optional[torch.dtype] = None, quantize_weights: bool = True, quantize_activations: bool = True, bits: int = 8, symmetric: bool = False, per_channel: bool = False)",
+                        "brief_description": "Initialize quantization configuration."
+                    },
+                    {
+                        "name": "__str__",
+                        "signature": "(self) -> str",
+                        "brief_description": "String representation of the configuration."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing"]
+            },
+            {
+                "name": "ModelOptimizer",
+                "purpose": "Base class for model optimization techniques.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module)",
+                        "brief_description": "Initialize the model optimizer."
+                    },
+                    {
+                        "name": "optimize",
+                        "signature": "(self) -> nn.Module",
+                        "brief_description": "Apply optimization to the model."
+                    },
+                    {
+                        "name": "restore_original",
+                        "signature": "(self)",
+                        "brief_description": "Restore the model to its original state."
+                    },
+                    {
+                        "name": "get_size_info",
+                        "signature": "(self) -> Dict[str, Any]",
+                        "brief_description": "Get information about model size before and after optimization."
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "typing", "logging"]
+            },
+            {
+                "name": "DynamicQuantizer",
+                "purpose": "Implements dynamic quantization for PyTorch models.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, config: Optional[QuantizationConfig] = None, dtype: torch.dtype = torch.qint8, qconfig_spec: Optional[Dict[Type[nn.Module], Any]] = None)",
+                        "brief_description": "Initialize the dynamic quantizer."
+                    },
+                    {
+                        "name": "optimize",
+                        "signature": "(self) -> nn.Module",
+                        "brief_description": "Apply dynamic quantization to the model."
+                    },
+                    {
+                        "name": "_fuse_modules",
+                        "signature": "(self, model: nn.Module) -> nn.Module",
+                        "brief_description": "Fuse modules for improved quantization where applicable."
+                    }
+                ],
+                "inheritance": "ModelOptimizer",
+                "dependencies": ["torch", "typing", "logging"]
+            },
+            {
+                "name": "StaticQuantizer",
+                "purpose": "Implements static quantization for PyTorch models.",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "(self, model: nn.Module, config: Optional[QuantizationConfig] = None, calibration_loader: Optional[torch.utils.data.DataLoader] = None)",
+                        "brief_description": "Initialize the static quantizer."
+                    },
+                    {
+                        "name": "optimize",
+                        "signature": "(self) -> nn.Module",
+                        "brief_description": "Apply static quantization to the model."
+                    },
+                    {
+                        "name": "_calibrate_model",
+                        "signature": "(self, model: nn.Module)",
+                        "brief_description": "Calibrate the model for static quantization."
+                    },
+                    {
+                        "name": "_fuse_modules",
+                        "signature": "(self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None) -> nn.Module",
+                        "brief_description": "Fuse modules for improved quantization where applicable."
+                    }
+                ],
+                "inheritance": "ModelOptimizer",
+                "dependencies": ["torch", "typing", "logging"]
+            }
+        ],
+        "external_dependencies": ["torch", "typing", "logging"],
+        "complexity_score": 8,
+    }
