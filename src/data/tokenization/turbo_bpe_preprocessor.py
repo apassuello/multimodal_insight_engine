@@ -7,6 +7,7 @@ import pickle
 import os
 import multiprocessing
 from functools import partial
+from .vocabulary import Vocabulary
 
 class TurboBPEPreprocessor:
     """
@@ -27,6 +28,7 @@ class TurboBPEPreprocessor:
         os.makedirs(cache_dir, exist_ok=True)
         self.word_cache = {}
         self.dataset_cache = {}
+        self.vocab = Vocabulary()  # Initialize with Vocabulary class
         
         # Determine best batch size for local hardware
         # Smaller batches often work better on MPS for this workload
@@ -78,6 +80,12 @@ class TurboBPEPreprocessor:
         except Exception as e:
             print(f"Error saving cache: {e}")
     
+    def _get_token_index(self, token: str) -> int:
+        """Get token index from vocabulary."""
+        if token not in self.vocab.token_to_idx:
+            self.vocab.add_token(token)
+        return self.vocab.token_to_idx[token]
+    
     def _process_text_batch(self, texts, tokenizer):
         """Process a batch of texts with a tokenizer."""
         # Using cached MPS implementation
@@ -114,8 +122,8 @@ class TurboBPEPreprocessor:
                 
                 all_tokens.extend(tokens)
             
-            # Convert to token IDs
-            token_ids = [tokenizer.vocab.token_to_index(token) for token in all_tokens]
+            # Convert to token IDs using Vocabulary
+            token_ids = [self._get_token_index(token) for token in all_tokens]
             
             # Cache the result for the whole text
             self.word_cache[text] = token_ids
@@ -156,7 +164,7 @@ class TurboBPEPreprocessor:
         # Initialize timer
         start_time = time.time()
         
-        # Get special token IDs
+        # Get special token IDs from tokenizer's special_tokens property
         special_tokens = {
             'src_bos': src_tokenizer.special_tokens["bos_token_idx"],
             'src_eos': src_tokenizer.special_tokens["eos_token_idx"],

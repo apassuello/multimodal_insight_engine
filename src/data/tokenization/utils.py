@@ -160,62 +160,49 @@ def create_transformer_dataloaders(
     return train_dataloader, val_dataloader
 
 
-def transformer_collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+def transformer_collate_fn(batch: List[Union[Dict[str, torch.Tensor], List[int]]]) -> Union[Dict[str, torch.Tensor], torch.Tensor]:
     """
-    Collate function for transformer batches.
+    Collate function for transformer datasets.
     
     Args:
-        batch: List of examples
-        
+        batch: List of examples, each either a dict with input_ids and attention_mask
+              or a list of token IDs.
+    
     Returns:
-        Batched tensors with padding
+        Either a dict with batched input_ids and attention_mask tensors,
+        or a single batched tensor of token IDs.
     """
-    # Get batch size and determine maximum length
-    batch_size = len(batch)
-    if batch_size == 0:
+    if not batch:
         return {}
     
-    # Determine maximum length in this batch
-    max_length = max(example["input_ids"].size(0) for example in batch)
+    # Check if batch contains dictionaries or lists
+    is_dict_batch = isinstance(batch[0], dict)
     
-    # Get padding index from first example
-    pad_idx = 0  # Default
-    if hasattr(batch[0]["input_ids"], "new_full"):
-        # This is a tensor, so we can create a new one with the same dtype and device
-        input_ids = torch.stack([
-            F.pad(
-                example["input_ids"],
-                (0, max_length - example["input_ids"].size(0)),
-                value=pad_idx
-            )
-            for example in batch
-        ])
+    if is_dict_batch:
+        # Handle dictionary inputs
+        input_ids = [item["input_ids"] for item in batch]
+        attention_masks = [item["attention_mask"] for item in batch]
         
-        attention_mask = torch.stack([
-            F.pad(
-                example["attention_mask"],
-                (0, max_length - example["attention_mask"].size(0)),
-                value=0
-            )
-            for example in batch
-        ])
+        # Pad sequences
+        max_len = max(seq.size(0) for seq in input_ids)
+        padded_ids = torch.zeros((len(batch), max_len), dtype=input_ids[0].dtype)
+        padded_masks = torch.zeros((len(batch), max_len), dtype=attention_masks[0].dtype)
+        
+        for i, (ids, mask) in enumerate(zip(input_ids, attention_masks)):
+            padded_ids[i, :ids.size(0)] = ids
+            padded_masks[i, :mask.size(0)] = mask
+        
+        return {
+            "input_ids": padded_ids,
+            "attention_mask": padded_masks
+        }
     else:
-        # This is a list, so we'll need to handle it differently
-        input_ids = [
-            example["input_ids"] + [pad_idx] * (max_length - len(example["input_ids"]))
-            for example in batch
-        ]
+        # Handle list inputs
+        # Pad sequences
+        max_len = max(len(seq) for seq in batch)
+        padded = torch.zeros((len(batch), max_len), dtype=torch.long)
         
-        attention_mask = [
-            example["attention_mask"] + [0] * (max_length - len(example["attention_mask"]))
-            for example in batch
-        ]
+        for i, seq in enumerate(batch):
+            padded[i, :len(seq)] = torch.tensor(seq)
         
-        # Convert to tensors
-        input_ids = torch.tensor(input_ids, dtype=torch.long)
-        attention_mask = torch.tensor(attention_mask, dtype=torch.long)
-    
-    return {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-    }
+        return padded

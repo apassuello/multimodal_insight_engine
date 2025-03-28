@@ -32,8 +32,8 @@ def create_test_data(temp_dir: str, src_lang: str = "de", tgt_lang: str = "en"):
 
 def test_europarl_dataset_initialization():
     """Test basic initialization of the dataset"""
-    dataset = EuroparlDataset(data_dir="dummy_path")
-    assert dataset.data_dir == "dummy_path"
+    dataset = EuroparlDataset(data_dir="data/europarl/")
+    assert dataset.data_dir == "data/europarl/"
     assert dataset.src_lang == "de"
     assert dataset.tgt_lang == "en"
     assert dataset.max_examples is None

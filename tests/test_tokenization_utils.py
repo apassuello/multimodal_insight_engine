@@ -181,28 +181,25 @@ def test_transformer_collate_fn_tensor_input():
 
 def test_transformer_collate_fn_list_input():
     """Test collate function with list inputs."""
-    # Create a batch of examples with different lengths
+    # Create sample batch of lists
     batch = [
-        {
-            "input_ids": [1, 4, 5, 2],
-            "attention_mask": [1, 1, 1, 1]
-        },
-        {
-            "input_ids": [1, 6, 2],
-            "attention_mask": [1, 1, 1]
-        }
+        [1, 2, 3],
+        [1, 2],
+        [1, 2, 3, 4]
     ]
     
-    collated = transformer_collate_fn(batch)
+    # Call collate function
+    result = transformer_collate_fn(batch)
     
-    assert isinstance(collated, dict)
-    assert "input_ids" in collated
-    assert "attention_mask" in collated
-    assert collated["input_ids"].shape == (2, 4)  # batch_size=2, max_len=4
-    assert collated["attention_mask"].shape == (2, 4)
+    # Check result is a tensor
+    assert isinstance(result, torch.Tensor)
+    assert result.shape[0] == 3  # batch size
+    assert result.shape[1] == 4  # max sequence length
     
-    # Check padding
-    assert torch.equal(collated["attention_mask"][1], torch.tensor([1, 1, 1, 0]))
+    # Check padding is correct
+    assert result[0].tolist() == [1, 2, 3, 0]  # padded with 0
+    assert result[1].tolist() == [1, 2, 0, 0]  # padded with 0
+    assert result[2].tolist() == [1, 2, 3, 4]  # no padding needed
 
 def test_transformer_collate_fn_empty_batch():
     """Test collate function with empty batch."""
