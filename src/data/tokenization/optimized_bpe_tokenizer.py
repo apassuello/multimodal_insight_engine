@@ -103,7 +103,11 @@ class LRUCache:
     def _cleanup_loop(self) -> None:
         """Background thread loop for cleaning up expired items."""
         while True:
-            time.sleep(min(self.ttl / 2, 60))  # Sleep half of TTL or 1 minute, whichever is smaller
+            # Ensure ttl is not None before division
+            sleep_time = 60  # Default to 1 minute
+            if self.ttl is not None:
+                sleep_time = min(self.ttl / 2, 60)  # Sleep half of TTL or 1 minute, whichever is smaller
+            time.sleep(sleep_time)
             self._cleanup_expired()
     
     def _cleanup_expired(self) -> None:
@@ -303,16 +307,15 @@ class OptimizedBPETokenizer(BaseTokenizer):
                     merge_pairs.append([h1, h2])
             
             # Only create tensor for single-char merges that can benefit from vectorization
-            single_char_merges = [(i, pair) for i, pair in enumerate(self.merges) 
+            single_char_merges = [(i, (pair[0], pair[1])) for i, pair in enumerate(self.merges) 
                                  if len(pair[0]) == 1 and len(pair[1]) == 1]
             
             if single_char_merges:
-                indices, pairs = zip(*single_char_merges)
+                indices = [idx for idx, _ in single_char_merges]
+                pair_values = [[ord(p[0]), ord(p[1])] for _, p in single_char_merges]
+                
                 self.single_char_merge_indices = torch.tensor(indices, device=self.device)
-                self.single_char_merge_pairs = torch.tensor(
-                    [[ord(p[0]), ord(p[1])] for p in pairs], 
-                    device=self.device
-                )
+                self.single_char_merge_pairs = torch.tensor(pair_values, device=self.device)
             else:
                 self.single_char_merge_indices = torch.empty(0, dtype=torch.long, device=self.device)
                 self.single_char_merge_pairs = torch.empty((0, 2), dtype=torch.long, device=self.device)
@@ -364,29 +367,34 @@ class OptimizedBPETokenizer(BaseTokenizer):
             # Cache for old and new interfaces
             if isinstance(self.word_token_cache, LRUCache):
                 self.word_token_cache.put(word, result)
-            self.word_token_cache[word] = result
+            elif isinstance(self.word_token_cache, dict):
+                self.word_token_cache[word] = result
             return result
             
         # Check memory before using cache
         memory_ok = self._memory_check()
         
         # Check cache
-        if word in self.word_token_cache:
-            # For backward compatibility
+        cached_result = None
+        
+        # Try dictionary-style access first for backward compatibility
+        if isinstance(self.word_token_cache, dict) and word in self.word_token_cache:
             return self.word_token_cache[word]
-        elif memory_ok and isinstance(self.word_token_cache, LRUCache):
-            cached = self.word_token_cache.get(word)
-            if cached is not None:
-                return cached
+        # Otherwise try LRUCache access if applicable
+        elif isinstance(self.word_token_cache, LRUCache):
+            cached_result = self.word_token_cache.get(word)
+            if cached_result is not None:
+                return cached_result
         
         # Start with characters
         pieces = list(word)
         
         # Early return for single character words
         if len(pieces) <= 1:
-            # Cache result using both old and new interfaces
-            self.word_token_cache[word] = pieces
-            if memory_ok and isinstance(self.word_token_cache, LRUCache):
+            # Cache result based on cache type
+            if isinstance(self.word_token_cache, dict):
+                self.word_token_cache[word] = pieces
+            elif memory_ok and isinstance(self.word_token_cache, LRUCache):
                 self.word_token_cache.put(word, pieces)
             return pieces
         
@@ -417,9 +425,10 @@ class OptimizedBPETokenizer(BaseTokenizer):
             merged = first + second
             active_pieces = active_pieces[:i] + [merged] + active_pieces[j+1:]
         
-        # Cache result using both old and new interfaces
-        self.word_token_cache[word] = active_pieces
-        if memory_ok and isinstance(self.word_token_cache, LRUCache):
+        # Cache result based on cache type
+        if isinstance(self.word_token_cache, dict):
+            self.word_token_cache[word] = active_pieces
+        elif memory_ok and isinstance(self.word_token_cache, LRUCache):
             self.word_token_cache.put(word, active_pieces)
             
         return active_pieces
@@ -659,20 +668,16 @@ class OptimizedBPETokenizer(BaseTokenizer):
         Returns:
             Dictionary mapping special token names to their indices
         """
-        special_tokens_indices = self.vocab.special_token_indices
-        
-        # For backward compatibility with tests
-        # Tests expect the tokens themselves, not just the indices
-        backward_compat = {
-            "pad_token": self.vocab.pad_token,
-            "unk_token": self.vocab.unk_token,
-            "bos_token": self.vocab.bos_token,
-            "eos_token": self.vocab.eos_token,
-            "mask_token": self.vocab.mask_token,
+        # Get special token indices directly
+        special_tokens_indices = {
+            "pad_token_idx": self.vocab.token_to_index(self.vocab.pad_token),
+            "unk_token_idx": self.vocab.token_to_index(self.vocab.unk_token),
+            "bos_token_idx": self.vocab.token_to_index(self.vocab.bos_token),
+            "eos_token_idx": self.vocab.token_to_index(self.vocab.eos_token),
+            "mask_token_idx": self.vocab.token_to_index(self.vocab.mask_token)
         }
         
-        # Combine both for maximum compatibility
-        return {**special_tokens_indices, **backward_compat}
+        return special_tokens_indices
     
     @property
     def cache_size(self) -> int:
@@ -789,8 +794,14 @@ class OptimizedBPETokenizer(BaseTokenizer):
         # Load merges and convert from lists to tuples
         with open(f"{path}/merges.json", "r", encoding="utf-8") as f:
             merges_list = json.load(f)
-            # Convert lists to tuples for hashing
-            merges = [tuple(pair) for pair in merges_list]
+            # Convert lists to tuples of strings for hashing
+            merges = []
+            for pair in merges_list:
+                if isinstance(pair, list) and len(pair) == 2:
+                    # Ensure we always have strings in our tuples
+                    first = str(pair[0]) if not isinstance(pair[0], str) else pair[0]
+                    second = str(pair[1]) if not isinstance(pair[1], str) else pair[1]
+                    merges.append((first, second))
         
         # Load config
         with open(f"{path}/config.json", "r", encoding="utf-8") as f:
@@ -909,8 +920,9 @@ class OptimizedBPETokenizer(BaseTokenizer):
             # Find most frequent pair
             if not pair_freqs:
                 break
-                
-            best_pair = max(pair_freqs, key=pair_freqs.get)
+            
+            # Use a lambda function to fix the type error with max
+            best_pair = max(pair_freqs.keys(), key=lambda x: pair_freqs[x])
             
             merges.append(best_pair)
             
