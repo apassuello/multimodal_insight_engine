@@ -271,9 +271,8 @@ class SafetyEvaluator:
 
 # Helper function to avoid import issues in code snippets
 def import_datetime():
-    """Import datetime module dynamically."""
+    """Helper function to lazily import datetime module."""
     import datetime
-
     return datetime
 
 def extract_file_metadata(file_path=__file__):
@@ -288,32 +287,37 @@ def extract_file_metadata(file_path=__file__):
     """
     return {
         "filename": os.path.basename(file_path),
-        "module_purpose": "Provides a framework for evaluating model outputs for safety concerns, including toxicity, bias, harmful instructions, and personal information detection",
+        "module_purpose": "Provides a comprehensive framework for evaluating model outputs for safety concerns with configurable sensitivity levels",
         "key_classes": [
             {
                 "name": "SafetyEvaluator",
-                "purpose": "Main class for safety evaluation with configurable thresholds and sensitivity",
+                "purpose": "Main class for safety evaluation with configurable thresholds and sensitivity levels",
                 "key_methods": [
                     {
                         "name": "evaluate_text",
-                        "signature": "def evaluate_text(self, text: str) -> Dict[str, Any]",
-                        "brief_description": "Evaluates text for safety concerns across multiple categories"
+                        "signature": "evaluate_text(self, text: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluates text for safety concerns across multiple categories and returns detailed results"
                     },
                     {
                         "name": "log_evaluation",
-                        "signature": "def log_evaluation(self, text: str, results: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> None",
-                        "brief_description": "Logs safety evaluation results with metadata"
+                        "signature": "log_evaluation(self, text: str, results: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> None",
+                        "brief_description": "Records safety evaluation results for analysis and tracking"
+                    },
+                    {
+                        "name": "set_sensitivity",
+                        "signature": "set_sensitivity(self, sensitivity: str) -> None",
+                        "brief_description": "Adjusts the sensitivity level of safety checks based on application requirements"
                     },
                     {
                         "name": "get_safety_summary",
-                        "signature": "def get_safety_summary(self) -> Dict[str, Any]",
-                        "brief_description": "Returns summary statistics of safety evaluations"
+                        "signature": "get_safety_summary(self) -> Dict[str, Any]",
+                        "brief_description": "Provides aggregate statistics on past evaluations and current settings"
                     }
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "numpy", "typing", "re", "json", "os", "utils"]
+                "dependencies": ["typing", "re", "json", "os", ".utils"]
             }
         ],
-        "external_dependencies": ["torch", "numpy"],
-        "complexity_score": 7,  # Complex due to multiple safety checks, pattern matching, and logging
+        "external_dependencies": ["numpy", "torch"],
+        "complexity_score": 8  # High complexity due to multiple detection methods and configuration options
     }

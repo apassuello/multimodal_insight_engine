@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 from typing import List, Dict, Optional, Union
 import random
 from tqdm import tqdm
+import os
 
 from .tokenization import BPETokenizer
 
@@ -209,3 +210,52 @@ def create_lm_dataloaders(
     )
     
     return train_dataloader, val_dataloader
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements dataset and dataloaders for language modeling tasks with efficient tokenization and batching",
+        "key_classes": [
+            {
+                "name": "LanguageModelingDataset",
+                "purpose": "Dataset for causal language modeling with next-token prediction setup",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, texts: List[str], tokenizer: BPETokenizer, max_length: int = 512, pad_idx: int = 0, bos_idx: int = 1, eos_idx: int = 2)",
+                        "brief_description": "Initializes dataset and tokenizes all texts upfront for efficiency"
+                    },
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Creates input-target pairs for next-token prediction tasks"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch", "torch.utils.data", "tokenization.BPETokenizer"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "lm_collate_fn",
+                "signature": "lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[str, torch.Tensor]",
+                "brief_description": "Collates and pads batches for efficient training"
+            },
+            {
+                "name": "create_lm_dataloaders",
+                "signature": "create_lm_dataloaders(texts: List[str], tokenizer: BPETokenizer, batch_size: int = 16, max_length: int = 512, val_split: float = 0.1, seed: int = 42) -> tuple",
+                "brief_description": "Creates training and validation dataloaders with proper data splitting"
+            }
+        ],
+        "external_dependencies": ["torch", "tqdm", "random"],
+        "complexity_score": 5  # Moderate complexity due to batching and dataloader configuration
+    }

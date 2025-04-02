@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
-from typing import Dict, List, Callable, Optional, Union
+from typing import Dict, List, Callable, Optional, Union, Any
 from tqdm import tqdm
 import time
+import os
 
 
 def train_model(
@@ -15,7 +16,7 @@ def train_model(
     scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
     early_stopping_patience: Optional[int] = None,
     device: Optional[Union[str, torch.device]] = None,
-    callbacks: List[Callable] = None,
+    callbacks: Optional[List[Callable[[nn.Module, int, Dict[str, List[float]]], Any]]] = None,
 ) -> Dict[str, List[float]]:
     """
     A generic training loop for PyTorch models.
@@ -46,6 +47,9 @@ def train_model(
             optimizer = model.configure_optimizers(lr=learning_rate)
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    
+    # At this point, optimizer should never be None
+    assert optimizer is not None, "Optimizer should be configured"
 
     # Initialize history
     history = {
@@ -108,11 +112,15 @@ def train_model(
         history["train_loss"].append(avg_train_loss)
         history["train_accuracy"].append(avg_train_accuracy)
 
+        # Initialize validation metrics
+        avg_val_loss = None
+        avg_val_accuracy = None
+        val_losses = []
+        val_accuracies = []
+
         # Validation phase
         if val_dataloader is not None:
             model.eval()
-            val_losses = []
-            val_accuracies = []
 
             with torch.no_grad():
                 for batch in tqdm(val_dataloader, desc="Validation"):
@@ -165,7 +173,7 @@ def train_model(
         )
         if train_accuracies:
             print(f" - accuracy: {avg_train_accuracy:.4f}", end="")
-        if val_dataloader is not None:
+        if val_dataloader is not None and avg_val_loss is not None:
             print(f" - val_loss: {avg_val_loss:.4f}", end="")
             if val_accuracies:
                 print(f" - val_accuracy: {avg_val_accuracy:.4f}", end="")
@@ -177,3 +185,27 @@ def train_model(
                 callback(model, epoch, history)
 
     return history
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a generic, flexible training loop for PyTorch models with support for callbacks and early stopping",
+        "key_functions": [
+            {
+                "name": "train_model",
+                "signature": "train_model(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader] = None, epochs: int = 10, learning_rate: float = 0.001, optimizer: Optional[torch.optim.Optimizer] = None, scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None, early_stopping_patience: Optional[int] = None, device: Optional[Union[str, torch.device]] = None, callbacks: List[Callable] = None) -> Dict[str, List[float]]",
+                "brief_description": "A comprehensive training loop that handles both standard models and those with custom training/validation steps"
+            }
+        ],
+        "external_dependencies": ["torch", "tqdm", "time"],
+        "complexity_score": 6  # Moderate complexity due to flexible handling of different model types and training scenarios
+    }

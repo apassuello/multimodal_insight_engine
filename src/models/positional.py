@@ -380,55 +380,55 @@ def extract_file_metadata(file_path=__file__):
     """
     return {
         "filename": os.path.basename(file_path),
-        "module_purpose": "Implements various positional encoding schemes for transformer models",
+        "module_purpose": "Implements various positional encoding schemes for transformer models to handle sequence order information",
         "key_classes": [
             {
                 "name": "PositionalEncoding",
-                "purpose": "Provides both fixed sinusoidal and learned positional encodings for transformer models",
+                "purpose": "Implements both fixed sinusoidal and learnable positional encodings for transformers",
                 "key_methods": [
                     {
                         "name": "__init__",
                         "signature": "__init__(self, d_model: int, max_seq_length: int = 5000, dropout: float = 0.1, encoding_type: Literal['sinusoidal', 'learned'] = 'sinusoidal')",
-                        "brief_description": "Initialize the positional encoding module with specified type"
+                        "brief_description": "Initializes positional encoding with configurable parameters"
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Add positional encoding to input embeddings"
+                        "brief_description": "Adds positional information to input embeddings"
                     },
                     {
                         "name": "visualize_encodings",
-                        "signature": "visualize_encodings(self, seq_length: Optional[int] = None) -> plt.Figure",
-                        "brief_description": "Visualize the positional encodings as a heatmap"
+                        "signature": "visualize_encodings(self, seq_length: Optional[int] = None) -> Figure",
+                        "brief_description": "Visualizes the positional encodings as a heatmap for analysis"
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "math", "matplotlib.pyplot", "numpy"]
+                "dependencies": ["torch", "torch.nn", "matplotlib.pyplot", "numpy"]
             },
             {
                 "name": "RotaryPositionEncoding",
-                "purpose": "Implements RoPE (Rotary Position Embedding) for enhanced position handling in transformers",
+                "purpose": "Implements Rotary Position Embedding (RoPE) for enhanced relative position handling",
                 "key_methods": [
                     {
                         "name": "__init__",
                         "signature": "__init__(self, head_dim: int, max_seq_length: int = 5000, base: int = 10000)",
-                        "brief_description": "Initialize the rotary position embeddings"
+                        "brief_description": "Initializes rotary embeddings with given dimensions"
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple",
-                        "brief_description": "Apply rotary position embeddings to query and key tensors"
+                        "brief_description": "Applies rotary position encoding to query and key tensors"
                     },
                     {
                         "name": "visualize_rotation",
-                        "signature": "visualize_rotation(self, seq_length: int = 20) -> plt.Figure",
-                        "brief_description": "Visualize the rotary position embeddings"
+                        "signature": "visualize_rotation(self, seq_length: int = 20) -> Figure",
+                        "brief_description": "Visualizes the rotation effects on different sequence positions"
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "math", "matplotlib.pyplot", "numpy"]
+                "dependencies": ["torch", "torch.nn", "math"]
             }
         ],
         "external_dependencies": ["torch", "matplotlib", "numpy"],
-        "complexity_score": 6,  # Moderate-high complexity due to multiple encoding types and visualization features
+        "complexity_score": 7  # High complexity due to mathematical computations and visualization features
     }
