@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-from typing import Union, Tuple, List
+import os
+from typing import Union, Tuple, List, Dict, Any
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 class DataPreprocessor:
@@ -121,3 +122,62 @@ def split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 
     test_data = data[train_size + val_size:]
     
     return train_data, val_data, test_data
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides data preprocessing utilities for time series data and machine learning datasets",
+        "key_classes": [
+            {
+                "name": "DataPreprocessor",
+                "purpose": "Handles data preprocessing operations like standardization and normalization",
+                "key_methods": [
+                    {
+                        "name": "fit",
+                        "signature": "fit(self, data: Union[torch.Tensor, np.ndarray]) -> None",
+                        "brief_description": "Fit the preprocessor on the data"
+                    },
+                    {
+                        "name": "transform",
+                        "signature": "transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
+                        "brief_description": "Transform the data using the fitted preprocessor"
+                    },
+                    {
+                        "name": "fit_transform",
+                        "signature": "fit_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
+                        "brief_description": "Fit the preprocessor and transform the data"
+                    },
+                    {
+                        "name": "inverse_transform",
+                        "signature": "inverse_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
+                        "brief_description": "Inverse transform data back to original scale"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "numpy", "sklearn.preprocessing"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "create_sequences",
+                "signature": "create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor, torch.Tensor]",
+                "brief_description": "Create input-target sequences from time series data"
+            },
+            {
+                "name": "split_data",
+                "signature": "split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]",
+                "brief_description": "Split data into train, validation, and test sets"
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "sklearn"],
+        "complexity_score": 4  # Moderate complexity with multiple utility functions
+    }

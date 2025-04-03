@@ -2,6 +2,7 @@
 from .base_wrapper import PretrainedModelWrapper
 from transformers import ViTModel, ViTConfig
 import torch
+import os
 
 class VisionTransformerWrapper(PretrainedModelWrapper):
     """Wrapper for Hugging Face Vision Transformer models."""
@@ -27,3 +28,45 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
         """
         outputs = self.pretrained_model(pixel_values=pixel_values)
         return outputs.last_hidden_state
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a wrapper for Hugging Face Vision Transformer models with standardized interface",
+        "key_classes": [
+            {
+                "name": "VisionTransformerWrapper",
+                "purpose": "Wrapper for Hugging Face Vision Transformer models with simplified interface",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model_name: str = \"google/vit-base-patch16-224\")",
+                        "brief_description": "Initialize with specific ViT model"
+                    },
+                    {
+                        "name": "load_model",
+                        "signature": "load_model(self, model_name: str) -> None",
+                        "brief_description": "Load a pretrained Vision Transformer model"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, pixel_values: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Process images through the Vision Transformer"
+                    }
+                ],
+                "inheritance": "PretrainedModelWrapper",
+                "dependencies": ["torch", "transformers"]
+            }
+        ],
+        "external_dependencies": ["torch", "transformers"],
+        "complexity_score": 3  # Low complexity
+    }

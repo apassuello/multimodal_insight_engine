@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Dict, List, Tuple, Optional, Any, Callable
 import numpy as np
+import os
 
 def transformer_collate_fn(batch: List[Dict[str, List[int]]], pad_idx: int) -> Dict[str, torch.Tensor]:
     """
@@ -272,3 +273,78 @@ class TransformerDataModule:
     def get_val_dataloader(self):
         """Get the validation dataloader."""
         return self.val_dataloader
+        
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides dataset and dataloader utilities for transformer sequence-to-sequence tasks",
+        "key_classes": [
+            {
+                "name": "TransformerDataset",
+                "purpose": "Dataset for handling tokenized source and target sequences for transformer models",
+                "key_methods": [
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx)",
+                        "brief_description": "Get source and target sequences with proper BOS/EOS tokens and truncation"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data.Dataset"]
+            },
+            {
+                "name": "TransformerCollator",
+                "purpose": "Collator class for batching transformer sequences with padding",
+                "key_methods": [
+                    {
+                        "name": "__call__",
+                        "signature": "__call__(self, batch: List[Dict[str, List[int]]]) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Collate a batch of data with proper padding"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": []
+            },
+            {
+                "name": "TransformerDataModule",
+                "purpose": "Complete data module for handling loading, preprocessing, and batching transformer data",
+                "key_methods": [
+                    {
+                        "name": "_setup",
+                        "signature": "_setup(self)",
+                        "brief_description": "Set up datasets and dataloaders with train/validation splits"
+                    },
+                    {
+                        "name": "get_train_dataloader",
+                        "signature": "get_train_dataloader(self)",
+                        "brief_description": "Get the training dataloader"
+                    },
+                    {
+                        "name": "get_val_dataloader",
+                        "signature": "get_val_dataloader(self)",
+                        "brief_description": "Get the validation dataloader"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch.utils.data.DataLoader", "numpy"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "transformer_collate_fn",
+                "signature": "transformer_collate_fn(batch: List[Dict[str, List[int]]], pad_idx: int) -> Dict[str, torch.Tensor]",
+                "brief_description": "Collate function that pads sequences to the same length within a batch"
+            }
+        ],
+        "external_dependencies": ["torch", "numpy"],
+        "complexity_score": 6  # Moderate-high complexity for sequence handling with padding
+    }

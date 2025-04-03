@@ -73,3 +73,45 @@ class WMTDataLoader:
 # dataloader = WMTDataLoader(data_dir='data/wmt/training', source_lang='en', target_lang='fr', max_examples=1000)
 # for source_batch, target_batch in dataloader:
 #     # Process batches 
+    
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a data loader for WMT (Workshop on Machine Translation) parallel corpus",
+        "key_classes": [
+            {
+                "name": "WMTDataLoader",
+                "purpose": "Loads and preprocesses WMT parallel corpus data with batching capability",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, data_dir: str, source_lang: str, target_lang: str, batch_size: int = 32, max_examples: Optional[int] = None, seed: int = 42, shuffle: bool = True)",
+                        "brief_description": "Initialize the WMT data loader with configurable batch size and filtering"
+                    },
+                    {
+                        "name": "load_data",
+                        "signature": "load_data(self) -> Tuple[List[str], List[str]]",
+                        "brief_description": "Load and preprocess parallel data"
+                    },
+                    {
+                        "name": "__iter__",
+                        "signature": "__iter__(self) -> Tuple[List[str], List[str]]",
+                        "brief_description": "Yield batches of source and target sentences"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["os", "random"]
+            }
+        ],
+        "external_dependencies": ["os", "random"],
+        "complexity_score": 3  # Moderate complexity
+    }

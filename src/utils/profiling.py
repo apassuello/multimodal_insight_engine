@@ -1080,3 +1080,88 @@ class ModelBenchmarkSuite:
             f.write(recommendations)
         
         return recommendations
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utilities for profiling and benchmarking PyTorch models with comprehensive performance analysis",
+        "key_classes": [
+            {
+                "name": "ModelProfiler",
+                "purpose": "Utility for profiling PyTorch models with execution time, memory usage, and layer-wise analysis",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model: torch.nn.Module, device: Optional[torch.device] = None)",
+                        "brief_description": "Initialize the profiler with a model and target device"
+                    },
+                    {
+                        "name": "measure_execution_time",
+                        "signature": "measure_execution_time(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]], iterations: int = 10, warmup: int = 2) -> Dict[str, float]",
+                        "brief_description": "Measure the execution time of a forward pass"
+                    },
+                    {
+                        "name": "measure_memory_usage",
+                        "signature": "measure_memory_usage(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]]) -> Dict[str, float]",
+                        "brief_description": "Measure the memory usage during a forward pass"
+                    },
+                    {
+                        "name": "profile_with_pytorch_profiler",
+                        "signature": "profile_with_pytorch_profiler(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]], use_mps: bool = True, num_steps: int = 10, warmup: int = 3, activities: Optional[List[str]] = None, record_shapes: bool = True, profile_memory: bool = True, save_path: Optional[str] = None) -> None",
+                        "brief_description": "Profile the model using PyTorch's built-in profiler"
+                    },
+                    {
+                        "name": "trace_memory_by_layer",
+                        "signature": "trace_memory_by_layer(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]], save_path: Optional[str] = None) -> Dict[str, float]",
+                        "brief_description": "Trace memory usage by layer in the model"
+                    },
+                    {
+                        "name": "benchmark_model",
+                        "signature": "benchmark_model(self, input_generator: Callable[[int, int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int], sequence_lengths: List[int], num_iterations: int = 5, save_dir: Optional[str] = None) -> pd.DataFrame",
+                        "brief_description": "Benchmark the model across different batch sizes and sequence lengths"
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "numpy", "matplotlib", "psutil", "pandas", "seaborn"]
+            },
+            {
+                "name": "ModelBenchmarkSuite",
+                "purpose": "Comprehensive suite for benchmarking and comparing multiple models with visualization",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, save_dir: str = \"benchmark_results\")",
+                        "brief_description": "Initialize the benchmark suite with output directory"
+                    },
+                    {
+                        "name": "benchmark_model",
+                        "signature": "benchmark_model(self, model: torch.nn.Module, model_name: str, input_generator: Callable[[int, int], torch.Tensor], batch_sizes: List[int] = [1, 2, 4, 8], sequence_lengths: List[int] = [16, 32, 64, 128, 256], num_iterations: int = 5, profile_with_pytorch: bool = True, trace_memory: bool = True, device: Optional[torch.device] = None) -> Dict[str, Any]",
+                        "brief_description": "Run a comprehensive benchmark on a model"
+                    },
+                    {
+                        "name": "compare_models",
+                        "signature": "compare_models(self, model_names: List[str] = None, metric: str = 'avg_time', save_path: Optional[str] = None) -> pd.DataFrame",
+                        "brief_description": "Compare performance metrics across multiple models"
+                    },
+                    {
+                        "name": "generate_optimization_recommendations",
+                        "signature": "generate_optimization_recommendations(self, model_name: str) -> str",
+                        "brief_description": "Generate optimization recommendations based on profiling results"
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["torch", "numpy", "matplotlib", "pandas", "seaborn"]
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "pandas", "matplotlib", "seaborn", "psutil"],
+        "complexity_score": 9  # High complexity due to comprehensive profiling capabilities
+    }

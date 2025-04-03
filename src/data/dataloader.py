@@ -1,7 +1,8 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Callable
 import numpy as np
+import os
 
 class MultimodalDataset(Dataset):
     """A dataset class for handling multimodal data."""
@@ -138,3 +139,57 @@ def get_dataloaders(
         )
     
     return train_loader, val_loader, test_loader
+    
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utilities for handling multimodal data with PyTorch DataLoader",
+        "key_classes": [
+            {
+                "name": "MultimodalDataset",
+                "purpose": "Dataset class for handling multiple modalities of data with consistent length validation",
+                "key_methods": [
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Get an item from each modality at the specified index"
+                    },
+                    {
+                        "name": "__len__",
+                        "signature": "__len__(self) -> int",
+                        "brief_description": "Return the length of the dataset"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data.Dataset"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "create_dataloader",
+                "signature": "create_dataloader(dataset: Dataset, batch_size: int = 32, shuffle: bool = True, num_workers: int = 0, pin_memory: bool = True, drop_last: bool = False, collate_fn: Optional[callable] = None) -> DataLoader",
+                "brief_description": "Create a DataLoader from a dataset with common configuration options"
+            },
+            {
+                "name": "collate_fn",
+                "signature": "collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]",
+                "brief_description": "Custom collate function for batching multimodal data"
+            },
+            {
+                "name": "get_dataloaders",
+                "signature": "get_dataloaders(train_data: Dict[str, torch.Tensor], val_data: Optional[Dict[str, torch.Tensor]] = None, test_data: Optional[Dict[str, torch.Tensor]] = None, batch_size: int = 32, num_workers: int = 0) -> Tuple[DataLoader, Optional[DataLoader], Optional[DataLoader]]",
+                "brief_description": "Create DataLoaders for train, validation, and test sets"
+            }
+        ],
+        "external_dependencies": ["torch", "numpy"],
+        "complexity_score": 3  # Moderate complexity
+    }

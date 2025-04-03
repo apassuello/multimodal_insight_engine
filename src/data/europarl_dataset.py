@@ -125,3 +125,40 @@ class EuroparlDataset:
         print(f"Loaded {len(src_data)} parallel sentences")
         
         return list(src_data), list(tgt_data)
+        
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a dataset class for loading and preprocessing Europarl parallel corpus data",
+        "key_classes": [
+            {
+                "name": "EuroparlDataset",
+                "purpose": "Handles loading and preprocessing parallel text data from the Europarl corpus",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, data_dir: str = 'data/europarl', src_lang: str = 'de', tgt_lang: str = 'en', max_examples: Optional[int] = None, random_seed: int = 42)",
+                        "brief_description": "Initialize the dataset with language pair and optional filtering"
+                    },
+                    {
+                        "name": "load_data",
+                        "signature": "load_data(self) -> Tuple[List[str], List[str]]",
+                        "brief_description": "Load and preprocess parallel data with multiple file pattern detection"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["os", "random"]
+            }
+        ],
+        "external_dependencies": ["os", "random"],
+        "complexity_score": 4  # Moderate complexity for handling multiple file formats
+    }

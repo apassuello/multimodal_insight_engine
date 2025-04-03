@@ -1120,3 +1120,81 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         tgt_sequences.extend(tgt_batch)
     
     return src_sequences, tgt_sequences
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements an optimized Byte Pair Encoding tokenizer with smart caching and batch processing",
+        "key_classes": [
+            {
+                "name": "LRUCache",
+                "purpose": "LRU (Least Recently Used) Cache with expiration for efficient tokenizer caching",
+                "key_methods": [
+                    {
+                        "name": "get",
+                        "signature": "get(self, key: Any) -> Optional[Any]",
+                        "brief_description": "Get a value from the cache with expiration checking"
+                    },
+                    {
+                        "name": "put",
+                        "signature": "put(self, key: Any, value: Any) -> None",
+                        "brief_description": "Add or update a value in the cache with timestamp"
+                    },
+                    {
+                        "name": "_cleanup_expired",
+                        "signature": "_cleanup_expired(self) -> None",
+                        "brief_description": "Remove expired items from cache"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["collections.OrderedDict", "threading"]
+            },
+            {
+                "name": "OptimizedBPETokenizer",
+                "purpose": "High-performance BPE tokenizer with caching, vectorization, and memory efficiency",
+                "key_methods": [
+                    {
+                        "name": "tokenize",
+                        "signature": "tokenize(self, text: str) -> List[str]",
+                        "brief_description": "Convert text to tokens with caching and validation"
+                    },
+                    {
+                        "name": "encode",
+                        "signature": "encode(self, text: str) -> List[int]",
+                        "brief_description": "Convert text to token indices"
+                    },
+                    {
+                        "name": "batch_encode_optimized",
+                        "signature": "batch_encode_optimized(self, texts: List[str], batch_size: Optional[int] = None) -> List[List[int]]",
+                        "brief_description": "Encode a batch of texts with optimized processing"
+                    },
+                    {
+                        "name": "train",
+                        "signature": "train(self, texts: List[str], vocab_size: Optional[int] = None, min_frequency: int = 2, show_progress: bool = True) -> None",
+                        "brief_description": "Train the BPE tokenizer on a corpus of texts"
+                    }
+                ],
+                "inheritance": "BaseTokenizer",
+                "dependencies": [".base_tokenizer", ".vocabulary", "torch", "psutil"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "preprocess_data_with_optimized_bpe",
+                "signature": "preprocess_data_with_optimized_bpe(dataset, de_tokenizer, en_tokenizer, batch_size=4000, use_multiprocessing=False, num_workers=4)",
+                "brief_description": "Efficiently preprocess translation data with optimized BPE tokenizers"
+            }
+        ],
+        "external_dependencies": ["torch", "psutil", "tqdm", "threading", "json"],
+        "complexity_score": 9  # Very high complexity due to optimizations and caching mechanisms
+    }

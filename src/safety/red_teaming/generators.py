@@ -2,6 +2,7 @@
 
 import re
 import random
+import os
 from typing import List, Dict, Any, Optional, Callable
 
 class AdversarialInputGenerator:
@@ -283,3 +284,50 @@ class AdversarialInputGenerator:
                 hijacked_prompts.append(hijacked)
         
         return hijacked_prompts
+        
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides strategies for generating adversarial inputs to test model robustness and safety",
+        "key_classes": [
+            {
+                "name": "AdversarialInputGenerator",
+                "purpose": "Collection of methods for creating adversarial prompts to test model boundaries",
+                "key_methods": [
+                    {
+                        "name": "directive_smuggling",
+                        "signature": "directive_smuggling(prompt: str) -> List[str]",
+                        "brief_description": "Generate inputs that attempt to smuggle harmful directives into prompts"
+                    },
+                    {
+                        "name": "prompt_injection",
+                        "signature": "prompt_injection(prompt: str) -> List[str]",
+                        "brief_description": "Generate inputs that attempt to inject malicious instructions"
+                    },
+                    {
+                        "name": "context_manipulation",
+                        "signature": "context_manipulation(prompt: str) -> List[str]",
+                        "brief_description": "Generate inputs that manipulate the context to elicit problematic outputs"
+                    },
+                    {
+                        "name": "goal_hijacking",
+                        "signature": "goal_hijacking(prompt: str) -> List[str]",
+                        "brief_description": "Generate inputs that attempt to hijack the model's goal"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["re", "random"]
+            }
+        ],
+        "external_dependencies": ["re", "random"],
+        "complexity_score": 7  # High complexity due to the variety of strategies and template combinations
+    }

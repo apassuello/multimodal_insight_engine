@@ -394,3 +394,70 @@ class Vocabulary:
             "eos_token_idx": self.token_to_idx[self.eos_token],
             "mask_token_idx": self.token_to_idx[self.mask_token],
         }
+        
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a flexible vocabulary system for mapping between tokens and indices with special token support",
+        "key_classes": [
+            {
+                "name": "Vocabulary",
+                "purpose": "Manages token-to-index and index-to-token mappings with special token handling",
+                "key_methods": [
+                    {
+                        "name": "add_token",
+                        "signature": "add_token(self, token: str) -> int",
+                        "brief_description": "Add a token to the vocabulary and return its index"
+                    },
+                    {
+                        "name": "token_to_index",
+                        "signature": "token_to_index(self, token: str) -> int",
+                        "brief_description": "Convert a token to its index with validation"
+                    },
+                    {
+                        "name": "index_to_token",
+                        "signature": "index_to_token(self, idx: int) -> str",
+                        "brief_description": "Convert an index to its token with validation"
+                    },
+                    {
+                        "name": "tokens_to_indices",
+                        "signature": "tokens_to_indices(self, tokens: List[str]) -> List[int]",
+                        "brief_description": "Convert a list of tokens to their indices"
+                    },
+                    {
+                        "name": "indices_to_tokens",
+                        "signature": "indices_to_tokens(self, indices: List[int]) -> List[str]",
+                        "brief_description": "Convert a list of indices to their tokens"
+                    },
+                    {
+                        "name": "save",
+                        "signature": "save(self, path: str) -> None",
+                        "brief_description": "Save vocabulary to a JSON file"
+                    },
+                    {
+                        "name": "load",
+                        "signature": "load(cls, path: str) -> 'Vocabulary'",
+                        "brief_description": "Load vocabulary from a JSON file"
+                    },
+                    {
+                        "name": "build_from_texts",
+                        "signature": "build_from_texts(cls, texts: List[str], tokenizer, max_vocab_size: Optional[int] = None, min_freq: int = 1, **kwargs) -> 'Vocabulary'",
+                        "brief_description": "Build a vocabulary from a list of texts using the provided tokenizer"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["json", "collections.Counter", "logging"]
+            }
+        ],
+        "external_dependencies": ["json", "collections.Counter", "logging"],
+        "complexity_score": 6  # Moderate-high complexity due to multiple conversion methods and robust error handling
+    }

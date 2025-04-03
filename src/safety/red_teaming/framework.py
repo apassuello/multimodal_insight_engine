@@ -254,3 +254,55 @@ class RedTeamingFramework:
                     report += "\n"
         
         return report
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a framework for conducting red teaming exercises on language models",
+        "key_classes": [
+            {
+                "name": "RedTeamingFramework",
+                "purpose": "Framework for organizing, executing, and analyzing adversarial testing strategies",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, output_dir: str = \"red_team_results\", log_results: bool = True)",
+                        "brief_description": "Initialize the red teaming framework with output configuration"
+                    },
+                    {
+                        "name": "register_attack_strategy",
+                        "signature": "register_attack_strategy(self, name: str, strategy_fn: Callable[[str], List[str]]) -> None",
+                        "brief_description": "Register an attack strategy function for generating adversarial inputs"
+                    },
+                    {
+                        "name": "generate_adversarial_inputs",
+                        "signature": "generate_adversarial_inputs(self, base_prompts: List[str], strategy_name: Optional[str] = None, num_variations: int = 5) -> Dict[str, List[str]]",
+                        "brief_description": "Generate adversarial inputs using registered strategies"
+                    },
+                    {
+                        "name": "evaluate_model_robustness",
+                        "signature": "evaluate_model_robustness(self, model_fn: Callable[[str], str], adversarial_inputs: Dict[str, List[str]], evaluation_fn: Callable[[str, str], Dict[str, Any]], model_name: str = \"unnamed_model\") -> Dict[str, Any]",
+                        "brief_description": "Evaluate model robustness against adversarial inputs"
+                    },
+                    {
+                        "name": "generate_report",
+                        "signature": "generate_report(self, results: Optional[Dict[str, Any]] = None, include_details: bool = False) -> str",
+                        "brief_description": "Generate a human-readable report from evaluation results"
+                    }
+                ],
+                "inheritance": "",
+                "dependencies": ["os", "json", "datetime", "typing"]
+            }
+        ],
+        "external_dependencies": ["json", "datetime"],
+        "complexity_score": 7  # High complexity due to the comprehensive framework
+    }

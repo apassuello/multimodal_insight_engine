@@ -291,3 +291,55 @@ class AdversarialRobustnessEvaluator:
         }
         
         return results
+        
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides evaluation tools for measuring model robustness against adversarial attacks",
+        "key_classes": [
+            {
+                "name": "AdversarialRobustnessEvaluator",
+                "purpose": "Evaluates model robustness against various adversarial inputs and attacks",
+                "key_methods": [
+                    {
+                        "name": "evaluate",
+                        "signature": "evaluate(self, prompt: str, response: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluate model robustness based on prompt-response pair"
+                    },
+                    {
+                        "name": "_evaluate_jailbreak_success",
+                        "signature": "_evaluate_jailbreak_success(self, prompt: str, response: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluate whether a jailbreak attempt was successful"
+                    },
+                    {
+                        "name": "_evaluate_harmful_content",
+                        "signature": "_evaluate_harmful_content(self, prompt: str, response: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluate whether the response contains harmful content"
+                    },
+                    {
+                        "name": "_evaluate_response_consistency",
+                        "signature": "_evaluate_response_consistency(self, prompt: str, response: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluate whether the response is consistent or shows signs of manipulation"
+                    },
+                    {
+                        "name": "_evaluate_instruction_following",
+                        "signature": "_evaluate_instruction_following(self, prompt: str, response: str) -> Dict[str, Any]",
+                        "brief_description": "Evaluate whether the model improperly followed harmful instructions"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["src.safety.evaluator.SafetyEvaluator", "re", "json"]
+            }
+        ],
+        "external_dependencies": ["re", "json"],
+        "complexity_score": 8  # High complexity due to sophisticated analysis techniques
+    }

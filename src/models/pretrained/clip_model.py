@@ -3,6 +3,7 @@ from .base_wrapper import PretrainedModelWrapper
 import torch
 import torch.nn as nn
 import open_clip
+import os
 
 class CLIPModelWrapper(PretrainedModelWrapper):
     """Wrapper for OpenAI CLIP models."""
@@ -62,3 +63,55 @@ class CLIPModelWrapper(PretrainedModelWrapper):
             results['similarity'] = similarity
             
         return results
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a wrapper for OpenAI CLIP multimodal models with standardized interface",
+        "key_classes": [
+            {
+                "name": "CLIPModelWrapper",
+                "purpose": "Wrapper for OpenAI CLIP models with image-text similarity functionality",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model_name: str = \"ViT-B-32\", pretrained: str = \"laion2b_s34b_b79k\")",
+                        "brief_description": "Initialize with specific CLIP model variant and weights"
+                    },
+                    {
+                        "name": "load_model",
+                        "signature": "load_model(self, model_name: str) -> None",
+                        "brief_description": "Load a pretrained CLIP model with transforms and tokenizer"
+                    },
+                    {
+                        "name": "encode_image",
+                        "signature": "encode_image(self, image: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Encode images to the multimodal embedding space"
+                    },
+                    {
+                        "name": "encode_text",
+                        "signature": "encode_text(self, text: list) -> torch.Tensor",
+                        "brief_description": "Encode text to the multimodal embedding space"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, images: torch.Tensor = None, texts: list = None) -> dict",
+                        "brief_description": "Process images and/or text through CLIP and compute similarities"
+                    }
+                ],
+                "inheritance": "PretrainedModelWrapper",
+                "dependencies": ["torch", "torch.nn", "open_clip"]
+            }
+        ],
+        "external_dependencies": ["torch", "open_clip"],
+        "complexity_score": 5  # Moderate complexity
+    }

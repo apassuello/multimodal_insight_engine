@@ -332,3 +332,60 @@ class BPETokenizer(BaseTokenizer):
         )
         
         return tokenizer
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements Byte Pair Encoding tokenizer for subword tokenization with merge operations",
+        "key_classes": [
+            {
+                "name": "BPETokenizer",
+                "purpose": "Tokenizer that implements Byte Pair Encoding algorithm for subword tokenization",
+                "key_methods": [
+                    {
+                        "name": "train",
+                        "signature": "train(self, texts: List[str], vocab_size: Optional[int] = None, min_frequency: int = 2, show_progress: bool = True) -> None",
+                        "brief_description": "Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs"
+                    },
+                    {
+                        "name": "tokenize",
+                        "signature": "tokenize(self, text: str) -> List[str]",
+                        "brief_description": "Convert text into subword tokens based on learned merge operations"
+                    },
+                    {
+                        "name": "encode",
+                        "signature": "encode(self, text: str) -> List[int]",
+                        "brief_description": "Convert text to token indices using the vocabulary"
+                    },
+                    {
+                        "name": "decode",
+                        "signature": "decode(self, token_ids: List[int]) -> str",
+                        "brief_description": "Convert token indices back to text"
+                    },
+                    {
+                        "name": "save_pretrained",
+                        "signature": "save_pretrained(self, path: str) -> None",
+                        "brief_description": "Save tokenizer configuration, vocabulary and merges to disk"
+                    },
+                    {
+                        "name": "from_pretrained",
+                        "signature": "from_pretrained(cls, path: str) -> 'BPETokenizer'",
+                        "brief_description": "Load a tokenizer from a saved directory"
+                    }
+                ],
+                "inheritance": "BaseTokenizer",
+                "dependencies": [".base_tokenizer", ".vocabulary", ".preprocessing"]
+            }
+        ],
+        "external_dependencies": ["json", "tqdm", "collections.Counter"],
+        "complexity_score": 7,  # High complexity due to BPE training algorithm and merging logic
+    }
