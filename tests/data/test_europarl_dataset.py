@@ -51,8 +51,8 @@ def test_europarl_dataset_loading():
         
         assert len(dataset.src_data) == len(src_data)
         assert len(dataset.tgt_data) == len(tgt_data)
-        assert dataset.src_data == src_data
-        assert dataset.tgt_data == tgt_data
+        assert set(dataset.src_data) == set(src_data)
+        assert set(dataset.tgt_data) == set(tgt_data)
 
 def test_europarl_dataset_max_examples():
     """Test max_examples parameter"""

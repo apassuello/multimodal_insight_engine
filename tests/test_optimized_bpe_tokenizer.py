@@ -21,7 +21,12 @@ def sample_vocab():
 @pytest.fixture
 def sample_merges():
     """Create sample merge operations for testing."""
-    return [("h", "e"), ("he", "l"), ("hel", "lo"), ("w", "o"), ("wo", "r"), ("wor", "ld")]
+    return [
+        # Complete merge sequence for "hello"
+        ("h", "e"), ("he", "l"), ("hel", "l"), ("hell", "o"),
+        # Complete merge sequence for "world"
+        ("w", "o"), ("wo", "r"), ("wor", "l"), ("worl", "d")
+    ]
 
 @pytest.fixture
 def tokenizer(device, sample_vocab, sample_merges):
@@ -71,6 +76,8 @@ def test_tokenize(tokenizer):
     assert "world" in tokens
     
     # Test cache functionality
+    print("-----------")
+    print(tokenizer.token_cache)
     assert text in tokenizer.token_cache
     assert tokenizer.token_cache[text] == tokens
 

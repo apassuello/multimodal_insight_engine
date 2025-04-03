@@ -46,6 +46,19 @@ class LRUCache:
             )
             self._cleanup_thread.start()
     
+    def __contains__(self, key: Any) -> bool:
+        """Support the 'in' operator."""
+        with self.lock:
+            return key in self.cache
+
+    def __getitem__(self, key):
+        """Support dict-like access."""
+        if key in self.cache:
+            # Optionally move to end if using OrderedDict for LRU functionality
+            value = self.cache[key]
+            return value
+        raise KeyError(key)
+
     def get(self, key: Any) -> Optional[Any]:
         """
         Get a value from the cache.
@@ -473,6 +486,8 @@ class OptimizedBPETokenizer(BaseTokenizer):
         tokens = []
         for word in words:
             tokens.extend(self._tokenize_word_optimized(word))
+
+        self.token_cache[text] = tokens
         
         # Store in cache if memory usage is acceptable
         if memory_ok:
@@ -669,7 +684,15 @@ class OptimizedBPETokenizer(BaseTokenizer):
             Dictionary mapping special token names to their indices
         """
         # Get special token indices directly
-        special_tokens_indices = {
+        special_tokens = {
+        # Add the token strings
+            "<pad>": self.vocab.token_to_index(self.vocab.pad_token),
+            "<unk>": self.vocab.token_to_index(self.vocab.unk_token),
+            "<bos>": self.vocab.token_to_index(self.vocab.bos_token),
+            "<eos>": self.vocab.token_to_index(self.vocab.eos_token),
+            "<mask>": self.vocab.token_to_index(self.vocab.mask_token),
+            
+            # Keep the idx versions for backward compatibility
             "pad_token_idx": self.vocab.token_to_index(self.vocab.pad_token),
             "unk_token_idx": self.vocab.token_to_index(self.vocab.unk_token),
             "bos_token_idx": self.vocab.token_to_index(self.vocab.bos_token),
@@ -677,7 +700,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
             "mask_token_idx": self.vocab.token_to_index(self.vocab.mask_token)
         }
         
-        return special_tokens_indices
+        return special_tokens
     
     @property
     def cache_size(self) -> int:

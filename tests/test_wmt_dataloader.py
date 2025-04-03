@@ -68,7 +68,8 @@ def test_load_data(temp_data_dir, sample_data):
     dataloader = WMTDataLoader(
         data_dir=temp_data_dir,
         source_lang='en',
-        target_lang='fr'
+        target_lang='fr',
+        shuffle=False
     )
     
     assert dataloader.source_data == source_data

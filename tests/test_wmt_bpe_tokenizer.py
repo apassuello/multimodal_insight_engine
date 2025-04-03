@@ -32,15 +32,10 @@ def sample_vocab():
 def sample_merges():
     """Create sample merge operations for testing."""
     return [
-        ("h", "e"),
-        ("he", "l"),
-        ("hel", "lo"),
-        ("w", "o"),
-        ("wo", "r"),
-        ("wor", "ld"),
-        ("t", "e"),
-        ("te", "s"),
-        ("tes", "t")
+        # Complete merge sequence for "hello"
+        ("h", "e"), ("he", "l"), ("hel", "l"), ("hell", "o"),
+        # Complete merge sequence for "world"
+        ("w", "o"), ("wo", "r"), ("wor", "l"), ("worl", "d")
     ]
 
 @pytest.fixture
@@ -101,6 +96,7 @@ def test_encode(tokenizer):
     assert isinstance(token_ids, list)
     assert all(isinstance(id_, int) for id_ in token_ids)
     assert len(token_ids) > 0
+    print(token_ids)
     assert token_ids[0] == tokenizer.vocab["hello"]
     assert token_ids[1] == tokenizer.vocab["world"]
 
@@ -154,6 +150,7 @@ def test_unknown_token_handling(tokenizer):
     # Test with unknown word
     text = "unknown"
     token_ids = tokenizer.encode(text)
+    print(token_ids)
     assert all(id_ == tokenizer.vocab["<unk>"] for id_ in token_ids)
     
     # Test decoding unknown token IDs
