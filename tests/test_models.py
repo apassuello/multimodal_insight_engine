@@ -3,9 +3,10 @@ import torch
 import pytest
 from src.models.base_model import BaseModel
 
-@pytest.mark.no_test
-class TestModel(BaseModel):
+# Implementation class for testing, not a test class itself
+class ModelForTesting(BaseModel):
     """A test implementation of BaseModel for testing purposes."""
+    
     def __init__(self):
         super().__init__()
         self.linear = torch.nn.Linear(10, 5)
@@ -15,7 +16,7 @@ class TestModel(BaseModel):
 
 @pytest.fixture
 def test_model():
-    return TestModel()
+    return ModelForTesting()
 
 @pytest.fixture
 def temp_save_path(tmp_path):
@@ -24,7 +25,7 @@ def temp_save_path(tmp_path):
 def test_model_initialization(test_model):
     """Test that the model initializes correctly."""
     assert isinstance(test_model, BaseModel)
-    assert test_model.model_type == "TestModel"
+    assert test_model.model_type == "ModelForTesting"
     assert hasattr(test_model, "linear")
 
 def test_model_forward(test_model):
@@ -40,7 +41,7 @@ def test_model_save_load(test_model, temp_save_path):
     assert os.path.exists(temp_save_path)
     
     # Create a new model instance
-    new_model = TestModel()
+    new_model = ModelForTesting()
     
     # Load the weights
     checkpoint = new_model.load(temp_save_path)
@@ -58,7 +59,7 @@ def test_model_save_with_optimizer(test_model, temp_save_path):
     test_model.save(temp_save_path, optimizer=optimizer)
     
     # Load and verify optimizer state
-    new_model = TestModel()
+    new_model = ModelForTesting()
     checkpoint = new_model.load(temp_save_path)
     assert 'optimizer_state_dict' in checkpoint
 
@@ -68,7 +69,7 @@ def test_model_save_with_additional_info(test_model, temp_save_path):
     test_model.save(temp_save_path, additional_info=additional_info)
     
     # Load and verify additional info
-    new_model = TestModel()
+    new_model = ModelForTesting()
     checkpoint = new_model.load(temp_save_path)
     assert checkpoint['epoch'] == 5
     assert checkpoint['loss'] == 0.5

@@ -32,8 +32,15 @@ def transformer_collate_fn(batch: List[Dict[str, List[int]]], pad_idx: int) -> D
         src_tokens = item["src_tokens"]
         tgt_tokens = item["tgt_tokens"]
         
-        src_batch[i, :len(src_tokens)] = torch.tensor(src_tokens, dtype=torch.long).clone().detach()
-        tgt_batch[i, :len(tgt_tokens)] = torch.tensor(tgt_tokens, dtype=torch.long).clone().detach()
+        if isinstance(src_tokens, torch.Tensor):
+            src_batch[i, :len(src_tokens)] = src_tokens.clone().detach()
+        else:
+            src_batch[i, :len(src_tokens)] = torch.tensor(src_tokens, dtype=torch.long)
+            
+        if isinstance(tgt_tokens, torch.Tensor):
+            tgt_batch[i, :len(tgt_tokens)] = tgt_tokens.clone().detach()
+        else:
+            tgt_batch[i, :len(tgt_tokens)] = torch.tensor(tgt_tokens, dtype=torch.long)
     
     return {
         "src": src_batch.to(torch.device("mps") if torch.backends.mps.is_available() else src_batch.device),
@@ -100,9 +107,16 @@ class TransformerDataset(Dataset):
         if self.max_tgt_len is not None:
             tgt_seq = tgt_seq[:self.max_tgt_len]
         
+        # Convert to tensors properly without triggering warnings
+        src_tensor = torch.LongTensor(src_seq)
+        tgt_tensor = torch.LongTensor(tgt_seq)
+        
+        # Move to appropriate device
+        device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
+        
         return {
-            "src_tokens": torch.tensor(src_seq, dtype=torch.long).to(torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")),
-            "tgt_tokens": torch.tensor(tgt_seq, dtype=torch.long).to(torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")),
+            "src_tokens": src_tensor.to(device),
+            "tgt_tokens": tgt_tensor.to(device),
         }
 
 class TransformerCollator:
