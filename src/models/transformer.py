@@ -244,7 +244,13 @@ class TransformerEncoder(nn.Module):
         
         # Apply token embeddings if needed
         if self.has_embeddings:
-            x = self.token_embedding(x)
+            # Check if the input is already embedded
+            if x.dim() == 3 and x.shape[-1] == self.d_model:
+                # Input is already embedded, skip token embedding
+                pass
+            else:
+                # Input is token indices, apply token embedding
+                x = self.token_embedding(x)
         
         # Apply positional encoding if not using rotary embeddings
         if not self.use_rotary:
@@ -626,7 +632,13 @@ class TransformerDecoder(nn.Module):
         
         # Apply token embeddings if needed
         if self.has_embeddings:
-            x = self.token_embedding(x)
+            # Check if the input is already embedded
+            if x.dim() == 3 and x.shape[-1] == self.d_model:
+                # Input is already embedded, skip token embedding
+                pass
+            else:
+                # Input is token indices, apply token embedding
+                x = self.token_embedding(x)
         
         # Apply positional encoding if not using rotary embeddings
         if not self.use_rotary:
@@ -745,6 +757,7 @@ class EncoderDecoderTransformer(BaseModel):
             
         Returns:
             Output tensor of shape [batch_size, tgt_len, tgt_vocab_size]
+            with softmax applied (probabilities sum to 1 along vocab dimension)
         """
         # Move inputs to device
         src = src.to(next(self.parameters()).device)
@@ -765,6 +778,9 @@ class EncoderDecoderTransformer(BaseModel):
         # Apply output projection if needed
         if self.output_projection is not None:
             output = self.output_projection(output)
+        
+        # Apply softmax to get probability distribution
+        output = torch.softmax(output, dim=-1)
         
         return output
     
@@ -799,12 +815,16 @@ class EncoderDecoderTransformer(BaseModel):
             
         Returns:
             Decoder output of shape [batch_size, tgt_len, tgt_vocab_size]
+            with softmax applied (probabilities sum to 1 along vocab dimension)
         """
         output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         
         # Apply output projection if needed
         if self.output_projection is not None:
             output = self.output_projection(output)
+        
+        # Apply softmax to get probability distribution
+        output = torch.softmax(output, dim=-1)
         
         return output
     
