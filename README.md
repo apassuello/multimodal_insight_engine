@@ -190,4 +190,4 @@ This project builds upon concepts from academic papers and open-source projects 
 
 ---
 
-*Note: This is a personal learning project created for educational purposes and to demonstrate practical implementation skills for potential employers.*
+*Note: This is a personal learning project created for educational purposes and to demonstrate practical implementation skills.*
