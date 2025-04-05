@@ -366,6 +366,11 @@
             "name": "dataloader.py",
             "type": "file",
             "path": "src/data/dataloader.py"
+          },
+          {
+            "name": "wikipedia_dataset.py",
+            "type": "file",
+            "path": "src/data/wikipedia_dataset.py"
           }
         ]
       }
@@ -640,7 +645,7 @@
           "key_methods": [
             {
               "name": "__init__",
-              "signature": "(self, model: nn.Module, input_generator: Callable[[int], torch.Tensor], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
+              "signature": "(self, model: nn.Module, input_generator: Callable[[int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
               "brief_description": "Initialize the optimization benchmark."
             },
             {
@@ -2432,7 +2437,7 @@
             },
             {
               "name": "visualize_attention",
-              "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, save_path: Optional[str] = None) -> Figure",
+              "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, attention_type: str = 'self', cmap: str = 'viridis') -> Figure",
               "brief_description": "Visualizes attention patterns for a given text at specified layer and head"
             },
             {
@@ -2793,6 +2798,55 @@
       "module_path": "src/data/dataloader.py"
     },
     {
+      "filename": "wikipedia_dataset.py",
+      "module_purpose": "Provides a dataset class for loading and preprocessing Wikipedia Web2M data from TFRecord format",
+      "key_classes": [
+        {
+          "name": "WikipediaDataset",
+          "purpose": "Handles loading and preprocessing multimodal (image-text) data from WikiWeb2M TFRecords",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, data_dir: str = 'data/wiki', split: str = 'train', max_examples: Optional[int] = None, cache_processed_data: bool = True, cache_dir: Optional[str] = None, image_size: int = 224, random_seed: int = 42)",
+              "brief_description": "Initialize the dataset with data split and processing options"
+            },
+            {
+              "name": "load_data",
+              "signature": "load_data(self) -> Dict[str, List[Any]]",
+              "brief_description": "Load and preprocess data from TFRecord files with caching capability"
+            },
+            {
+              "name": "to_pytorch_dataset",
+              "signature": "to_pytorch_dataset(self)",
+              "brief_description": "Convert to a PyTorch dataset compatible with MultimodalDataset"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "tensorflow",
+            "torch",
+            "numpy",
+            "tqdm"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "create_wiki_dataloaders",
+          "signature": "create_wiki_dataloaders(data_dir: str = 'data/wiki', batch_size: int = 32, max_examples: Optional[Dict[str, int]] = None, num_workers: int = 0, image_size: int = 224, random_seed: int = 42) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]",
+          "brief_description": "Create DataLoaders for train, validation, and test sets"
+        }
+      ],
+      "external_dependencies": [
+        "tensorflow",
+        "torch",
+        "numpy",
+        "tqdm"
+      ],
+      "complexity_score": 5,
+      "module_path": "src/data/wikipedia_dataset.py"
+    },
+    {
       "filename": "wmt_bpe_tokenizer.py",
       "module_path": "src/data/tokenization/wmt_bpe_tokenizer.py",
       "module_purpose": "No metadata function available",
@@ -3082,12 +3136,12 @@
     }
   ],
   "summary": {
-    "total_modules": 61,
-    "modules_with_metadata": 52,
+    "total_modules": 62,
+    "modules_with_metadata": 53,
     "modules_without_metadata": 9
   },
   "complexity_summary": {
-    "average_complexity": 5.596153846153846,
+    "average_complexity": 5.584905660377358,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -3218,6 +3272,10 @@
         "score": 5
       },
       {
+        "module": "src/data/wikipedia_dataset.py",
+        "score": 5
+      },
+      {
         "module": "src/training/losses.py",
         "score": 4
       },
@@ -3300,15 +3358,15 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 25,
+    "total_external_dependencies": 26,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 34
+        "usage_count": 35
       },
       {
         "name": "numpy",
-        "usage_count": 15
+        "usage_count": 16
       },
       {
         "name": "json",
@@ -3320,7 +3378,7 @@
       },
       {
         "name": "tqdm",
-        "usage_count": 6
+        "usage_count": 7
       },
       {
         "name": "logging",
@@ -3392,6 +3450,10 @@
       },
       {
         "name": "datetime",
+        "usage_count": 1
+      },
+      {
+        "name": "tensorflow",
         "usage_count": 1
       },
       {
