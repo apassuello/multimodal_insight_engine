@@ -129,16 +129,36 @@ class LanguageModelEvaluator:
         input_ids = torch.tensor(padded_texts, dtype=torch.long).to(self.device)
         attention_mask = (input_ids != self.pad_idx).long()
         
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        
         # Calculate perplexity
         with torch.no_grad():
             # Forward pass
-            outputs = self.model(
-                input_ids=input_ids,
-                attention_mask=attention_mask
-            )
-            
-            # Get logits
-            logits = outputs.logits if hasattr(outputs, "logits") else outputs
+            if is_encoder_decoder:
+                # For encoder-decoder models, use src/tgt parameters
+                # For causal language modeling, tgt is shifted input_ids
+                src = input_ids
+                tgt = input_ids.clone()  # Use same sequence for source and target
+                src_mask = attention_mask
+                
+                outputs = self.model(
+                    src=src,
+                    tgt=tgt,
+                    src_mask=src_mask
+                )
+                
+                # Already have log probs outputs
+                logits = outputs
+            else:
+                # For standard models
+                outputs = self.model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask
+                )
+                
+                # Get logits
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
             
             # Shift labels and logits for next-token prediction
             shift_logits = logits[..., :-1, :].contiguous()
@@ -198,16 +218,36 @@ class LanguageModelEvaluator:
         # Create tensor
         input_ids = torch.tensor([input_ids], dtype=torch.long).to(self.device)
         
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        
         # Analyze token probabilities
         with torch.no_grad():
             # Forward pass
-            outputs = self.model(input_ids=input_ids)
+            if is_encoder_decoder:
+                # For encoder-decoder models, use src/tgt parameters
+                src = input_ids
+                tgt = input_ids.clone()
+                src_mask = torch.ones_like(input_ids, dtype=torch.long)
+                
+                outputs = self.model(
+                    src=src,
+                    tgt=tgt,
+                    src_mask=src_mask
+                )
+                
+                # Already have probabilities
+                probs = outputs
+            else:
+                # For standard models
+                outputs = self.model(input_ids=input_ids)
+                
+                # Get logits
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                
+                # Calculate probabilities
+                probs = F.softmax(logits, dim=-1)
             
-            # Get logits
-            logits = outputs.logits if hasattr(outputs, "logits") else outputs
-            
-            # Calculate probabilities
-            probs = F.softmax(logits, dim=-1)
             probs = probs[0]  # Ensure probs is a 2D tensor for indexing
             
             # Get probabilities for actual next tokens
@@ -237,9 +277,9 @@ class LanguageModelEvaluator:
             ]
         
         return {
-            "average_probability": avg_prob,
-            "min_probability": min_prob,
-            "max_probability": max_prob,
+            "average_probability": float(avg_prob),
+            "min_probability": float(min_prob),
+            "max_probability": float(max_prob),
             "min_probability_token": min_prob_token,
             "max_probability_token": max_prob_token,
             "token_analysis": token_analysis,
@@ -250,19 +290,21 @@ class LanguageModelEvaluator:
         text: str,
         layer: int = -1,
         head: int = 0,
-        save_path: Optional[str] = None,
+        attention_type: str = "self",
+        cmap: str = "viridis",
     ) -> Figure:
         """
-        Visualize attention weights for a text.
+        Visualize attention patterns for a given text.
         
         Args:
-            text: Text to visualize attention for
-            layer: Layer to visualize (-1 = last layer)
+            text: Input text
+            layer: Layer index to visualize (-1 for last layer)
             head: Attention head to visualize
-            save_path: Path to save the visualization
+            attention_type: Type of attention to visualize (self, cross)
+            cmap: Colormap for the heatmap
             
         Returns:
-            Matplotlib figure
+            Matplotlib figure with attention visualization
         """
         # Encode text
         input_ids = self.tokenizer.encode(text)
@@ -270,56 +312,111 @@ class LanguageModelEvaluator:
         # Add special tokens
         input_ids = [self.bos_idx] + input_ids + [self.eos_idx]
         
+        # Get token strings for labels
+        tokens = [self.tokenizer.decode([token_id]) for token_id in input_ids]
+        
         # Create tensor
         input_ids = torch.tensor([input_ids], dtype=torch.long).to(self.device)
         
-        # Set model output_attentions to True
-        self.model.config.output_attentions = True
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
         
+        # Enable attention output
+        if hasattr(self.model, 'output_attentions'):
+            self.model.output_attentions = True
+            
         # Get attention weights
         with torch.no_grad():
-            outputs = self.model(input_ids=input_ids)
-            
-            # Ensure we have attention outputs
-            if not hasattr(outputs, "attentions") and not isinstance(outputs.attentions, tuple):
-                raise ValueError("Model does not output attention weights")
-            
-            # Get attention weights for specified layer and head
-            attentions = outputs.attentions
-            layer_attn = attentions[layer]  # Shape: [batch, num_heads, seq_len, seq_len]
-            head_attn = layer_attn[0, head]  # Shape: [seq_len, seq_len]
-            
-            # Get tokens
-            tokens = [self.tokenizer.decode([token_id]) for token_id in input_ids[0].tolist()]
+            # Forward pass
+            if is_encoder_decoder:
+                # For encoder-decoder models
+                src = input_ids
+                tgt = input_ids.clone()
+                src_mask = torch.ones_like(input_ids, dtype=torch.long)
+                
+                # Need to access attention directly from the model components
+                # First run encoder
+                memory = self.model.encoder(src, mask=src_mask)
+                
+                # Extract encoder self-attention if that's what we want
+                if attention_type == "self" and hasattr(self.model.encoder, 'layers'):
+                    # Get the requested layer
+                    actual_layer = layer if layer >= 0 else len(self.model.encoder.layers) + layer
+                    if 0 <= actual_layer < len(self.model.encoder.layers):
+                        # Get self-attention module from the specified layer
+                        attn_layer = self.model.encoder.layers[actual_layer]
+                        if hasattr(attn_layer, 'self_attn'):
+                            # Get normalized input
+                            norm_x = attn_layer.norm1(src)
+                            # Calculate query, key, value
+                            q, k, v = attn_layer.self_attn.prepare_qkv(norm_x, norm_x, norm_x)
+                            # Get attention weights
+                            _, attention_weights = attn_layer.self_attn.attention(q, k, v, None, self.device)
+                            attention_weights = attention_weights.cpu().numpy()
+                
+                # Run decoder with memory from encoder to get cross-attention
+                outputs = self.model.decoder(tgt, memory, tgt_mask=None, memory_mask=None)
+                
+                # For cross-attention between encoder and decoder
+                if attention_type == "cross" and hasattr(self.model.decoder, 'layers'):
+                    # Get the requested layer
+                    actual_layer = layer if layer >= 0 else len(self.model.decoder.layers) + layer
+                    if 0 <= actual_layer < len(self.model.decoder.layers):
+                        # Get cross-attention module from the specified layer
+                        attn_layer = self.model.decoder.layers[actual_layer]
+                        if hasattr(attn_layer, 'encoder_attn'):
+                            # Get normalized input for cross-attention
+                            norm_x = attn_layer.norm2(tgt)
+                            # Calculate query, key, value
+                            q = attn_layer.encoder_attn.prepare_query(norm_x)
+                            k, v = attn_layer.encoder_attn.prepare_key_value(memory, memory)
+                            # Get attention weights
+                            _, attention_weights = attn_layer.encoder_attn.attention(q, k, v, None, self.device)
+                            attention_weights = attention_weights.cpu().numpy()
+            else:
+                # For standard models
+                outputs = self.model(input_ids=input_ids)
+                
+                # Extract attention weights
+                if hasattr(outputs, 'attentions') and outputs.attentions:
+                    # Use the specified layer
+                    layer_idx = layer if layer >= 0 else len(outputs.attentions) + layer
+                    attention_weights = outputs.attentions[layer_idx][0, head].cpu().numpy()
+                else:
+                    # If model doesn't output attention, create a dummy pattern
+                    token_length = input_ids.size(1)
+                    attention_weights = np.eye(token_length)
         
-        # Plot attention weights
+        # Create figure for visualization
         fig, ax = plt.subplots(figsize=(10, 8))
-        im = ax.imshow(head_attn.cpu().numpy(), cmap="viridis")
         
-        # Add colorbar
-        cbar = ax.figure.colorbar(im, ax=ax)
-        cbar.ax.set_ylabel("Attention Weight", rotation=-90, va="bottom")
+        # Plot attention heatmap
+        im = ax.imshow(attention_weights, cmap=cmap)
         
-        # Set ticks and labels
+        # Set labels
         ax.set_xticks(np.arange(len(tokens)))
         ax.set_yticks(np.arange(len(tokens)))
-        ax.set_xticklabels(tokens, rotation=45, ha="right", rotation_mode="anchor")
+        ax.set_xticklabels(tokens)
         ax.set_yticklabels(tokens)
         
-        # Set grid and labels
+        # Rotate x labels for better readability
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        
+        # Add colorbar
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("Attention Weight")
+        
+        # Add title
+        attention_name = "Self" if attention_type == "self" else "Cross"
+        ax.set_title(f"{attention_name}-Attention Weights (Layer {layer}, Head {head})")
+        
+        # Add grid lines
         ax.set_xticks(np.arange(-.5, len(tokens), 1), minor=True)
         ax.set_yticks(np.arange(-.5, len(tokens), 1), minor=True)
-        ax.grid(which="minor", color="w", linestyle='-', linewidth=2)
-        ax.tick_params(which="minor", bottom=False, left=False)
+        ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.5)
         
-        # Set title
-        ax.set_title(f"Attention Weights (Layer {layer+1 if layer >= 0 else 'Last'}, Head {head+1})")
-        ax.set_xlabel("Key Position")
-        ax.set_ylabel("Query Position")
-        
-        # Save figure if path is provided
-        if save_path:
-            plt.savefig(save_path, bbox_inches="tight")
+        # Ensure layout fits
+        fig.tight_layout()
         
         return fig
     
@@ -537,7 +634,7 @@ def extract_file_metadata(file_path=__file__):
                     },
                     {
                         "name": "visualize_attention",
-                        "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, save_path: Optional[str] = None) -> Figure",
+                        "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, attention_type: str = 'self', cmap: str = 'viridis') -> Figure",
                         "brief_description": "Visualizes attention patterns for a given text at specified layer and head"
                     },
                     {

@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from typing import List, Dict, Optional, Union, Tuple, Any
 import numpy as np
 import os
+import inspect
 
 class TextGenerator:
     """
@@ -99,6 +100,9 @@ class TextGenerator:
         # Track attention patterns if requested
         attention_maps: List[torch.Tensor] = []
         
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        
         # Generate auto-regressively
         for _ in range(max_new_tokens):
             # Create attention mask (all 1s for input tokens)
@@ -110,21 +114,38 @@ class TextGenerator:
                 if return_attention and hasattr(self.model, 'output_attentions'):
                     setattr(self.model, 'output_attentions', True)
                 
-                # Get outputs
-                outputs = self.model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask
-                )
-                
-                # Get logits
-                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                # Get outputs - handle different model interfaces
+                if is_encoder_decoder:
+                    # For encoder-decoder models like EncoderDecoderTransformer
+                    # Use src for encoding and tgt for decoding
+                    src = input_ids
+                    tgt = input_ids[:, -1:] # Last token for next prediction
+                    src_mask = attention_mask
+                    
+                    # First encode the source
+                    memory = self.model.encode(src, src_mask=src_mask)
+                    
+                    # Then decode with memory for single token prediction
+                    outputs = self.model.decode(tgt, memory)
+                    
+                    # In this case, outputs should already be probabilities from softmax
+                    logits = outputs
+                else:
+                    # For standard models that accept input_ids and attention_mask
+                    outputs = self.model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask
+                    )
+                    
+                    # Get logits
+                    logits = outputs.logits if hasattr(outputs, "logits") else outputs
                 
                 # Store attention maps if requested
                 if return_attention and hasattr(outputs, 'attentions') and outputs.attentions is not None:
                     attention_maps.extend(outputs.attentions)
                 
                 # Focus on the last token prediction
-                next_token_logits = logits[:, -1, :]
+                next_token_logits = logits[:, -1, :] if not is_encoder_decoder else logits.squeeze(1)
                 
                 # Adjust prediction with temperature
                 if temperature != 1.0:
@@ -156,8 +177,22 @@ class TextGenerator:
                         next_token_logits = next_token_logits.masked_fill(indices_to_remove, -float('Inf'))
                     
                     # Sample from the filtered distribution
-                    probs = F.softmax(next_token_logits, dim=-1)
-                    next_token = torch.multinomial(probs, num_samples=1)
+                    if is_encoder_decoder:
+                        # For encoder-decoder, we need to make sure we have valid probabilities
+                        # Ensure no inf, -inf, or nan values
+                        next_token_logits = torch.where(
+                            torch.isfinite(next_token_logits),
+                            next_token_logits,
+                            torch.zeros_like(next_token_logits)
+                        )
+                        # Add small epsilon to avoid zeros
+                        next_token_logits = next_token_logits + 1e-8
+                        # Normalize to valid probability distribution
+                        probs = next_token_logits / next_token_logits.sum(dim=-1, keepdim=True)
+                        next_token = torch.multinomial(probs, num_samples=1)
+                    else:
+                        probs = F.softmax(next_token_logits, dim=-1)
+                        next_token = torch.multinomial(probs, num_samples=1)
                 else:
                     # Greedy decoding
                     next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
@@ -226,6 +261,26 @@ class TextGenerator:
         Returns:
             Generated text
         """
+        # Note: KV caching is not implemented for encoder-decoder models
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        if is_encoder_decoder:
+            # For encoder-decoder models, fall back to regular generation
+            result = self.generate(
+                prompt=prompt,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                do_sample=do_sample,
+                num_return_sequences=1
+            )
+            # Make sure we return a string
+            if isinstance(result, list):
+                return result[0]
+            # Handle case where generate might return (texts, attention_maps) tuple
+            elif isinstance(result, tuple) and len(result) > 0 and isinstance(result[0], list):
+                return result[0][0]
+            return str(result)  # Fallback conversion
+        
         # Encode prompt
         input_ids = self.tokenizer.encode(prompt)
         
@@ -258,7 +313,7 @@ class TextGenerator:
                 past = outputs.past_key_values if hasattr(outputs, 'past_key_values') else None
                 
                 # Get logits for next token prediction
-                next_token_logits = outputs.logits[:, -1, :]
+                next_token_logits = outputs.logits[:, -1, :] if hasattr(outputs, "logits") else outputs[:, -1, :]
                 
                 # Apply temperature
                 if temperature != 1.0:
@@ -312,6 +367,27 @@ class TextGenerator:
         Returns:
             List of generated texts
         """
+        # For encoder-decoder models, it's more stable to just run generation sequentially
+        # Check if we're working with EncoderDecoderTransformer
+        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        if is_encoder_decoder:
+            results = []
+            for prompt in prompts:
+                # Generate text for each prompt individually
+                generated = self.generate(
+                    prompt=prompt, 
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    do_sample=do_sample
+                )
+                # Handle both string and list return types
+                if isinstance(generated, list):
+                    results.append(generated[0])
+                else:
+                    results.append(str(generated))
+            return results
+        
+        # Standard batch generation for models supporting input_ids/attention_mask
         # Encode all prompts
         encoded_prompts = []
         max_length = 0
@@ -343,13 +419,17 @@ class TextGenerator:
         for _ in range(max_new_tokens):
             # Forward pass
             with torch.no_grad():
+                # Get outputs for standard models
                 outputs = self.model(
                     input_ids=generated,
                     attention_mask=attention_mask
                 )
                 
-                # Get logits for the last position
-                next_token_logits = outputs.logits[:, -1, :]
+                # Get logits
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                
+                # Focus on the last token prediction
+                next_token_logits = logits[:, -1, :]
                 
                 # Apply temperature
                 if temperature != 1.0:

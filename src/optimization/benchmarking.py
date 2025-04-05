@@ -1,6 +1,6 @@
 # src/optimization/benchmarking.py
 import time
-from typing import Dict, List, Any, Callable
+from typing import Dict, List, Any, Callable, Union
 import json
 import os
 import torch
@@ -27,7 +27,7 @@ class OptimizationBenchmark:
     def __init__(
         self,
         model: nn.Module,
-        input_generator: Callable[[int], torch.Tensor],
+        input_generator: Callable[[int], Union[torch.Tensor, Dict[str, torch.Tensor]]],
         batch_sizes: List[int] = [1, 4, 16, 32],
         precision: float = 0.001,  # Desired time measurement precision
         save_dir: str = "benchmark_results",
@@ -110,16 +110,30 @@ class OptimizationBenchmark:
         
         for batch_size in self.batch_sizes:
             # Generate input
-            inputs = self.input_generator(batch_size).to(device)
+            inputs = self.input_generator(batch_size)
+            
+            # Handle different input types (tensor vs dict)
+            if isinstance(inputs, dict):
+                # Move all tensors to device
+                for k, v in inputs.items():
+                    if isinstance(v, torch.Tensor):
+                        inputs[k] = v.to(device)
+            else:
+                # Treat as a single tensor
+                inputs = inputs.to(device)
             
             # Warm up
             with torch.no_grad():
                 for _ in range(10):
-                    _ = model(inputs)
+                    if isinstance(inputs, dict):
+                        _ = model(**inputs)
+                    else:
+                        _ = model(inputs)
             
-            # Measure memory usage
-            torch.cuda.reset_peak_memory_stats(device)
-            torch.cuda.empty_cache()
+            # Measure memory usage - only for CUDA devices
+            if device.type == "cuda":
+                torch.cuda.reset_peak_memory_stats(device)
+                torch.cuda.empty_cache()
             
             # Benchmark timing
             times = []
@@ -131,7 +145,10 @@ class OptimizationBenchmark:
                 while True:
                     start = time.time()
                     for _ in range(n_iterations):
-                        _ = model(inputs)
+                        if isinstance(inputs, dict):
+                            _ = model(**inputs)
+                        else:
+                            _ = model(inputs)
                     end = time.time()
                     
                     elapsed = end - start
@@ -147,11 +164,14 @@ class OptimizationBenchmark:
                 for _ in range(5):
                     start = time.time()
                     for _ in range(n_iterations):
-                        _ = model(inputs)
+                        if isinstance(inputs, dict):
+                            _ = model(**inputs)
+                        else:
+                            _ = model(inputs)
                     elapsed = (time.time() - start) / n_iterations
                     times.append(elapsed)
             
-            # Calculate memory usage
+            # Calculate memory usage (CUDA only)
             if device.type == "cuda":
                 memory_used = torch.cuda.max_memory_allocated(device) / (1024 * 1024)  # MB
             else:
@@ -532,7 +552,7 @@ def extract_file_metadata(file_path: str = __file__):
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "(self, model: nn.Module, input_generator: Callable[[int], torch.Tensor], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
+                        "signature": "(self, model: nn.Module, input_generator: Callable[[int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
                         "brief_description": "Initialize the optimization benchmark."
                     },
                     {
