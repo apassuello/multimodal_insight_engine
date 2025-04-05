@@ -797,6 +797,40 @@ class EncoderDecoderTransformer(BaseModel):
         """
         return self.encoder(src, mask=src_mask)
     
+    def clone(self) -> 'EncoderDecoderTransformer':
+        """
+        Create a deep copy of the transformer model.
+        
+        Returns:
+            A new EncoderDecoderTransformer instance with the same architecture and weights
+        """
+        # Get vocabulary sizes from the embedding layers
+        src_vocab_size = self.encoder.token_embedding.embedding.weight.size(0)
+        tgt_vocab_size = src_vocab_size if self.share_embeddings else self.decoder.token_embedding.embedding.weight.size(0)
+        
+        # Get feed forward dimension by checking the linear1 layer inside the feed_forward block
+        d_ff = self.encoder.layers[0].feed_forward.linear1.linear.in_features
+        
+        # Create a new instance with same architecture
+        clone_model = EncoderDecoderTransformer(
+            src_vocab_size=src_vocab_size,
+            tgt_vocab_size=tgt_vocab_size,
+            d_model=self.d_model,
+            num_heads=self.encoder.layers[0].self_attn.num_heads,  # Get from the first layer
+            num_encoder_layers=len(self.encoder.layers),
+            num_decoder_layers=len(self.decoder.layers),
+            d_ff=d_ff,
+            dropout=self.encoder.dropout.p if isinstance(self.encoder.dropout, nn.Dropout) else 0.1,
+            max_seq_length=self.encoder.position_encoding.max_len if hasattr(self.encoder, 'position_encoding') else 5000,
+            positional_encoding="sinusoidal",  # Default to sinusoidal if unknown
+            share_embeddings=self.share_embeddings
+        )
+        
+        # Copy weights from current model to clone
+        clone_model.load_state_dict(self.state_dict())
+        
+        return clone_model
+    
     def decode(
         self,
         tgt: torch.Tensor,
