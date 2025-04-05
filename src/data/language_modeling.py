@@ -6,7 +6,7 @@ import random
 from tqdm import tqdm
 import os
 
-from .tokenization import BPETokenizer
+from .tokenization import BPETokenizer, OptimizedBPETokenizer
 
 class LanguageModelingDataset(Dataset):
     """
@@ -19,7 +19,7 @@ class LanguageModelingDataset(Dataset):
     def __init__(
         self,
         texts: List[str],
-        tokenizer: BPETokenizer,
+        tokenizer: OptimizedBPETokenizer,
         max_length: int = 512,
         pad_idx: int = 0,
         bos_idx: int = 1,
@@ -133,7 +133,7 @@ def lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[st
 
 def create_lm_dataloaders(
     texts: List[str],
-    tokenizer: BPETokenizer,
+    tokenizer: OptimizedBPETokenizer,
     batch_size: int = 16,
     max_length: int = 512,
     val_split: float = 0.1,
