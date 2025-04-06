@@ -352,6 +352,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
         
         # For compatibility with tests, ensure punctuation is removed
         processed = clean_text(text, lower=self.lower_case)
+        processed = processed.replace(" ", " <_space_> ")
         
         # Remove punctuation - needed to match test expectations
         import re

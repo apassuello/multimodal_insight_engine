@@ -21,7 +21,7 @@
     },
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": true,
-    "python.linting.pylintPath": "pylint",
+    "python.linting.pylintPath": "/Users/apa/miniconda3/envs/me/bin/pylint",
     "terminal.integrated.shellIntegration.enabled": true,
     "terminal.integrated.shellIntegration.shell": "bash",
     "terminal.integrated.shellIntegration.autoActivate": true,
@@ -45,5 +45,9 @@
     "terminal.integrated.shellIntegration.autoActivateOnNewEditorLayout": true,
     "terminal.integrated.shellIntegration.autoActivateOnNewEditorView": true,
     "terminal.integrated.shellIntegration.autoActivateOnNewEditorWindow": true,
-    "terminal.integrated.shellIntegration.autoActivateOnNewEditorTab": true
+    "terminal.integrated.shellIntegration.autoActivateOnNewEditorTab": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.extraPaths": [
+        "/Users/apa/miniconda3/envs/me/lib/python3.10/site-packages"
+    ]
 }

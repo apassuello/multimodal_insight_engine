@@ -144,7 +144,8 @@ class LanguageModelTrainer:
         perplexity = math.exp(loss)
         self.train_perplexities.append(perplexity)
         
-        # Print progress
+        # Don't print every few seconds, let the tqdm progress bar handle displaying metrics
+        # Only print at milestone steps for record-keeping
         if step % 10000 == 0:
             print(f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}")
     
@@ -177,7 +178,11 @@ class LanguageModelTrainer:
             train_loss = 0.0
             num_batches = len(self.train_dataloader)
             
-            for batch in tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}"):
+            # Create tqdm progress bar with additional metrics
+            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}", 
+                         dynamic_ncols=True, leave=True, position=0)
+            
+            for i, batch in enumerate(pbar):
                 # Move batch to device
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 
@@ -224,7 +229,18 @@ class LanguageModelTrainer:
                 )
                 
                 # Update training loss
-                train_loss += loss.item()
+                curr_loss = loss.item()
+                train_loss += curr_loss
+                
+                # Update progress bar with current metrics - force update
+                curr_avg_loss = train_loss / (i + 1)
+                curr_ppl = math.exp(curr_avg_loss)
+                pbar.set_postfix({
+                    'loss': f'{curr_loss:.4f}',
+                    'avg_loss': f'{curr_avg_loss:.4f}',
+                    'ppl': f'{curr_ppl:.2f}',
+                    'lr': f'{self.scheduler.get_last_lr()[0]:.7f}'
+                }, refresh=True)  # Force refresh
                 
                 # Update global step
                 self.global_step += 1
@@ -282,7 +298,11 @@ class LanguageModelTrainer:
         num_batches = len(self.val_dataloader)
         
         with torch.no_grad():
-            for batch in tqdm(self.val_dataloader, desc="Validation"):
+            # Create tqdm progress bar with metrics
+            pbar = tqdm(self.val_dataloader, desc="Validation", 
+                        dynamic_ncols=True, leave=True, position=0)
+            
+            for i, batch in enumerate(pbar):
                 # Move batch to device
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 
@@ -307,7 +327,18 @@ class LanguageModelTrainer:
                 loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), 
                               shift_labels.view(-1))
                 
-                val_loss += loss.item()
+                # Update validation loss
+                curr_loss = loss.item()
+                val_loss += curr_loss
+                
+                # Update progress bar
+                curr_avg_loss = val_loss / (i + 1)
+                curr_ppl = math.exp(curr_avg_loss)
+                pbar.set_postfix({
+                    'loss': f'{curr_loss:.4f}',
+                    'avg_loss': f'{curr_avg_loss:.4f}',
+                    'ppl': f'{curr_ppl:.2f}'
+                }, refresh=True)
         
         # Calculate average validation loss
         avg_val_loss = val_loss / num_batches
