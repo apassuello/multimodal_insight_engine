@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 import os
 from .europarl_dataset import EuroparlDataset
 from .opensubtitles_dataset import OpenSubtitlesDataset
@@ -10,7 +10,7 @@ class CombinedTranslationDataset:
         self,
         src_lang: str = "de",
         tgt_lang: str = "en",
-        datasets: Dict[str, int] = None,  # Dict of dataset_name: max_examples
+        datasets: Optional[Dict[str, int]] = None,  # Dict of dataset_name: max_examples
         seed: int = 42
     ):
         """
@@ -39,6 +39,8 @@ class CombinedTranslationDataset:
             
         # Load all specified datasets
         for dataset_name, max_examples in datasets.items():
+            dataset: Union[EuroparlDataset, OpenSubtitlesDataset]
+            
             if dataset_name == "europarl":
                 dataset = EuroparlDataset(
                     src_lang=src_lang,

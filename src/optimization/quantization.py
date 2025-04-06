@@ -169,23 +169,8 @@ class DynamicQuantizer(ModelOptimizer):
         model_to_quantize = type(self.model)()
         model_to_quantize.load_state_dict(self.model.state_dict())
         
-        # Ensure model is in eval mode
-        model_to_quantize.eval()
-        
-        # Prepare model for quantization (fuse operations if applicable)
+        # Fuse modules if applicable
         model_to_quantize = self._fuse_modules(model_to_quantize)
-        
-        # Specify which layers to quantize dynamically
-        qconfig_dict: Dict[str, Any] = {
-            '': None,  # Global config (None means no quantization by default)
-        }
-        
-        # Add configurations for specific layer types
-        for module_type, qconfig in self.qconfig_spec.items():
-            qconfig_dict[str(module_type)] = qconfig
-        
-        # Prepare the model with the quantization configuration
-        torch.quantization.prepare(model_to_quantize, inplace=True)
         
         # Convert to quantized model
         quantized_model = torch.quantization.quantize_dynamic(

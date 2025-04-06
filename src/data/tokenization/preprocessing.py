@@ -76,9 +76,9 @@ def clean_text(
     
     return text
 
-def segment_on_punc(text: str) -> List[str]:
+def segment_on_punc(text: str) -> str:
     """
-    Segment text by adding spaces around punctuation.
+    Add spaces around punctuation.
     
     Args:
         text: Input text

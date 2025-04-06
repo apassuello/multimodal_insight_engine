@@ -231,8 +231,8 @@ class PromptInjectionTester:
     def generate_injection(
         self, 
         prompt: str, 
-        target_action: str = None,
-        injection_position: str = None
+        target_action: Optional[str] = None,
+        injection_position: Optional[str] = None
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate a prompt injection based on a legitimate prompt.
@@ -249,9 +249,7 @@ class PromptInjectionTester:
         if target_action is None or target_action not in [a["name"] for a in self.target_actions]:
             action_data = random.choice(self.target_actions)
         else:
-            action_data = next((a for a in self.target_actions if a["name"] == target_action), None)
-            if action_data is None:
-                action_data = random.choice(self.target_actions)
+            action_data = next((a for a in self.target_actions if a["name"] == target_action), random.choice(self.target_actions))
         
         # Select instruction from the target action
         instruction = random.choice(action_data["instructions"])

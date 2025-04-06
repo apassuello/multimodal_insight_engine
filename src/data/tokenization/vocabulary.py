@@ -346,7 +346,7 @@ class Vocabulary:
             return cls(**kwargs)
         
         # Count token frequencies
-        counter = Counter()
+        counter: Counter = Counter()
         for text in texts:
             if not isinstance(text, str):
                 raise TypeError(f"All elements in texts must be strings, got {type(text).__name__}")

@@ -19,7 +19,7 @@ class ConfigManager:
         Args:
             config_path: Optional path to a JSON configuration file
         """
-        self.config = {}
+        self.config: Dict[str, Any] = {}
         
         # Load from file if provided
         if config_path and os.path.exists(config_path):
