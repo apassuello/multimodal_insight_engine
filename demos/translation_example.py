@@ -13,24 +13,28 @@ import random
 from tqdm import tqdm
 import re
 from collections import Counter
+import argparse
 
-# Add parent directory to path to import local modules
+# Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.models.transformer import EncoderDecoderTransformer
 from src.data.sequence_data import TransformerDataModule
 from src.training.transformer_trainer import TransformerTrainer
 from src.training.transformer_utils import create_padding_mask, create_causal_mask
-from src.data.tokenization import BPETokenizer, Vocabulary
+from src.data.tokenization import OptimizedBPETokenizer
 import unicodedata
-from src.data.europarl_dataset import EuroparlDataset  # Import the EuroparlDataset class
+from src.optimization.mixed_precision import MixedPrecisionConverter
+from src.data.europarl_dataset import EuroparlDataset
+from src.data.opensubtitles_dataset import OpenSubtitlesDataset
+from debug_transformer import attach_debugger_to_trainer, debug_sample_batch
 
 class IWSLTDataset:
     """Dataset class for the IWSLT translation dataset with enhanced fallback to synthetic data."""
     
     def __init__(self, 
-                 src_lang="en", 
-                 tgt_lang="de", 
+                 src_lang="de", 
+                 tgt_lang="en", 
                  year="2017", 
                  split="train",
                  max_examples=None):
@@ -563,8 +567,11 @@ def preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer):
     
     return src_sequences, tgt_sequences
 
+def count_parameters(model):
+    """Count the number of trainable parameters in a model."""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-def main():
+def main(args):
     # Set random seed for reproducibility
     torch.manual_seed(42)
     random.seed(42)
@@ -574,26 +581,44 @@ def main():
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    # Load Europarl dataset
-    print("Loading Europarl dataset...")
-    train_dataset = EuroparlDataset(
-        src_lang="de",  # German source
-        tgt_lang="en",  # English target
-        max_examples=100000
-    )
+    # Load dataset based on user selection
+    print(f"Loading {args.dataset.capitalize()} dataset...")
     
-    val_dataset = EuroparlDataset(
-        src_lang="de",  # German source
-        tgt_lang="en",  # English target
-        max_examples=20000
-    )
+    if args.dataset == "europarl":
+        # Load Europarl dataset
+        train_dataset = EuroparlDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_train_examples
+        )
+        
+        val_dataset = EuroparlDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_val_examples
+        )
+    else:  # opensubtitles
+        # Load OpenSubtitles dataset
+        train_dataset = OpenSubtitlesDataset(
+            data_dir="data/os",
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_train_examples
+        )
+        
+        val_dataset = OpenSubtitlesDataset(
+            data_dir="data/os",
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_val_examples
+        )
     
     # Load the pre-trained BPE tokenizers
     print("Loading pre-trained BPE tokenizers...")
-    de_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/de")
-    en_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/en")
-    print(f"Loaded German tokenizer with vocab size: {de_tokenizer.vocab_size}")
-    print(f"Loaded English tokenizer with vocab size: {en_tokenizer.vocab_size}")
+    de_tokenizer = OptimizedBPETokenizer.from_pretrained(f"models/tokenizers/{args.src_lang}")
+    en_tokenizer = OptimizedBPETokenizer.from_pretrained(f"models/tokenizers/{args.tgt_lang}")
+    print(f"Loaded {args.src_lang} tokenizer with vocab size: {de_tokenizer.vocab_size}")
+    print(f"Loaded {args.tgt_lang} tokenizer with vocab size: {en_tokenizer.vocab_size}")
 
     # Get special token indices for the transformer
     src_pad_idx = de_tokenizer.special_tokens["pad_token_idx"]
@@ -619,14 +644,14 @@ def main():
     data_module = TransformerDataModule(
         source_sequences=train_src_sequences,
         target_sequences=train_tgt_sequences,
-        batch_size=128,
+        batch_size=args.batch_size,
         max_src_len=100,
         max_tgt_len=100,
         pad_idx=src_pad_idx,
         bos_idx=src_bos_idx,
         eos_idx=src_eos_idx,
         val_split=0.0,
-        shuffle=True,
+        shuffle=False,
         num_workers=4
     )
     
@@ -634,7 +659,7 @@ def main():
     val_data_module = TransformerDataModule(
         source_sequences=val_src_sequences,
         target_sequences=val_tgt_sequences,
-        batch_size=128,
+        batch_size=args.batch_size,
         max_src_len=100,
         max_tgt_len=100,
         pad_idx=src_pad_idx,
@@ -650,193 +675,182 @@ def main():
     model = EncoderDecoderTransformer(
         src_vocab_size=de_tokenizer.vocab_size,
         tgt_vocab_size=en_tokenizer.vocab_size,
-        d_model=512,
-        num_heads=8,
-        num_encoder_layers=4,
-        num_decoder_layers=4,
-        d_ff=2048,
-        dropout=0.1,
+        d_model=args.d_model,
+        num_heads=args.num_heads,
+        num_encoder_layers=args.num_encoder_layers,
+        num_decoder_layers=args.num_decoder_layers,
+        d_ff=args.d_ff,
+        dropout=args.dropout,
         max_seq_length=100,
         positional_encoding="sinusoidal",
         share_embeddings=False,
     )
-    #model.load("models/de_en_translation_epoch30.pt")
+    
+    # Print model parameter count
+    num_params = count_parameters(model)
+    print(f"Model created with {num_params:,} trainable parameters")
+    
+    # Apply mixed precision if requested
+    if args.use_mixed_precision:
+        print("Using mixed precision training (can sometimes cause instability)")
+        mp_converter = MixedPrecisionConverter(
+            model=model,
+            dtype=torch.float16,
+            use_auto_cast=True
+        )
+        model = mp_converter.convert_to_mixed_precision()
+        
+        # Check if using mixed precision wrapper
+        if hasattr(model, 'model'):
+            print(f"Using mixed precision with {model.dtype} for computation (parameters stored in FP32)")
+    else:
+        print("Using full precision training (more stable but slower)")
+        
     model.to(device)
     
-    # Create trainer
-    print("Creating trainer...")
+    # After model creation
+    for name, param in model.named_parameters():
+        if 'weight' in name:
+            print(f"{name}: mean={param.data.mean().item():.6f}, std={param.data.std().item():.6f}")
+            if param.data.std().item() < 0.01 or param.data.std().item() > 1.0:
+                print(f"Warning: Unusual initialization for {name}")
+    
+    # Create the trainer
     trainer = TransformerTrainer(
         model=model,
         train_dataloader=data_module.get_train_dataloader(),
-        val_dataloader=val_data_module.get_train_dataloader(),
+        val_dataloader=val_data_module.get_val_dataloader() if val_data_module else None,
         pad_idx=src_pad_idx,
-        lr=0.0001,
-        warmup_steps=2000,
-        label_smoothing=0.1,
-        clip_grad=1.0,
-        early_stopping_patience=5,
+        lr=args.learning_rate,
+        warmup_steps=args.warmup_steps,
+        label_smoothing=args.label_smoothing,
         device=device,
-        track_perplexity=True
+        track_perplexity=True,
+        use_gradient_scaling=args.use_gradient_scaling
     )
+    
+    # Add debugging - this will automatically attach to the trainer
+    if args.debug:
+        print("Enabling debugging features...")
+        debugger = attach_debugger_to_trainer(
+            trainer=trainer,
+            src_tokenizer=de_tokenizer,
+            tgt_tokenizer=en_tokenizer,
+            print_every=args.debug_frequency
+        )
+        
+        # Optionally debug a sample batch before training
+        if args.debug_sample_batch:
+            print("\n===== Debugging Sample Batch =====")
+            # Get a sample batch from the training data
+            sample_batch = next(iter(data_module.get_train_dataloader()))
+            debug_info = debug_sample_batch(model, sample_batch, en_tokenizer)
+            print("\nSample batch properties:")
+            for key, info in debug_info.items():
+                if key != "outputs":
+                    print(f"  {key}: {info}")
+            if "outputs" in debug_info:
+                print(f"  outputs shape: {debug_info['outputs']['shape']}")
+                print(f"  outputs range: {debug_info['outputs']['min']} to {debug_info['outputs']['max']}")
     
     # Create save directory
     os.makedirs("models", exist_ok=True)
     
+    # Prefix for model file based on dataset and languages
+    model_prefix = f"{args.dataset}_{args.src_lang}_{args.tgt_lang}"
+    
     # Train model
     print("Training model...")
-    history = trainer.train(epochs=10, save_path="models/de_en_translation")
+    trainer_history = trainer.train(epochs=args.epochs, save_path=f"models/{model_prefix}_translation")
     
     # Plot training history
     trainer.plot_training_history()
-    plt.savefig("de_en_training_history.png")
+    plt.savefig(f"{model_prefix}_training_history.png")
     plt.close()
     
     # Plot learning rate schedule
     trainer.plot_learning_rate()
-    plt.savefig("de_en_learning_rate_schedule.png")
+    plt.savefig(f"{model_prefix}_learning_rate_schedule.png")
     plt.close()
     
-    # Test translation on some examples
-    test_sentences = [
-        # Basic sentences
-        ("Hallo, wie geht es dir?", "Hello, how are you?"),
-        ("Ich lerne maschinelle Übersetzung.", "I am learning machine translation."),
-        ("Das Wetter ist heute schön.", "The weather is nice today."),
-        ("Ich komme aus Deutschland.", "I come from Germany."),
-        
-        # Medium complexity
-        ("Die künstliche Intelligenz verändert unsere Welt.", "Artificial intelligence is changing our world."),
-        ("Transformer-Modelle haben die natürliche Sprachverarbeitung revolutioniert.", 
-         "Transformer models have revolutionized natural language processing."),
-        ("Der Zug fährt um 15 Uhr vom Hauptbahnhof ab.", "The train departs from the main station at 3 PM."),
-        ("Wir sollten mehr Wert auf Nachhaltigkeit legen.", "We should place more value on sustainability."),
-        
-        # Complex sentences with subordinate clauses
-        ("Ich glaube, dass maschinelles Lernen in Zukunft noch wichtiger wird.", 
-         "I believe that machine learning will become even more important in the future."),
-        ("Obwohl es regnet, möchte ich spazieren gehen.", "Although it's raining, I want to go for a walk."),
-        ("Nachdem wir das Projekt abgeschlossen hatten, gingen wir alle zusammen essen.", 
-         "After we had completed the project, we all went to eat together."),
-        
-        # Questions
-        ("Wann wurde der Transformer-Architekt veröffentlicht?", "When was the Transformer architecture published?"),
-        ("Wie funktioniert ein neuronales Netzwerk?", "How does a neural network work?"),
-        ("Warum ist Datenschutz so wichtig für KI-Systeme?", "Why is data protection so important for AI systems?"),
-        
-        # Technical content
-        ("Die Aufmerksamkeitsmechanismen ermöglichen es dem Modell, auf relevante Informationen zu fokussieren.", 
-         "The attention mechanisms allow the model to focus on relevant information."),
-        ("Gradientenabstieg ist ein Optimierungsalgorithmus zum Trainieren neuronaler Netze.", 
-         "Gradient descent is an optimization algorithm for training neural networks."),
-        ("Tokenisierung ist der erste Schritt bei der Verarbeitung von Texteingaben.", 
-         "Tokenization is the first step in processing text inputs."),
-        
-        # Idiomatic expressions
-        ("Das ist ein Kinderspiel.", "That is child's play (easy)."),
-        ("Es ist mir Wurst.", "I don't care."),
-        ("Ich verstehe nur Bahnhof.", "It's all Greek to me."),
-        
-        # Long sentences
-        ("Die Implementierung eines maschinellen Übersetzungssystems erfordert tiefes Verständnis von Sprachmodellen, Aufmerksamkeitsmechanismen und Tokenisierungsalgorithmen.", 
-         "Implementing a machine translation system requires a deep understanding of language models, attention mechanisms, and tokenization algorithms."),
-        ("Der Europarl-Datensatz enthält Übersetzungen von Debatten des Europäischen Parlaments und wird häufig zum Trainieren von Übersetzungsmodellen verwendet.", 
-         "The Europarl dataset contains translations of European Parliament debates and is frequently used to train translation models."),
-        
-        # Sentences with numbers and named entities
-        ("Berlin ist die Hauptstadt Deutschlands mit etwa 3,7 Millionen Einwohnern.", 
-         "Berlin is the capital of Germany with about 3.7 million inhabitants."),
-        ("Die Konferenz für maschinelles Lernen findet am 15. Mai 2023 in München statt.", 
-         "The machine learning conference takes place on May 15, 2023, in Munich."),
-        
-        # Sentences with compound words (challenging for BPE)
-        ("Datenschutzgrundverordnung ist ein langes deutsches Wort.", 
-         "General Data Protection Regulation is a long German word."),
-        ("Maschinelles Lernen und Computerlinguistik sind verwandte Forschungsgebiete.", 
-         "Machine learning and computational linguistics are related research fields."),
-        
-        # Sentences with different tenses
-        ("Ich habe gestern ein neues Buch gekauft.", "I bought a new book yesterday."),
-        ("Sie werden morgen nach Berlin reisen.", "They will travel to Berlin tomorrow."),
-        ("Wir hatten das Problem bereits gelöst, bevor der Chef davon erfuhr.", 
-         "We had already solved the problem before the boss found out about it."),
-        
-        # Domain-specific sentence (IT/programming)
-        ("Die Funktion gibt einen Fehler zurück, wenn die Eingabe ungültig ist.", 
-         "The function returns an error if the input is invalid.")
-    ]
-    
-    def translate(text, max_len=100):
-        """
-        Translate German text to English using BPE tokenization.
-        
-        Args:
-            text: German text to translate
-            max_len: Maximum length of generated translation
-            
-        Returns:
-            English translation
-        """
-        model.eval()
-        
-        # Tokenize source text with BPE
-        src_ids = de_tokenizer.encode(text)
-        src_ids = [src_bos_idx] + src_ids + [src_eos_idx]
-        src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
-        
-        # Create source mask
-        src_mask = create_padding_mask(src_tensor, pad_idx=src_pad_idx)
-        
-        # Encode the source sequence
-        memory = model.encode(src_tensor, src_mask=src_mask)
-        
-        # Set start token
-        tgt = torch.tensor([[tgt_bos_idx]], dtype=torch.long).to(device)
-        
-        # Generate translation auto-regressively
-        for i in range(max_len - 1):
-            # Create target mask
-            tgt_mask = create_causal_mask(tgt.size(1), device)
-            # Predict next token
-            output = model.decode(tgt, memory=memory, tgt_mask=tgt_mask)
-            next_token_logits = output[:, -1, :]
-            next_token = next_token_logits.argmax(dim=-1, keepdim=True)
-            
-            # Append to output sequence
-            tgt = torch.cat([tgt, next_token], dim=1)
-            
-            # Stop if end token is generated
-            if next_token.item() == tgt_eos_idx:
-                break
-        
-        # Convert token indices to words (skip BOS, include EOS)
-        tgt_indices = tgt[0].cpu().tolist()
-        
-        # Decode using BPE tokenizer
-        # Skip first token (BOS) and stop at EOS if present
-        decoded_indices = tgt_indices[1:]
-        if tgt_eos_idx in decoded_indices:
-            decoded_indices = decoded_indices[:decoded_indices.index(tgt_eos_idx)]
-        
-        translation = en_tokenizer.decode(decoded_indices)
-        
-        return translation
-    
-    print("\n=== Testing Translation ===")
-    for i, (source, reference) in enumerate(test_sentences):
-        # Translate the sentence
-        generated = translate(source)
-        
-        # Print the results
-        print(f"Example {i+1}:")
-        print(f"Source:     {source}")
-        print(f"Reference:  {reference}")
-        print(f"Generated:  {generated}")
-        print("-" * 80)  # Separator for better readability
-    return history
-    
+    return trainer_history
 
 if __name__ == "__main__":
-    history = main()
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="Train a transformer model for machine translation")
+    
+    # Dataset options
+    parser.add_argument("--dataset", type=str, choices=["europarl", "opensubtitles"], default="europarl",
+                        help="Dataset to use for training")
+    parser.add_argument("--max_train_examples", type=int, default=100000,
+                        help="Maximum number of training examples to use")
+    parser.add_argument("--max_val_examples", type=int, default=20000,
+                        help="Maximum number of validation examples to use")
+    parser.add_argument("--src_lang", type=str, default="de",
+                        help="Source language code")
+    parser.add_argument("--tgt_lang", type=str, default="en",
+                        help="Target language code")
+    
+    # Model options
+    parser.add_argument("--d_model", type=int, default=512,
+                        help="Dimension of model embeddings")
+    parser.add_argument("--num_heads", type=int, default=8,
+                        help="Number of attention heads")
+    parser.add_argument("--num_encoder_layers", type=int, default=4,
+                        help="Number of encoder layers")
+    parser.add_argument("--num_decoder_layers", type=int, default=4,
+                        help="Number of decoder layers")
+    parser.add_argument("--d_ff", type=int, default=2048,
+                        help="Dimension of feed-forward network")
+    parser.add_argument("--dropout", type=float, default=0.1,
+                        help="Dropout rate")
+    
+    # Training options
+    parser.add_argument("--batch_size", type=int, default=128,
+                        help="Batch size for training")
+    parser.add_argument("--learning_rate", type=float, default=0.0001,
+                        help="Initial learning rate")
+    parser.add_argument("--label_smoothing", type=float, default=0.1,
+                        help="Label smoothing factor for training")
+    parser.add_argument("--warmup_steps", type=int, default=4000,
+                        help="Number of warmup steps for learning rate scheduler")
+    parser.add_argument("--use_gradient_scaling", action="store_true",
+                        help="Whether to use gradient scaling for mixed precision training")
+    parser.add_argument("--use_mixed_precision", action="store_true",
+                        help="Whether to use mixed precision training")
+    parser.add_argument("--debug", action="store_true",
+                        help="Enable debug mode with more verbose output")
+    parser.add_argument("--debug_frequency", type=int, default=100,
+                        help="How often to print debug information (in training steps)")
+    parser.add_argument("--debug_sample_batch", action="store_true",
+                        help="Debug a sample batch before training")
+    parser.add_argument("--epochs", type=int, default=3,
+                        help="Number of epochs to train for")
+    
+    args = parser.parse_args()
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+    random.seed(42)
+    np.random.seed(42)
+    
+    # Check for mixed precision conflicts
+    if args.use_mixed_precision and args.use_gradient_scaling:
+        print("Warning: Using both mixed precision and gradient scaling.")
+        print("Gradient scaling is typically used alongside mixed precision.")
+    
+    # Ensure gradient scaling is enabled with mixed precision
+    if args.use_mixed_precision and not args.use_gradient_scaling:
+        print("Enabling gradient scaling since mixed precision is enabled.")
+        args.use_gradient_scaling = True
+    
+    # Set up debugging
+    debugger = None
+    if args.debug:
+        debugger = create_translation_debugger(print_every=args.debug_frequency)
+    
+    # Run the training process
+    main(args)
 
     # Visualize Training History
     plt.figure(figsize=(15, 5))
@@ -844,8 +858,8 @@ if __name__ == "__main__":
     # Loss Subplot
     plt.subplot(1, 2, 1)
     plt.title('Training and Validation Loss')
-    plt.plot(history['train_loss'], label='Training Loss')
-    plt.plot(history['val_loss'], label='Validation Loss')
+    plt.plot(trainer_history['train_loss'], label='Training Loss')
+    plt.plot(trainer_history['val_loss'], label='Validation Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
@@ -853,8 +867,8 @@ if __name__ == "__main__":
     # Perplexity Subplot
     plt.subplot(1, 2, 2)
     plt.title('Training and Validation Perplexity')
-    plt.plot(history['train_ppl'], label='Training Perplexity')
-    plt.plot(history['val_ppl'], label='Validation Perplexity')
+    plt.plot(trainer_history['train_ppl'], label='Training Perplexity')
+    plt.plot(trainer_history['val_ppl'], label='Validation Perplexity')
     plt.xlabel('Epochs')
     plt.ylabel('Perplexity')
     plt.legend()

@@ -61,6 +61,8 @@ class TransformerTrainer:
         early_stopping_patience: Optional[int] = None,
         device: Optional[torch.device] = None,
         track_perplexity: bool = False,
+        scheduler: str = "inverse_sqrt",
+        use_gradient_scaling: bool = False,
     ):
         """
         Initialize the transformer trainer.
@@ -78,6 +80,9 @@ class TransformerTrainer:
             clip_grad: Gradient clipping value
             early_stopping_patience: Number of epochs to wait for improvement
             device: Device to train on
+            track_perplexity: Whether to track perplexity during training
+            scheduler: Learning rate scheduler type ("inverse_sqrt", "cosine", "linear", "constant")
+            use_gradient_scaling: Whether to use gradient scaling for mixed precision training
         """
         self.model = model
         self.train_dataloader = train_dataloader
@@ -86,6 +91,8 @@ class TransformerTrainer:
         self.warmup_steps = warmup_steps
         self.clip_grad = clip_grad
         self.early_stopping_patience = early_stopping_patience
+        self.scheduler_type = scheduler
+        self.use_gradient_scaling = use_gradient_scaling
         
         # Set device
         if device is None:
@@ -110,6 +117,9 @@ class TransformerTrainer:
         # Configure loss function
         self.criterion = LabelSmoothing(smoothing=label_smoothing, pad_idx=pad_idx)
         
+        # Initialize gradient scaler for mixed precision
+        self.scaler = torch.cuda.amp.GradScaler() if self.use_gradient_scaling else None
+        
         # Initialize training state
         self.current_epoch = 0
         self.global_step = 0
@@ -127,7 +137,7 @@ class TransformerTrainer:
     
     def get_lr_scheduler(self, optimizer):
         """
-        Create a learning rate scheduler with warmup and decay.
+        Create a learning rate scheduler based on the specified type.
         
         Args:
             optimizer: Optimizer to schedule
@@ -135,17 +145,72 @@ class TransformerTrainer:
         Returns:
             Learning rate scheduler
         """
-        # Define learning rate function
-        def lr_lambda(step):
-            # Linear warmup followed by inverse square root decay
-            if step == 0:
-                step = 1
-            return min(
-                step ** (-0.5),
-                step * self.warmup_steps ** (-1.5)
-            ) * self.warmup_steps ** 0.5
+        # Define total steps for all schedulers that need it
+        total_steps = len(self.train_dataloader) * 100  # Assume max 100 epochs as safety
         
-        return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+        if self.scheduler_type == "inverse_sqrt":
+            # Define inverse square root learning rate function with warmup
+            def lr_lambda(step):
+                # Linear warmup followed by inverse square root decay
+                if step == 0:
+                    step = 1
+                return min(
+                    step ** (-0.5),
+                    step * self.warmup_steps ** (-1.5)
+                ) * self.warmup_steps ** 0.5
+                
+            return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+            
+        elif self.scheduler_type == "cosine":
+            # Create cosine annealing scheduler with warm starts
+            # First do linear warmup then cosine annealing
+            warmup_steps = self.warmup_steps  # Create local reference for closure
+            
+            def cosine_warmup(step):
+                if step < warmup_steps:
+                    # Linear warmup
+                    return float(step) / float(max(1, warmup_steps))
+                else:
+                    # Cosine annealing decay
+                    step_adjusted = step - warmup_steps
+                    total_adjusted = total_steps - warmup_steps
+                    return 0.5 * (1 + math.cos(math.pi * step_adjusted / total_adjusted))
+                    
+            return torch.optim.lr_scheduler.LambdaLR(optimizer, cosine_warmup)
+            
+        elif self.scheduler_type == "linear":
+            # Linear decay after warmup
+            warmup_steps = self.warmup_steps  # Create local reference for closure
+            
+            def linear_warmup_decay(step):
+                if step < warmup_steps:
+                    # Linear warmup
+                    return float(step) / float(max(1, warmup_steps))
+                else:
+                    # Linear decay
+                    step_adjusted = step - warmup_steps
+                    total_adjusted = total_steps - warmup_steps
+                    return max(0.0, 1.0 - step_adjusted / total_adjusted)
+                    
+            return torch.optim.lr_scheduler.LambdaLR(optimizer, linear_warmup_decay)
+            
+        elif self.scheduler_type == "constant":
+            # Constant learning rate after warmup
+            warmup_steps = self.warmup_steps  # Create local reference for closure
+            
+            def constant_warmup(step):
+                if step < warmup_steps:
+                    # Linear warmup
+                    return float(step) / float(max(1, warmup_steps))
+                else:
+                    # Constant learning rate
+                    return 1.0
+                    
+            return torch.optim.lr_scheduler.LambdaLR(optimizer, constant_warmup)
+            
+        else:
+            raise ValueError(f"Unknown scheduler type: {self.scheduler_type}. " 
+                            "Supported types: 'inverse_sqrt', 'cosine', 'linear', 'constant'")
     
     def train_epoch(self):
         """
@@ -179,21 +244,38 @@ class TransformerTrainer:
             tgt_mask = create_causal_mask(tgt_input.size(1), self.device)
             
             # Forward pass
-            logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
+            if self.use_gradient_scaling:
+                with torch.cuda.amp.autocast():
+                    logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
+            else:
+                logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
             
             # Calculate loss
             loss = self.criterion(logits, tgt_output)
             
             # Backward pass
             self.optimizer.zero_grad()
-            loss.backward()
             
-            # Gradient clipping
-            if self.clip_grad > 0:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad)
-            
-            # Update weights
-            self.optimizer.step()
+            if self.use_gradient_scaling and self.scaler is not None:
+                self.scaler.scale(loss).backward()
+                
+                # Gradient clipping
+                if self.clip_grad > 0:
+                    self.scaler.unscale_(self.optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad)
+                
+                # Update weights
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                loss.backward()
+                
+                # Gradient clipping
+                if self.clip_grad > 0:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad)
+                
+                # Update weights
+                self.optimizer.step()
             
             # Update learning rate
             self.scheduler.step()
@@ -260,7 +342,11 @@ class TransformerTrainer:
                 tgt_mask = create_causal_mask(tgt_input.size(1), self.device)
                 
                 # Forward pass
-                logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
+                if self.use_gradient_scaling:
+                    with torch.cuda.amp.autocast():
+                        logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
+                else:
+                    logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
                 
                 # Calculate loss
                 loss = self.criterion(logits, tgt_output)

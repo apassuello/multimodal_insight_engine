@@ -37,8 +37,8 @@ class MixedPrecisionConverter:
             use_auto_cast: Whether to use automatic mixed precision via autocast
         """
         self.model = model
-        self.original_model = type(model)()
-        self.original_model.load_state_dict(model.state_dict())
+        # Store the original model state dict instead of creating a new instance
+        self.original_state_dict = {k: v.clone() for k, v in model.state_dict().items()}
         
         self.dtype = dtype
         self.use_auto_cast = use_auto_cast
@@ -69,36 +69,43 @@ class MixedPrecisionConverter:
         Returns:
             Model with mixed precision
         """
-        # Create a copy of the model with mixed precision weights
-        mp_model = type(self.model)()
-        
         # Convert the state dict to the target dtype where appropriate
         state_dict = self.model.state_dict()
         converted_state_dict = {}
         
+        # Define lists of layer types to keep in FP32 for numerical stability
+        fp32_layer_types = [
+            "layer_norm", "LayerNorm", "norm", 
+            "embedding", "Embedding", "embed",
+            "bias",  # Bias terms often better in FP32
+            "positional"  # Positional encoding/embeddings
+        ]
+        
         for name, param in state_dict.items():
             # Only convert floating point parameters
             if param.dtype in [torch.float32, torch.float64]:
-                # LayerNorm and embedding parameters often work better in FP32
-                if any(layer_type in name for layer_type in ["layer_norm", "LayerNorm", "embedding"]):
+                # Check if this parameter should remain in FP32
+                keep_fp32 = any(layer_type in name.lower() for layer_type in fp32_layer_types)
+                
+                if keep_fp32:
                     converted_state_dict[name] = param
                 else:
                     converted_state_dict[name] = param.to(self.dtype)
             else:
                 converted_state_dict[name] = param
         
-        # Load the converted state dict
-        mp_model.load_state_dict(converted_state_dict)
+        # Load the converted state dict back into the original model
+        self.model.load_state_dict(converted_state_dict)
         
         # Create a wrapped model with autocast if requested
         if self.use_auto_cast:
-            return MixedPrecisionWrapper(mp_model, self.dtype)
+            return MixedPrecisionWrapper(self.model, self.dtype)
         else:
-            return mp_model
+            return self.model
     
     def restore_original_precision(self):
         """Restore the model to its original precision."""
-        self.model.load_state_dict(self.original_model.state_dict())
+        self.model.load_state_dict(self.original_state_dict)
 
 
 class MixedPrecisionWrapper(nn.Module):

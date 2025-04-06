@@ -350,12 +350,17 @@ class OptimizedBPETokenizer(BaseTokenizer):
         if not text:
             return ""
         
-        # For compatibility with tests, ensure punctuation is removed
-        processed = clean_text(text, lower=self.lower_case)
-        processed = processed.replace(" ", " <_space_> ")
+        # Apply lowercase at the very beginning if configured
+        if self.lower_case:
+            text = text.lower()
+            
+        # For compatibility with tests, ensure text is properly cleaned
+        processed = clean_text(text, lower=False)  # Already lowercased if needed
         
-        # Remove punctuation - needed to match test expectations
-        import re
+        # Use consistent "_space_" format for spaces
+        processed = processed.replace(" ", "_space_")
+        
+        # If we want to keep punctuation, comment out or remove this line
         processed = re.sub(r'[^\w\s]', '', processed)
         
         return processed
@@ -664,7 +669,12 @@ class OptimizedBPETokenizer(BaseTokenizer):
             The reconstructed text
         """
         tokens = self.vocab.indices_to_tokens(token_ids)
-        return ''.join(tokens)
+        text = ''.join(tokens)
+        
+        # Replace _space_ tokens with actual spaces
+        text = text.replace("_space_", " ")
+        
+        return text
     
     @property
     def vocab_size(self) -> int:
@@ -1079,13 +1089,13 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         cpu_de_tokenizer = OptimizedBPETokenizer(
             vocab=de_tokenizer.vocab,
             merges=de_tokenizer.merges,
-            device="cpu"  # Force CPU for multiprocessing compatibility
+            device="mps"  # Force CPU for multiprocessing compatibility
         )
         
         cpu_en_tokenizer = OptimizedBPETokenizer(
             vocab=en_tokenizer.vocab,
             merges=en_tokenizer.merges,
-            device="cpu"  # Force CPU for multiprocessing compatibility
+            device="mps"  # Force CPU for multiprocessing compatibility
         )
         
         # Process batch

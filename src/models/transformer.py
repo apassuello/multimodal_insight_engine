@@ -757,7 +757,7 @@ class EncoderDecoderTransformer(BaseModel):
             
         Returns:
             Output tensor of shape [batch_size, tgt_len, tgt_vocab_size]
-            with softmax applied (probabilities sum to 1 along vocab dimension)
+            containing logits (not probabilities)
         """
         # Move inputs to device
         src = src.to(next(self.parameters()).device)
@@ -779,9 +779,7 @@ class EncoderDecoderTransformer(BaseModel):
         if self.output_projection is not None:
             output = self.output_projection(output)
         
-        # Apply softmax to get probability distribution
-        output = torch.softmax(output, dim=-1)
-        
+        # Return logits without applying softmax
         return output
     
     def encode(self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -849,7 +847,7 @@ class EncoderDecoderTransformer(BaseModel):
             
         Returns:
             Decoder output of shape [batch_size, tgt_len, tgt_vocab_size]
-            with softmax applied (probabilities sum to 1 along vocab dimension)
+            containing logits (not probabilities)
         """
         output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         
@@ -857,9 +855,7 @@ class EncoderDecoderTransformer(BaseModel):
         if self.output_projection is not None:
             output = self.output_projection(output)
         
-        # Apply softmax to get probability distribution
-        output = torch.softmax(output, dim=-1)
-        
+        # Return logits without applying softmax
         return output
     
     def generate(
@@ -913,7 +909,7 @@ class EncoderDecoderTransformer(BaseModel):
             if temperature != 1.0:
                 logits = logits / temperature
             
-            # Sample from logits
+            # Apply softmax to get probabilities (now explicitly needed since decode returns logits)
             probs = torch.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
             

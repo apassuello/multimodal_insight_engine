@@ -333,6 +333,144 @@ class BPETokenizer(BaseTokenizer):
         
         return tokenizer
 
+def preprocess_data_with_optimized_bpe(
+    dataset, 
+    de_tokenizer, 
+    en_tokenizer, 
+    batch_size=4000,  # Larger batch size for better GPU utilization
+    use_multiprocessing=False,
+    num_workers=4
+):
+    """
+    Optimized preprocessing function for translation datasets.
+    
+    Args:
+        dataset: Dataset with src_data and tgt_data attributes
+        de_tokenizer: German BPE tokenizer
+        en_tokenizer: English BPE tokenizer
+        batch_size: Size of batches for processing
+        use_multiprocessing: Whether to use multiprocessing for CPU parallelism
+        num_workers: Number of worker processes when using multiprocessing
+        
+    Returns:
+        Lists of tokenized source and target sequences
+    """
+    if use_multiprocessing:
+        return _preprocess_with_multiprocessing(
+            dataset, de_tokenizer, en_tokenizer, batch_size, num_workers
+        )
+    else:
+        return _preprocess_without_multiprocessing(
+            dataset, de_tokenizer, en_tokenizer, batch_size
+        )
+
+def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size):
+    """Process without multiprocessing (better for GPU utilization)."""
+    src_sequences = []
+    tgt_sequences = []
+    
+    # Get special token indices
+    src_bos_idx = de_tokenizer.special_tokens["bos_token_idx"]
+    src_eos_idx = de_tokenizer.special_tokens["eos_token_idx"]
+    tgt_bos_idx = en_tokenizer.special_tokens["bos_token_idx"]
+    tgt_eos_idx = en_tokenizer.special_tokens["eos_token_idx"]
+    
+    # Process in batches
+    total_batches = (len(dataset.src_data) + batch_size - 1) // batch_size
+    
+    for i in tqdm(range(0, len(dataset.src_data), batch_size), 
+                 total=total_batches, 
+                 desc="Preprocessing batches"):
+        # Get batch
+        batch_end = min(i + batch_size, len(dataset.src_data))
+        batch_src = dataset.src_data[i:batch_end]
+        batch_tgt = dataset.tgt_data[i:batch_end]
+        
+        # Process source and target texts using optimized batch encoding
+        src_token_ids = de_tokenizer.batch_encode_optimized(batch_src)
+        tgt_token_ids = en_tokenizer.batch_encode_optimized(batch_tgt)
+        
+        # Add special tokens efficiently
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+            src_sequences.append([src_bos_idx] + src_ids + [src_eos_idx])
+            tgt_sequences.append([tgt_bos_idx] + tgt_ids + [tgt_eos_idx])
+    
+    return src_sequences, tgt_sequences
+
+def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers):
+    """Process with multiprocessing (better for CPU-bound tasks)."""
+    from multiprocessing import Pool
+    
+    # Prepare batches
+    batches = []
+    for i in range(0, len(dataset.src_data), batch_size):
+        batch_end = min(i + batch_size, len(dataset.src_data))
+        batches.append((
+            dataset.src_data[i:batch_end],
+            dataset.tgt_data[i:batch_end],
+        ))
+    
+    # Get special token indices
+    special_tokens = {
+        'src_bos': de_tokenizer.special_tokens["bos_token_idx"],
+        'src_eos': de_tokenizer.special_tokens["eos_token_idx"],
+        'tgt_bos': en_tokenizer.special_tokens["bos_token_idx"],
+        'tgt_eos': en_tokenizer.special_tokens["eos_token_idx"],
+    }
+    
+    # Function to process a single batch
+    def process_batch(batch_data):
+        src_batch, tgt_batch = batch_data
+        
+        # Create CPU-only tokenizers for multiprocessing
+        cpu_de_tokenizer = OptimizedBPETokenizer(
+            vocab=de_tokenizer.vocab,
+            merges=de_tokenizer.merges,
+            device="mps"  # Force CPU for multiprocessing compatibility
+        )
+        
+        cpu_en_tokenizer = OptimizedBPETokenizer(
+            vocab=en_tokenizer.vocab,
+            merges=en_tokenizer.merges,
+            device="mps"  # Force CPU for multiprocessing compatibility
+        )
+        
+        # Process batch
+        src_token_ids = cpu_de_tokenizer.batch_encode_optimized(src_batch)
+        tgt_token_ids = cpu_en_tokenizer.batch_encode_optimized(tgt_batch)
+        
+        # Add special tokens
+        src_sequences = []
+        tgt_sequences = []
+        
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+            src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
+            tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
+        
+        return src_sequences, tgt_sequences
+    
+    # Process batches in parallel
+    with Pool(processes=num_workers) as pool:
+        results = list(
+            tqdm(
+                pool.imap(process_batch, batches),
+                total=len(batches),
+                desc="Preprocessing batches (multiprocessing)"
+            )
+        )
+    
+    # Combine results
+    src_sequences = []
+    tgt_sequences = []
+    
+    for src_batch, tgt_batch in results:
+        src_sequences.extend(src_batch)
+        tgt_sequences.extend(tgt_batch)
+    
+    return src_sequences, tgt_sequences
+
+
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
