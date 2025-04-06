@@ -69,3 +69,8 @@ tests/test_imgs/*.png
 
 # Custom experimental notebooks
 notebooks/*
+output/tokenizer/config.json
+output/tokenizer/merges.json
+output/tokenizer/merges.txt
+output/tokenizer/vocab.json
+reports/junit-report.xml
