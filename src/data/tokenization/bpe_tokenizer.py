@@ -469,8 +469,6 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
     
     return src_sequences, tgt_sequences
 
-
-
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -490,9 +488,19 @@ def extract_file_metadata(file_path=__file__):
                 "purpose": "Tokenizer that implements Byte Pair Encoding algorithm for subword tokenization",
                 "key_methods": [
                     {
+                        "name": "preprocess",
+                        "signature": "preprocess(self, text: str) -> str",
+                        "brief_description": "Preprocess text before tokenization"
+                    },
+                    {
                         "name": "train",
                         "signature": "train(self, texts: List[str], vocab_size: Optional[int] = None, min_frequency: int = 2, show_progress: bool = True) -> None",
                         "brief_description": "Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs"
+                    },
+                    {
+                        "name": "_tokenize_word",
+                        "signature": "_tokenize_word(self, word: str) -> List[str]",
+                        "brief_description": "Tokenize a single word using BPE merge operations"
                     },
                     {
                         "name": "tokenize",
@@ -503,6 +511,11 @@ def extract_file_metadata(file_path=__file__):
                         "name": "encode",
                         "signature": "encode(self, text: str) -> List[int]",
                         "brief_description": "Convert text to token indices using the vocabulary"
+                    },
+                    {
+                        "name": "batch_encode",
+                        "signature": "batch_encode(self, texts: List[str]) -> List[List[int]]",
+                        "brief_description": "Encode a batch of texts into token indices"
                     },
                     {
                         "name": "decode",
@@ -518,12 +531,39 @@ def extract_file_metadata(file_path=__file__):
                         "name": "from_pretrained",
                         "signature": "from_pretrained(cls, path: str) -> 'BPETokenizer'",
                         "brief_description": "Load a tokenizer from a saved directory"
+                    },
+                    {
+                        "name": "vocab_size",
+                        "signature": "vocab_size(self) -> int",
+                        "brief_description": "Get the size of the tokenizer vocabulary (property)"
+                    },
+                    {
+                        "name": "special_tokens",
+                        "signature": "special_tokens(self) -> Dict[str, int]",
+                        "brief_description": "Get the special token IDs (property)"
                     }
                 ],
                 "inheritance": "BaseTokenizer",
                 "dependencies": [".base_tokenizer", ".vocabulary", ".preprocessing"]
             }
         ],
-        "external_dependencies": ["json", "tqdm", "collections.Counter"],
-        "complexity_score": 7,  # High complexity due to BPE training algorithm and merging logic
+        "key_functions": [
+            {
+                "name": "preprocess_data_with_optimized_bpe",
+                "signature": "preprocess_data_with_optimized_bpe(dataset, de_tokenizer, en_tokenizer, batch_size=4000, use_multiprocessing=False, num_workers=4)",
+                "brief_description": "Optimized preprocessing function for translation datasets"
+            },
+            {
+                "name": "_preprocess_without_multiprocessing",
+                "signature": "_preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size)",
+                "brief_description": "Process dataset without multiprocessing (better for GPU utilization)"
+            },
+            {
+                "name": "_preprocess_with_multiprocessing",
+                "signature": "_preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers)",
+                "brief_description": "Process dataset with multiprocessing (better for CPU-bound tasks)"
+            }
+        ],
+        "external_dependencies": ["json", "tqdm", "collections.Counter", "multiprocessing.Pool"],
+        "complexity_score": 7  # High complexity due to BPE training algorithm and merging logic
     }

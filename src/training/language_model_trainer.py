@@ -462,6 +462,16 @@ def extract_file_metadata(file_path=__file__):
                         "brief_description": "Evaluates the model on validation data and returns loss and perplexity"
                     },
                     {
+                        "name": "save_model",
+                        "signature": "save_model(self, path)",
+                        "brief_description": "Saves the model and training state to disk"
+                    },
+                    {
+                        "name": "load_model",
+                        "signature": "load_model(self, path)",
+                        "brief_description": "Loads a saved model and training state from disk"
+                    },
+                    {
                         "name": "plot_training_curves",
                         "signature": "plot_training_curves(self, save_path=None)",
                         "brief_description": "Visualizes training metrics including loss, perplexity, and learning rate"

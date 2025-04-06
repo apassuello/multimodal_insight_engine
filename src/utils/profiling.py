@@ -1115,6 +1115,16 @@ def extract_file_metadata(file_path=__file__):
                         "brief_description": "Measure the memory usage during a forward pass"
                     },
                     {
+                        "name": "generate_report",
+                        "signature": "generate_report(self, save_path: Optional[str] = None) -> str",
+                        "brief_description": "Generate a comprehensive profiling report with all metrics"
+                    },
+                    {
+                        "name": "plot_metrics",
+                        "signature": "plot_metrics(self, save_dir: Optional[str] = None) -> Dict[str, plt.Figure]",
+                        "brief_description": "Create visualization plots for performance metrics"
+                    },
+                    {
                         "name": "profile_with_pytorch_profiler",
                         "signature": "profile_with_pytorch_profiler(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]], use_mps: bool = True, num_steps: int = 10, warmup: int = 3, activities: Optional[List[str]] = None, record_shapes: bool = True, profile_memory: bool = True, save_path: Optional[str] = None) -> None",
                         "brief_description": "Profile the model using PyTorch's built-in profiler"
@@ -1128,6 +1138,11 @@ def extract_file_metadata(file_path=__file__):
                         "name": "benchmark_model",
                         "signature": "benchmark_model(self, input_generator: Callable[[int, int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int], sequence_lengths: List[int], num_iterations: int = 5, save_dir: Optional[str] = None) -> pd.DataFrame",
                         "brief_description": "Benchmark the model across different batch sizes and sequence lengths"
+                    },
+                    {
+                        "name": "monitor_hardware_utilization",
+                        "signature": "monitor_hardware_utilization(self, train_fn: Callable, duration: int = 60, interval: float = 0.5, save_path: Optional[str] = None) -> pd.DataFrame",
+                        "brief_description": "Monitor CPU, GPU, and memory utilization during model execution"
                     }
                 ],
                 "inheritance": "",

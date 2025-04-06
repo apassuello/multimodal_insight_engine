@@ -525,6 +525,31 @@ def extract_file_metadata(file_path=__file__):
                         "name": "validate",
                         "signature": "validate(self)",
                         "brief_description": "Evaluates the model on validation data and returns loss metrics"
+                    },
+                    {
+                        "name": "get_lr_scheduler",
+                        "signature": "get_lr_scheduler(self, optimizer)",
+                        "brief_description": "Creates learning rate scheduler with warmup and decay strategies"
+                    },
+                    {
+                        "name": "save_checkpoint",
+                        "signature": "save_checkpoint(self, path: str)",
+                        "brief_description": "Saves model checkpoint with training state"
+                    },
+                    {
+                        "name": "load_checkpoint",
+                        "signature": "load_checkpoint(self, path: str)",
+                        "brief_description": "Loads model checkpoint and training state"
+                    },
+                    {
+                        "name": "plot_learning_rate",
+                        "signature": "plot_learning_rate(self)",
+                        "brief_description": "Visualizes the learning rate schedule"
+                    },
+                    {
+                        "name": "plot_training_history",
+                        "signature": "plot_training_history(self)",
+                        "brief_description": "Visualizes training and validation metrics over time"
                     }
                 ],
                 "inheritance": "object",
@@ -532,5 +557,5 @@ def extract_file_metadata(file_path=__file__):
             }
         ],
         "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
-        "complexity_score": 8,  # High complexity due to comprehensive training loop, masking, and visualization features
+        "complexity_score": 8  # High complexity due to comprehensive training loop, masking, and visualization features
     }

@@ -633,9 +633,19 @@ def extract_file_metadata(file_path=__file__):
                         "brief_description": "Calculates perplexity score for a given text under the model"
                     },
                     {
+                        "name": "calculate_batch_perplexity",
+                        "signature": "calculate_batch_perplexity(self, texts: List[str]) -> Dict[str, Union[float, List[float]]]",
+                        "brief_description": "Calculate perplexity for a batch of texts with optimized processing"
+                    },
+                    {
                         "name": "visualize_attention",
                         "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, attention_type: str = 'self', cmap: str = 'viridis') -> Figure",
                         "brief_description": "Visualizes attention patterns for a given text at specified layer and head"
+                    },
+                    {
+                        "name": "visualize_attention_patterns",
+                        "signature": "visualize_attention_patterns(self, text: str, save_dir: Optional[str] = None) -> List[Figure]",
+                        "brief_description": "Visualizes attention patterns across all layers and heads"
                     },
                     {
                         "name": "analyze_token_probabilities",
@@ -646,6 +656,11 @@ def extract_file_metadata(file_path=__file__):
                         "name": "evaluate_on_dataset",
                         "signature": "evaluate_on_dataset(self, texts: List[str], save_path: Optional[str] = None) -> Dict[str, Any]",
                         "brief_description": "Evaluates model performance on a dataset of texts"
+                    },
+                    {
+                        "name": "plot_perplexity_distribution",
+                        "signature": "plot_perplexity_distribution(self, perplexities: List[float], save_path: Optional[str] = None) -> Figure",
+                        "brief_description": "Plot the distribution of perplexities as a histogram with statistics"
                     }
                 ],
                 "inheritance": "object",

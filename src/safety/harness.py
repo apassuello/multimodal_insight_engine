@@ -387,6 +387,11 @@ def extract_file_metadata(file_path=__file__):
                         "brief_description": "Creates a basic test suite with examples for each safety category"
                     },
                     {
+                        "name": "load_test_cases",
+                        "signature": "def load_test_cases(self, category: Optional[str] = None) -> List[Dict[str, Any]]",
+                        "brief_description": "Loads test cases from disk, optionally filtered by category"
+                    },
+                    {
                         "name": "evaluate_model",
                         "signature": "def evaluate_model(self, model_func: Callable, category: Optional[str] = None) -> Dict[str, Any]",
                         "brief_description": "Evaluates a model against safety test cases and tracks performance metrics"

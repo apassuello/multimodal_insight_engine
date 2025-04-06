@@ -1009,6 +1009,32 @@ def extract_file_metadata(file_path=__file__):
                 "dependencies": ["torch", "torch.nn", ".embeddings", ".positional"]
             },
             {
+                "name": "TransformerDecoderLayer",
+                "purpose": "Implements a single transformer decoder layer with self-attention, cross-attention, and feed-forward networks",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the decoder layer with self-attention, cross-attention and feed-forward"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", ".attention", ".layers", ".positional"]
+            },
+            {
+                "name": "TransformerDecoder",
+                "purpose": "Implements the decoder part of the transformer with multiple layers and positional encoding",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Forward pass through the decoder with token embeddings, positional encoding and encoder memory"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", ".embeddings", ".positional"]
+            },
+            {
                 "name": "Transformer",
                 "purpose": "Implements a complete transformer model with encoder-only architecture",
                 "key_methods": [
@@ -1036,9 +1062,34 @@ def extract_file_metadata(file_path=__file__):
                         "brief_description": "Forward pass through the encoder-decoder transformer"
                     },
                     {
+                        "name": "encode",
+                        "signature": "encode(self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Encode source sequence"
+                    },
+                    {
+                        "name": "decode",
+                        "signature": "decode(self, tgt: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Decode target sequence given encoder memory"
+                    },
+                    {
                         "name": "generate",
                         "signature": "generate(self, src: torch.Tensor, max_len: int, bos_token_id: int, eos_token_id: int, src_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None, temperature: float = 1.0) -> torch.Tensor",
                         "brief_description": "Generate output sequences using the trained model"
+                    },
+                    {
+                        "name": "generate_square_subsequent_mask",
+                        "signature": "generate_square_subsequent_mask(self, size: int, device: torch.device) -> torch.Tensor",
+                        "brief_description": "Generate a square mask for preventing attending to future tokens"
+                    },
+                    {
+                        "name": "clone",
+                        "signature": "clone(self) -> 'EncoderDecoderTransformer'",
+                        "brief_description": "Create a deep copy of the transformer model"
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self, lr: float = 0.0001) -> dict",
+                        "brief_description": "Configure optimizer and learning rate scheduler for training"
                     }
                 ],
                 "inheritance": "BaseModel",
@@ -1046,5 +1097,5 @@ def extract_file_metadata(file_path=__file__):
             }
         ],
         "external_dependencies": ["torch"],
-        "complexity_score": 9,  # Very high complexity due to full transformer implementation with multiple components
+        "complexity_score": 9  # Very high complexity due to full transformer implementation with multiple components
     }
