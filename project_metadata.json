@@ -918,6 +918,16 @@
               "brief_description": "Evaluates the model on validation data and returns loss and perplexity"
             },
             {
+              "name": "save_model",
+              "signature": "save_model(self, path)",
+              "brief_description": "Saves the model and training state to disk"
+            },
+            {
+              "name": "load_model",
+              "signature": "load_model(self, path)",
+              "brief_description": "Loads a saved model and training state from disk"
+            },
+            {
               "name": "plot_training_curves",
               "signature": "plot_training_curves(self, save_path=None)",
               "brief_description": "Visualizes training metrics including loss, perplexity, and learning rate"
@@ -965,6 +975,31 @@
               "name": "validate",
               "signature": "validate(self)",
               "brief_description": "Evaluates the model on validation data and returns loss metrics"
+            },
+            {
+              "name": "get_lr_scheduler",
+              "signature": "get_lr_scheduler(self, optimizer)",
+              "brief_description": "Creates learning rate scheduler with warmup and decay strategies"
+            },
+            {
+              "name": "save_checkpoint",
+              "signature": "save_checkpoint(self, path: str)",
+              "brief_description": "Saves model checkpoint with training state"
+            },
+            {
+              "name": "load_checkpoint",
+              "signature": "load_checkpoint(self, path: str)",
+              "brief_description": "Loads model checkpoint and training state"
+            },
+            {
+              "name": "plot_learning_rate",
+              "signature": "plot_learning_rate(self)",
+              "brief_description": "Visualizes the learning rate schedule"
+            },
+            {
+              "name": "plot_training_history",
+              "signature": "plot_training_history(self)",
+              "brief_description": "Visualizes training and validation metrics over time"
             }
           ],
           "inheritance": "object",
@@ -1241,6 +1276,16 @@
               "brief_description": "Measure the memory usage during a forward pass"
             },
             {
+              "name": "generate_report",
+              "signature": "generate_report(self, save_path: Optional[str] = None) -> str",
+              "brief_description": "Generate a comprehensive profiling report with all metrics"
+            },
+            {
+              "name": "plot_metrics",
+              "signature": "plot_metrics(self, save_dir: Optional[str] = None) -> Dict[str, plt.Figure]",
+              "brief_description": "Create visualization plots for performance metrics"
+            },
+            {
               "name": "profile_with_pytorch_profiler",
               "signature": "profile_with_pytorch_profiler(self, input_data: Union[torch.Tensor, Dict[str, torch.Tensor]], use_mps: bool = True, num_steps: int = 10, warmup: int = 3, activities: Optional[List[str]] = None, record_shapes: bool = True, profile_memory: bool = True, save_path: Optional[str] = None) -> None",
               "brief_description": "Profile the model using PyTorch's built-in profiler"
@@ -1254,6 +1299,11 @@
               "name": "benchmark_model",
               "signature": "benchmark_model(self, input_generator: Callable[[int, int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int], sequence_lengths: List[int], num_iterations: int = 5, save_dir: Optional[str] = None) -> pd.DataFrame",
               "brief_description": "Benchmark the model across different batch sizes and sequence lengths"
+            },
+            {
+              "name": "monitor_hardware_utilization",
+              "signature": "monitor_hardware_utilization(self, train_fn: Callable, duration: int = 60, interval: float = 0.5, save_path: Optional[str] = None) -> pd.DataFrame",
+              "brief_description": "Monitor CPU, GPU, and memory utilization during model execution"
             }
           ],
           "inheritance": "",
@@ -1629,6 +1679,43 @@
           ]
         },
         {
+          "name": "TransformerDecoderLayer",
+          "purpose": "Implements a single transformer decoder layer with self-attention, cross-attention, and feed-forward networks",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Forward pass through the decoder layer with self-attention, cross-attention and feed-forward"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            ".attention",
+            ".layers",
+            ".positional"
+          ]
+        },
+        {
+          "name": "TransformerDecoder",
+          "purpose": "Implements the decoder part of the transformer with multiple layers and positional encoding",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Forward pass through the decoder with token embeddings, positional encoding and encoder memory"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            ".embeddings",
+            ".positional"
+          ]
+        },
+        {
           "name": "Transformer",
           "purpose": "Implements a complete transformer model with encoder-only architecture",
           "key_methods": [
@@ -1660,9 +1747,34 @@
               "brief_description": "Forward pass through the encoder-decoder transformer"
             },
             {
+              "name": "encode",
+              "signature": "encode(self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Encode source sequence"
+            },
+            {
+              "name": "decode",
+              "signature": "decode(self, tgt: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Decode target sequence given encoder memory"
+            },
+            {
               "name": "generate",
               "signature": "generate(self, src: torch.Tensor, max_len: int, bos_token_id: int, eos_token_id: int, src_mask: Optional[torch.Tensor] = None, memory_mask: Optional[torch.Tensor] = None, temperature: float = 1.0) -> torch.Tensor",
               "brief_description": "Generate output sequences using the trained model"
+            },
+            {
+              "name": "generate_square_subsequent_mask",
+              "signature": "generate_square_subsequent_mask(self, size: int, device: torch.device) -> torch.Tensor",
+              "brief_description": "Generate a square mask for preventing attending to future tokens"
+            },
+            {
+              "name": "clone",
+              "signature": "clone(self) -> 'EncoderDecoderTransformer'",
+              "brief_description": "Create a deep copy of the transformer model"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self, lr: float = 0.0001) -> dict",
+              "brief_description": "Configure optimizer and learning rate scheduler for training"
             }
           ],
           "inheritance": "BaseModel",
@@ -2066,6 +2178,11 @@
               "brief_description": "Creates a basic test suite with examples for each safety category"
             },
             {
+              "name": "load_test_cases",
+              "signature": "def load_test_cases(self, category: Optional[str] = None) -> List[Dict[str, Any]]",
+              "brief_description": "Loads test cases from disk, optionally filtered by category"
+            },
+            {
               "name": "evaluate_model",
               "signature": "def evaluate_model(self, model_func: Callable, category: Optional[str] = None) -> Dict[str, Any]",
               "brief_description": "Evaluates a model against safety test cases and tracks performance metrics"
@@ -2436,9 +2553,19 @@
               "brief_description": "Calculates perplexity score for a given text under the model"
             },
             {
+              "name": "calculate_batch_perplexity",
+              "signature": "calculate_batch_perplexity(self, texts: List[str]) -> Dict[str, Union[float, List[float]]]",
+              "brief_description": "Calculate perplexity for a batch of texts with optimized processing"
+            },
+            {
               "name": "visualize_attention",
               "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, attention_type: str = 'self', cmap: str = 'viridis') -> Figure",
               "brief_description": "Visualizes attention patterns for a given text at specified layer and head"
+            },
+            {
+              "name": "visualize_attention_patterns",
+              "signature": "visualize_attention_patterns(self, text: str, save_dir: Optional[str] = None) -> List[Figure]",
+              "brief_description": "Visualizes attention patterns across all layers and heads"
             },
             {
               "name": "analyze_token_probabilities",
@@ -2449,6 +2576,11 @@
               "name": "evaluate_on_dataset",
               "signature": "evaluate_on_dataset(self, texts: List[str], save_path: Optional[str] = None) -> Dict[str, Any]",
               "brief_description": "Evaluates model performance on a dataset of texts"
+            },
+            {
+              "name": "plot_perplexity_distribution",
+              "signature": "plot_perplexity_distribution(self, perplexities: List[float], save_path: Optional[str] = None) -> Figure",
+              "brief_description": "Plot the distribution of perplexities as a histogram with statistics"
             }
           ],
           "inheritance": "object",
@@ -2744,9 +2876,34 @@
     },
     {
       "filename": "opensubtitles_dataset.py",
-      "module_path": "src/data/opensubtitles_dataset.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides a dataset class for loading and preprocessing OpenSubtitles parallel corpus data for machine translation",
+      "key_classes": [
+        {
+          "name": "OpenSubtitlesDataset",
+          "purpose": "Handles loading and preprocessing parallel text data from the OpenSubtitles corpus",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, data_dir: str = 'data/os', src_lang: str = 'de', tgt_lang: str = 'en', max_examples: Optional[int] = None, random_seed: int = 42)",
+              "brief_description": "Initialize the dataset with source/target languages and processing options"
+            },
+            {
+              "name": "load_data",
+              "signature": "load_data(self) -> Tuple[List[str], List[str]]",
+              "brief_description": "Load and preprocess parallel corpora with support for multiple file patterns"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "os",
+            "random",
+            "typing"
+          ]
+        }
+      ],
+      "external_dependencies": [],
+      "complexity_score": 4,
+      "module_path": "src/data/opensubtitles_dataset.py"
     },
     {
       "filename": "dataloader.py",
@@ -3011,9 +3168,19 @@
           "purpose": "Tokenizer that implements Byte Pair Encoding algorithm for subword tokenization",
           "key_methods": [
             {
+              "name": "preprocess",
+              "signature": "preprocess(self, text: str) -> str",
+              "brief_description": "Preprocess text before tokenization"
+            },
+            {
               "name": "train",
               "signature": "train(self, texts: List[str], vocab_size: Optional[int] = None, min_frequency: int = 2, show_progress: bool = True) -> None",
               "brief_description": "Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs"
+            },
+            {
+              "name": "_tokenize_word",
+              "signature": "_tokenize_word(self, word: str) -> List[str]",
+              "brief_description": "Tokenize a single word using BPE merge operations"
             },
             {
               "name": "tokenize",
@@ -3024,6 +3191,11 @@
               "name": "encode",
               "signature": "encode(self, text: str) -> List[int]",
               "brief_description": "Convert text to token indices using the vocabulary"
+            },
+            {
+              "name": "batch_encode",
+              "signature": "batch_encode(self, texts: List[str]) -> List[List[int]]",
+              "brief_description": "Encode a batch of texts into token indices"
             },
             {
               "name": "decode",
@@ -3039,6 +3211,16 @@
               "name": "from_pretrained",
               "signature": "from_pretrained(cls, path: str) -> 'BPETokenizer'",
               "brief_description": "Load a tokenizer from a saved directory"
+            },
+            {
+              "name": "vocab_size",
+              "signature": "vocab_size(self) -> int",
+              "brief_description": "Get the size of the tokenizer vocabulary (property)"
+            },
+            {
+              "name": "special_tokens",
+              "signature": "special_tokens(self) -> Dict[str, int]",
+              "brief_description": "Get the special token IDs (property)"
             }
           ],
           "inheritance": "BaseTokenizer",
@@ -3049,10 +3231,28 @@
           ]
         }
       ],
+      "key_functions": [
+        {
+          "name": "preprocess_data_with_optimized_bpe",
+          "signature": "preprocess_data_with_optimized_bpe(dataset, de_tokenizer, en_tokenizer, batch_size=4000, use_multiprocessing=False, num_workers=4)",
+          "brief_description": "Optimized preprocessing function for translation datasets"
+        },
+        {
+          "name": "_preprocess_without_multiprocessing",
+          "signature": "_preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size)",
+          "brief_description": "Process dataset without multiprocessing (better for GPU utilization)"
+        },
+        {
+          "name": "_preprocess_with_multiprocessing",
+          "signature": "_preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers)",
+          "brief_description": "Process dataset with multiprocessing (better for CPU-bound tasks)"
+        }
+      ],
       "external_dependencies": [
         "json",
         "tqdm",
-        "collections.Counter"
+        "collections.Counter",
+        "multiprocessing.Pool"
       ],
       "complexity_score": 7,
       "module_path": "src/data/tokenization/bpe_tokenizer.py"
@@ -3137,11 +3337,11 @@
   ],
   "summary": {
     "total_modules": 62,
-    "modules_with_metadata": 53,
-    "modules_without_metadata": 9
+    "modules_with_metadata": 54,
+    "modules_without_metadata": 8
   },
   "complexity_summary": {
-    "average_complexity": 5.584905660377358,
+    "average_complexity": 5.555555555555555,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -3304,6 +3504,10 @@
         "score": 4
       },
       {
+        "module": "src/data/opensubtitles_dataset.py",
+        "score": 4
+      },
+      {
         "module": "src/training/joint_bpe_training.py",
         "score": 3
       },
@@ -3358,7 +3562,7 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 26,
+    "total_external_dependencies": 27,
     "dependencies_by_usage": [
       {
         "name": "torch",
@@ -3462,6 +3666,10 @@
       },
       {
         "name": "abc",
+        "usage_count": 1
+      },
+      {
+        "name": "multiprocessing.Pool",
         "usage_count": 1
       }
     ]
