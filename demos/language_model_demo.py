@@ -270,8 +270,11 @@ def train_language_model(
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=batch_size,
-        shuffle=False,
-        collate_fn=lambda batch: lm_collate_fn(batch, tokenizer.special_tokens["pad_token_idx"])
+        shuffle=True,
+        collate_fn=lambda batch: lm_collate_fn(batch, tokenizer.special_tokens["pad_token_idx"]),
+        num_workers=2,    # Use multiple workers (but not too many)
+        pin_memory=True,  # Use pinned memory
+        prefetch_factor=2  # Prefetch batches
     )
     
     # Create model
