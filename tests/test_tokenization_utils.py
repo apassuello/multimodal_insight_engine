@@ -220,7 +220,11 @@ def test_transformer_dataset_end_to_end(mock_tokenizer, sample_texts):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=2,
-        collate_fn=transformer_collate_fn
+        collate_fn=transformer_collate_fn,
+        shuffle=True,
+        num_workers=2,    # Use multiple workers (but not too many)
+        pin_memory=True,  # Use pinned memory
+        prefetch_factor=2  # Prefetch batches
     )
     
     # Get a batch
