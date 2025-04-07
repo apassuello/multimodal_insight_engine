@@ -15,6 +15,9 @@ import re
 from collections import Counter
 import argparse
 
+# Disable interactive mode for matplotlib to prevent opening windows
+plt.ioff()
+
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -34,11 +37,49 @@ from debug_scripts.debug_transformer import (
 )
 
 
+def clean_translation_output(text):
+    """
+    Minimal cleaning of translation output - only fix capitalization and spaces.
+
+    Args:
+        text: Raw translation text
+
+    Returns:
+        Cleaned translation text
+    """
+    # Remove BOS token if present
+    text = text.replace("<bos>", "").strip()
+
+    # Fix common special tokens
+    text = text.replace("_space", " ")
+    text = text.replace("_dash", "-")
+    text = text.replace("_comma", ",")
+    text = text.replace("_period", ".")
+    text = text.replace("_question", "?")
+
+    # Fix double spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Capitalize first letter only
+    if text and len(text) > 0:
+        text = text[0].upper() + text[1:]
+
+    return text
+
+
 def generate_translations(
-    model, tokenizer_src, tokenizer_tgt, src_sentences, max_length=100, device=None
+    model,
+    tokenizer_src,
+    tokenizer_tgt,
+    src_sentences,
+    max_length=100,
+    device=None,
+    fallback_token="[UNK]",
+    sampling_temp=1.0,  # Temperature for sampling (1.0 = greedy)
+    sampling_topk=1,  # Default to greedy decoding (top-1)
 ):
     """
-    Generate translations for a list of source sentences.
+    Generate translations for a list of source sentences using greedy decoding by default.
 
     Args:
         model: Trained transformer model
@@ -47,12 +88,16 @@ def generate_translations(
         src_sentences: List of source language sentences
         max_length: Maximum length of generated translations
         device: Device to run inference on
+        fallback_token: Token to use when encountering out-of-vocabulary tokens
+        sampling_temp: Temperature for sampling (1.0 = greedy)
+        sampling_topk: Number of top tokens to consider for sampling (1 = greedy)
 
     Returns:
         List of translated sentences
     """
     model.eval()
     translations = []
+    raw_translations = []
 
     # Default to CPU if device not provided
     if device is None:
@@ -77,74 +122,200 @@ def generate_translations(
         )
         print("This may result in incorrect translations!")
 
+    # Get token indices for unknown tokens or most common tokens to use as fallbacks
+    try:
+        unk_token_idx = tokenizer_tgt.token_to_id(fallback_token)
+        if unk_token_idx is None or unk_token_idx >= tgt_vocab_size:
+            unk_token_idx = 0  # Use a safe default
+    except:
+        unk_token_idx = 0
+
     with torch.no_grad():
         for src_text in src_sentences:
-            # Tokenize source text
-            src_ids = tokenizer_src.encode(src_text)
+            try:
+                # Tokenize source text
+                src_ids = tokenizer_src.encode(src_text)
 
-            # Add special tokens
-            src_ids = (
-                [tokenizer_src.special_tokens["bos_token_idx"]]
-                + src_ids
-                + [tokenizer_src.special_tokens["eos_token_idx"]]
-            )
-
-            # Safety check: ensure all token IDs are within model's vocabulary size
-            src_ids = [min(token_id, src_vocab_size - 1) for token_id in src_ids]
-
-            src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
-
-            # Create source mask
-            src_mask = create_padding_mask(
-                src_tensor, tokenizer_src.special_tokens["pad_token_idx"]
-            )
-
-            # Initialize target with BOS token
-            tgt_ids = [
-                min(tokenizer_tgt.special_tokens["bos_token_idx"], tgt_vocab_size - 1)
-            ]
-            tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
-
-            # Generate translation auto-regressively
-            for _ in range(max_length):
-                # Create target mask (causal)
-                tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
-
-                # Get model prediction
-                logits = model(
-                    src_tensor, tgt_tensor, src_mask=src_mask, tgt_mask=tgt_mask
+                # Add special tokens
+                src_ids = (
+                    [tokenizer_src.special_tokens["bos_token_idx"]]
+                    + src_ids
+                    + [tokenizer_src.special_tokens["eos_token_idx"]]
                 )
-                next_token_logits = logits[0, -1]
-                next_token = torch.argmax(next_token_logits, dim=-1).item()
 
-                # Stop if EOS token is generated
-                if next_token == tokenizer_tgt.special_tokens["eos_token_idx"]:
-                    break
+                # Ensure all tokens are in vocabulary range
+                src_ids = [min(token_id, src_vocab_size - 1) for token_id in src_ids]
 
-                # Add predicted token to target sequence
-                tgt_ids.append(next_token)
+                src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
+
+                # Create source mask
+                src_mask = create_padding_mask(
+                    src_tensor, tokenizer_src.special_tokens["pad_token_idx"]
+                )
+
+                # Initialize target with BOS token
+                tgt_bos_idx = min(
+                    tokenizer_tgt.special_tokens["bos_token_idx"], tgt_vocab_size - 1
+                )
+                tgt_ids = [tgt_bos_idx]
                 tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
 
-            # Convert token IDs to text (excluding BOS and EOS tokens)
-            translated_tokens = (
-                tgt_ids[1:]
-                if tgt_ids[-1] == tokenizer_tgt.special_tokens["eos_token_idx"]
-                else tgt_ids[1:]
-            )
+                # Generate translation auto-regressively
+                unique_tokens = set()  # Track unique tokens to detect repetition
+                repetition_count = 0
+                max_repetitions = 5  # Stop after this many repeated tokens
+                tokens_generated = 0
 
-            # For safety, check all token IDs before decoding
-            safe_translated_tokens = []
-            for token_id in translated_tokens:
-                # Skip any out-of-vocabulary tokens
-                if 0 <= token_id < tokenizer_tgt.vocab_size:
-                    safe_translated_tokens.append(token_id)
+                for _ in range(max_length):
+                    tokens_generated += 1
+
+                    # Create target mask (causal)
+                    tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
+
+                    # Get model prediction
+                    logits = model(
+                        src_tensor, tgt_tensor, src_mask=src_mask, tgt_mask=tgt_mask
+                    )
+                    next_token_logits = logits[0, -1]
+
+                    # Apply temperature to logits if not 1.0
+                    if sampling_temp != 1.0:
+                        next_token_logits = next_token_logits / sampling_temp
+
+                    # Get top-k tokens for potential sampling
+                    top_token_probs, top_tokens = torch.topk(
+                        next_token_logits, sampling_topk
+                    )
+
+                    # Convert to probabilities
+                    top_token_probs = torch.softmax(top_token_probs, dim=-1)
+
+                    # Sample from top-k or use greedy decoding
+                    if sampling_temp == 1.0 or sampling_topk == 1:
+                        # Greedy decoding - just take the highest probability token
+                        next_token = top_tokens[0].item()
+                    else:
+                        # Sample from top-k based on probabilities
+                        try:
+                            # Convert to a proper probability distribution
+                            if (
+                                torch.isnan(top_token_probs).any()
+                                or not torch.isfinite(top_token_probs).all()
+                            ):
+                                # Fallback to uniform distribution if probabilities are invalid
+                                top_token_probs = torch.ones_like(
+                                    top_token_probs
+                                ) / len(top_token_probs)
+
+                            # Ensure it sums to 1.0
+                            if abs(top_token_probs.sum().item() - 1.0) > 1e-6:
+                                top_token_probs = (
+                                    top_token_probs / top_token_probs.sum()
+                                )
+
+                            # Use explicit integer index for multinomial
+                            index_tensor = torch.multinomial(
+                                top_token_probs, num_samples=1
+                            )
+                            next_token_idx = index_tensor[0].item()
+                            next_token = top_tokens[int(next_token_idx)].item()
+                        except Exception as e:
+                            print(
+                                f"Sampling error: {e}, falling back to greedy decoding"
+                            )
+                            next_token = top_tokens[0].item()
+
+                    # Check if we're getting repetitions
+                    if (
+                        next_token in unique_tokens and tokens_generated > 15
+                    ):  # Allow more repetition, only check after 15 tokens
+                        repetition_count += 1
+
+                        # Try to avoid repetition by sampling from remaining tokens - only if repetition becomes severe
+                        if (
+                            repetition_count >= 5 and len(top_tokens) > 1
+                        ):  # Increased threshold
+                            for alt_idx in range(1, len(top_tokens)):
+                                alt_token = top_tokens[alt_idx].item()
+                                if (
+                                    alt_token not in unique_tokens
+                                    or alt_token
+                                    == tokenizer_tgt.special_tokens["eos_token_idx"]
+                                ):
+                                    next_token = alt_token
+                                    repetition_count = 0
+                                    break
+                    else:
+                        repetition_count = 0
+
+                    unique_tokens.add(next_token)
+
+                    # Stop if too many repetitions or EOS token
+                    if repetition_count >= max_repetitions:
+                        # Add EOS token if there are too many repetitions
+                        next_token = tokenizer_tgt.special_tokens["eos_token_idx"]
+
+                    # Add predicted token to target sequence
+                    tgt_ids.append(next_token)
+                    tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
+
+                    # Stop if EOS token is generated
+                    if next_token == tokenizer_tgt.special_tokens["eos_token_idx"]:
+                        break
+
+                # Process output tokens, removing special tokens
+                output_tokens = []
+                for i, token_id in enumerate(tgt_ids):
+                    # Skip BOS and EOS tokens
+                    if (
+                        token_id == tokenizer_tgt.special_tokens["bos_token_idx"]
+                        or token_id == tokenizer_tgt.special_tokens["eos_token_idx"]
+                    ):
+                        continue
+
+                    # Skip unknown tokens
+                    if token_id >= tokenizer_tgt.vocab_size:
+                        continue
+
+                    # Add token to output
+                    output_tokens.append(token_id)
+
+                # Decode tokens to text
+                if output_tokens:
+                    raw_translated_text = tokenizer_tgt.decode(output_tokens)
                 else:
-                    print(f"WARNING: Skipping out-of-vocabulary token ID: {token_id}")
+                    raw_translated_text = "[Empty translation]"
 
-            translated_text = tokenizer_tgt.decode(safe_translated_tokens)
-            translations.append(translated_text)
+                # Apply post-processing to clean up BPE artifacts
+                cleaned_text = clean_translation_output(raw_translated_text)
 
-    return translations
+                # Use fallback if we get mostly repetitive output
+                if len(set(cleaned_text.split())) <= 1 and len(cleaned_text) > 5:
+                    print(
+                        "Warning: Generated repetitive translation. Attempting different decoding..."
+                    )
+                    # Try again with more randomness in sampling
+                    return generate_translations(
+                        model,
+                        tokenizer_src,
+                        tokenizer_tgt,
+                        [src_text],
+                        max_length,
+                        device,
+                        fallback_token,
+                        sampling_temp=0.7,  # Add some randomness
+                        sampling_topk=10,  # Consider more candidates
+                    )
+
+                raw_translations.append(raw_translated_text)
+                translations.append(cleaned_text)
+
+            except Exception as e:
+                print(f"Error during translation: {e}")
+                raw_translations.append("[Translation error]")
+                translations.append("[Translation error]")
+
+    return translations, raw_translations
 
 
 def load_pretrained_model(model_path, src_tokenizer, tgt_tokenizer, device):
@@ -173,84 +344,100 @@ def load_pretrained_model(model_path, src_tokenizer, tgt_tokenizer, device):
         print(f"Using saved model configuration: {model_config}")
     else:
         # Try to infer configuration from state dict
-        state_dict = checkpoint["model_state_dict"]
-        # Check encoder/decoder layers
-        encoder_layers = 0
-        decoder_layers = 0
-        for key in state_dict.keys():
-            if "encoder.layers." in key:
-                layer_num = int(key.split("encoder.layers.")[1].split(".")[0])
-                encoder_layers = max(encoder_layers, layer_num + 1)
-            if "decoder.layers." in key:
-                layer_num = int(key.split("decoder.layers.")[1].split(".")[0])
-                decoder_layers = max(decoder_layers, layer_num + 1)
+        if "model_state_dict" in checkpoint:
+            state_dict = checkpoint["model_state_dict"]
+            # Check encoder/decoder layers
+            encoder_layers = 0
+            decoder_layers = 0
+            for key in state_dict.keys():
+                if "encoder.layers." in key:
+                    layer_num = int(key.split("encoder.layers.")[1].split(".")[0])
+                    encoder_layers = max(encoder_layers, layer_num + 1)
+                if "decoder.layers." in key:
+                    layer_num = int(key.split("decoder.layers.")[1].split(".")[0])
+                    decoder_layers = max(decoder_layers, layer_num + 1)
 
-        # Get vocabulary sizes from the state dict
-        src_vocab_size = state_dict["encoder.token_embedding.embedding.weight"].shape[0]
-        tgt_vocab_size = state_dict["decoder.token_embedding.embedding.weight"].shape[0]
-        d_model = state_dict["encoder.token_embedding.embedding.weight"].shape[1]
+            # Get vocabulary sizes from the state dict
+            src_vocab_size = state_dict[
+                "encoder.token_embedding.embedding.weight"
+            ].shape[0]
+            tgt_vocab_size = state_dict[
+                "decoder.token_embedding.embedding.weight"
+            ].shape[0]
+            d_model = state_dict["encoder.token_embedding.embedding.weight"].shape[1]
 
-        # Infer other parameters from the first layer to ensure compatibility
-        num_heads = None
-        for key in state_dict.keys():
-            if "self_attn.query_projection.weight" in key:
-                # Infer number of heads from attention head dimension
-                head_dim = state_dict[key].shape[0] // d_model
-                num_heads = d_model // head_dim
-                break
+            # Infer other parameters from the first layer to ensure compatibility
+            num_heads = None
+            for key in state_dict.keys():
+                if "self_attn.query_projection.weight" in key:
+                    # Infer number of heads from attention head dimension
+                    head_dim = state_dict[key].shape[0] // d_model
+                    num_heads = d_model // head_dim
+                    break
 
-        # Use inferred values, fallback to defaults if needed
-        model_config = {
-            "src_vocab_size": src_vocab_size,
-            "tgt_vocab_size": tgt_vocab_size,
-            "d_model": d_model,
-            "num_heads": num_heads or 8,
-            "num_encoder_layers": encoder_layers,
-            "num_decoder_layers": decoder_layers,
-            "d_ff": 2048,  # Default, but should be inferred if possible
-            "dropout": 0.1,
-            "max_seq_length": 100,
-            "positional_encoding": "sinusoidal",
-            "share_embeddings": False,
-        }
-        print(f"Inferred model configuration: {model_config}")
+            # Use inferred values, fallback to defaults if needed
+            model_config = {
+                "src_vocab_size": src_vocab_size,
+                "tgt_vocab_size": tgt_vocab_size,
+                "d_model": d_model,
+                "num_heads": num_heads or 8,
+                "num_encoder_layers": encoder_layers,
+                "num_decoder_layers": decoder_layers,
+                "d_ff": 2048,  # Default, but should be inferred if possible
+                "dropout": 0.1,
+                "max_seq_length": 100,
+                "positional_encoding": "sinusoidal",
+                "share_embeddings": False,
+            }
+            print(f"Inferred model configuration: {model_config}")
+        else:
+            raise ValueError(
+                "Checkpoint does not contain model_config or model_state_dict"
+            )
 
     # Make sure we use the exact vocabulary sizes from the saved model
-    model_config["src_vocab_size"] = state_dict[
-        "encoder.token_embedding.embedding.weight"
-    ].shape[0]
-    model_config["tgt_vocab_size"] = state_dict[
-        "decoder.token_embedding.embedding.weight"
-    ].shape[0]
+    if "model_state_dict" in checkpoint:
+        state_dict = checkpoint["model_state_dict"]
+        model_config["src_vocab_size"] = state_dict[
+            "encoder.token_embedding.embedding.weight"
+        ].shape[0]
+        model_config["tgt_vocab_size"] = state_dict[
+            "decoder.token_embedding.embedding.weight"
+        ].shape[0]
 
-    # Print warning if tokenizer vocab sizes don't match the model
-    if src_tokenizer.vocab_size != model_config["src_vocab_size"]:
-        print(
-            f"WARNING: Source tokenizer vocabulary size ({src_tokenizer.vocab_size}) doesn't match model ({model_config['src_vocab_size']})"
-        )
+        # Print warning if tokenizer vocab sizes don't match the model
+        if src_tokenizer.vocab_size != model_config["src_vocab_size"]:
+            print(
+                f"WARNING: Source tokenizer vocabulary size ({src_tokenizer.vocab_size}) doesn't match model ({model_config['src_vocab_size']})"
+            )
 
-    if tgt_tokenizer.vocab_size != model_config["tgt_vocab_size"]:
-        print(
-            f"WARNING: Target tokenizer vocabulary size ({tgt_tokenizer.vocab_size}) doesn't match model ({model_config['tgt_vocab_size']})"
-        )
+        if tgt_tokenizer.vocab_size != model_config["tgt_vocab_size"]:
+            print(
+                f"WARNING: Target tokenizer vocabulary size ({tgt_tokenizer.vocab_size}) doesn't match model ({model_config['tgt_vocab_size']})"
+            )
 
     # Create model with the inferred architecture
     model = EncoderDecoderTransformer(
         src_vocab_size=model_config["src_vocab_size"],
         tgt_vocab_size=model_config["tgt_vocab_size"],
         d_model=model_config.get("d_model", 512),
-        num_heads=model_config.get("num_heads", 8),
+        num_heads=model_config.get("num_heads", 16),
         num_encoder_layers=model_config.get("num_encoder_layers", 6),
         num_decoder_layers=model_config.get("num_decoder_layers", 6),
         d_ff=model_config.get("d_ff", 2048),
-        dropout=model_config.get("dropout", 0.1),
+        dropout=model_config.get("dropout", 0.2),
         max_seq_length=model_config.get("max_seq_length", 100),
         positional_encoding=model_config.get("positional_encoding", "sinusoidal"),
         share_embeddings=model_config.get("share_embeddings", False),
     )
 
     # Load model state
-    model.load_state_dict(checkpoint["model_state_dict"])
+    if "model_state_dict" in checkpoint:
+        model.load_state_dict(checkpoint["model_state_dict"])
+    else:
+        # Try to load directly - some checkpoints might store the state dict directly
+        model.load_state_dict(checkpoint)
+
     model.to(device)
     model.eval()
 
@@ -427,6 +614,72 @@ def preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer):
 def count_parameters(model):
     """Count the number of trainable parameters in a model."""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def preprocess_input_text(text):
+    """
+    Standardize input text before tokenization to improve translation quality.
+
+    Args:
+        text: Input text to standardize
+
+    Returns:
+        Standardized text
+    """
+    # Normalize whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Add space around punctuation for better tokenization
+    text = re.sub(r"([.,!?;:()])", r" \1 ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Add space between lowercase and uppercase letters (for German compound words)
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+
+    return text
+
+
+def find_best_model(model_dir, model_prefix):
+    """
+    Find the best model file to load, with fallbacks.
+
+    Args:
+        model_dir: Directory to search for models
+        model_prefix: Prefix for the model files
+
+    Returns:
+        Path to the best model file to load
+    """
+    # Try different possible file paths
+    candidates = [
+        f"{model_dir}/{model_prefix}",  # No extension
+        f"{model_dir}/{model_prefix}.pt",  # .pt extension
+        f"{model_dir}/{model_prefix}_direct.pt",  # Direct save version
+        f"{model_dir}/{model_prefix}_last.pt",  # Last checkpoint
+        f"{model_dir}/checkpoints/{model_prefix}/epoch_25.pt",  # Last epoch typically
+    ]
+
+    # Find the most recently modified file that exists
+    valid_models = []
+    for path in candidates:
+        if os.path.exists(path):
+            valid_models.append((path, os.path.getmtime(path)))
+
+    if not valid_models:
+        # Try finding any checkpoint in the checkpoints directory
+        checkpoint_dir = f"{model_dir}/checkpoints/{model_prefix}"
+        if os.path.exists(checkpoint_dir):
+            for filename in os.listdir(checkpoint_dir):
+                if filename.startswith("epoch_") and filename.endswith(".pt"):
+                    path = os.path.join(checkpoint_dir, filename)
+                    valid_models.append((path, os.path.getmtime(path)))
+
+    if valid_models:
+        # Sort by modification time (newest first)
+        valid_models.sort(key=lambda x: x[1], reverse=True)
+        return valid_models[0][0]
+
+    return None
 
 
 def main(args):
@@ -643,6 +896,23 @@ def main(args):
     num_params = count_parameters(model)
     print(f"Model created with {num_params:,} trainable parameters")
 
+    # Check vocabulary sizes before training
+    src_vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
+    tgt_vocab_size = model.decoder.token_embedding.embedding.weight.shape[0]
+    print(
+        f"Model vocabulary sizes before training: source={src_vocab_size}, target={tgt_vocab_size}"
+    )
+
+    if (
+        src_vocab_size != de_tokenizer.vocab_size
+        or tgt_vocab_size != en_tokenizer.vocab_size
+    ):
+        print(
+            f"WARNING: Initial model vocabulary size doesn't match tokenizer vocabulary size!"
+        )
+        print(f"Source: model={src_vocab_size}, tokenizer={de_tokenizer.vocab_size}")
+        print(f"Target: model={tgt_vocab_size}, tokenizer={en_tokenizer.vocab_size}")
+
     # Apply mixed precision if requested
     if args.use_mixed_precision:
         print("Using mixed precision training (can sometimes cause instability)")
@@ -684,22 +954,41 @@ def main(args):
         device=device,
         track_perplexity=True,
         use_gradient_scaling=args.use_gradient_scaling,
+        early_stopping_patience=args.early_stopping_patience,
     )
 
     # If loading a pretrained model is requested
-    if args.load_model and os.path.exists(args.load_model):
-        print(f"Loading pretrained model from {args.load_model}")
-        print(f"Using absolute path: {os.path.abspath(args.load_model)}")
-        try:
-            # Load the model
-            model = load_pretrained_model(
-                args.load_model, de_tokenizer, en_tokenizer, device
-            )
-            print("Loaded pretrained model successfully")
-        except Exception as e:
-            print(f"Error loading model: {e}")
-            # Continue with the new model if loading fails
-            pass
+    if args.load_model:
+        # If the path doesn't exist, try to find a valid model path
+        if not os.path.exists(args.load_model):
+            dataset_prefix = f"{args.dataset}_{args.src_lang}_{args.tgt_lang}"
+            best_model = find_best_model("models", dataset_prefix)
+            if best_model:
+                args.load_model = best_model
+                print(f"Found model: {args.load_model}")
+            else:
+                print(f"No model found matching {dataset_prefix}")
+                if not args.inference_only:
+                    print("Will train a new model from scratch")
+                    args.load_model = None
+                else:
+                    raise FileNotFoundError("No model found for inference")
+
+        if args.load_model and os.path.exists(args.load_model):
+            print(f"Loading pretrained model from {args.load_model}")
+            print(f"Using absolute path: {os.path.abspath(args.load_model)}")
+            try:
+                # Load the model
+                model = load_pretrained_model(
+                    args.load_model, de_tokenizer, en_tokenizer, device
+                )
+                print("Loaded pretrained model successfully")
+            except Exception as e:
+                print(f"Error loading model: {e}")
+                # Continue with the new model if loading fails
+                pass
+        else:
+            print("Training new model from scratch")
     else:
         print("Training new model from scratch")
 
@@ -719,10 +1008,100 @@ def main(args):
     save_path = f"models/{model_prefix}_translation"
     print(f"\nModel will be saved to: {os.path.abspath(save_path)}\n")
 
+    # Define a checkpoint directory for saving models during training
+    checkpoint_dir = f"models/checkpoints/{model_prefix}"
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
     # Train model if not just doing inference
     if not args.inference_only:
         print("Training model...")
+
+        # Define a simple callback function to save checkpoints at the end of each epoch
+        def save_epoch_checkpoint(
+            epoch: int, model: nn.Module, trainer: "TransformerTrainer"
+        ) -> None:
+            epoch_save_path = f"{checkpoint_dir}/epoch_{epoch+1}.pt"
+            try:
+                checkpoint = {
+                    "model_state_dict": model.state_dict(),
+                    "epoch": epoch + 1,
+                    "model_config": {
+                        "src_vocab_size": model.encoder.token_embedding.embedding.weight.shape[
+                            0
+                        ],
+                        "tgt_vocab_size": model.decoder.token_embedding.embedding.weight.shape[
+                            0
+                        ],
+                        "d_model": model.encoder.token_embedding.embedding.weight.shape[
+                            1
+                        ],
+                        "num_encoder_layers": len(model.encoder.layers),
+                        "num_decoder_layers": len(model.decoder.layers),
+                    },
+                }
+                torch.save(checkpoint, epoch_save_path)
+                print(f"Saved epoch {epoch+1} checkpoint to {epoch_save_path}")
+            except Exception as e:
+                print(f"Error saving epoch checkpoint: {e}")
+
+        # Set a checkpoint callback in trainer - ignore the linter error about type incompatibility
+        # The TransformerTrainer class accepts a callable for this attribute
+        # mypy/pylance can't determine this from the code
+        # @type-ignore
+        trainer.epoch_end_callback = save_epoch_checkpoint
+
         trainer_history = trainer.train(epochs=args.epochs, save_path=save_path)
+
+        # Check vocabulary sizes after training
+        src_vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
+        tgt_vocab_size = model.decoder.token_embedding.embedding.weight.shape[0]
+        print(
+            f"Model vocabulary sizes after training: source={src_vocab_size}, target={tgt_vocab_size}"
+        )
+
+        if (
+            src_vocab_size != de_tokenizer.vocab_size
+            or tgt_vocab_size != en_tokenizer.vocab_size
+        ):
+            print(
+                f"WARNING: Final model vocabulary size doesn't match tokenizer vocabulary size!"
+            )
+            print(
+                f"Source: model={src_vocab_size}, tokenizer={de_tokenizer.vocab_size}"
+            )
+            print(
+                f"Target: model={tgt_vocab_size}, tokenizer={en_tokenizer.vocab_size}"
+            )
+
+        # Ensure model is saved directly from script (belt and suspenders approach)
+        try:
+            print(f"\nDirectly saving model from script to: {save_path}")
+            # Create a checkpoint dictionary with essential information
+            model_checkpoint = {
+                "model_state_dict": model.state_dict(),
+                "model_config": {
+                    "src_vocab_size": src_vocab_size,
+                    "tgt_vocab_size": tgt_vocab_size,
+                    "d_model": model.encoder.token_embedding.embedding.weight.shape[1],
+                    "num_encoder_layers": len(model.encoder.layers),
+                    "num_decoder_layers": len(model.decoder.layers),
+                    "dropout": getattr(model, "dropout", 0.1),
+                },
+            }
+
+            # Add a .pt extension for this direct save to distinguish it
+            direct_save_path = f"{save_path}_direct.pt"
+            torch.save(model_checkpoint, direct_save_path)
+
+            if os.path.exists(direct_save_path):
+                file_size = os.path.getsize(direct_save_path) / (
+                    1024 * 1024
+                )  # Size in MB
+                print(f"Direct save successful - File size: {file_size:.2f} MB")
+            else:
+                print("WARNING: Direct save failed - file was not created")
+        except Exception as e:
+            print(f"ERROR during direct model save: {e}")
 
         # Plot training history
         trainer.plot_training_history()
@@ -742,27 +1121,33 @@ def main(args):
 
     # Sample sentences for translation
     sample_sentences = [
-        "Ich bin ein Student.",
-        "Wo ist die Bibliothek?",
-        "Künstliche Intelligenz wird unser Leben verändern.",
-        "Das Buch ist sehr interessant.",
-        "Ich möchte Deutsch lernen.",
+        preprocess_input_text("Ich bin ein Student."),
+        preprocess_input_text("Wo ist die Bibliothek?"),
+        preprocess_input_text("Künstliche Intelligenz wird unser Leben verändern."),
+        preprocess_input_text("Das Buch ist sehr interessant."),
+        preprocess_input_text("Ich möchte Deutsch lernen."),
     ]
 
-    # Generate translations
-    translations = generate_translations(
+    # Generate translations with better defaults for cleaner results
+    translations, raw_translations = generate_translations(
         model=model,
         tokenizer_src=de_tokenizer,
         tokenizer_tgt=en_tokenizer,
         src_sentences=sample_sentences,
         device=device,
+        max_length=50,  # Shorter translations are typically better
+        sampling_temp=1.0,  # Greedy decoding
+        sampling_topk=1,  # Greedy decoding (top-1)
     )
 
     # Print translations
     print("\nTranslation Results:")
-    for src, tgt in zip(sample_sentences, translations):
-        print(f"Source: {src}")
-        print(f"Translation: {tgt}")
+    for i, (src, raw, cleaned) in enumerate(
+        zip(sample_sentences, raw_translations, translations)
+    ):
+        print(f"Source {i+1}: {src}")
+        print(f"Raw: {raw}")
+        print(f"Cleaned: {cleaned}")
         print()
 
     return trainer_history
@@ -829,7 +1214,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--label_smoothing",
         type=float,
-        default=0.1,
+        default=0.2,
         help="Label smoothing factor for training",
     )
     parser.add_argument(
@@ -837,6 +1222,12 @@ if __name__ == "__main__":
         type=int,
         default=4000,
         help="Number of warmup steps for learning rate scheduler",
+    )
+    parser.add_argument(
+        "--early_stopping_patience",
+        type=int,
+        default=None,
+        help="Number of epochs to wait before early stopping (None to disable)",
     )
     parser.add_argument(
         "--use_gradient_scaling",
