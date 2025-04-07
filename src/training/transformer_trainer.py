@@ -28,7 +28,7 @@ SPECIAL NOTES:
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Callable
 import time
 import math
 import matplotlib.pyplot as plt
@@ -137,6 +137,11 @@ class TransformerTrainer:
             "val_ppl": [],
             "learning_rates": [],
         }
+
+        # Initialize epoch end callback with proper type annotation
+        self.epoch_end_callback: Optional[
+            Callable[[int, torch.nn.Module, Any], None]
+        ] = None
 
     def get_lr_scheduler(self, optimizer):
         """
@@ -435,9 +440,24 @@ class TransformerTrainer:
                             print(f"Early stopping triggered after {epoch + 1} epochs")
                             break
 
+            # Call epoch end callback if defined
+            if self.epoch_end_callback is not None:
+                try:
+                    self.epoch_end_callback(epoch, self.model, self)
+                except Exception as e:
+                    print(f"Error in epoch end callback: {e}")
+
         # Print total training time
         total_time = time.time() - start_time
         print(f"Training completed in {total_time:.2f}s")
+
+        # Always save the final model if a save path is provided
+        if save_path and (
+            self.early_stopping_patience is None
+            or self.patience_counter < self.early_stopping_patience
+        ):
+            print("Saving final model checkpoint...")
+            self.save_checkpoint(save_path)
 
         return self.history
 
@@ -448,18 +468,77 @@ class TransformerTrainer:
         Args:
             path: Path where the checkpoint should be saved
         """
-        checkpoint = {
-            "model_state_dict": self.model.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "scheduler_state_dict": self.scheduler.state_dict(),
-            "current_epoch": self.current_epoch,
-            "global_step": self.global_step,
-            "best_val_loss": self.best_val_loss,
-            "patience_counter": self.patience_counter,
-            "history": self.history,
-        }
-        torch.save(checkpoint, path)
-        print(f"\n===== Model saved to: {os.path.abspath(path)} =====\n")
+        try:
+            # Extract model configuration information
+            model_config = {}
+            if hasattr(self.model, "encoder") and hasattr(self.model, "decoder"):
+                # Get vocabulary sizes
+                model_config["src_vocab_size"] = (
+                    self.model.encoder.token_embedding.embedding.weight.shape[0]
+                )
+                model_config["tgt_vocab_size"] = (
+                    self.model.decoder.token_embedding.embedding.weight.shape[0]
+                )
+
+                # Get embedding dimensions
+                model_config["d_model"] = (
+                    self.model.encoder.token_embedding.embedding.weight.shape[1]
+                )
+
+                # Get number of layers
+                if hasattr(self.model.encoder, "layers"):
+                    model_config["num_encoder_layers"] = len(self.model.encoder.layers)
+                if hasattr(self.model.decoder, "layers"):
+                    model_config["num_decoder_layers"] = len(self.model.decoder.layers)
+
+                # Get number of attention heads if available
+                if hasattr(self.model.encoder.layers[0].self_attn, "num_heads"):
+                    model_config["num_heads"] = self.model.encoder.layers[
+                        0
+                    ].self_attn.num_heads
+
+                # Get feed-forward dimension if available
+                if hasattr(self.model.encoder.layers[0].feed_forward, "linear1"):
+                    if hasattr(
+                        self.model.encoder.layers[0].feed_forward.linear1, "linear"
+                    ):
+                        model_config["d_ff"] = self.model.encoder.layers[
+                            0
+                        ].feed_forward.linear1.linear.weight.shape[0]
+
+            checkpoint = {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "scheduler_state_dict": self.scheduler.state_dict(),
+                "current_epoch": self.current_epoch,
+                "global_step": self.global_step,
+                "best_val_loss": self.best_val_loss,
+                "patience_counter": self.patience_counter,
+                "history": self.history,
+                "model_config": model_config,
+            }
+
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            # Save the checkpoint
+            torch.save(checkpoint, path)
+            print(f"\n===== Model saved to: {os.path.abspath(path)} =====")
+            print(f"Model configuration: {model_config}")
+
+            # Verify the file was created
+            if os.path.exists(path):
+                file_size = os.path.getsize(path) / (1024 * 1024)  # Size in MB
+                print(f"File size: {file_size:.2f} MB")
+            else:
+                print(f"WARNING: File {path} was not created despite no errors!")
+
+        except Exception as e:
+            print(f"\n===== ERROR SAVING MODEL: {e} =====")
+            print(f"Attempted to save to: {os.path.abspath(path)}")
+            import traceback
+
+            traceback.print_exc()
 
     def load_checkpoint(self, path: str):
         """
