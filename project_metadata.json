@@ -277,6 +277,11 @@
             "path": "src/data/wmt_dataloader.py"
           },
           {
+            "name": "iwslt_dataset.py",
+            "type": "file",
+            "path": "src/data/iwslt_dataset.py"
+          },
+          {
             "name": "language_modeling.py",
             "type": "file",
             "path": "src/data/language_modeling.py"
@@ -285,6 +290,11 @@
             "name": "europarl_dataset.py",
             "type": "file",
             "path": "src/data/europarl_dataset.py"
+          },
+          {
+            "name": "combined_wmt_translation_dataset.py",
+            "type": "file",
+            "path": "src/data/combined_wmt_translation_dataset.py"
           },
           {
             "name": "combined_translation_dataset.py",
@@ -2640,6 +2650,12 @@
       "module_path": "src/data/wmt_dataloader.py"
     },
     {
+      "filename": "iwslt_dataset.py",
+      "module_path": "src/data/iwslt_dataset.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "language_modeling.py",
       "module_purpose": "Implements dataset and dataloaders for language modeling tasks with efficient tokenization and batching",
       "key_classes": [
@@ -2718,6 +2734,12 @@
       ],
       "complexity_score": 4,
       "module_path": "src/data/europarl_dataset.py"
+    },
+    {
+      "filename": "combined_wmt_translation_dataset.py",
+      "module_path": "src/data/combined_wmt_translation_dataset.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "combined_translation_dataset.py",
@@ -3336,9 +3358,9 @@
     }
   ],
   "summary": {
-    "total_modules": 62,
+    "total_modules": 64,
     "modules_with_metadata": 54,
-    "modules_without_metadata": 8
+    "modules_without_metadata": 10
   },
   "complexity_summary": {
     "average_complexity": 5.555555555555555,
