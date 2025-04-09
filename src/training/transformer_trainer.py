@@ -64,6 +64,8 @@ class TransformerTrainer:
         track_perplexity: bool = False,
         scheduler: str = "inverse_sqrt",
         use_gradient_scaling: bool = False,
+        gradient_accumulation_steps: int = 1,  # Add this parameter
+        weight_decay: float = 0.01,
     ):
         """
         Initialize the transformer trainer.
@@ -84,6 +86,7 @@ class TransformerTrainer:
             track_perplexity: Whether to track perplexity during training
             scheduler: Learning rate scheduler type ("inverse_sqrt", "cosine", "linear", "constant")
             use_gradient_scaling: Whether to use gradient scaling for mixed precision training
+            gradient_accumulation_steps: Number of steps to accumulate gradients before updating weights
         """
         self.model = model
         self.train_dataloader = train_dataloader
@@ -94,7 +97,7 @@ class TransformerTrainer:
         self.early_stopping_patience = early_stopping_patience
         self.scheduler_type = scheduler
         self.use_gradient_scaling = use_gradient_scaling
-
+        self.weight_decay = weight_decay
         # Set device
         if device is None:
             if torch.backends.mps.is_available():
@@ -110,8 +113,12 @@ class TransformerTrainer:
         self.model.to(self.device)
 
         # Configure optimizer
-        self.optimizer = torch.optim.Adam(
-            model.parameters(), lr=lr, betas=betas, eps=eps
+        self.optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=self.weight_decay,
         )
 
         # Configure learning rate scheduler
@@ -142,6 +149,21 @@ class TransformerTrainer:
         self.epoch_end_callback: Optional[
             Callable[[int, torch.nn.Module, Any], None]
         ] = None
+
+        # Gradient accumulation settings
+        self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.effective_batch_size = (
+            self.train_dataloader.batch_size * gradient_accumulation_steps
+            if hasattr(self.train_dataloader, "batch_size")
+            else 32 * gradient_accumulation_steps
+        )
+
+        # For logging purposes
+        if self.gradient_accumulation_steps > 1:
+            print(
+                f"Using gradient accumulation with {self.gradient_accumulation_steps} steps"
+            )
+            print(f"Effective batch size: {self.effective_batch_size}")
 
     def get_lr_scheduler(self, optimizer):
         """
@@ -272,35 +294,37 @@ class TransformerTrainer:
             loss = self.criterion(logits, tgt_output)
 
             # Backward pass
-            self.optimizer.zero_grad()
+            if i % self.gradient_accumulation_steps == 0:
+                self.optimizer.zero_grad()
 
             if self.use_gradient_scaling and self.scaler is not None:
-                self.scaler.scale(loss).backward()
-
-                # Gradient clipping
-                if self.clip_grad > 0:
-                    self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.clip_grad
-                    )
-
-                # Update weights
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                self.scaler.scale(loss / self.gradient_accumulation_steps).backward()
             else:
-                loss.backward()
+                (loss / self.gradient_accumulation_steps).backward()
 
-                # Gradient clipping
-                if self.clip_grad > 0:
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.clip_grad
-                    )
+            # Only update weights after accumulating gradients
+            if (i + 1) % self.gradient_accumulation_steps == 0:
+                if self.use_gradient_scaling and self.scaler is not None:
+                    # Gradient clipping
+                    if self.clip_grad > 0:
+                        self.scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), self.clip_grad
+                        )
+                    # Update weights
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    # Gradient clipping
+                    if self.clip_grad > 0:
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), self.clip_grad
+                        )
+                    # Update weights
+                    self.optimizer.step()
 
-                # Update weights
-                self.optimizer.step()
-
-            # Update learning rate
-            self.scheduler.step()
+                # Update learning rate
+                self.scheduler.step()
 
             # Update statistics
             current_loss = loss.item()
