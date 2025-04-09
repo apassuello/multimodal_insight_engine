@@ -35,6 +35,7 @@ from debug_scripts.debug_transformer import (
     attach_debugger_to_trainer,
     debug_sample_batch,
 )
+from src.data.combined_dataset import CombinedDataset
 
 
 def clean_translation_output(text):
@@ -69,8 +70,7 @@ def clean_translation_output(text):
 
 def generate_translations(
     model,
-    tokenizer_src,
-    tokenizer_tgt,
+    tokenizer,  # Single tokenizer for both source and target
     src_sentences,
     max_length=100,
     device=None,
@@ -83,8 +83,7 @@ def generate_translations(
 
     Args:
         model: Trained transformer model
-        tokenizer_src: Source language tokenizer
-        tokenizer_tgt: Target language tokenizer
+        tokenizer: Joint vocabulary tokenizer
         src_sentences: List of source language sentences
         max_length: Maximum length of generated translations
         device: Device to run inference on
@@ -105,27 +104,20 @@ def generate_translations(
     elif isinstance(device, str):
         device = torch.device(device)
 
-    # Get vocabulary sizes
-    src_vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
-    tgt_vocab_size = model.decoder.token_embedding.embedding.weight.shape[0]
+    # Get vocabulary size
+    vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
 
     # Check for vocab size mismatch and print warning
-    if tokenizer_src.vocab_size != src_vocab_size:
+    if tokenizer.vocab_size != vocab_size:
         print(
-            f"WARNING: Source tokenizer vocabulary size ({tokenizer_src.vocab_size}) doesn't match model ({src_vocab_size})"
+            f"WARNING: Tokenizer vocabulary size ({tokenizer.vocab_size}) doesn't match model ({vocab_size})"
         )
         print("This may result in incorrect translations!")
 
-    if tokenizer_tgt.vocab_size != tgt_vocab_size:
-        print(
-            f"WARNING: Target tokenizer vocabulary size ({tokenizer_tgt.vocab_size}) doesn't match model ({tgt_vocab_size})"
-        )
-        print("This may result in incorrect translations!")
-
-    # Get token indices for unknown tokens or most common tokens to use as fallbacks
+    # Get token indices for unknown tokens to use as fallbacks
     try:
-        unk_token_idx = tokenizer_tgt.token_to_id(fallback_token)
-        if unk_token_idx is None or unk_token_idx >= tgt_vocab_size:
+        unk_token_idx = tokenizer.token_to_id(fallback_token)
+        if unk_token_idx is None or unk_token_idx >= vocab_size:
             unk_token_idx = 0  # Use a safe default
     except:
         unk_token_idx = 0
@@ -134,28 +126,28 @@ def generate_translations(
         for src_text in src_sentences:
             try:
                 # Tokenize source text
-                src_ids = tokenizer_src.encode(src_text)
+                src_ids = tokenizer.encode(src_text)
 
                 # Add special tokens
                 src_ids = (
-                    [tokenizer_src.special_tokens["bos_token_idx"]]
+                    [tokenizer.special_tokens["bos_token_idx"]]
                     + src_ids
-                    + [tokenizer_src.special_tokens["eos_token_idx"]]
+                    + [tokenizer.special_tokens["eos_token_idx"]]
                 )
 
                 # Ensure all tokens are in vocabulary range
-                src_ids = [min(token_id, src_vocab_size - 1) for token_id in src_ids]
+                src_ids = [min(token_id, vocab_size - 1) for token_id in src_ids]
 
                 src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
 
                 # Create source mask
                 src_mask = create_padding_mask(
-                    src_tensor, tokenizer_src.special_tokens["pad_token_idx"]
+                    src_tensor, tokenizer.special_tokens["pad_token_idx"]
                 )
 
                 # Initialize target with BOS token
                 tgt_bos_idx = min(
-                    tokenizer_tgt.special_tokens["bos_token_idx"], tgt_vocab_size - 1
+                    tokenizer.special_tokens["bos_token_idx"], vocab_size - 1
                 )
                 tgt_ids = [tgt_bos_idx]
                 tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
@@ -240,7 +232,7 @@ def generate_translations(
                                 if (
                                     alt_token not in unique_tokens
                                     or alt_token
-                                    == tokenizer_tgt.special_tokens["eos_token_idx"]
+                                    == tokenizer.special_tokens["eos_token_idx"]
                                 ):
                                     next_token = alt_token
                                     repetition_count = 0
@@ -253,14 +245,14 @@ def generate_translations(
                     # Stop if too many repetitions or EOS token
                     if repetition_count >= max_repetitions:
                         # Add EOS token if there are too many repetitions
-                        next_token = tokenizer_tgt.special_tokens["eos_token_idx"]
+                        next_token = tokenizer.special_tokens["eos_token_idx"]
 
                     # Add predicted token to target sequence
                     tgt_ids.append(next_token)
                     tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
 
                     # Stop if EOS token is generated
-                    if next_token == tokenizer_tgt.special_tokens["eos_token_idx"]:
+                    if next_token == tokenizer.special_tokens["eos_token_idx"]:
                         break
 
                 # Process output tokens, removing special tokens
@@ -268,13 +260,13 @@ def generate_translations(
                 for i, token_id in enumerate(tgt_ids):
                     # Skip BOS and EOS tokens
                     if (
-                        token_id == tokenizer_tgt.special_tokens["bos_token_idx"]
-                        or token_id == tokenizer_tgt.special_tokens["eos_token_idx"]
+                        token_id == tokenizer.special_tokens["bos_token_idx"]
+                        or token_id == tokenizer.special_tokens["eos_token_idx"]
                     ):
                         continue
 
                     # Skip unknown tokens
-                    if token_id >= tokenizer_tgt.vocab_size:
+                    if token_id >= vocab_size:
                         continue
 
                     # Add token to output
@@ -282,7 +274,7 @@ def generate_translations(
 
                 # Decode tokens to text
                 if output_tokens:
-                    raw_translated_text = tokenizer_tgt.decode(output_tokens)
+                    raw_translated_text = tokenizer.decode(output_tokens)
                 else:
                     raw_translated_text = "[Empty translation]"
 
@@ -297,8 +289,7 @@ def generate_translations(
                     # Try again with more randomness in sampling
                     return generate_translations(
                         model,
-                        tokenizer_src,
-                        tokenizer_tgt,
+                        tokenizer,
                         [src_text],
                         max_length,
                         device,
@@ -574,14 +565,14 @@ def early_stopping(history, patience=10):
     return recent_losses[-1] > best_loss * 0.99
 
 
-def preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer):
+def preprocess_data_with_bpe(dataset, src_tokenizer, tgt_tokenizer=None):
     """
-    Preprocess the dataset for training using BPE tokenizers.
+    Preprocess the dataset for training using BPE tokenizer(s).
 
     Args:
         dataset: IWSLT dataset or EuroparlDataset
-        de_tokenizer: German BPE tokenizer
-        en_tokenizer: English BPE tokenizer
+        src_tokenizer: Source language tokenizer
+        tgt_tokenizer: Target language tokenizer (optional, if None, uses src_tokenizer as joint tokenizer)
 
     Returns:
         Lists of tokenized source and target sequences
@@ -589,20 +580,25 @@ def preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer):
     src_sequences = []
     tgt_sequences = []
 
+    # If tgt_tokenizer is None, use src_tokenizer as joint tokenizer
+    joint_tokenizer = tgt_tokenizer is None
+    tgt_tokenizer = tgt_tokenizer or src_tokenizer
+
     for src_text, tgt_text in zip(dataset.src_data, dataset.tgt_data):
-        # Tokenize with BPE
-        src_ids = de_tokenizer.encode(src_text)
-        tgt_ids = en_tokenizer.encode(tgt_text)
+        # Tokenize with appropriate tokenizer(s)
+        src_ids = src_tokenizer.encode(src_text)
+        tgt_ids = tgt_tokenizer.encode(tgt_text)
+
         # Add special tokens
         src_ids = (
-            [de_tokenizer.special_tokens["bos_token_idx"]]
+            [src_tokenizer.special_tokens["bos_token_idx"]]
             + src_ids
-            + [de_tokenizer.special_tokens["eos_token_idx"]]
+            + [src_tokenizer.special_tokens["eos_token_idx"]]
         )
         tgt_ids = (
-            [en_tokenizer.special_tokens["bos_token_idx"]]
+            [tgt_tokenizer.special_tokens["bos_token_idx"]]
             + tgt_ids
-            + [en_tokenizer.special_tokens["eos_token_idx"]]
+            + [tgt_tokenizer.special_tokens["eos_token_idx"]]
         )
 
         src_sequences.append(src_ids)
@@ -708,7 +704,7 @@ def main(args):
             tgt_lang=args.tgt_lang,
             max_examples=args.max_val_examples,
         )
-    else:  # opensubtitles
+    elif args.dataset == "opensubtitles":
         # Load OpenSubtitles dataset
         train_dataset = OpenSubtitlesDataset(
             data_dir="data/os",
@@ -723,39 +719,56 @@ def main(args):
             tgt_lang=args.tgt_lang,
             max_examples=args.max_val_examples,
         )
+    elif args.dataset == "combined":
+        # Load combined dataset
+        train_dataset = CombinedDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_train_examples,
+        )
 
-    # Load the pre-trained BPE tokenizers
-    print("Loading pre-trained BPE tokenizers...")
-    de_tokenizer = OptimizedBPETokenizer.from_pretrained(
-        f"models/tokenizers/{args.src_lang}"
-    )
-    en_tokenizer = OptimizedBPETokenizer.from_pretrained(
-        f"models/tokenizers/{args.tgt_lang}"
-    )
-    print(
-        f"Loaded {args.src_lang} tokenizer with vocab size: {de_tokenizer.vocab_size}"
-    )
-    print(
-        f"Loaded {args.tgt_lang} tokenizer with vocab size: {en_tokenizer.vocab_size}"
-    )
+        val_dataset = CombinedDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            max_examples=args.max_val_examples,
+        )
+    else:
+        raise ValueError(f"Unknown dataset: {args.dataset}")
+
+    # Load tokenizer(s)
+    print("Loading tokenizer(s)...")
+    if args.use_joint_tokenizer:
+        # Load joint tokenizer
+        src_tokenizer = OptimizedBPETokenizer.from_pretrained(
+            args.tokenizer_path or "models/tokenizers/combined/joint"
+        )
+        tgt_tokenizer = src_tokenizer  # Use same tokenizer for both
+        print(f"Loaded joint tokenizer with vocab size: {src_tokenizer.vocab_size}")
+    else:
+        # Load separate tokenizers
+        src_tokenizer = OptimizedBPETokenizer.from_pretrained(
+            args.src_tokenizer_path or f"models/tokenizers/{args.src_lang}"
+        )
+        tgt_tokenizer = OptimizedBPETokenizer.from_pretrained(
+            args.tgt_tokenizer_path or f"models/tokenizers/{args.tgt_lang}"
+        )
+        print(f"Loaded source tokenizer with vocab size: {src_tokenizer.vocab_size}")
+        print(f"Loaded target tokenizer with vocab size: {tgt_tokenizer.vocab_size}")
 
     # Get special token indices for the transformer
-    src_pad_idx = de_tokenizer.special_tokens["pad_token_idx"]
-    tgt_pad_idx = en_tokenizer.special_tokens["pad_token_idx"]
-    src_bos_idx = de_tokenizer.special_tokens["bos_token_idx"]
-    tgt_bos_idx = en_tokenizer.special_tokens["bos_token_idx"]
-    src_eos_idx = de_tokenizer.special_tokens["eos_token_idx"]
-    tgt_eos_idx = en_tokenizer.special_tokens["eos_token_idx"]
+    pad_idx = src_tokenizer.special_tokens["pad_token_idx"]
+    bos_idx = src_tokenizer.special_tokens["bos_token_idx"]
+    eos_idx = src_tokenizer.special_tokens["eos_token_idx"]
 
-    # Preprocess data with BPE tokenizers
+    # Preprocess data with appropriate tokenizer(s)
     print("Preprocessing training data...")
     train_src_sequences, train_tgt_sequences = preprocess_data_with_bpe(
-        train_dataset, de_tokenizer, en_tokenizer
+        train_dataset, src_tokenizer, tgt_tokenizer
     )
 
     print("Preprocessing validation data...")
     val_src_sequences, val_tgt_sequences = preprocess_data_with_bpe(
-        val_dataset, de_tokenizer, en_tokenizer
+        val_dataset, src_tokenizer, tgt_tokenizer
     )
 
     # Create data module
@@ -766,11 +779,11 @@ def main(args):
         batch_size=args.batch_size,
         max_src_len=100,
         max_tgt_len=100,
-        pad_idx=src_pad_idx,
-        bos_idx=src_bos_idx,
-        eos_idx=src_eos_idx,
+        pad_idx=pad_idx,
+        bos_idx=bos_idx,
+        eos_idx=eos_idx,
         val_split=0.0,
-        shuffle=False,
+        shuffle=True,
         num_workers=4,
     )
 
@@ -781,173 +794,58 @@ def main(args):
         batch_size=args.batch_size,
         max_src_len=100,
         max_tgt_len=100,
-        pad_idx=src_pad_idx,
-        bos_idx=src_bos_idx,
-        eos_idx=src_eos_idx,
+        pad_idx=pad_idx,
+        bos_idx=bos_idx,
+        eos_idx=eos_idx,
         val_split=0.0,
         shuffle=False,
         num_workers=4,
     )
 
-    # Create transformer model using BPE vocabulary sizes
+    # Create transformer model with appropriate vocabulary sizes
     print("Creating transformer model...")
-
-    # If loading a pretrained model, extract its configuration first
-    pretrained_config = None
-    if args.load_model and os.path.exists(args.load_model):
-        print(f"Getting configuration from pretrained model {args.load_model}")
-        try:
-            # Load just the configuration from checkpoint
-            checkpoint = torch.load(args.load_model, map_location=device)
-            if "model_config" in checkpoint:
-                pretrained_config = checkpoint["model_config"]
-                print(f"Loaded model configuration: {pretrained_config}")
-            else:
-                # Try to infer configuration from state dict
-                state_dict = checkpoint["model_state_dict"]
-                # Check encoder/decoder layers
-                encoder_layers = 0
-                decoder_layers = 0
-                for key in state_dict.keys():
-                    if "encoder.layers." in key:
-                        layer_num = int(key.split("encoder.layers.")[1].split(".")[0])
-                        encoder_layers = max(encoder_layers, layer_num + 1)
-                    if "decoder.layers." in key:
-                        layer_num = int(key.split("decoder.layers.")[1].split(".")[0])
-                        decoder_layers = max(decoder_layers, layer_num + 1)
-
-                # Check vocabulary sizes
-                src_vocab_size = state_dict[
-                    "encoder.token_embedding.embedding.weight"
-                ].shape[0]
-                tgt_vocab_size = state_dict[
-                    "decoder.token_embedding.embedding.weight"
-                ].shape[0]
-                d_model = state_dict["encoder.token_embedding.embedding.weight"].shape[
-                    1
-                ]
-
-                pretrained_config = {
-                    "src_vocab_size": src_vocab_size,
-                    "tgt_vocab_size": tgt_vocab_size,
-                    "d_model": d_model,
-                    "num_encoder_layers": encoder_layers,
-                    "num_decoder_layers": decoder_layers,
-                }
-                print(f"Inferred model configuration: {pretrained_config}")
-        except Exception as e:
-            print(f"Error extracting model configuration: {e}")
-
-    model = EncoderDecoderTransformer(
-        src_vocab_size=(
-            pretrained_config["src_vocab_size"]
-            if pretrained_config
-            else de_tokenizer.vocab_size
-        ),
-        tgt_vocab_size=(
-            pretrained_config["tgt_vocab_size"]
-            if pretrained_config
-            else en_tokenizer.vocab_size
-        ),
-        d_model=(
-            pretrained_config.get("d_model", args.d_model)
-            if pretrained_config
-            else args.d_model
-        ),
-        num_heads=(
-            pretrained_config.get("num_heads", args.num_heads)
-            if pretrained_config
-            else args.num_heads
-        ),
-        num_encoder_layers=(
-            pretrained_config.get("num_encoder_layers", args.num_encoder_layers)
-            if pretrained_config
-            else args.num_encoder_layers
-        ),
-        num_decoder_layers=(
-            pretrained_config.get("num_decoder_layers", args.num_decoder_layers)
-            if pretrained_config
-            else args.num_decoder_layers
-        ),
-        d_ff=(
-            pretrained_config.get("d_ff", args.d_ff) if pretrained_config else args.d_ff
-        ),
-        dropout=(
-            pretrained_config.get("dropout", args.dropout)
-            if pretrained_config
-            else args.dropout
-        ),
-        max_seq_length=(
-            pretrained_config.get("max_seq_length", 100) if pretrained_config else 100
-        ),
-        positional_encoding=(
-            pretrained_config.get("positional_encoding", "sinusoidal")
-            if pretrained_config
-            else "sinusoidal"
-        ),
-        share_embeddings=(
-            pretrained_config.get("share_embeddings", False)
-            if pretrained_config
-            else False
-        ),
-    )
+    if args.use_joint_tokenizer:
+        # Use same vocabulary size for both encoder and decoder
+        vocab_size = src_tokenizer.vocab_size
+        model = EncoderDecoderTransformer(
+            src_vocab_size=vocab_size,
+            tgt_vocab_size=vocab_size,
+            d_model=args.d_model,
+            num_heads=args.num_heads,
+            num_encoder_layers=args.num_encoder_layers,
+            num_decoder_layers=args.num_decoder_layers,
+            d_ff=args.d_ff,
+            dropout=args.dropout,
+            max_seq_length=100,
+            positional_encoding="sinusoidal",
+            share_embeddings=True,  # Enable embedding sharing for joint vocabulary
+        )
+    else:
+        # Use separate vocabulary sizes
+        model = EncoderDecoderTransformer(
+            src_vocab_size=src_tokenizer.vocab_size,
+            tgt_vocab_size=tgt_tokenizer.vocab_size,
+            d_model=args.d_model,
+            num_heads=args.num_heads,
+            num_encoder_layers=args.num_encoder_layers,
+            num_decoder_layers=args.num_decoder_layers,
+            d_ff=args.d_ff,
+            dropout=args.dropout,
+            max_seq_length=100,
+            positional_encoding="sinusoidal",
+            share_embeddings=False,  # Disable embedding sharing for separate vocabularies
+        )
 
     # Print model parameter count
     num_params = count_parameters(model)
     print(f"Model created with {num_params:,} trainable parameters")
 
-    # Check vocabulary sizes before training
-    src_vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
-    tgt_vocab_size = model.decoder.token_embedding.embedding.weight.shape[0]
-    print(
-        f"Model vocabulary sizes before training: source={src_vocab_size}, target={tgt_vocab_size}"
-    )
-
-    if (
-        src_vocab_size != de_tokenizer.vocab_size
-        or tgt_vocab_size != en_tokenizer.vocab_size
-    ):
-        print(
-            f"WARNING: Initial model vocabulary size doesn't match tokenizer vocabulary size!"
-        )
-        print(f"Source: model={src_vocab_size}, tokenizer={de_tokenizer.vocab_size}")
-        print(f"Target: model={tgt_vocab_size}, tokenizer={en_tokenizer.vocab_size}")
-
-    # Apply mixed precision if requested
-    if args.use_mixed_precision:
-        print("Using mixed precision training (can sometimes cause instability)")
-        mp_converter = MixedPrecisionConverter(
-            model=model, dtype=torch.float16, use_auto_cast=True
-        )
-        model = mp_converter.convert_to_mixed_precision()
-
-        # Check if using mixed precision wrapper
-        if hasattr(model, "model"):
-            print(
-                f"Using mixed precision with {model.dtype} for computation (parameters stored in FP32)"
-            )
-    else:
-        print("Using full precision training (more stable but slower)")
-
-    model.to(device)
-
-    # After model creation
-    for name, param in model.named_parameters():
-        if "weight" in name:
-            print(
-                f"{name}: mean={param.data.mean().item():.6f}, std={param.data.std().item():.6f}"
-            )
-            if param.data.std().item() < 0.01 or param.data.std().item() > 1.0:
-                print(f"Warning: Unusual initialization for {name}")
-
     # Create the trainer
     trainer = TransformerTrainer(
         model=model,
         train_dataloader=data_module.get_train_dataloader(),
-        val_dataloader=(
-            val_data_module.get_val_dataloader() if val_data_module else None
-        ),
-        pad_idx=src_pad_idx,
+        val_dataloader=val_data_module.get_val_dataloader(),
+        pad_idx=pad_idx,
         lr=args.learning_rate,
         warmup_steps=args.warmup_steps,
         label_smoothing=args.label_smoothing,
@@ -980,7 +878,7 @@ def main(args):
             try:
                 # Load the model
                 model = load_pretrained_model(
-                    args.load_model, de_tokenizer, en_tokenizer, device
+                    args.load_model, src_tokenizer, tgt_tokenizer, device
                 )
                 print("Loaded pretrained model successfully")
             except Exception as e:
@@ -1060,17 +958,17 @@ def main(args):
         )
 
         if (
-            src_vocab_size != de_tokenizer.vocab_size
-            or tgt_vocab_size != en_tokenizer.vocab_size
+            src_vocab_size != src_tokenizer.vocab_size
+            or tgt_vocab_size != tgt_tokenizer.vocab_size
         ):
             print(
                 f"WARNING: Final model vocabulary size doesn't match tokenizer vocabulary size!"
             )
             print(
-                f"Source: model={src_vocab_size}, tokenizer={de_tokenizer.vocab_size}"
+                f"Source: model={src_vocab_size}, tokenizer={src_tokenizer.vocab_size}"
             )
             print(
-                f"Target: model={tgt_vocab_size}, tokenizer={en_tokenizer.vocab_size}"
+                f"Target: model={tgt_vocab_size}, tokenizer={tgt_tokenizer.vocab_size}"
             )
 
         # Ensure model is saved directly from script (belt and suspenders approach)
@@ -1131,8 +1029,7 @@ def main(args):
     # Generate translations with better defaults for cleaner results
     translations, raw_translations = generate_translations(
         model=model,
-        tokenizer_src=de_tokenizer,
-        tokenizer_tgt=en_tokenizer,
+        tokenizer=src_tokenizer,
         src_sentences=sample_sentences,
         device=device,
         max_length=50,  # Shorter translations are typically better
@@ -1156,14 +1053,14 @@ def main(args):
 if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(
-        description="Train a transformer model for machine translation"
+        description="Train a transformer model for machine translation with joint vocabulary"
     )
 
     # Dataset options
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["europarl", "opensubtitles"],
+        choices=["europarl", "opensubtitles", "combined"],
         default="europarl",
         help="Dataset to use for training",
     )
@@ -1184,6 +1081,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--tgt_lang", type=str, default="en", help="Target language code"
+    )
+    parser.add_argument(
+        "--tokenizer_path",
+        type=str,
+        default=None,
+        help="Path to joint tokenizer (default: models/tokenizers/combined/joint)",
     )
 
     # Model options
@@ -1270,6 +1173,26 @@ if __name__ == "__main__":
         "--inference_only",
         action="store_true",
         help="Run only inference (no training)",
+    )
+
+    # New options for separate tokenizers
+    parser.add_argument(
+        "--src_tokenizer_path",
+        type=str,
+        default=None,
+        help="Path to source language tokenizer",
+    )
+    parser.add_argument(
+        "--tgt_tokenizer_path",
+        type=str,
+        default=None,
+        help="Path to target language tokenizer",
+    )
+    parser.add_argument(
+        "--use_joint_tokenizer",
+        type=lambda x: x.lower() == "true",
+        default=True,
+        help="Use a joint tokenizer instead of separate ones (true/false)",
     )
 
     args = parser.parse_args()

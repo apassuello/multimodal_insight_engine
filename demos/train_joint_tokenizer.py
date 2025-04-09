@@ -5,8 +5,49 @@ from src.data.tokenization import OptimizedBPETokenizer
 from src.data.combined_wmt_translation_dataset import load_dataset_from_file
 
 
+def load_opensubtitles_dataset(src_file, tgt_file, max_samples=None):
+    """
+    Load parallel sentences from OpenSubtitles files.
+
+    Args:
+        src_file: Path to source language file (e.g., German)
+        tgt_file: Path to target language file (e.g., English)
+        max_samples: Maximum number of samples to load (None for all)
+
+    Returns:
+        List of (source, target) sentence pairs
+    """
+    print(f"Loading OpenSubtitles dataset from {src_file} and {tgt_file}...")
+
+    dataset = []
+    count = 0
+
+    with open(src_file, "r", encoding="utf-8") as src_f, open(
+        tgt_file, "r", encoding="utf-8"
+    ) as tgt_f:
+
+        for src_line, tgt_line in zip(src_f, tgt_f):
+            src_text = src_line.strip()
+            tgt_text = tgt_line.strip()
+
+            # Skip empty lines
+            if not src_text or not tgt_text:
+                continue
+
+            dataset.append((src_text, tgt_text))
+            count += 1
+
+            if max_samples and count >= max_samples:
+                break
+
+    print(f"Loaded {len(dataset)} parallel sentence pairs")
+    return dataset
+
+
 def train_joint_tokenizer(
     dataset_path="combined_de_en_dataset.jsonl",
+    src_file=None,
+    tgt_file=None,
     vocab_size=32000,
     output_path="models/tokenizers/combined/joint",
     max_samples=None,
@@ -15,7 +56,9 @@ def train_joint_tokenizer(
     Train a joint BPE tokenizer on both German and English text from the dataset.
 
     Args:
-        dataset_path: Path to the combined dataset JSONL file
+        dataset_path: Path to the combined dataset JSONL file (if using JSONL format)
+        src_file: Path to source language file (for OpenSubtitles format)
+        tgt_file: Path to target language file (for OpenSubtitles format)
         vocab_size: Size of the vocabulary
         output_path: Where to save the tokenizer
         max_samples: Maximum number of samples to use from the dataset
@@ -23,8 +66,12 @@ def train_joint_tokenizer(
     # Create the output directory if it doesn't exist
     os.makedirs(output_path, exist_ok=True)
 
-    print(f"Loading dataset from {dataset_path}...")
-    dataset = load_dataset_from_file(dataset_path, max_samples=max_samples)
+    # Load dataset based on provided files
+    if src_file and tgt_file:
+        dataset = load_opensubtitles_dataset(src_file, tgt_file, max_samples)
+    else:
+        print(f"Loading dataset from {dataset_path}...")
+        dataset = load_dataset_from_file(dataset_path, max_samples=max_samples)
 
     print(
         f"Training joint DE-EN tokenizer with vocabulary size {vocab_size} on {len(dataset)} samples..."
@@ -91,6 +138,18 @@ if __name__ == "__main__":
         help="Path to the combined dataset JSONL file",
     )
     parser.add_argument(
+        "--src_file",
+        type=str,
+        default=None,
+        help="Path to source language file (for OpenSubtitles format)",
+    )
+    parser.add_argument(
+        "--tgt_file",
+        type=str,
+        default=None,
+        help="Path to target language file (for OpenSubtitles format)",
+    )
+    parser.add_argument(
         "--vocab_size",
         type=int,
         default=32000,
@@ -113,6 +172,8 @@ if __name__ == "__main__":
 
     train_joint_tokenizer(
         dataset_path=args.dataset_path,
+        src_file=args.src_file,
+        tgt_file=args.tgt_file,
         vocab_size=args.vocab_size,
         output_path=args.output_path,
         max_samples=args.max_samples,
