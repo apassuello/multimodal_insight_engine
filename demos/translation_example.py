@@ -36,11 +36,12 @@ from debug_scripts.debug_transformer import (
     debug_sample_batch,
 )
 from src.data.combined_dataset import CombinedDataset
+from src.data.curriculum_dataset import CurriculumTranslationDataset
 
 
 def clean_translation_output(text):
     """
-    Minimal cleaning of translation output - only fix capitalization and spaces.
+    Minimal cleaning of translation output - preserves case and punctuation.
 
     Args:
         text: Raw translation text
@@ -52,18 +53,24 @@ def clean_translation_output(text):
     text = text.replace("<bos>", "").strip()
 
     # Fix common special tokens
-    text = text.replace("_space", " ")
+    text = text.replace("_space_", " ")  # Fix underscore space format from tokenizer
+    text = text.replace("_space", " ")  # Also handle alternative format
+    text = text.replace("_dash_", "-")
     text = text.replace("_dash", "-")
+    text = text.replace("_comma_", ",")
     text = text.replace("_comma", ",")
+    text = text.replace("_period_", ".")
     text = text.replace("_period", ".")
+    text = text.replace("_question_", "?")
     text = text.replace("_question", "?")
+    text = text.replace("_exclamation_", "!")
+    text = text.replace("_exclamation", "!")
 
     # Fix double spaces
     text = re.sub(r"\s+", " ", text).strip()
 
-    # Capitalize first letter only
-    if text and len(text) > 0:
-        text = text[0].upper() + text[1:]
+    # Don't capitalize the first letter automatically
+    # Let the model's output preserve the case as-is
 
     return text
 
@@ -72,14 +79,14 @@ def generate_translations(
     model,
     tokenizer,  # Single tokenizer for both source and target
     src_sentences,
-    max_length=100,
+    max_length=50,  # Reduced from 100 to avoid long nonsensical outputs
     device=None,
     fallback_token="[UNK]",
-    sampling_temp=1.0,  # Temperature for sampling (1.0 = greedy)
-    sampling_topk=1,  # Default to greedy decoding (top-1)
+    sampling_temp=0.7,  # Changed from 1.0 (greedy) to 0.7 (more randomness)
+    sampling_topk=5,  # Changed from 1 to 5 to sample from top 5 tokens
 ):
     """
-    Generate translations for a list of source sentences using greedy decoding by default.
+    Generate translations for a list of source sentences using sampling with temperature.
 
     Args:
         model: Trained transformer model
@@ -88,8 +95,8 @@ def generate_translations(
         max_length: Maximum length of generated translations
         device: Device to run inference on
         fallback_token: Token to use when encountering out-of-vocabulary tokens
-        sampling_temp: Temperature for sampling (1.0 = greedy)
-        sampling_topk: Number of top tokens to consider for sampling (1 = greedy)
+        sampling_temp: Temperature for sampling (lower = more deterministic)
+        sampling_topk: Number of top tokens to consider for sampling
 
     Returns:
         List of translated sentences
@@ -114,7 +121,7 @@ def generate_translations(
         )
         print("This may result in incorrect translations!")
 
-    # Get token indices for unknown tokens to use as fallbacks
+    # Get token indices for unknown, bos, eos tokens
     try:
         unk_token_idx = tokenizer.token_to_id(fallback_token)
         if unk_token_idx is None or unk_token_idx >= vocab_size:
@@ -122,184 +129,225 @@ def generate_translations(
     except:
         unk_token_idx = 0
 
+    # Get special token indices for cleaner code
+    bos_idx = tokenizer.special_tokens["bos_token_idx"]
+    eos_idx = tokenizer.special_tokens["eos_token_idx"]
+    pad_idx = tokenizer.special_tokens["pad_token_idx"]
+
     with torch.no_grad():
-        for src_text in src_sentences:
+        for src_idx, src_text in enumerate(src_sentences):
             try:
+                print(f"Translating sentence {src_idx+1}: '{src_text}'")
                 # Tokenize source text
                 src_ids = tokenizer.encode(src_text)
 
                 # Add special tokens
-                src_ids = (
-                    [tokenizer.special_tokens["bos_token_idx"]]
-                    + src_ids
-                    + [tokenizer.special_tokens["eos_token_idx"]]
-                )
+                src_ids = [bos_idx] + src_ids + [eos_idx]
 
                 # Ensure all tokens are in vocabulary range
                 src_ids = [min(token_id, vocab_size - 1) for token_id in src_ids]
 
+                # Convert to tensor and move to device
                 src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
 
                 # Create source mask
-                src_mask = create_padding_mask(
-                    src_tensor, tokenizer.special_tokens["pad_token_idx"]
-                )
+                src_mask = create_padding_mask(src_tensor, pad_idx)
 
                 # Initialize target with BOS token
-                tgt_bos_idx = min(
-                    tokenizer.special_tokens["bos_token_idx"], vocab_size - 1
-                )
+                tgt_bos_idx = min(bos_idx, vocab_size - 1)
                 tgt_ids = [tgt_bos_idx]
                 tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
 
                 # Generate translation auto-regressively
-                unique_tokens = set()  # Track unique tokens to detect repetition
-                repetition_count = 0
-                max_repetitions = 5  # Stop after this many repeated tokens
-                tokens_generated = 0
+                generation_failures = 0
+                max_failures = 2  # Give up after this many attempts
 
-                for _ in range(max_length):
-                    tokens_generated += 1
-
-                    # Create target mask (causal)
-                    tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
-
-                    # Get model prediction
-                    logits = model(
-                        src_tensor, tgt_tensor, src_mask=src_mask, tgt_mask=tgt_mask
-                    )
-                    next_token_logits = logits[0, -1]
-
-                    # Apply temperature to logits if not 1.0
-                    if sampling_temp != 1.0:
-                        next_token_logits = next_token_logits / sampling_temp
-
-                    # Get top-k tokens for potential sampling
-                    top_token_probs, top_tokens = torch.topk(
-                        next_token_logits, sampling_topk
-                    )
-
-                    # Convert to probabilities
-                    top_token_probs = torch.softmax(top_token_probs, dim=-1)
-
-                    # Sample from top-k or use greedy decoding
-                    if sampling_temp == 1.0 or sampling_topk == 1:
-                        # Greedy decoding - just take the highest probability token
-                        next_token = top_tokens[0].item()
-                    else:
-                        # Sample from top-k based on probabilities
-                        try:
-                            # Convert to a proper probability distribution
-                            if (
-                                torch.isnan(top_token_probs).any()
-                                or not torch.isfinite(top_token_probs).all()
-                            ):
-                                # Fallback to uniform distribution if probabilities are invalid
-                                top_token_probs = torch.ones_like(
-                                    top_token_probs
-                                ) / len(top_token_probs)
-
-                            # Ensure it sums to 1.0
-                            if abs(top_token_probs.sum().item() - 1.0) > 1e-6:
-                                top_token_probs = (
-                                    top_token_probs / top_token_probs.sum()
-                                )
-
-                            # Use explicit integer index for multinomial
-                            index_tensor = torch.multinomial(
-                                top_token_probs, num_samples=1
-                            )
-                            next_token_idx = index_tensor[0].item()
-                            next_token = top_tokens[int(next_token_idx)].item()
-                        except Exception as e:
-                            print(
-                                f"Sampling error: {e}, falling back to greedy decoding"
-                            )
-                            next_token = top_tokens[0].item()
-
-                    # Check if we're getting repetitions
-                    if (
-                        next_token in unique_tokens and tokens_generated > 15
-                    ):  # Allow more repetition, only check after 15 tokens
-                        repetition_count += 1
-
-                        # Try to avoid repetition by sampling from remaining tokens - only if repetition becomes severe
-                        if (
-                            repetition_count >= 5 and len(top_tokens) > 1
-                        ):  # Increased threshold
-                            for alt_idx in range(1, len(top_tokens)):
-                                alt_token = top_tokens[alt_idx].item()
-                                if (
-                                    alt_token not in unique_tokens
-                                    or alt_token
-                                    == tokenizer.special_tokens["eos_token_idx"]
-                                ):
-                                    next_token = alt_token
-                                    repetition_count = 0
-                                    break
-                    else:
-                        repetition_count = 0
-
-                    unique_tokens.add(next_token)
-
-                    # Stop if too many repetitions or EOS token
-                    if repetition_count >= max_repetitions:
-                        # Add EOS token if there are too many repetitions
-                        next_token = tokenizer.special_tokens["eos_token_idx"]
-
-                    # Add predicted token to target sequence
-                    tgt_ids.append(next_token)
+                while generation_failures < max_failures:
+                    # Reset generation state
+                    tgt_ids = [tgt_bos_idx]
                     tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
 
-                    # Stop if EOS token is generated
-                    if next_token == tokenizer.special_tokens["eos_token_idx"]:
-                        break
+                    # Track tokens for repetition detection
+                    unique_tokens = set()
+                    prev_tokens = []  # Track last few tokens for local repetition
+                    token_history = []  # Full history for analysis
+                    repetition_count = 0  # Make sure this is an integer
+                    max_repetitions = 3  # Reduced from 5 - detect repetition earlier
+                    tokens_generated = 0
+                    current_temp = sampling_temp  # Start with specified temperature
 
-                # Process output tokens, removing special tokens
-                output_tokens = []
-                for i, token_id in enumerate(tgt_ids):
-                    # Skip BOS and EOS tokens
-                    if (
-                        token_id == tokenizer.special_tokens["bos_token_idx"]
-                        or token_id == tokenizer.special_tokens["eos_token_idx"]
-                    ):
-                        continue
+                    try:
+                        for _ in range(max_length):
+                            tokens_generated += 1
 
-                    # Skip unknown tokens
-                    if token_id >= vocab_size:
-                        continue
+                            # Create target mask (causal)
+                            tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
 
-                    # Add token to output
-                    output_tokens.append(token_id)
+                            # Get model prediction
+                            logits = model(
+                                src_tensor,
+                                tgt_tensor,
+                                src_mask=src_mask,
+                                tgt_mask=tgt_mask,
+                            )
+                            next_token_logits = logits[0, -1]
 
-                # Decode tokens to text
-                if output_tokens:
-                    raw_translated_text = tokenizer.decode(output_tokens)
-                else:
-                    raw_translated_text = "[Empty translation]"
+                            # Apply temperature
+                            next_token_logits = next_token_logits / current_temp
 
-                # Apply post-processing to clean up BPE artifacts
-                cleaned_text = clean_translation_output(raw_translated_text)
+                            # Get top-k tokens
+                            top_k = min(sampling_topk, next_token_logits.size(-1))
+                            top_token_logits, top_tokens = torch.topk(
+                                next_token_logits, top_k
+                            )
 
-                # Use fallback if we get mostly repetitive output
-                if len(set(cleaned_text.split())) <= 1 and len(cleaned_text) > 5:
+                            # Convert to probabilities
+                            top_token_probs = torch.softmax(top_token_logits, dim=-1)
+
+                            # Sample or use greedy decoding based on settings
+                            if current_temp < 0.01 or top_k == 1:  # Effectively greedy
+                                next_token = top_tokens[0].item()
+                            else:
+                                # Sample from top-k based on probabilities
+                                try:
+                                    # Ensure valid probabilities
+                                    if (
+                                        torch.isnan(top_token_probs).any()
+                                        or not torch.isfinite(top_token_probs).all()
+                                    ):
+                                        top_token_probs = (
+                                            torch.ones_like(top_token_probs) / top_k
+                                        )
+
+                                    # Normalize to sum to 1.0
+                                    top_token_probs = (
+                                        top_token_probs / top_token_probs.sum()
+                                    )
+
+                                    # Sample from distribution
+                                    index_tensor = torch.multinomial(
+                                        top_token_probs, num_samples=1
+                                    )
+                                    next_token_idx = index_tensor.item()
+                                    next_token = top_tokens[int(next_token_idx)].item()
+                                except Exception as e:
+                                    print(
+                                        f"Sampling error: {e}, falling back to greedy decoding"
+                                    )
+                                    next_token = top_tokens[0].item()
+
+                            # Track token for repetition detection
+                            token_history.append(next_token)
+
+                            # Check for immediate repetition (last 3 tokens identical)
+                            if (
+                                len(prev_tokens) >= 3
+                                and len(set(prev_tokens[-3:])) == 1
+                            ):
+                                repetition_count += 1
+                                # Increase temperature to break out of repetition
+                                current_temp = min(current_temp * 1.2, 1.5)
+
+                                # If still repeating, force a different token
+                                if repetition_count >= 2 and len(top_tokens) > 1:
+                                    # Try next best token
+                                    for alt_idx in range(1, len(top_tokens)):
+                                        alt_token = top_tokens[alt_idx].item()
+                                        if alt_token != next_token:
+                                            next_token = alt_token
+                                            repetition_count = 0
+                                            break
+                            else:
+                                # No repetition found, reset counter
+                                repetition_count = 0
+                                # Gradually return to base temperature
+                                current_temp = max(sampling_temp, current_temp * 0.95)
+
+                            # Update tracking states
+                            prev_tokens.append(next_token)
+                            if len(prev_tokens) > 5:
+                                prev_tokens.pop(0)
+                            unique_tokens.add(next_token)
+
+                            # Add predicted token to target sequence
+                            tgt_ids.append(next_token)
+                            tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(
+                                device
+                            )
+
+                            # Stop if EOS token or maximum length
+                            if next_token == eos_idx or tokens_generated >= max_length:
+                                break
+
+                        # Check if generation was successful - a good generation should:
+                        # 1. Have reasonable length
+                        # 2. End with EOS or reach max_length
+                        # 3. Not be just repetitions of the same few tokens
+
+                        success = (
+                            len(tgt_ids) > 2  # More than just BOS+EOS
+                            and (
+                                tgt_ids[-1] == eos_idx or len(tgt_ids) >= max_length
+                            )  # Proper ending
+                            and len(unique_tokens) > 3  # Some variety in tokens
+                        )
+
+                        if success:
+                            # Process output tokens, removing special tokens
+                            output_tokens = []
+                            for token_id in tgt_ids:
+                                # Skip BOS and EOS tokens
+                                if token_id == bos_idx or token_id == eos_idx:
+                                    continue
+                                # Skip tokens outside vocabulary range
+                                if token_id >= vocab_size:
+                                    continue
+                                output_tokens.append(token_id)
+
+                            # Decode tokens to text
+                            if output_tokens:
+                                raw_translated_text = tokenizer.decode(output_tokens)
+                                # Apply post-processing to clean up BPE artifacts
+                                cleaned_text = clean_translation_output(
+                                    raw_translated_text
+                                )
+
+                                # Final check for quality
+                                if (
+                                    len(set(cleaned_text.split())) <= 1
+                                    and len(cleaned_text) > 5
+                                ):
+                                    # Extremely repetitive output - try again with more randomness
+                                    print(
+                                        f"Generation produced repetitive output: '{cleaned_text}'"
+                                    )
+                                    generation_failures += 1
+                                    # Try with more randomness next time
+                                    sampling_temp *= 1.3
+                                    sampling_topk = min(20, sampling_topk + 5)
+                                else:
+                                    # Success! Add to results
+                                    raw_translations.append(raw_translated_text)
+                                    translations.append(cleaned_text)
+                                    break  # Exit while loop
+                            else:
+                                # Empty output - try again
+                                generation_failures += 1
+                        else:
+                            # Unsuccessful generation - try again
+                            generation_failures += 1
+
+                    except Exception as e:
+                        print(f"Error during translation generation: {e}")
+                        generation_failures += 1
+
+                # If all generation attempts failed, add a placeholder
+                if generation_failures >= max_failures:
                     print(
-                        "Warning: Generated repetitive translation. Attempting different decoding..."
+                        f"Failed to generate good translation after {max_failures} attempts"
                     )
-                    # Try again with more randomness in sampling
-                    return generate_translations(
-                        model,
-                        tokenizer,
-                        [src_text],
-                        max_length,
-                        device,
-                        fallback_token,
-                        sampling_temp=0.7,  # Add some randomness
-                        sampling_topk=10,  # Consider more candidates
-                    )
-
-                raw_translations.append(raw_translated_text)
-                translations.append(cleaned_text)
+                    raw_translations.append("[Translation failed]")
+                    translations.append("[Translation failed]")
 
             except Exception as e:
                 print(f"Error during translation: {e}")
@@ -424,9 +472,37 @@ def load_pretrained_model(model_path, src_tokenizer, tgt_tokenizer, device):
 
     # Load model state
     if "model_state_dict" in checkpoint:
-        model.load_state_dict(checkpoint["model_state_dict"])
+        state_dict = checkpoint["model_state_dict"]
+
+        # Fix output projection key mismatch if needed
+        if (
+            "output_projection.weight" in state_dict
+            and "decoder.output_projection.weight" not in state_dict
+        ):
+            state_dict["decoder.output_projection.weight"] = state_dict.pop(
+                "output_projection.weight"
+            )
+            state_dict["decoder.output_projection.bias"] = state_dict.pop(
+                "output_projection.bias"
+            )
+            print("Fixed output projection key mismatch in state dict")
+
+        model.load_state_dict(state_dict)
     else:
         # Try to load directly - some checkpoints might store the state dict directly
+        # Fix output projection key mismatch if needed
+        if (
+            "output_projection.weight" in checkpoint
+            and "decoder.output_projection.weight" not in checkpoint
+        ):
+            checkpoint["decoder.output_projection.weight"] = checkpoint.pop(
+                "output_projection.weight"
+            )
+            checkpoint["decoder.output_projection.bias"] = checkpoint.pop(
+                "output_projection.bias"
+            )
+            print("Fixed output projection key mismatch in state dict")
+
         model.load_state_dict(checkpoint)
 
     model.to(device)
@@ -615,6 +691,7 @@ def count_parameters(model):
 def preprocess_input_text(text):
     """
     Standardize input text before tokenization to improve translation quality.
+    Makes minimal changes to preserve case and punctuation.
 
     Args:
         text: Input text to standardize
@@ -625,12 +702,10 @@ def preprocess_input_text(text):
     # Normalize whitespace
     text = re.sub(r"\s+", " ", text).strip()
 
-    # Add space around punctuation for better tokenization
-    text = re.sub(r"([.,!?;:()])", r" \1 ", text)
-    text = re.sub(r"\s+", " ", text).strip()
+    # Don't add spaces around punctuation when using a tokenizer that preserves punctuation
+    # The tokenizer will handle punctuation appropriately based on its settings
 
-    # Add space between lowercase and uppercase letters (for German compound words)
-    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+    # Don't force lowercase, as our tokenizer now preserves case
 
     return text
 
@@ -772,7 +847,12 @@ def main(args):
     )
 
     # Create data module
-    print("Creating data module...")
+    print("\nCreating data module...")
+    if args.use_curriculum:
+        print(f"Initializing curriculum learning with:")
+        print(f"  Strategy: {args.curriculum_strategy}")
+        print(f"  Stages: {args.curriculum_stages}")
+
     data_module = TransformerDataModule(
         source_sequences=train_src_sequences,
         target_sequences=train_tgt_sequences,
@@ -785,6 +865,9 @@ def main(args):
         val_split=0.0,
         shuffle=True,
         num_workers=4,
+        use_curriculum=args.use_curriculum,
+        curriculum_strategy=args.curriculum_strategy,
+        curriculum_stages=args.curriculum_stages,
     )
 
     # Create a separate validation data module
@@ -853,6 +936,9 @@ def main(args):
         track_perplexity=True,
         use_gradient_scaling=args.use_gradient_scaling,
         early_stopping_patience=args.early_stopping_patience,
+        clip_grad=(
+            args.clip_grad if args.clip_grad is not None else 0.0
+        ),  # Fix for None clip_grad
     )
 
     # If loading a pretrained model is requested
@@ -918,6 +1004,7 @@ def main(args):
         def save_epoch_checkpoint(
             epoch: int, model: nn.Module, trainer: "TransformerTrainer"
         ) -> None:
+            """Save checkpoint and update curriculum at end of epoch."""
             epoch_save_path = f"{checkpoint_dir}/epoch_{epoch+1}.pt"
             try:
                 checkpoint = {
@@ -939,6 +1026,18 @@ def main(args):
                 }
                 torch.save(checkpoint, epoch_save_path)
                 print(f"Saved epoch {epoch+1} checkpoint to {epoch_save_path}")
+
+                # Update curriculum stage based on completed epoch
+                if args.use_curriculum:
+                    data_module.update_curriculum_stage(epoch + 1)
+                    # Print curriculum statistics
+                    stats = data_module.get_curriculum_stats()
+                    if stats:
+                        print(
+                            f"Curriculum stats: Stage {stats['stage']}/{stats['num_stages']-1}, "
+                            f"{stats['percent_available']:.1f}% of data available, "
+                            f"avg difficulty: {stats['mean_difficulty']:.2f}"
+                        )
             except Exception as e:
                 print(f"Error saving epoch checkpoint: {e}")
 
@@ -1010,6 +1109,22 @@ def main(args):
         trainer.plot_learning_rate()
         plt.savefig(f"{model_prefix}_learning_rate_schedule.png")
         plt.close()
+
+        # Print curriculum progression summary if curriculum learning was used
+        if (
+            args.use_curriculum
+            and hasattr(
+                data_module.train_dataset, "print_curriculum_progression_summary"
+            )
+            and callable(
+                getattr(
+                    data_module.train_dataset,
+                    "print_curriculum_progression_summary",
+                    None,
+                )
+            )
+        ):
+            data_module.train_dataset.print_curriculum_progression_summary()
     else:
         print("Skipping training, inference only mode")
         trainer_history = {}
@@ -1033,8 +1148,8 @@ def main(args):
         src_sentences=sample_sentences,
         device=device,
         max_length=50,  # Shorter translations are typically better
-        sampling_temp=1.0,  # Greedy decoding
-        sampling_topk=1,  # Greedy decoding (top-1)
+        sampling_temp=0.7,  # More randomness
+        sampling_topk=5,  # Sample from top 5 tokens
     )
 
     # Print translations
@@ -1193,6 +1308,34 @@ if __name__ == "__main__":
         type=lambda x: x.lower() == "true",
         default=True,
         help="Use a joint tokenizer instead of separate ones (true/false)",
+    )
+
+    # Add clip_grad to argument parser
+    parser.add_argument(
+        "--clip_grad",
+        type=float,
+        default=None,
+        help="Gradient clipping value (None to disable)",
+    )
+
+    # Curriculum learning options
+    parser.add_argument(
+        "--use_curriculum",
+        action="store_true",
+        help="Whether to use curriculum learning",
+    )
+    parser.add_argument(
+        "--curriculum_strategy",
+        type=str,
+        choices=["length", "vocab", "similarity"],
+        default="length",
+        help="Strategy for curriculum learning (length, vocab, similarity)",
+    )
+    parser.add_argument(
+        "--curriculum_stages",
+        type=int,
+        default=5,
+        help="Number of curriculum stages",
     )
 
     args = parser.parse_args()

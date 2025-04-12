@@ -170,6 +170,8 @@ class OptimizedBPETokenizer(BaseTokenizer):
         device: Optional[str] = None,
         cache_config: Optional[Dict[str, Any]] = None,
         vectorized: bool = True,
+        preserve_punctuation: bool = True,
+        preserve_case: bool = False,
     ):
         """
         Initialize the BPE tokenizer.
@@ -185,8 +187,12 @@ class OptimizedBPETokenizer(BaseTokenizer):
                 - text_cache_size: Size of the full text cache (default: 10000)
                 - ttl: Time to live in seconds (default: 3600 - 1 hour)
             vectorized: Whether to use vectorized operations when possible
+            preserve_punctuation: Whether to preserve punctuation in tokenization
+            preserve_case: Whether to preserve case information
         """
         self.lower_case = lower_case
+        self.preserve_punctuation = preserve_punctuation
+        self.preserve_case = preserve_case
         self.num_merges = num_merges
         self.vectorized = vectorized
 
@@ -384,6 +390,14 @@ class OptimizedBPETokenizer(BaseTokenizer):
         if not text:
             return ""
 
+        # Store original case information if needed
+        if self.preserve_case and not self.lower_case:
+            # Find uppercase characters and create a case map
+            self.case_map = {}
+            for i, char in enumerate(text):
+                if char.isupper():
+                    self.case_map[i] = "upper"
+
         # Apply lowercase at the very beginning if configured
         if self.lower_case:
             text = text.lower()
@@ -394,8 +408,9 @@ class OptimizedBPETokenizer(BaseTokenizer):
         # Use consistent "_space_" format for spaces
         processed = processed.replace(" ", "_space_")
 
-        # If we want to keep punctuation, comment out or remove this line
-        processed = re.sub(r"[^\w\s]", "", processed)
+        # Only remove punctuation if not preserving it
+        if not self.preserve_punctuation:
+            processed = re.sub(r"[^\w\s]", "", processed)
 
         return processed
 
@@ -714,6 +729,16 @@ class OptimizedBPETokenizer(BaseTokenizer):
         # Replace _space_ tokens with actual spaces
         text = text.replace("_space_", " ")
 
+        # Restore case if needed
+        if hasattr(self, "case_map") and self.preserve_case and not self.lower_case:
+            result = ""
+            for i, char in enumerate(text):
+                if i in self.case_map and self.case_map[i] == "upper":
+                    result += char.upper()
+                else:
+                    result += char
+            text = result
+
         return text
 
     @property
@@ -831,8 +856,10 @@ class OptimizedBPETokenizer(BaseTokenizer):
         config = {
             "num_merges": self.num_merges,
             "lower_case": self.lower_case,
-            "device": str(self.device),
             "vectorized": self.vectorized,
+            "preserve_punctuation": self.preserve_punctuation,
+            "preserve_case": self.preserve_case,
+            "device": str(self.device),
             "cache_config": self.cache_config,
         }
         with open(f"{path}/config.json", "w", encoding="utf-8") as f:
@@ -894,6 +921,8 @@ class OptimizedBPETokenizer(BaseTokenizer):
             device=config.get("device", None),  # Use auto-detection if not specified
             cache_config=cache_config,
             vectorized=config.get("vectorized", True),
+            preserve_punctuation=config.get("preserve_punctuation", True),
+            preserve_case=config.get("preserve_case", False),
         )
 
         logger.info(f"Loaded tokenizer from {path} with vocabulary size {len(vocab)}")
@@ -941,6 +970,10 @@ class OptimizedBPETokenizer(BaseTokenizer):
         for text in texts:
             validated = self.validate_input(text, "train")
             if validated:  # Skip empty texts
+                # If we're preserving case but lowercasing during training,
+                # we need to lowercase the text here
+                if self.lower_case:
+                    validated = validated.lower()
                 processed = self.preprocess(validated)
                 if processed:  # Skip empty processed texts
                     processed_texts.append(processed)
