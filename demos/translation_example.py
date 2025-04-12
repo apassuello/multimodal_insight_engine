@@ -375,6 +375,7 @@ def load_pretrained_model(model_path, src_tokenizer, tgt_tokenizer, device):
         raise FileNotFoundError(f"No model found at {model_path}")
 
     # Load checkpoint
+    print(f"Loading model from {model_path}...")
     checkpoint = torch.load(model_path, map_location=device)
 
     # Extract or infer model configuration
@@ -471,39 +472,77 @@ def load_pretrained_model(model_path, src_tokenizer, tgt_tokenizer, device):
     )
 
     # Load model state
+    load_succeeded = False
     if "model_state_dict" in checkpoint:
-        state_dict = checkpoint["model_state_dict"]
+        try:
+            state_dict = checkpoint["model_state_dict"]
 
-        # Fix output projection key mismatch if needed
-        if (
-            "output_projection.weight" in state_dict
-            and "decoder.output_projection.weight" not in state_dict
-        ):
-            state_dict["decoder.output_projection.weight"] = state_dict.pop(
-                "output_projection.weight"
-            )
-            state_dict["decoder.output_projection.bias"] = state_dict.pop(
-                "output_projection.bias"
-            )
-            print("Fixed output projection key mismatch in state dict")
+            # Fix output projection key mismatch if needed
+            if (
+                "output_projection.weight" in state_dict
+                and "decoder.output_projection.weight" not in state_dict
+            ):
+                state_dict["decoder.output_projection.weight"] = state_dict.pop(
+                    "output_projection.weight"
+                )
+                state_dict["decoder.output_projection.bias"] = state_dict.pop(
+                    "output_projection.bias"
+                )
+                print("Fixed output projection key mismatch in state dict")
 
-        model.load_state_dict(state_dict)
+            # Strict loading - will error if keys don't match
+            model.load_state_dict(state_dict, strict=True)
+            print("Loaded model state with strict=True")
+            load_succeeded = True
+        except Exception as e:
+            print(f"Error during strict loading: {e}")
+            print("Trying non-strict loading...")
+            try:
+                model.load_state_dict(state_dict, strict=False)
+                print("Loaded model state with strict=False")
+                load_succeeded = True
+            except Exception as e2:
+                print(f"Error during non-strict loading: {e2}")
     else:
         # Try to load directly - some checkpoints might store the state dict directly
-        # Fix output projection key mismatch if needed
-        if (
-            "output_projection.weight" in checkpoint
-            and "decoder.output_projection.weight" not in checkpoint
-        ):
-            checkpoint["decoder.output_projection.weight"] = checkpoint.pop(
-                "output_projection.weight"
-            )
-            checkpoint["decoder.output_projection.bias"] = checkpoint.pop(
-                "output_projection.bias"
-            )
-            print("Fixed output projection key mismatch in state dict")
+        try:
+            # Fix output projection key mismatch if needed
+            if (
+                "output_projection.weight" in checkpoint
+                and "decoder.output_projection.weight" not in checkpoint
+            ):
+                checkpoint["decoder.output_projection.weight"] = checkpoint.pop(
+                    "output_projection.weight"
+                )
+                checkpoint["decoder.output_projection.bias"] = checkpoint.pop(
+                    "output_projection.bias"
+                )
+                print("Fixed output projection key mismatch in state dict")
 
-        model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint, strict=True)
+            print("Loaded model state directly from checkpoint with strict=True")
+            load_succeeded = True
+        except Exception as e:
+            print(f"Error during direct loading: {e}")
+            try:
+                model.load_state_dict(checkpoint, strict=False)
+                print("Loaded model state directly from checkpoint with strict=False")
+                load_succeeded = True
+            except Exception as e2:
+                print(f"Error during direct non-strict loading: {e2}")
+
+    if not load_succeeded:
+        print("WARNING: Failed to load model weights properly!")
+        print(
+            "Keys in state dict:",
+            (
+                list(state_dict.keys())
+                if "state_dict" in locals()
+                else "No state dict available"
+            ),
+        )
+        print("Keys in model:", [k for k, _ in model.named_parameters()])
+        raise RuntimeError("Failed to load pretrained model properly")
 
     model.to(device)
     model.eval()
@@ -880,68 +919,13 @@ def main(args):
         pad_idx=pad_idx,
         bos_idx=bos_idx,
         eos_idx=eos_idx,
-        val_split=0.0,
+        val_split=1.0,  # Use all data for validation
         shuffle=False,
         num_workers=4,
     )
 
-    # Create transformer model with appropriate vocabulary sizes
-    print("Creating transformer model...")
-    if args.use_joint_tokenizer:
-        # Use same vocabulary size for both encoder and decoder
-        vocab_size = src_tokenizer.vocab_size
-        model = EncoderDecoderTransformer(
-            src_vocab_size=vocab_size,
-            tgt_vocab_size=vocab_size,
-            d_model=args.d_model,
-            num_heads=args.num_heads,
-            num_encoder_layers=args.num_encoder_layers,
-            num_decoder_layers=args.num_decoder_layers,
-            d_ff=args.d_ff,
-            dropout=args.dropout,
-            max_seq_length=100,
-            positional_encoding="sinusoidal",
-            share_embeddings=True,  # Enable embedding sharing for joint vocabulary
-        )
-    else:
-        # Use separate vocabulary sizes
-        model = EncoderDecoderTransformer(
-            src_vocab_size=src_tokenizer.vocab_size,
-            tgt_vocab_size=tgt_tokenizer.vocab_size,
-            d_model=args.d_model,
-            num_heads=args.num_heads,
-            num_encoder_layers=args.num_encoder_layers,
-            num_decoder_layers=args.num_decoder_layers,
-            d_ff=args.d_ff,
-            dropout=args.dropout,
-            max_seq_length=100,
-            positional_encoding="sinusoidal",
-            share_embeddings=False,  # Disable embedding sharing for separate vocabularies
-        )
-
-    # Print model parameter count
-    num_params = count_parameters(model)
-    print(f"Model created with {num_params:,} trainable parameters")
-
-    # Create the trainer
-    trainer = TransformerTrainer(
-        model=model,
-        train_dataloader=data_module.get_train_dataloader(),
-        val_dataloader=val_data_module.get_val_dataloader(),
-        pad_idx=pad_idx,
-        lr=args.learning_rate,
-        warmup_steps=args.warmup_steps,
-        label_smoothing=args.label_smoothing,
-        device=device,
-        track_perplexity=True,
-        use_gradient_scaling=args.use_gradient_scaling,
-        early_stopping_patience=args.early_stopping_patience,
-        clip_grad=(
-            args.clip_grad if args.clip_grad is not None else 0.0
-        ),  # Fix for None clip_grad
-    )
-
-    # If loading a pretrained model is requested
+    # Load pretrained model first if requested
+    loaded_model = None
     if args.load_model:
         # If the path doesn't exist, try to find a valid model path
         if not os.path.exists(args.load_model):
@@ -963,20 +947,78 @@ def main(args):
             print(f"Using absolute path: {os.path.abspath(args.load_model)}")
             try:
                 # Load the model
-                model = load_pretrained_model(
+                loaded_model = load_pretrained_model(
                     args.load_model, src_tokenizer, tgt_tokenizer, device
                 )
                 print("Loaded pretrained model successfully")
             except Exception as e:
                 print(f"Error loading model: {e}")
-                # Continue with the new model if loading fails
-                pass
+                loaded_model = None
+                # Continue with a new model if loading fails
         else:
             print("Training new model from scratch")
-    else:
-        print("Training new model from scratch")
 
-    # Add debugging - this will automatically attach to the trainer
+    # Create transformer model only if we don't have a loaded model
+    if loaded_model is None:
+        print("Creating transformer model from scratch...")
+        if args.use_joint_tokenizer:
+            # Use same vocabulary size for both encoder and decoder
+            vocab_size = src_tokenizer.vocab_size
+            model = EncoderDecoderTransformer(
+                src_vocab_size=vocab_size,
+                tgt_vocab_size=vocab_size,
+                d_model=args.d_model,
+                num_heads=args.num_heads,
+                num_encoder_layers=args.num_encoder_layers,
+                num_decoder_layers=args.num_decoder_layers,
+                d_ff=args.d_ff,
+                dropout=args.dropout,
+                max_seq_length=100,
+                positional_encoding="sinusoidal",
+                share_embeddings=True,  # Enable embedding sharing for joint vocabulary
+            )
+        else:
+            # Use separate vocabulary sizes
+            model = EncoderDecoderTransformer(
+                src_vocab_size=src_tokenizer.vocab_size,
+                tgt_vocab_size=tgt_tokenizer.vocab_size,
+                d_model=args.d_model,
+                num_heads=args.num_heads,
+                num_encoder_layers=args.num_encoder_layers,
+                num_decoder_layers=args.num_decoder_layers,
+                d_ff=args.d_ff,
+                dropout=args.dropout,
+                max_seq_length=100,
+                positional_encoding="sinusoidal",
+                share_embeddings=False,  # Disable embedding sharing for separate vocabularies
+            )
+    else:
+        # Use the loaded model
+        model = loaded_model
+
+    # Print model parameter count
+    num_params = count_parameters(model)
+    print(f"Model has {num_params:,} trainable parameters")
+
+    # Create the trainer
+    trainer = TransformerTrainer(
+        model=model,
+        train_dataloader=data_module.get_train_dataloader(),
+        val_dataloader=val_data_module.get_val_dataloader(),
+        pad_idx=pad_idx,
+        lr=args.learning_rate,
+        warmup_steps=args.warmup_steps,
+        label_smoothing=args.label_smoothing,
+        device=device,
+        track_perplexity=True,
+        use_gradient_scaling=args.use_gradient_scaling,
+        early_stopping_patience=args.early_stopping_patience,
+        clip_grad=(
+            args.clip_grad if args.clip_grad is not None else 0.0
+        ),  # Fix for None clip_grad
+    )
+
+    # Debug option
     if args.debug:
         print("Enabling debugging features...")
         # Note: No need to explicitly create a debugger here as it's handled
@@ -1041,10 +1083,7 @@ def main(args):
             except Exception as e:
                 print(f"Error saving epoch checkpoint: {e}")
 
-        # Set a checkpoint callback in trainer - ignore the linter error about type incompatibility
-        # The TransformerTrainer class accepts a callable for this attribute
-        # mypy/pylance can't determine this from the code
-        # @type-ignore
+        # Set a checkpoint callback in trainer
         trainer.epoch_end_callback = save_epoch_checkpoint
 
         trainer_history = trainer.train(epochs=args.epochs, save_path=save_path)
