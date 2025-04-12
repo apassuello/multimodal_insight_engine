@@ -64,7 +64,7 @@ class TransformerTrainer:
         track_perplexity: bool = False,
         scheduler: str = "inverse_sqrt",
         use_gradient_scaling: bool = False,
-        gradient_accumulation_steps: int = 1,  # Add this parameter
+        gradient_accumulation_steps: int = 1,
         weight_decay: float = 0.01,
     ):
         """
@@ -136,13 +136,22 @@ class TransformerTrainer:
         self.best_val_loss = float("inf")
         self.patience_counter = 0
 
-        # Initialize history
+        # Enhanced history tracking
         self.history = {
             "train_loss": [],
             "train_ppl": [],
             "val_loss": [],
             "val_ppl": [],
             "learning_rates": [],
+            # Add detailed statistics tracking
+            "train_loss_stats": [],  # Will store [min, max, mean, var] for each epoch
+            "train_ppl_stats": [],
+            "val_loss_stats": [],
+            "val_ppl_stats": [],
+            # Per-epoch metrics
+            "epoch_losses": [],  # Will store all losses for current epoch
+            "epoch_ppls": [],  # Will store all perplexities for current epoch
+            "epoch_lrs": [],  # Will store all learning rates for current epoch
         }
 
         # Initialize epoch end callback with proper type annotation
@@ -152,11 +161,13 @@ class TransformerTrainer:
 
         # Gradient accumulation settings
         self.gradient_accumulation_steps = gradient_accumulation_steps
-        self.effective_batch_size = (
-            self.train_dataloader.batch_size * gradient_accumulation_steps
-            if hasattr(self.train_dataloader, "batch_size")
-            else 32 * gradient_accumulation_steps
+
+        # Calculate effective batch size, handling None case
+        dataloader_batch_size = getattr(self.train_dataloader, "batch_size", None)
+        base_batch_size = (
+            dataloader_batch_size if dataloader_batch_size is not None else 32
         )
+        self.effective_batch_size = base_batch_size * gradient_accumulation_steps
 
         # For logging purposes
         if self.gradient_accumulation_steps > 1:
@@ -260,6 +271,11 @@ class TransformerTrainer:
         total_tokens = 0
         start_time = time.time()
 
+        # Reset epoch-specific tracking
+        self.history["epoch_losses"] = []
+        self.history["epoch_ppls"] = []
+        self.history["epoch_lrs"] = []
+
         # Use tqdm for progress bar
         progress_bar = tqdm(
             enumerate(self.train_dataloader),
@@ -331,12 +347,18 @@ class TransformerTrainer:
             current_tokens = (tgt_output != self.pad_idx).sum().item()
             total_loss += current_loss * current_tokens
             total_tokens += current_tokens
+            current_ppl = math.exp(min(current_loss, 100))
+
+            # Track per-step metrics for this epoch
+            self.history["epoch_losses"].append(current_loss)
+            self.history["epoch_ppls"].append(current_ppl)
+            self.history["epoch_lrs"].append(self.scheduler.get_last_lr()[0])
 
             # Update progress bar
             progress_bar.set_postfix(
                 {
                     "loss": f"{current_loss:.4f}",
-                    "ppl": f"{math.exp(current_loss):.2f}",
+                    "ppl": f"{current_ppl:.2f}",
                     "lr": f"{self.scheduler.get_last_lr()[0]:.7f}",
                 }
             )
@@ -347,19 +369,47 @@ class TransformerTrainer:
             # Update global step
             self.global_step += 1
 
-        # Calculate average loss and perplexity
+        # Calculate epoch statistics
         avg_loss = total_loss / total_tokens
-        avg_ppl = math.exp(min(avg_loss, 100))  # Cap perplexity at exp(100)
+        avg_ppl = math.exp(min(avg_loss, 100))
+
+        # Calculate detailed statistics
+        epoch_losses = np.array(self.history["epoch_losses"])
+        epoch_ppls = np.array(self.history["epoch_ppls"])
+
+        loss_stats = [
+            float(np.min(epoch_losses)),
+            float(np.max(epoch_losses)),
+            float(np.mean(epoch_losses)),
+            float(np.var(epoch_losses)),
+            float(np.median(epoch_losses)),
+            float(np.quantile(epoch_losses, 0.25)),
+            float(np.quantile(epoch_losses, 0.75)),
+        ]
+
+        ppl_stats = [
+            float(np.min(epoch_ppls)),
+            float(np.max(epoch_ppls)),
+            float(np.mean(epoch_ppls)),
+            float(np.var(epoch_ppls)),
+            float(np.median(epoch_ppls)),
+            float(np.quantile(epoch_ppls, 0.25)),
+            float(np.quantile(epoch_ppls, 0.75)),
+        ]
 
         # Record metrics
         self.history["train_loss"].append(avg_loss)
         self.history["train_ppl"].append(avg_ppl)
+        self.history["train_loss_stats"].append(loss_stats)
+        self.history["train_ppl_stats"].append(ppl_stats)
 
-        # Print epoch summary
+        # Print epoch summary with detailed statistics
         elapsed = time.time() - start_time
         print(
-            f"Epoch {self.current_epoch+1} completed in {elapsed:.2f}s - "
-            f"loss: {avg_loss:.4f}, ppl: {avg_ppl:.2f}"
+            f"\nEpoch {self.current_epoch+1} Training Statistics:"
+            f"\n  Time: {elapsed:.2f}s"
+            f"\n  Loss - Mean: {avg_loss:.4f}, Min: {loss_stats[0]:.4f}, Max: {loss_stats[1]:.4f}, Var: {loss_stats[3]:.4f}, Median: {loss_stats[4]:.4f}, Q1: {loss_stats[5]:.4f}, Q3: {loss_stats[6]:.4f}"
+            f"\n  Perplexity - Mean: {avg_ppl:.2f}, Min: {ppl_stats[0]:.2f}, Max: {ppl_stats[1]:.2f}, Var: {ppl_stats[3]:.2f}, Median: {ppl_stats[4]:.2f}, Q1: {ppl_stats[5]:.2f}, Q3: {ppl_stats[6]:.2f}"
         )
 
         return avg_loss
@@ -377,6 +427,8 @@ class TransformerTrainer:
         self.model.eval()
         total_loss = 0
         total_tokens = 0
+        val_losses = []
+        val_ppls = []
 
         with torch.no_grad():
             for batch in tqdm(self.val_dataloader, desc="Validation"):
@@ -410,16 +462,51 @@ class TransformerTrainer:
                 current_tokens = (tgt_output != self.pad_idx).sum().item()
                 total_loss += current_loss * current_tokens
                 total_tokens += current_tokens
+                current_ppl = math.exp(min(current_loss, 100))
 
-        # Calculate average loss and perplexity
+                val_losses.append(current_loss)
+                val_ppls.append(current_ppl)
+
+        # Calculate average metrics
         avg_loss = total_loss / total_tokens if total_tokens > 0 else float("inf")
-        avg_ppl = math.exp(min(avg_loss, 100))  # Cap perplexity at exp(100)
+        avg_ppl = math.exp(min(avg_loss, 100))
+
+        # Calculate detailed statistics
+        val_losses = np.array(val_losses)
+        val_ppls = np.array(val_ppls)
+
+        loss_stats = [
+            float(np.min(val_losses)),
+            float(np.max(val_losses)),
+            float(np.mean(val_losses)),
+            float(np.var(val_losses)),
+            float(np.median(val_losses)),
+            float(np.quantile(val_losses, 0.25)),
+            float(np.quantile(val_losses, 0.75)),
+        ]
+
+        ppl_stats = [
+            float(np.min(val_ppls)),
+            float(np.max(val_ppls)),
+            float(np.mean(val_ppls)),
+            float(np.var(val_ppls)),
+            float(np.median(val_ppls)),
+            float(np.quantile(val_ppls, 0.25)),
+            float(np.quantile(val_ppls, 0.75)),
+        ]
 
         # Record metrics
         self.history["val_loss"].append(avg_loss)
         self.history["val_ppl"].append(avg_ppl)
+        self.history["val_loss_stats"].append(loss_stats)
+        self.history["val_ppl_stats"].append(ppl_stats)
 
-        print(f"Validation - loss: {avg_loss:.4f}, ppl: {avg_ppl:.2f}")
+        # Print validation summary with detailed statistics
+        print(
+            f"\nValidation Statistics:"
+            f"\n  Loss - Mean: {avg_loss:.4f}, Min: {loss_stats[0]:.4f}, Max: {loss_stats[1]:.4f}, Var: {loss_stats[3]:.4f}, Median: {loss_stats[4]:.4f}, Q1: {loss_stats[5]:.4f}, Q3: {loss_stats[6]:.4f}"
+            f"\n  Perplexity - Mean: {avg_ppl:.2f}, Min: {ppl_stats[0]:.2f}, Max: {ppl_stats[1]:.2f}, Var: {ppl_stats[3]:.2f}, Median: {ppl_stats[4]:.2f}, Q1: {ppl_stats[5]:.2f}, Q3: {ppl_stats[6]:.2f}   "
+        )
 
         return avg_loss
 
@@ -437,11 +524,21 @@ class TransformerTrainer:
         print(f"Starting training on {self.device}...")
         start_time = time.time()
 
+        # Create directories for plots if save_path is provided
+        if save_path:
+            plot_dir = os.path.join(os.path.dirname(save_path), "plots")
+            os.makedirs(plot_dir, exist_ok=True)
+
         for epoch in range(epochs):
             self.current_epoch = epoch
 
             # Train one epoch
             train_loss = self.train_epoch()
+
+            # Save epoch metrics plot if save_path is provided
+            if save_path:
+                epoch_plot_path = os.path.join(plot_dir, f"epoch_{epoch+1}_metrics.png")
+                self.plot_epoch_metrics(epoch, save_path=epoch_plot_path)
 
             # Validate
             val_loss = self.validate()
@@ -474,6 +571,12 @@ class TransformerTrainer:
         # Print total training time
         total_time = time.time() - start_time
         print(f"Training completed in {total_time:.2f}s")
+
+        # Save final plots if save_path is provided
+        if save_path:
+            # Save overall training history plot
+            history_plot_path = os.path.join(plot_dir, "training_history.png")
+            self.plot_training_history(save_path=history_plot_path)
 
         # Always save the final model if a save path is provided
         if save_path and (
@@ -593,11 +696,14 @@ class TransformerTrainer:
         plt.grid(True)
         plt.show()
 
-    def plot_training_history(self):
+    def plot_training_history(self, save_path: Optional[str] = None):
         """
         Plot training and validation metrics over epochs.
+
+        Args:
+            save_path: Path to save the plot. If None, displays the plot.
         """
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
         # Plot losses
         ax1.plot(self.history["train_loss"], label="Train Loss")
@@ -619,8 +725,88 @@ class TransformerTrainer:
         ax2.legend()
         ax2.grid(True)
 
+        # Plot learning rate
+        ax3.plot(self.history["learning_rates"])
+        ax3.set_title("Learning Rate Schedule")
+        ax3.set_xlabel("Steps")
+        ax3.set_ylabel("Learning Rate")
+        ax3.grid(True)
+
+        # Plot min/max ranges
+        epochs = range(1, len(self.history["train_loss"]) + 1)
+
+        # Plot loss ranges
+        train_loss_min = [stats[0] for stats in self.history["train_loss_stats"]]
+        train_loss_max = [stats[1] for stats in self.history["train_loss_stats"]]
+        ax4.fill_between(
+            epochs, train_loss_min, train_loss_max, alpha=0.3, label="Train Loss Range"
+        )
+
+        if self.history["val_loss"]:
+            val_loss_min = [stats[0] for stats in self.history["val_loss_stats"]]
+            val_loss_max = [stats[1] for stats in self.history["val_loss_stats"]]
+            ax4.fill_between(
+                epochs, val_loss_min, val_loss_max, alpha=0.3, label="Val Loss Range"
+            )
+
+        ax4.set_title("Loss Ranges per Epoch")
+        ax4.set_xlabel("Epochs")
+        ax4.set_ylabel("Loss")
+        ax4.legend()
+        ax4.grid(True)
+
         plt.tight_layout()
-        plt.show()
+
+        if save_path:
+            plt.savefig(save_path)
+            plt.close()
+        else:
+            plt.show()
+
+    def plot_epoch_metrics(self, epoch: int, save_path: Optional[str] = None):
+        """
+        Plot detailed metrics for a specific epoch.
+
+        Args:
+            epoch: The epoch number to plot metrics for
+            save_path: Path to save the plot. If None, displays the plot.
+        """
+        if not self.history["epoch_losses"]:
+            print("No epoch data available to plot")
+            return
+
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 12))
+
+        steps = range(len(self.history["epoch_losses"]))
+
+        # Plot loss evolution
+        ax1.plot(steps, self.history["epoch_losses"], label="Loss")
+        ax1.set_title(f"Loss Evolution - Epoch {epoch+1}")
+        ax1.set_xlabel("Steps")
+        ax1.set_ylabel("Loss")
+        ax1.grid(True)
+
+        # Plot perplexity evolution
+        ax2.plot(steps, self.history["epoch_ppls"], label="Perplexity")
+        ax2.set_title(f"Perplexity Evolution - Epoch {epoch+1}")
+        ax2.set_xlabel("Steps")
+        ax2.set_ylabel("Perplexity")
+        ax2.grid(True)
+
+        # Plot learning rate evolution
+        ax3.plot(steps, self.history["epoch_lrs"], label="Learning Rate")
+        ax3.set_title(f"Learning Rate Evolution - Epoch {epoch+1}")
+        ax3.set_xlabel("Steps")
+        ax3.set_ylabel("Learning Rate")
+        ax3.grid(True)
+
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path)
+            plt.close()
+        else:
+            plt.show()
 
 
 def extract_file_metadata(file_path=__file__):
@@ -680,6 +866,11 @@ def extract_file_metadata(file_path=__file__):
                         "name": "plot_training_history",
                         "signature": "plot_training_history(self)",
                         "brief_description": "Visualizes training and validation metrics over time",
+                    },
+                    {
+                        "name": "plot_epoch_metrics",
+                        "signature": "plot_epoch_metrics(self, epoch: int)",
+                        "brief_description": "Visualizes detailed metrics for a specific epoch",
                     },
                 ],
                 "inheritance": "object",
