@@ -45,6 +45,11 @@
             "path": "src/training/transformer_utils.py"
           },
           {
+            "name": "vision_transformer_trainer.py",
+            "type": "file",
+            "path": "src/training/vision_transformer_trainer.py"
+          },
+          {
             "name": "optimizers.py",
             "type": "file",
             "path": "src/training/optimizers.py"
@@ -134,6 +139,16 @@
                 "name": "image_preprocessing.py",
                 "type": "file",
                 "path": "src/models/vision/image_preprocessing.py"
+              },
+              {
+                "name": "multimodal_integration.py",
+                "type": "file",
+                "path": "src/models/vision/multimodal_integration.py"
+              },
+              {
+                "name": "vision_transformer.py",
+                "type": "file",
+                "path": "src/models/vision/vision_transformer.py"
               },
               {
                 "name": "patch_embedding.py",
@@ -298,6 +313,11 @@
             "path": "src/data/curriculum_dataset.py"
           },
           {
+            "name": "image_dataset.py",
+            "type": "file",
+            "path": "src/data/image_dataset.py"
+          },
+          {
             "name": "wmt_dataloader.py",
             "type": "file",
             "path": "src/data/wmt_dataloader.py"
@@ -407,6 +427,11 @@
             "name": "dataloader.py",
             "type": "file",
             "path": "src/data/dataloader.py"
+          },
+          {
+            "name": "dataset_wrapper.py",
+            "type": "file",
+            "path": "src/data/dataset_wrapper.py"
           },
           {
             "name": "wikipedia_dataset.py",
@@ -875,6 +900,12 @@
       ],
       "complexity_score": 6,
       "module_path": "src/training/transformer_utils.py"
+    },
+    {
+      "filename": "vision_transformer_trainer.py",
+      "module_path": "src/training/vision_transformer_trainer.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "optimizers.py",
@@ -2006,15 +2037,223 @@
     },
     {
       "filename": "image_preprocessing.py",
-      "module_path": "src/models/vision/image_preprocessing.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides utilities for preprocessing images for vision transformer models",
+      "key_classes": [
+        {
+          "name": "ImagePreprocessor",
+          "purpose": "Handles image resizing, normalization, and conversion to tensor format for vision models",
+          "key_methods": [
+            {
+              "name": "preprocess",
+              "signature": "preprocess(self, image: Union[str, Image.Image, np.ndarray, torch.Tensor]) -> torch.Tensor",
+              "brief_description": "Processes a single image from various input formats to a standardized tensor"
+            },
+            {
+              "name": "batch_preprocess",
+              "signature": "batch_preprocess(self, images: List[Union[str, Image.Image, np.ndarray, torch.Tensor]]) -> torch.Tensor",
+              "brief_description": "Processes multiple images into a batch tensor"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torchvision.transforms",
+            "PIL.Image",
+            "numpy",
+            "torch.nn.functional"
+          ]
+        },
+        {
+          "name": "PatchExtractor",
+          "purpose": "Efficiently extracts fixed-size patches from image tensors using unfold operations",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Tuple[int, int]]",
+              "brief_description": "Extracts patches from a batch of images and returns patch dimensions"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torchvision",
+        "PIL",
+        "numpy"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/models/vision/image_preprocessing.py"
+    },
+    {
+      "filename": "multimodal_integration.py",
+      "module_purpose": "Implements models for combining vision and text modalities in a unified architecture",
+      "key_classes": [
+        {
+          "name": "MultiModalTransformer",
+          "purpose": "Combines vision and text transformer models with projection layers to a common embedding space",
+          "key_methods": [
+            {
+              "name": "encode_image",
+              "signature": "encode_image(self, image: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Projects image features to multimodal embedding space"
+            },
+            {
+              "name": "encode_text",
+              "signature": "encode_text(self, text: Dict[str, torch.Tensor]) -> torch.Tensor",
+              "brief_description": "Projects text features to multimodal embedding space"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, image: Optional[torch.Tensor] = None, text: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Processes image and/or text inputs and computes similarity if both are provided"
+            }
+          ],
+          "inheritance": "BaseModel",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "..base_model",
+            "..transformer",
+            ".vision_transformer"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/vision/multimodal_integration.py"
+    },
+    {
+      "filename": "vision_transformer.py",
+      "module_purpose": "Implements Vision Transformer (ViT) architecture for image classification tasks",
+      "key_classes": [
+        {
+          "name": "PatchEmbed",
+          "purpose": "Converts images into sequences of patch embeddings using efficient convolution",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Projects image to patch embeddings"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        },
+        {
+          "name": "Attention",
+          "purpose": "Implements multi-head self-attention mechanism with combined QKV projection",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Performs multi-head attention operation"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        },
+        {
+          "name": "Block",
+          "purpose": "Transformer block with attention, MLP, and residual connections",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Processes input through attention and MLP layers with residual connections"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        },
+        {
+          "name": "VisionTransformer",
+          "purpose": "Complete Vision Transformer model for image classification",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor, return_features: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]",
+              "brief_description": "Forward pass through the model to get class logits and optionally features"
+            },
+            {
+              "name": "forward_features",
+              "signature": "forward_features(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Forward pass to extract features before classification head"
+            },
+            {
+              "name": "extract_features",
+              "signature": "extract_features(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Convenience method to extract features for external use"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self, lr: float = 1e-3, weight_decay: float = 0.05, betas: Tuple[float, float] = (0.9, 0.999)) -> torch.optim.Optimizer",
+              "brief_description": "Creates optimizer with weight decay excluded from bias and norm parameters"
+            }
+          ],
+          "inheritance": "BaseModel",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "..base_model"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "math"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/models/vision/vision_transformer.py"
     },
     {
       "filename": "patch_embedding.py",
-      "module_path": "src/models/vision/patch_embedding.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements patch embedding for Vision Transformer (ViT) models",
+      "key_classes": [
+        {
+          "name": "PatchEmbedding",
+          "purpose": "Extracts image patches and projects them to an embedding space with positional information",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Transforms images into sequences of embedded patches with positional information"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "create_sinusoidal_embeddings",
+          "signature": "create_sinusoidal_embeddings(num_positions: int, embedding_dim: int) -> torch.Tensor",
+          "brief_description": "Creates fixed sinusoidal positional embeddings using the method from the Transformer paper"
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 5,
+      "module_path": "src/models/vision/patch_embedding.py"
     },
     {
       "filename": "vision_transformer.py",
@@ -2699,6 +2938,12 @@
       "has_metadata_function": false
     },
     {
+      "filename": "image_dataset.py",
+      "module_path": "src/data/image_dataset.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "wmt_dataloader.py",
       "module_purpose": "Provides a data loader for WMT (Workshop on Machine Translation) parallel corpus",
       "key_classes": [
@@ -3125,6 +3370,12 @@
       "module_path": "src/data/dataloader.py"
     },
     {
+      "filename": "dataset_wrapper.py",
+      "module_path": "src/data/dataset_wrapper.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "wikipedia_dataset.py",
       "module_purpose": "Provides a dataset class for loading and preprocessing Wikipedia Web2M data from TFRecord format",
       "key_classes": [
@@ -3506,12 +3757,12 @@
     }
   ],
   "summary": {
-    "total_modules": 69,
-    "modules_with_metadata": 56,
-    "modules_without_metadata": 13
+    "total_modules": 74,
+    "modules_with_metadata": 60,
+    "modules_without_metadata": 14
   },
   "complexity_summary": {
-    "average_complexity": 5.517857142857143,
+    "average_complexity": 5.583333333333333,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -3554,6 +3805,10 @@
         "score": 8
       },
       {
+        "module": "src/models/vision/vision_transformer.py",
+        "score": 8
+      },
+      {
         "module": "src/safety/integration.py",
         "score": 8
       },
@@ -3583,6 +3838,10 @@
       },
       {
         "module": "src/models/positional.py",
+        "score": 7
+      },
+      {
+        "module": "src/models/vision/multimodal_integration.py",
         "score": 7
       },
       {
@@ -3618,6 +3877,10 @@
         "score": 6
       },
       {
+        "module": "src/models/vision/image_preprocessing.py",
+        "score": 6
+      },
+      {
         "module": "src/data/sequence_data.py",
         "score": 6
       },
@@ -3631,6 +3894,10 @@
       },
       {
         "module": "src/utils/visualization.py",
+        "score": 5
+      },
+      {
+        "module": "src/models/vision/patch_embedding.py",
         "score": 5
       },
       {
@@ -3740,15 +4007,15 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 28,
+    "total_external_dependencies": 31,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 35
+        "usage_count": 39
       },
       {
         "name": "numpy",
-        "usage_count": 16
+        "usage_count": 17
       },
       {
         "name": "json",
@@ -3824,6 +4091,18 @@
       },
       {
         "name": "pandas",
+        "usage_count": 1
+      },
+      {
+        "name": "torchvision",
+        "usage_count": 1
+      },
+      {
+        "name": "PIL",
+        "usage_count": 1
+      },
+      {
+        "name": "math",
         "usage_count": 1
       },
       {
