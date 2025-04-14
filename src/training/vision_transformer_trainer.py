@@ -1,4 +1,20 @@
 # src/training/vision_transformer_trainer.py
+"""
+Specialized Trainer for Vision Transformer Models
+
+PURPOSE:
+    Provides a comprehensive training framework specifically designed for Vision Transformer models,
+    with support for advanced training techniques including mixup and cutmix data augmentation.
+
+KEY COMPONENTS:
+    - Training loop with progress tracking
+    - Validation and early stopping
+    - Model checkpointing and resuming
+    - Mixup and CutMix data augmentation
+    - Learning rate scheduling
+    - Training visualization tools
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -466,3 +482,67 @@ class VisionTransformerTrainer:
             Mixed loss
         """
         return lam * self.criterion(pred, y_a) + (1 - lam) * self.criterion(pred, y_b)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a specialized trainer for Vision Transformer models with advanced training techniques",
+        "key_classes": [
+            {
+                "name": "VisionTransformerTrainer",
+                "purpose": "Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support",
+                "key_methods": [
+                    {
+                        "name": "train_epoch",
+                        "signature": "train_epoch(self)",
+                        "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support"
+                    },
+                    {
+                        "name": "validate",
+                        "signature": "validate(self)",
+                        "brief_description": "Validate the model on validation dataset"
+                    },
+                    {
+                        "name": "train",
+                        "signature": "train(self) -> Dict[str, List[float]]",
+                        "brief_description": "Train the model for specified number of epochs with early stopping"
+                    },
+                    {
+                        "name": "save_checkpoint",
+                        "signature": "save_checkpoint(self, filename: str) -> None",
+                        "brief_description": "Save a checkpoint of the model and training state"
+                    },
+                    {
+                        "name": "load_checkpoint",
+                        "signature": "load_checkpoint(self, filename: str) -> None",
+                        "brief_description": "Load a checkpoint of the model and training state"
+                    },
+                    {
+                        "name": "_mixup_data",
+                        "signature": "_mixup_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+                        "brief_description": "Perform mixup data augmentation"
+                    },
+                    {
+                        "name": "_cutmix_data",
+                        "signature": "_cutmix_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+                        "brief_description": "Perform cutmix data augmentation"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "torch.nn", "VisionTransformer", "matplotlib", "numpy", "tqdm"]
+            }
+        ],
+        "key_functions": [],
+        "external_dependencies": ["torch", "matplotlib", "numpy", "tqdm"],
+        "complexity_score": 8  # High complexity due to advanced training techniques and augmentations
+    }

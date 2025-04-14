@@ -1,8 +1,24 @@
+# src/data/curriculum_dataset.py
+"""
+Curriculum Learning Implementation for Translation Datasets
+
+PURPOSE:
+    Implements curriculum learning strategies for machine translation, allowing models to learn
+    from simpler examples before moving to more complex ones. This progressive learning approach
+    can lead to better and faster convergence.
+
+KEY COMPONENTS:
+    - Difficulty calculation based on different strategies (length, vocabulary, similarity)
+    - Stage-based progression through the curriculum
+    - Tools for monitoring curriculum progression and statistics
+"""
+
 import torch
 from torch.utils.data import Dataset
 import numpy as np
 from collections import Counter
 from typing import List, Dict, Tuple, Optional, Callable, Any
+import os
 
 
 class CurriculumTranslationDataset(Dataset):
@@ -319,3 +335,52 @@ class CurriculumTranslationDataset(Dataset):
             print(
                 f"  Average difficulty: {sum(stage_difficulties)/len(stage_difficulties):.2f}"
             )
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements curriculum learning for translation datasets, gradually increasing difficulty during training",
+        "key_classes": [
+            {
+                "name": "CurriculumTranslationDataset",
+                "purpose": "Dataset that implements curriculum learning strategies for translation tasks",
+                "key_methods": [
+                    {
+                        "name": "_calculate_difficulties",
+                        "signature": "_calculate_difficulties(self) -> List[float]",
+                        "brief_description": "Calculate difficulty scores for all examples based on selected strategy"
+                    },
+                    {
+                        "name": "update_stage",
+                        "signature": "update_stage(self, new_stage: int) -> None",
+                        "brief_description": "Update the curriculum stage to expose more complex examples"
+                    },
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Get an item from the dataset based on curriculum stage"
+                    },
+                    {
+                        "name": "get_curriculum_stats",
+                        "signature": "get_curriculum_stats(self) -> Dict[str, Any]",
+                        "brief_description": "Get statistics about the current curriculum stage"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data.Dataset", "numpy", "collections.Counter"]
+            }
+        ],
+        "key_functions": [],
+        "external_dependencies": ["torch", "numpy", "collections"],
+        "complexity_score": 7  # Relatively complex due to multiple curriculum strategies and dynamic filtering
+    }

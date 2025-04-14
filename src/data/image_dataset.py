@@ -1,4 +1,18 @@
 # src/data/image_dataset.py
+"""
+Image Dataset for Vision Transformer Models
+
+PURPOSE:
+    Provides a flexible dataset implementation for loading and preprocessing image data
+    for vision transformer models. Supports different directory structures and class mappings.
+
+KEY COMPONENTS:
+    - Support for common image formats (jpg, png, jpeg)
+    - Automatic class discovery from directory structure
+    - Optional custom class mapping support
+    - Integration with image preprocessing pipeline
+"""
+
 import torch
 from torch.utils.data import Dataset
 import os
@@ -146,3 +160,42 @@ class ImageDataset(Dataset):
             "label": torch.tensor(label, dtype=torch.long),
             "path": str(img_path),
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides dataset functionality for loading and preprocessing image data for vision transformer models",
+        "key_classes": [
+            {
+                "name": "ImageDataset",
+                "purpose": "Dataset for loading and preprocessing images for vision transformer models",
+                "key_methods": [
+                    {
+                        "name": "_get_class_idx",
+                        "signature": "_get_class_idx(self, class_name: str) -> int",
+                        "brief_description": "Get class index from class name using mapping or dynamic creation"
+                    },
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Load, preprocess and return an image with its label and path"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data.Dataset", "PIL.Image", "ImagePreprocessor"]
+            }
+        ],
+        "key_functions": [],
+        "external_dependencies": ["torch", "PIL", "pathlib", "json"],
+        "complexity_score": 4  # Moderate complexity for image loading/preprocessing
+    }

@@ -1,12 +1,22 @@
 # src/data/dataset_wrapper.py
 """
-Dataset wrappers to standardize the interface for various datasets.
-This helps ensure consistent data format across different dataset sources.
+Dataset Interface Standardization Wrappers
+
+PURPOSE:
+    Provides wrapper classes and utilities to standardize the interface for various datasets,
+    ensuring consistent data format and access patterns across different data sources.
+
+KEY COMPONENTS:
+    - Dictionary-format dataset wrapper
+    - Dictionary-format dataloader creation
+    - Standardized dataset loading functions
+    - Conversion between tuple and dictionary formats
 """
 
 import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Dict, Tuple, List, Any, Callable, Optional, Union
+import os
 
 
 class DictionaryDataset(Dataset):
@@ -140,3 +150,48 @@ def load_cifar10_dict(
     )
 
     return train_loader, val_loader, classes
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides dataset wrappers to standardize interfaces for different dataset types",
+        "key_classes": [
+            {
+                "name": "DictionaryDataset",
+                "purpose": "Wrapper for datasets that return tuples, converting them to dictionaries for a standardized interface",
+                "key_methods": [
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
+                        "brief_description": "Get a sample from the dataset as a dictionary with standardized keys"
+                    }
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data.Dataset"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "create_dictionary_dataloader",
+                "signature": "create_dictionary_dataloader(dataset: Dataset, batch_size: int = 32, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True, keys: List[str] = None) -> DataLoader",
+                "brief_description": "Create a DataLoader that returns dictionary-format batches"
+            },
+            {
+                "name": "load_cifar10_dict",
+                "signature": "load_cifar10_dict(batch_size: int = 128, num_workers: int = 4, image_size: int = 32) -> Tuple[DataLoader, DataLoader, List[str]]",
+                "brief_description": "Load CIFAR-10 dataset with dictionary-format data loaders"
+            }
+        ],
+        "external_dependencies": ["torch", "torch.utils.data"],
+        "complexity_score": 3  # Low-moderate complexity for dataset wrapping and standardization
+    }
