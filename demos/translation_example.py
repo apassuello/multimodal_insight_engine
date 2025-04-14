@@ -14,6 +14,8 @@ from tqdm import tqdm
 import re
 from collections import Counter
 import argparse
+import concurrent.futures
+from functools import partial
 
 # Disable interactive mode for matplotlib to prevent opening windows
 plt.ioff()
@@ -31,6 +33,7 @@ from src.optimization.mixed_precision import MixedPrecisionConverter
 from src.data.europarl_dataset import EuroparlDataset
 from src.data.opensubtitles_dataset import OpenSubtitlesDataset
 from src.data.iwslt_dataset import IWSLTDataset
+from src.data.wmt_dataset import WMTDataset  # Add import for WMT dataset
 from debug_scripts.debug_transformer import (
     attach_debugger_to_trainer,
     debug_sample_batch,
@@ -77,21 +80,23 @@ def clean_translation_output(text):
 
 def generate_translations(
     model,
-    tokenizer,  # Single tokenizer for both source and target
-    src_sentences,
-    max_length=50,  # Reduced from 100 to avoid long nonsensical outputs
+    src_tokenizer,  # Now explicitly naming as source tokenizer
+    src_sentences,  # Required parameter
+    tgt_tokenizer=None,  # Add target tokenizer as separate parameter
+    max_length=50,
     device=None,
     fallback_token="[UNK]",
-    sampling_temp=0.7,  # Changed from 1.0 (greedy) to 0.7 (more randomness)
-    sampling_topk=5,  # Changed from 1 to 5 to sample from top 5 tokens
+    sampling_temp=0.2,
+    sampling_topk=10,
 ):
     """
     Generate translations for a list of source sentences using sampling with temperature.
 
     Args:
         model: Trained transformer model
-        tokenizer: Joint vocabulary tokenizer
+        src_tokenizer: Source language tokenizer
         src_sentences: List of source language sentences
+        tgt_tokenizer: Target language tokenizer (if None, uses src_tokenizer)
         max_length: Maximum length of generated translations
         device: Device to run inference on
         fallback_token: Token to use when encountering out-of-vocabulary tokens
@@ -105,6 +110,13 @@ def generate_translations(
     translations = []
     raw_translations = []
 
+    # Use source tokenizer for target if no target tokenizer provided
+    if tgt_tokenizer is None:
+        print(
+            "WARNING: No target tokenizer provided. Using source tokenizer for decoding."
+        )
+        tgt_tokenizer = src_tokenizer
+
     # Default to CPU if device not provided
     if device is None:
         device = torch.device("cpu")
@@ -113,36 +125,58 @@ def generate_translations(
 
     # Get vocabulary size
     vocab_size = model.encoder.token_embedding.embedding.weight.shape[0]
+    tgt_vocab_size = model.decoder.token_embedding.embedding.weight.shape[0]
 
     # Check for vocab size mismatch and print warning
-    if tokenizer.vocab_size != vocab_size:
+    if src_tokenizer.vocab_size != vocab_size:
         print(
-            f"WARNING: Tokenizer vocabulary size ({tokenizer.vocab_size}) doesn't match model ({vocab_size})"
+            f"WARNING: Source tokenizer vocabulary size ({src_tokenizer.vocab_size}) doesn't match model encoder ({vocab_size})"
         )
-        print("This may result in incorrect translations!")
 
-    # Get token indices for unknown, bos, eos tokens
+    if tgt_tokenizer.vocab_size != tgt_vocab_size:
+        print(
+            f"WARNING: Target tokenizer vocabulary size ({tgt_tokenizer.vocab_size}) doesn't match model decoder ({tgt_vocab_size})"
+        )
+
+    # Get token indices for special tokens
     try:
-        unk_token_idx = tokenizer.token_to_id(fallback_token)
-        if unk_token_idx is None or unk_token_idx >= vocab_size:
-            unk_token_idx = 0  # Use a safe default
+        src_unk_token_idx = src_tokenizer.token_to_id(fallback_token)
+        if src_unk_token_idx is None or src_unk_token_idx >= vocab_size:
+            src_unk_token_idx = 0  # Use a safe default
     except:
-        unk_token_idx = 0
+        src_unk_token_idx = 0
 
     # Get special token indices for cleaner code
-    bos_idx = tokenizer.special_tokens["bos_token_idx"]
-    eos_idx = tokenizer.special_tokens["eos_token_idx"]
-    pad_idx = tokenizer.special_tokens["pad_token_idx"]
+    src_bos_idx = src_tokenizer.special_tokens["bos_token_idx"]
+    src_eos_idx = src_tokenizer.special_tokens["eos_token_idx"]
+    src_pad_idx = src_tokenizer.special_tokens["pad_token_idx"]
+
+    tgt_bos_idx = tgt_tokenizer.special_tokens["bos_token_idx"]
+    tgt_eos_idx = tgt_tokenizer.special_tokens["eos_token_idx"]
+    tgt_pad_idx = tgt_tokenizer.special_tokens["pad_token_idx"]
+
+    print(
+        "Source special token indices:",
+        {"bos": src_bos_idx, "eos": src_eos_idx, "pad": src_pad_idx},
+    )
+
+    print(
+        "Target special token indices:",
+        {"bos": tgt_bos_idx, "eos": tgt_eos_idx, "pad": tgt_pad_idx},
+    )
 
     with torch.no_grad():
         for src_idx, src_text in enumerate(src_sentences):
             try:
-                print(f"Translating sentence {src_idx+1}: '{src_text}'")
-                # Tokenize source text
-                src_ids = tokenizer.encode(src_text)
+                print(f"\nTranslating sentence {src_idx+1}: '{src_text}'")
+
+                # Tokenize source text with SOURCE tokenizer
+                src_ids = src_tokenizer.encode(src_text)
+                print(f"Source tokens: {src_ids}")
 
                 # Add special tokens
-                src_ids = [bos_idx] + src_ids + [eos_idx]
+                src_ids = [src_bos_idx] + src_ids + [src_eos_idx]
+                print(f"Source tokens with special tokens: {src_ids}")
 
                 # Ensure all tokens are in vocabulary range
                 src_ids = [min(token_id, vocab_size - 1) for token_id in src_ids]
@@ -151,206 +185,128 @@ def generate_translations(
                 src_tensor = torch.tensor([src_ids], dtype=torch.long).to(device)
 
                 # Create source mask
-                src_mask = create_padding_mask(src_tensor, pad_idx)
+                src_mask = create_padding_mask(src_tensor, src_pad_idx)
 
-                # Initialize target with BOS token
-                tgt_bos_idx = min(bos_idx, vocab_size - 1)
+                # Initialize target with TARGET BOS token
+                tgt_bos_idx = min(tgt_bos_idx, tgt_vocab_size - 1)
                 tgt_ids = [tgt_bos_idx]
                 tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
 
                 # Generate translation auto-regressively
-                generation_failures = 0
-                max_failures = 2  # Give up after this many attempts
+                for _ in range(max_length):
+                    # Create target mask (causal)
+                    tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
 
-                while generation_failures < max_failures:
-                    # Reset generation state
-                    tgt_ids = [tgt_bos_idx]
-                    tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
+                    # Get model prediction
+                    logits = model(
+                        src_tensor,
+                        tgt_tensor,
+                        src_mask=src_mask,
+                        tgt_mask=tgt_mask,
+                    )
+                    next_token_logits = logits[0, -1]
 
-                    # Track tokens for repetition detection
-                    unique_tokens = set()
-                    prev_tokens = []  # Track last few tokens for local repetition
-                    token_history = []  # Full history for analysis
-                    repetition_count = 0  # Make sure this is an integer
-                    max_repetitions = 3  # Reduced from 5 - detect repetition earlier
-                    tokens_generated = 0
-                    current_temp = sampling_temp  # Start with specified temperature
+                    # Apply temperature (lower = more deterministic)
+                    next_token_logits = next_token_logits / sampling_temp
 
-                    try:
-                        for _ in range(max_length):
-                            tokens_generated += 1
+                    # Get top-k tokens
+                    top_k = min(sampling_topk, next_token_logits.size(-1))
+                    top_token_logits, top_tokens = torch.topk(next_token_logits, top_k)
 
-                            # Create target mask (causal)
-                            tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
+                    # Convert to probabilities
+                    top_token_probs = torch.softmax(top_token_logits, dim=-1)
 
-                            # Get model prediction
-                            logits = model(
-                                src_tensor,
-                                tgt_tensor,
-                                src_mask=src_mask,
-                                tgt_mask=tgt_mask,
-                            )
-                            next_token_logits = logits[0, -1]
-
-                            # Apply temperature
-                            next_token_logits = next_token_logits / current_temp
-
-                            # Get top-k tokens
-                            top_k = min(sampling_topk, next_token_logits.size(-1))
-                            top_token_logits, top_tokens = torch.topk(
-                                next_token_logits, top_k
-                            )
-
-                            # Convert to probabilities
-                            top_token_probs = torch.softmax(top_token_logits, dim=-1)
-
-                            # Sample or use greedy decoding based on settings
-                            if current_temp < 0.01 or top_k == 1:  # Effectively greedy
-                                next_token = top_tokens[0].item()
-                            else:
-                                # Sample from top-k based on probabilities
-                                try:
-                                    # Ensure valid probabilities
-                                    if (
-                                        torch.isnan(top_token_probs).any()
-                                        or not torch.isfinite(top_token_probs).all()
-                                    ):
-                                        top_token_probs = (
-                                            torch.ones_like(top_token_probs) / top_k
-                                        )
-
-                                    # Normalize to sum to 1.0
-                                    top_token_probs = (
-                                        top_token_probs / top_token_probs.sum()
-                                    )
-
-                                    # Sample from distribution
-                                    index_tensor = torch.multinomial(
-                                        top_token_probs, num_samples=1
-                                    )
-                                    next_token_idx = index_tensor.item()
-                                    next_token = top_tokens[int(next_token_idx)].item()
-                                except Exception as e:
-                                    print(
-                                        f"Sampling error: {e}, falling back to greedy decoding"
-                                    )
-                                    next_token = top_tokens[0].item()
-
-                            # Track token for repetition detection
-                            token_history.append(next_token)
-
-                            # Check for immediate repetition (last 3 tokens identical)
+                    # Sample or use greedy decoding based on settings
+                    if sampling_temp < 0.01 or top_k == 1:  # Effectively greedy
+                        next_token = top_tokens[0].item()
+                    else:
+                        # Sample from top-k based on probabilities
+                        try:
+                            # Ensure valid probabilities
                             if (
-                                len(prev_tokens) >= 3
-                                and len(set(prev_tokens[-3:])) == 1
+                                torch.isnan(top_token_probs).any()
+                                or not torch.isfinite(top_token_probs).all()
                             ):
-                                repetition_count += 1
-                                # Increase temperature to break out of repetition
-                                current_temp = min(current_temp * 1.2, 1.5)
-
-                                # If still repeating, force a different token
-                                if repetition_count >= 2 and len(top_tokens) > 1:
-                                    # Try next best token
-                                    for alt_idx in range(1, len(top_tokens)):
-                                        alt_token = top_tokens[alt_idx].item()
-                                        if alt_token != next_token:
-                                            next_token = alt_token
-                                            repetition_count = 0
-                                            break
-                            else:
-                                # No repetition found, reset counter
-                                repetition_count = 0
-                                # Gradually return to base temperature
-                                current_temp = max(sampling_temp, current_temp * 0.95)
-
-                            # Update tracking states
-                            prev_tokens.append(next_token)
-                            if len(prev_tokens) > 5:
-                                prev_tokens.pop(0)
-                            unique_tokens.add(next_token)
-
-                            # Add predicted token to target sequence
-                            tgt_ids.append(next_token)
-                            tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(
-                                device
-                            )
-
-                            # Stop if EOS token or maximum length
-                            if next_token == eos_idx or tokens_generated >= max_length:
-                                break
-
-                        # Check if generation was successful - a good generation should:
-                        # 1. Have reasonable length
-                        # 2. End with EOS or reach max_length
-                        # 3. Not be just repetitions of the same few tokens
-
-                        success = (
-                            len(tgt_ids) > 2  # More than just BOS+EOS
-                            and (
-                                tgt_ids[-1] == eos_idx or len(tgt_ids) >= max_length
-                            )  # Proper ending
-                            and len(unique_tokens) > 3  # Some variety in tokens
-                        )
-
-                        if success:
-                            # Process output tokens, removing special tokens
-                            output_tokens = []
-                            for token_id in tgt_ids:
-                                # Skip BOS and EOS tokens
-                                if token_id == bos_idx or token_id == eos_idx:
-                                    continue
-                                # Skip tokens outside vocabulary range
-                                if token_id >= vocab_size:
-                                    continue
-                                output_tokens.append(token_id)
-
-                            # Decode tokens to text
-                            if output_tokens:
-                                raw_translated_text = tokenizer.decode(output_tokens)
-                                # Apply post-processing to clean up BPE artifacts
-                                cleaned_text = clean_translation_output(
-                                    raw_translated_text
+                                top_token_probs = (
+                                    torch.ones_like(top_token_probs) / top_k
                                 )
 
-                                # Final check for quality
-                                if (
-                                    len(set(cleaned_text.split())) <= 1
-                                    and len(cleaned_text) > 5
-                                ):
-                                    # Extremely repetitive output - try again with more randomness
+                            # Normalize to sum to 1.0
+                            top_token_probs = top_token_probs / top_token_probs.sum()
+
+                            # Sample from distribution
+                            index_tensor = torch.multinomial(
+                                top_token_probs, num_samples=1
+                            )
+                            next_token_idx = index_tensor.item()
+                            next_token = top_tokens[int(next_token_idx)].item()
+
+                            # Print top tokens for debugging (first sentence only)
+                            if src_idx == 0 and len(tgt_ids) < 5:
+                                print(
+                                    f"Step {len(tgt_ids)}: Top 5 tokens and probabilities:"
+                                )
+                                for i in range(min(5, len(top_tokens))):
+                                    token_id = top_tokens[i].item()
+                                    token_str = tgt_tokenizer.decode([token_id])
+                                    prob = top_token_probs[i].item()
                                     print(
-                                        f"Generation produced repetitive output: '{cleaned_text}'"
+                                        f"  {i+1}. ID: {token_id}, Token: '{token_str}', Prob: {prob:.4f}"
                                     )
-                                    generation_failures += 1
-                                    # Try with more randomness next time
-                                    sampling_temp *= 1.3
-                                    sampling_topk = min(20, sampling_topk + 5)
-                                else:
-                                    # Success! Add to results
-                                    raw_translations.append(raw_translated_text)
-                                    translations.append(cleaned_text)
-                                    break  # Exit while loop
-                            else:
-                                # Empty output - try again
-                                generation_failures += 1
-                        else:
-                            # Unsuccessful generation - try again
-                            generation_failures += 1
+                                print(
+                                    f"Selected token: ID: {next_token}, Token: '{tgt_tokenizer.decode([next_token])}'"
+                                )
 
-                    except Exception as e:
-                        print(f"Error during translation generation: {e}")
-                        generation_failures += 1
+                        except Exception as e:
+                            print(
+                                f"Sampling error: {e}, falling back to greedy decoding"
+                            )
+                            next_token = top_tokens[0].item()
 
-                # If all generation attempts failed, add a placeholder
-                if generation_failures >= max_failures:
+                    # Add predicted token to target sequence
+                    tgt_ids.append(next_token)
+                    tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
+
+                    # Stop if TARGET EOS token
+                    if next_token == tgt_eos_idx:
+                        break
+
+                # Process output tokens
+                output_tokens = []
+                for token_id in tgt_ids:
+                    # Skip BOS token
+                    if token_id == tgt_bos_idx:
+                        continue
+                    # Stop at EOS token
+                    if token_id == tgt_eos_idx:
+                        break
+                    # Skip tokens outside vocabulary range
+                    if token_id >= tgt_vocab_size:
+                        continue
+                    output_tokens.append(token_id)
+
+                # Debugging info for first sentence
+                if src_idx == 0:
+                    print(f"Output tokens: {output_tokens}")
                     print(
-                        f"Failed to generate good translation after {max_failures} attempts"
+                        f"Output token strings: {[tgt_tokenizer.decode([t]) for t in output_tokens]}"
                     )
-                    raw_translations.append("[Translation failed]")
-                    translations.append("[Translation failed]")
+
+                # Decode tokens to text using TARGET tokenizer
+                raw_translated_text = tgt_tokenizer.decode(output_tokens)
+                cleaned_text = clean_translation_output(raw_translated_text)
+
+                print(f"Raw translation: '{raw_translated_text}'")
+                print(f"Cleaned translation: '{cleaned_text}'")
+
+                raw_translations.append(raw_translated_text)
+                translations.append(cleaned_text)
 
             except Exception as e:
                 print(f"Error during translation: {e}")
+                import traceback
+
+                traceback.print_exc()
                 raw_translations.append("[Translation error]")
                 translations.append("[Translation error]")
 
@@ -680,14 +636,57 @@ def early_stopping(history, patience=10):
     return recent_losses[-1] > best_loss * 0.99
 
 
-def preprocess_data_with_bpe(dataset, src_tokenizer, tgt_tokenizer=None):
+# Define process_batch as a top-level function so it can be pickled for multiprocessing
+def _process_batch_for_tokenization(batch_data, src_tokenizer_data, tgt_tokenizer_data):
+    """Process a batch of text data for tokenization (defined at module level for pickling)"""
+    import torch
+    from src.data.tokenization import OptimizedBPETokenizer
+
+    # Recreate the tokenizers on CPU to avoid pickling issues with device-specific objects
+    src_tokenizer = OptimizedBPETokenizer.from_pretrained(src_tokenizer_data["path"])
+    if src_tokenizer_data["path"] != tgt_tokenizer_data["path"]:
+        tgt_tokenizer = OptimizedBPETokenizer.from_pretrained(
+            tgt_tokenizer_data["path"]
+        )
+    else:
+        tgt_tokenizer = src_tokenizer
+
+    batch_src_sequences = []
+    batch_tgt_sequences = []
+
+    # Get special token indices
+    src_bos_idx = src_tokenizer.special_tokens["bos_token_idx"]
+    src_eos_idx = src_tokenizer.special_tokens["eos_token_idx"]
+    tgt_bos_idx = tgt_tokenizer.special_tokens["bos_token_idx"]
+    tgt_eos_idx = tgt_tokenizer.special_tokens["eos_token_idx"]
+
+    for src_text, tgt_text in batch_data:
+        # Tokenize with appropriate tokenizer(s)
+        src_ids = src_tokenizer.encode(src_text)
+        tgt_ids = tgt_tokenizer.encode(tgt_text)
+
+        # Add special tokens
+        src_ids = [src_bos_idx] + src_ids + [src_eos_idx]
+        tgt_ids = [tgt_bos_idx] + tgt_ids + [tgt_eos_idx]
+
+        batch_src_sequences.append(src_ids)
+        batch_tgt_sequences.append(tgt_ids)
+
+    return batch_src_sequences, batch_tgt_sequences
+
+
+def preprocess_data_with_bpe(
+    dataset, src_tokenizer, tgt_tokenizer=None, batch_size=64, num_workers=4
+):
     """
-    Preprocess the dataset for training using BPE tokenizer(s).
+    Preprocess the dataset for training using BPE tokenizer(s) with optimization.
 
     Args:
         dataset: IWSLT dataset or EuroparlDataset
         src_tokenizer: Source language tokenizer
         tgt_tokenizer: Target language tokenizer (optional, if None, uses src_tokenizer as joint tokenizer)
+        batch_size: Size of batches for processing
+        num_workers: Number of parallel workers for multiprocessing
 
     Returns:
         Lists of tokenized source and target sequences
@@ -699,25 +698,139 @@ def preprocess_data_with_bpe(dataset, src_tokenizer, tgt_tokenizer=None):
     joint_tokenizer = tgt_tokenizer is None
     tgt_tokenizer = tgt_tokenizer or src_tokenizer
 
-    for src_text, tgt_text in zip(dataset.src_data, dataset.tgt_data):
-        # Tokenize with appropriate tokenizer(s)
-        src_ids = src_tokenizer.encode(src_text)
-        tgt_ids = tgt_tokenizer.encode(tgt_text)
+    # Create batches
+    data_pairs = list(zip(dataset.src_data, dataset.tgt_data))
+    total_examples = len(data_pairs)
 
-        # Add special tokens
-        src_ids = (
-            [src_tokenizer.special_tokens["bos_token_idx"]]
-            + src_ids
-            + [src_tokenizer.special_tokens["eos_token_idx"]]
-        )
-        tgt_ids = (
-            [tgt_tokenizer.special_tokens["bos_token_idx"]]
-            + tgt_ids
-            + [tgt_tokenizer.special_tokens["eos_token_idx"]]
-        )
+    # Process in batches with a progress bar
+    with tqdm(total=total_examples, desc="Preprocessing data") as pbar:
+        # If multiprocessing is enabled and we have at least 2 workers
+        if num_workers > 1:
+            try:
+                # Create batches for processing
+                batches = [
+                    data_pairs[i : i + batch_size]
+                    for i in range(0, len(data_pairs), batch_size)
+                ]
 
-        src_sequences.append(src_ids)
-        tgt_sequences.append(tgt_ids)
+                # Create serializable representations of tokenizers (just the paths)
+                src_tokenizer_data = {
+                    "path": (
+                        src_tokenizer.save_dir
+                        if hasattr(src_tokenizer, "save_dir")
+                        else None
+                    )
+                }
+                tgt_tokenizer_data = {
+                    "path": (
+                        tgt_tokenizer.save_dir
+                        if hasattr(tgt_tokenizer, "save_dir")
+                        else None
+                    )
+                }
+
+                # If save_dir is not available, we need to create temporary directories to save the tokenizers
+                import tempfile
+                import os
+                import shutil
+                import multiprocessing as mp
+                from concurrent.futures import ProcessPoolExecutor, as_completed
+
+                temp_dirs = []
+                if src_tokenizer_data["path"] is None:
+                    temp_dir = tempfile.mkdtemp()
+                    temp_dirs.append(temp_dir)
+                    temp_path = os.path.join(temp_dir, "src_tokenizer")
+                    os.makedirs(temp_path, exist_ok=True)
+                    src_tokenizer.save_pretrained(temp_path)
+                    src_tokenizer_data["path"] = temp_path
+
+                if tgt_tokenizer_data["path"] is None and not joint_tokenizer:
+                    temp_dir = tempfile.mkdtemp()
+                    temp_dirs.append(temp_dir)
+                    temp_path = os.path.join(temp_dir, "tgt_tokenizer")
+                    os.makedirs(temp_path, exist_ok=True)
+                    tgt_tokenizer.save_pretrained(temp_path)
+                    tgt_tokenizer_data["path"] = temp_path
+
+                # Set up process pool with proper resource management
+                ctx = mp.get_context("spawn")  # Use spawn context for better stability
+                max_workers = min(num_workers, mp.cpu_count() - 1)  # Leave one CPU free
+
+                with ProcessPoolExecutor(
+                    max_workers=max_workers, mp_context=ctx
+                ) as executor:
+                    # Submit all batches
+                    future_to_batch = {
+                        executor.submit(
+                            _process_batch_for_tokenization,
+                            batch,
+                            src_tokenizer_data,
+                            tgt_tokenizer_data,
+                        ): i
+                        for i, batch in enumerate(batches)
+                    }
+
+                    # Process completed batches as they finish
+                    for future in as_completed(future_to_batch):
+                        try:
+                            batch_src, batch_tgt = future.result()
+                            src_sequences.extend(batch_src)
+                            tgt_sequences.extend(batch_tgt)
+                            pbar.update(len(batch_src))
+                        except Exception as e:
+                            print(
+                                f"Error processing batch {future_to_batch[future]}: {e}"
+                            )
+                            # Continue with remaining batches
+                            continue
+
+                # Clean up temporary directories
+                for temp_dir in temp_dirs:
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except Exception as e:
+                        print(
+                            f"Warning: Could not remove temporary directory {temp_dir}: {e}"
+                        )
+
+            except Exception as e:
+                print(
+                    f"Multiprocessing error: {e}. Falling back to sequential processing."
+                )
+                # Fall back to sequential processing
+                num_workers = 1
+
+        # Sequential processing with batches
+        if num_workers <= 1:
+            for i in range(0, len(data_pairs), batch_size):
+                batch = data_pairs[i : i + batch_size]
+
+                # Process directly without creating new tokenizer instances
+                batch_src_sequences = []
+                batch_tgt_sequences = []
+
+                # Get special token indices
+                src_bos_idx = src_tokenizer.special_tokens["bos_token_idx"]
+                src_eos_idx = src_tokenizer.special_tokens["eos_token_idx"]
+                tgt_bos_idx = tgt_tokenizer.special_tokens["bos_token_idx"]
+                tgt_eos_idx = tgt_tokenizer.special_tokens["eos_token_idx"]
+
+                for src_text, tgt_text in batch:
+                    # Tokenize with appropriate tokenizer(s)
+                    src_ids = src_tokenizer.encode(src_text)
+                    tgt_ids = tgt_tokenizer.encode(tgt_text)
+
+                    # Add special tokens
+                    src_ids = [src_bos_idx] + src_ids + [src_eos_idx]
+                    tgt_ids = [tgt_bos_idx] + tgt_ids + [tgt_eos_idx]
+
+                    batch_src_sequences.append(src_ids)
+                    batch_tgt_sequences.append(tgt_ids)
+
+                src_sequences.extend(batch_src_sequences)
+                tgt_sequences.extend(batch_tgt_sequences)
+                pbar.update(len(batch_src_sequences))
 
     return src_sequences, tgt_sequences
 
@@ -798,9 +911,15 @@ def main(args):
     random.seed(42)
     np.random.seed(42)
 
-    # Set device
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    print(f"Using device: {device}")
+    # Set device for training (not preprocessing)
+    training_device = torch.device(
+        "mps" if torch.backends.mps.is_available() else "cpu"
+    )
+    # Always use CPU for preprocessing
+    preprocessing_device = torch.device("cpu")
+
+    print(f"Using device for training: {training_device}")
+    print(f"Using device for preprocessing: {preprocessing_device}")
 
     # Load dataset based on user selection
     print(f"Loading {args.dataset.capitalize()} dataset...")
@@ -833,6 +952,46 @@ def main(args):
             tgt_lang=args.tgt_lang,
             max_examples=args.max_val_examples,
         )
+    elif args.dataset == "iwslt":
+        # Load IWSLT dataset
+        train_dataset = IWSLTDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            year=args.year if hasattr(args, "year") else "2017",
+            split="train",
+            max_examples=args.max_train_examples,
+            data_dir="data/iwslt",
+        )
+
+        val_dataset = IWSLTDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            year=args.year if hasattr(args, "year") else "2017",
+            split="validation",  # Use validation split for evaluation
+            max_examples=args.max_val_examples,
+            data_dir="data/iwslt",
+        )
+    elif args.dataset == "wmt":
+        # Load WMT dataset
+        train_dataset = WMTDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            year=args.wmt_year if hasattr(args, "wmt_year") else "14",
+            split="train",
+            max_examples=args.max_train_examples,
+            data_dir="data/wmt",
+            subset=args.subset if hasattr(args, "subset") else None,
+        )
+
+        val_dataset = WMTDataset(
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            year=args.wmt_year if hasattr(args, "wmt_year") else "14",
+            split="validation",  # Use validation split for evaluation
+            max_examples=args.max_val_examples,
+            data_dir="data/wmt",
+            subset=args.subset if hasattr(args, "subset") else None,
+        )
     elif args.dataset == "combined":
         # Load combined dataset
         train_dataset = CombinedDataset(
@@ -849,23 +1008,56 @@ def main(args):
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
 
-    # Load tokenizer(s)
+    # Load tokenizer(s) - forcing CPU for preprocessing
     print("Loading tokenizer(s)...")
     if args.use_joint_tokenizer:
         # Load joint tokenizer
-        src_tokenizer = OptimizedBPETokenizer.from_pretrained(
-            args.tokenizer_path or "models/tokenizers/combined/joint"
-        )
+        if args.dataset == "wmt":
+            tokenizer_path = (
+                args.tokenizer_path
+                or f"models/tokenizers/wmt{args.wmt_year if hasattr(args, 'wmt_year') else '14'}/joint"
+            )
+        else:
+            tokenizer_path = args.tokenizer_path or "models/tokenizers/combined/joint"
+
+        # Ensure we're using CPU for preprocessing
+        src_tokenizer = OptimizedBPETokenizer.from_pretrained(tokenizer_path)
+        src_tokenizer.device = preprocessing_device  # Force CPU
+        # Store path as a custom attribute for multiprocessing
+        setattr(src_tokenizer, "save_dir", tokenizer_path)
+
         tgt_tokenizer = src_tokenizer  # Use same tokenizer for both
         print(f"Loaded joint tokenizer with vocab size: {src_tokenizer.vocab_size}")
     else:
         # Load separate tokenizers
-        src_tokenizer = OptimizedBPETokenizer.from_pretrained(
-            args.src_tokenizer_path or f"models/tokenizers/{args.src_lang}"
-        )
-        tgt_tokenizer = OptimizedBPETokenizer.from_pretrained(
-            args.tgt_tokenizer_path or f"models/tokenizers/{args.tgt_lang}"
-        )
+        if args.dataset == "wmt":
+            src_tokenizer_path = (
+                args.src_tokenizer_path
+                or f"models/tokenizers/wmt{args.wmt_year if hasattr(args, 'wmt_year') else '14'}/{args.src_lang}"
+            )
+            tgt_tokenizer_path = (
+                args.tgt_tokenizer_path
+                or f"models/tokenizers/wmt{args.wmt_year if hasattr(args, 'wmt_year') else '14'}/{args.tgt_lang}"
+            )
+        else:
+            src_tokenizer_path = (
+                args.src_tokenizer_path or f"models/tokenizers/{args.src_lang}"
+            )
+            tgt_tokenizer_path = (
+                args.tgt_tokenizer_path or f"models/tokenizers/{args.tgt_lang}"
+            )
+
+        # Ensure we're using CPU for preprocessing
+        src_tokenizer = OptimizedBPETokenizer.from_pretrained(src_tokenizer_path)
+        src_tokenizer.device = preprocessing_device  # Force CPU
+        # Store path as a custom attribute for multiprocessing
+        setattr(src_tokenizer, "save_dir", src_tokenizer_path)
+
+        tgt_tokenizer = OptimizedBPETokenizer.from_pretrained(tgt_tokenizer_path)
+        tgt_tokenizer.device = preprocessing_device  # Force CPU
+        # Store path as a custom attribute for multiprocessing
+        setattr(tgt_tokenizer, "save_dir", tgt_tokenizer_path)
+
         print(f"Loaded source tokenizer with vocab size: {src_tokenizer.vocab_size}")
         print(f"Loaded target tokenizer with vocab size: {tgt_tokenizer.vocab_size}")
 
@@ -877,12 +1069,24 @@ def main(args):
     # Preprocess data with appropriate tokenizer(s)
     print("Preprocessing training data...")
     train_src_sequences, train_tgt_sequences = preprocess_data_with_bpe(
-        train_dataset, src_tokenizer, tgt_tokenizer
+        train_dataset,
+        src_tokenizer,
+        tgt_tokenizer,
+        batch_size=64,
+        num_workers=(
+            args.preprocessing_workers if hasattr(args, "preprocessing_workers") else 4
+        ),
     )
 
     print("Preprocessing validation data...")
     val_src_sequences, val_tgt_sequences = preprocess_data_with_bpe(
-        val_dataset, src_tokenizer, tgt_tokenizer
+        val_dataset,
+        src_tokenizer,
+        tgt_tokenizer,
+        batch_size=64,
+        num_workers=(
+            args.preprocessing_workers if hasattr(args, "preprocessing_workers") else 4
+        ),
     )
 
     # Create data module
@@ -924,43 +1128,120 @@ def main(args):
         num_workers=4,
     )
 
-    # Load pretrained model first if requested
-    loaded_model = None
+    # Determine model loading path
+    model_path = None
     if args.load_model:
         # If the path doesn't exist, try to find a valid model path
         if not os.path.exists(args.load_model):
             dataset_prefix = f"{args.dataset}_{args.src_lang}_{args.tgt_lang}"
             best_model = find_best_model("models", dataset_prefix)
             if best_model:
-                args.load_model = best_model
-                print(f"Found model: {args.load_model}")
+                model_path = best_model
+                print(f"Found model: {model_path}")
             else:
                 print(f"No model found matching {dataset_prefix}")
                 if not args.inference_only:
                     print("Will train a new model from scratch")
-                    args.load_model = None
+                    model_path = None
                 else:
                     raise FileNotFoundError("No model found for inference")
-
-        if args.load_model and os.path.exists(args.load_model):
-            print(f"Loading pretrained model from {args.load_model}")
-            print(f"Using absolute path: {os.path.abspath(args.load_model)}")
-            try:
-                # Load the model
-                loaded_model = load_pretrained_model(
-                    args.load_model, src_tokenizer, tgt_tokenizer, device
-                )
-                print("Loaded pretrained model successfully")
-            except Exception as e:
-                print(f"Error loading model: {e}")
-                loaded_model = None
-                # Continue with a new model if loading fails
         else:
-            print("Training new model from scratch")
+            model_path = args.load_model
+            print(f"Using specified model path: {model_path}")
 
-    # Create transformer model only if we don't have a loaded model
-    if loaded_model is None:
-        print("Creating transformer model from scratch...")
+    # Load model configuration from checkpoint if available
+    model_config = None
+    if model_path:
+        try:
+            checkpoint = torch.load(
+                model_path, map_location=preprocessing_device
+            )  # Load to CPU first
+            if "model_config" in checkpoint:
+                model_config = checkpoint["model_config"]
+                print(f"Loaded model configuration from checkpoint: {model_config}")
+            elif "model_state_dict" in checkpoint:
+                # Try to infer configuration from state dict
+                state_dict = checkpoint["model_state_dict"]
+                # Check encoder/decoder layers
+                encoder_layers = 0
+                decoder_layers = 0
+                for key in state_dict.keys():
+                    if "encoder.layers." in key:
+                        layer_num = int(key.split("encoder.layers.")[1].split(".")[0])
+                        encoder_layers = max(encoder_layers, layer_num + 1)
+                    if "decoder.layers." in key:
+                        layer_num = int(key.split("decoder.layers.")[1].split(".")[0])
+                        decoder_layers = max(decoder_layers, layer_num + 1)
+
+                # Get vocabulary sizes from the state dict
+                src_vocab_size = state_dict[
+                    "encoder.token_embedding.embedding.weight"
+                ].shape[0]
+                tgt_vocab_size = state_dict[
+                    "decoder.token_embedding.embedding.weight"
+                ].shape[0]
+                d_model = state_dict["encoder.token_embedding.embedding.weight"].shape[
+                    1
+                ]
+
+                # Infer number of heads if possible
+                num_heads = None
+                for key in state_dict.keys():
+                    if "self_attn.query_projection.weight" in key:
+                        # Infer number of heads from attention head dimension
+                        head_dim = state_dict[key].shape[0] // d_model
+                        num_heads = d_model // head_dim
+                        break
+
+                # Infer d_ff if possible
+                d_ff = None
+                for key in state_dict.keys():
+                    if "feed_forward.linear1.linear.weight" in key:
+                        d_ff = state_dict[key].shape[0]
+                        break
+
+                model_config = {
+                    "src_vocab_size": src_vocab_size,
+                    "tgt_vocab_size": tgt_vocab_size,
+                    "d_model": d_model,
+                    "num_heads": num_heads or args.num_heads,
+                    "num_encoder_layers": encoder_layers,
+                    "num_decoder_layers": decoder_layers,
+                    "d_ff": d_ff or args.d_ff,
+                    "dropout": args.dropout,
+                    "max_seq_length": 100,
+                    "positional_encoding": "sinusoidal",
+                    "share_embeddings": args.use_joint_tokenizer,
+                }
+                print(f"Inferred model configuration from checkpoint: {model_config}")
+        except Exception as e:
+            print(f"Error loading model configuration: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    # Create a new transformer model with proper configuration
+    if model_config:
+        # Use configuration from checkpoint
+        model = EncoderDecoderTransformer(
+            src_vocab_size=model_config["src_vocab_size"],
+            tgt_vocab_size=model_config["tgt_vocab_size"],
+            d_model=model_config["d_model"],
+            num_heads=model_config["num_heads"],
+            num_encoder_layers=model_config["num_encoder_layers"],
+            num_decoder_layers=model_config["num_decoder_layers"],
+            d_ff=model_config["d_ff"],
+            dropout=model_config.get("dropout", args.dropout),
+            max_seq_length=model_config.get("max_seq_length", 100),
+            positional_encoding=model_config.get("positional_encoding", "sinusoidal"),
+            share_embeddings=model_config.get(
+                "share_embeddings", args.use_joint_tokenizer
+            ),
+        )
+        print("Created model with architecture from checkpoint")
+    else:
+        # Use command-line arguments for configuration
+        print("Creating transformer model from arguments...")
         if args.use_joint_tokenizer:
             # Use same vocabulary size for both encoder and decoder
             vocab_size = src_tokenizer.vocab_size
@@ -992,13 +1273,24 @@ def main(args):
                 positional_encoding="sinusoidal",
                 share_embeddings=False,  # Disable embedding sharing for separate vocabularies
             )
-    else:
-        # Use the loaded model
-        model = loaded_model
 
     # Print model parameter count
     num_params = count_parameters(model)
-    print(f"Model has {num_params:,} trainable parameters")
+    print(f"Model created with {num_params:,} trainable parameters")
+
+    # Print model architecture
+    print(f"Model architecture:")
+    print(f"  Encoder layers: {len(model.encoder.layers)}")
+    print(f"  Decoder layers: {len(model.decoder.layers)}")
+    print(
+        f"  Hidden size (d_model): {model.encoder.token_embedding.embedding.weight.shape[1]}"
+    )
+    print(
+        f"  Vocabulary sizes: src={model.encoder.token_embedding.embedding.weight.shape[0]}, tgt={model.decoder.token_embedding.embedding.weight.shape[0]}"
+    )
+
+    # Move model to the appropriate device for training
+    model.to(training_device)
 
     # Create the trainer
     trainer = TransformerTrainer(
@@ -1009,7 +1301,7 @@ def main(args):
         lr=args.learning_rate,
         warmup_steps=args.warmup_steps,
         label_smoothing=args.label_smoothing,
-        device=device,
+        device=training_device,  # Use MPS for training
         track_perplexity=True,
         use_gradient_scaling=args.use_gradient_scaling,
         early_stopping_patience=args.early_stopping_patience,
@@ -1017,6 +1309,37 @@ def main(args):
             args.clip_grad if args.clip_grad is not None else 0.0
         ),  # Fix for None clip_grad
     )
+
+    # Load the pretrained model if specified
+    if model_path:
+        print(f"Loading pretrained model from {model_path}")
+        print(f"Using absolute path: {os.path.abspath(model_path)}")
+
+        # Try to restore full training state including optimizer and scheduler
+        restored = trainer.restore_from_checkpoint(
+            model_path,
+            strict=True,
+            reset_optimizer=args.reset_optimizer,
+            reset_scheduler=args.reset_scheduler,
+        )
+
+        if restored:
+            print("Successfully restored full training state")
+        else:
+            print(
+                "Unable to restore full training state, falling back to model weights only"
+            )
+            try:
+                # Fallback to just loading the model weights
+                checkpoint = torch.load(model_path, map_location=training_device)
+                if "model_state_dict" in checkpoint:
+                    model.load_state_dict(checkpoint["model_state_dict"])
+                    print("Loaded model weights only")
+                else:
+                    print("No model state found in checkpoint")
+            except Exception as e:
+                print(f"Error loading model: {e}")
+                print("Will continue with freshly initialized model")
 
     # Debug option
     if args.debug:
@@ -1049,24 +1372,8 @@ def main(args):
             """Save checkpoint and update curriculum at end of epoch."""
             epoch_save_path = f"{checkpoint_dir}/epoch_{epoch+1}.pt"
             try:
-                checkpoint = {
-                    "model_state_dict": model.state_dict(),
-                    "epoch": epoch + 1,
-                    "model_config": {
-                        "src_vocab_size": model.encoder.token_embedding.embedding.weight.shape[
-                            0
-                        ],
-                        "tgt_vocab_size": model.decoder.token_embedding.embedding.weight.shape[
-                            0
-                        ],
-                        "d_model": model.encoder.token_embedding.embedding.weight.shape[
-                            1
-                        ],
-                        "num_encoder_layers": len(model.encoder.layers),
-                        "num_decoder_layers": len(model.decoder.layers),
-                    },
-                }
-                torch.save(checkpoint, epoch_save_path)
+                # Save full training state through the trainer
+                trainer.save_checkpoint(epoch_save_path)
                 print(f"Saved epoch {epoch+1} checkpoint to {epoch_save_path}")
 
                 # Update curriculum stage based on completed epoch
@@ -1115,6 +1422,13 @@ def main(args):
             # Create a checkpoint dictionary with essential information
             model_checkpoint = {
                 "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": trainer.optimizer.state_dict(),
+                "scheduler_state_dict": trainer.scheduler.state_dict(),
+                "current_epoch": trainer.current_epoch,
+                "global_step": trainer.global_step,
+                "best_val_loss": trainer.best_val_loss,
+                "patience_counter": trainer.patience_counter,
+                "history": trainer.history,
                 "model_config": {
                     "src_vocab_size": src_vocab_size,
                     "tgt_vocab_size": tgt_vocab_size,
@@ -1152,6 +1466,7 @@ def main(args):
         # Print curriculum progression summary if curriculum learning was used
         if (
             args.use_curriculum
+            and hasattr(data_module, "train_dataset")
             and hasattr(
                 data_module.train_dataset, "print_curriculum_progression_summary"
             )
@@ -1168,8 +1483,121 @@ def main(args):
         print("Skipping training, inference only mode")
         trainer_history = {}
 
-    # Generate translation examples
+    # Run translation test
+    run_translation_test(
+        model, src_tokenizer, tgt_tokenizer, training_device, args.greedy_decoding
+    )
+
+    return trainer_history
+
+
+def run_translation_test(
+    model, tokenizer, tgt_tokenizer=None, device=None, greedy=False
+):
+    """
+    Run a simple translation test with the model.
+
+    Args:
+        model: The transformer model
+        tokenizer: Source tokenizer
+        tgt_tokenizer: Target tokenizer (if None, uses src_tokenizer)
+        device: Device to run on
+        greedy: Whether to use greedy decoding
+    """
     print("\n===== Translation Examples =====")
+
+    # Use same tokenizer for source and target if no target tokenizer provided
+    if tgt_tokenizer is None:
+        tgt_tokenizer = tokenizer
+
+    # If device not specified, use the model's device
+    if device is None:
+        device = next(model.parameters()).device
+
+    # Try a manual token-by-token approach for a test case first
+    print("\n=== Testing token-by-token analysis ===")
+    model.eval()
+    with torch.no_grad():
+        # Special token indices
+        bos_idx = tokenizer.special_tokens["bos_token_idx"]
+        eos_idx = tokenizer.special_tokens["eos_token_idx"]
+        pad_idx = tokenizer.special_tokens["pad_token_idx"]
+
+        print(f"Special tokens: BOS={bos_idx}, EOS={eos_idx}, PAD={pad_idx}")
+
+        # Test with a very simple sentence
+        test_sentence = "Ich bin ein Student."
+        print(f"\nTest sentence: '{test_sentence}'")
+
+        # Tokenize source
+        src_ids = tokenizer.encode(test_sentence)
+        print(f"Source tokens: {src_ids}")
+
+        # Print token strings
+        token_strings = [tokenizer.decode([t]) for t in src_ids]
+        print(f"Token strings: {token_strings}")
+
+        # Add special tokens
+        src_ids_with_special = [bos_idx] + src_ids + [eos_idx]
+        print(f"With special tokens: {src_ids_with_special}")
+
+        # Create tensor and mask
+        src_tensor = torch.tensor([src_ids_with_special], dtype=torch.long).to(device)
+        src_mask = create_padding_mask(src_tensor, pad_idx)
+
+        # Initialize with BOS token
+        tgt_ids = [bos_idx]
+        tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
+
+        # Generate 20 tokens step by step, showing all options
+        for step in range(20):
+            # Create target mask (causal)
+            tgt_mask = create_causal_mask(tgt_tensor.size(1), device)
+
+            # Get model prediction
+            logits = model(src_tensor, tgt_tensor, src_mask=src_mask, tgt_mask=tgt_mask)
+            next_token_logits = logits[0, -1]
+
+            # Get top tokens
+            top_k = 5
+            top_token_logits, top_tokens = torch.topk(next_token_logits, top_k)
+
+            # Convert to probabilities
+            top_token_probs = torch.softmax(top_token_logits, dim=-1)
+
+            # Get the highest probability token
+            next_token = top_tokens[0].item()
+
+            # Print top tokens
+            print(f"\nStep {step+1} - Top {top_k} tokens:")
+            for i in range(top_k):
+                token_id = top_tokens[i].item()
+                token_text = tgt_tokenizer.decode([token_id])
+                prob = top_token_probs[i].item()
+                print(
+                    f"  {i+1}. ID: {token_id}, Token: '{token_text}', Prob: {prob:.4f}"
+                )
+
+            # Add predicted token to target sequence
+            tgt_ids.append(next_token)
+            tgt_tensor = torch.tensor([tgt_ids], dtype=torch.long).to(device)
+
+            # Stop if EOS token
+            if next_token == eos_idx:
+                print("Generated EOS token, stopping.")
+                break
+
+        # Decode the output
+        output_tokens = tgt_ids[1:]  # Remove BOS token
+        if output_tokens[-1] == eos_idx:
+            output_tokens = output_tokens[:-1]  # Remove EOS if present
+
+        # Print the result
+        print("\nRaw generated tokens:", output_tokens)
+        decoded_text = tgt_tokenizer.decode(output_tokens)
+        print(f"Decoded translation: '{decoded_text}'")
+        cleaned = clean_translation_output(decoded_text)
+        print(f"Cleaned translation: '{cleaned}'")
 
     # Sample sentences for translation
     sample_sentences = [
@@ -1180,15 +1608,16 @@ def main(args):
         preprocess_input_text("Ich möchte Deutsch lernen."),
     ]
 
-    # Generate translations with better defaults for cleaner results
+    # Generate translations with even more conservative settings
+    print("\n=== Standard translation generation ===")
     translations, raw_translations = generate_translations(
         model=model,
-        tokenizer=src_tokenizer,
+        src_tokenizer=tokenizer,
         src_sentences=sample_sentences,
-        device=device,
-        max_length=50,  # Shorter translations are typically better
-        sampling_temp=0.7,  # More randomness
-        sampling_topk=5,  # Sample from top 5 tokens
+        tgt_tokenizer=tgt_tokenizer,
+        max_length=30,  # Shorter translations to avoid going off track
+        sampling_temp=0.01 if greedy else 0.2,  # Use near-zero temp for greedy decoding
+        sampling_topk=1 if greedy else 10,  # Use top-1 for greedy decoding
     )
 
     # Print translations
@@ -1201,8 +1630,6 @@ def main(args):
         print(f"Cleaned: {cleaned}")
         print()
 
-    return trainer_history
-
 
 if __name__ == "__main__":
     # Parse arguments
@@ -1214,7 +1641,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["europarl", "opensubtitles", "combined"],
+        choices=[
+            "europarl",
+            "opensubtitles",
+            "iwslt",
+            "wmt",
+            "combined",
+        ],  # Add wmt to choices
         default="europarl",
         help="Dataset to use for training",
     )
@@ -1240,7 +1673,21 @@ if __name__ == "__main__":
         "--tokenizer_path",
         type=str,
         default=None,
-        help="Path to joint tokenizer (default: models/tokenizers/combined/joint)",
+        help="Path to joint tokenizer (default: models/tokenizers/combined/joint or wmt{year}/joint)",
+    )
+
+    # WMT specific options
+    parser.add_argument(
+        "--wmt_year",
+        type=str,
+        default="14",
+        help="WMT dataset year without prefix (e.g., '14' for WMT14, only used if dataset=wmt)",
+    )
+    parser.add_argument(
+        "--subset",
+        type=str,
+        default=None,
+        help="WMT dataset subset to use, if available (e.g., 'news_commentary_v9', only used if dataset=wmt)",
     )
 
     # Model options
@@ -1328,6 +1775,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Run only inference (no training)",
     )
+    parser.add_argument(
+        "--reset_optimizer",
+        action="store_true",
+        help="When loading a model, don't restore optimizer state (useful when changing batch size)",
+    )
+    parser.add_argument(
+        "--reset_scheduler",
+        action="store_true",
+        help="When loading a model, don't restore scheduler state (useful when changing learning rate)",
+    )
+    parser.add_argument(
+        "--greedy_decoding",
+        action="store_true",
+        help="Use greedy decoding instead of sampling for translations",
+    )
 
     # New options for separate tokenizers
     parser.add_argument(
@@ -1375,6 +1837,22 @@ if __name__ == "__main__":
         type=int,
         default=5,
         help="Number of curriculum stages",
+    )
+
+    # Add IWSLT-specific options
+    parser.add_argument(
+        "--year",
+        type=str,
+        default="2017",
+        help="IWSLT dataset year (only used if dataset=iwslt)",
+    )
+
+    # Add preprocessing optimization options
+    parser.add_argument(
+        "--preprocessing_workers",
+        type=int,
+        default=4,
+        help="Number of workers for parallel preprocessing",
     )
 
     args = parser.parse_args()
