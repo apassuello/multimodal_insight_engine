@@ -667,22 +667,235 @@ class TransformerTrainer:
 
             traceback.print_exc()
 
-    def load_checkpoint(self, path: str):
+    def load_checkpoint(self, path: str, strict: bool = True):
         """
         Load a training checkpoint from disk.
 
         Args:
             path: Path to the checkpoint file
+            strict: Whether to strictly enforce that the keys in state_dict match the keys
+                   returned by the module's state_dict function
         """
-        checkpoint = torch.load(path, map_location=self.device)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        self.current_epoch = checkpoint["current_epoch"]
-        self.global_step = checkpoint["global_step"]
-        self.best_val_loss = checkpoint["best_val_loss"]
-        self.patience_counter = checkpoint["patience_counter"]
-        self.history = checkpoint["history"]
+        print(f"Loading checkpoint from {path}...")
+        try:
+            checkpoint = torch.load(path, map_location=self.device)
+
+            # Check what's in the checkpoint
+            checkpoint_contains = [k for k in checkpoint.keys()]
+            print(f"Checkpoint contains: {checkpoint_contains}")
+
+            # Load model state
+            if "model_state_dict" in checkpoint:
+                try:
+                    self.model.load_state_dict(
+                        checkpoint["model_state_dict"], strict=strict
+                    )
+                    print("Successfully loaded model state")
+                except Exception as e:
+                    print(f"Error loading model state: {e}")
+                    if not strict:
+                        print("Continuing with non-strict loading")
+                        # Try again with strict=False if not already
+                        try:
+                            self.model.load_state_dict(
+                                checkpoint["model_state_dict"], strict=False
+                            )
+                            print("Successfully loaded model state with strict=False")
+                        except Exception as e2:
+                            print(f"Error even with non-strict loading: {e2}")
+            else:
+                print("No model state found in checkpoint")
+
+            # Load optimizer state
+            if "optimizer_state_dict" in checkpoint:
+                try:
+                    self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                    # Move optimizer state to the current device if needed
+                    for state in self.optimizer.state.values():
+                        for k, v in state.items():
+                            if isinstance(v, torch.Tensor):
+                                state[k] = v.to(self.device)
+                    print("Successfully loaded optimizer state")
+                except Exception as e:
+                    print(f"Error loading optimizer state: {e}")
+            else:
+                print("No optimizer state found in checkpoint")
+
+            # Load scheduler state
+            if "scheduler_state_dict" in checkpoint:
+                try:
+                    self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                    print("Successfully loaded scheduler state")
+                except Exception as e:
+                    print(f"Error loading scheduler state: {e}")
+            else:
+                print("No scheduler state found in checkpoint")
+
+            # Restore training state
+            if "current_epoch" in checkpoint:
+                self.current_epoch = checkpoint["current_epoch"]
+                print(f"Restored training at epoch {self.current_epoch}")
+
+            if "global_step" in checkpoint:
+                self.global_step = checkpoint["global_step"]
+                print(f"Restored global step {self.global_step}")
+
+            if "best_val_loss" in checkpoint:
+                self.best_val_loss = checkpoint["best_val_loss"]
+                print(f"Restored best validation loss: {self.best_val_loss:.4f}")
+
+            if "patience_counter" in checkpoint:
+                self.patience_counter = checkpoint["patience_counter"]
+                print(f"Restored patience counter: {self.patience_counter}")
+
+            if "history" in checkpoint:
+                self.history = checkpoint["history"]
+                print("Restored training history")
+                if self.history.get("train_loss"):
+                    print(f"History contains {len(self.history['train_loss'])} epochs")
+
+            print("Checkpoint loading complete!")
+
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}")
+            import traceback
+
+            traceback.print_exc()
+            raise
+
+    def restore_from_checkpoint(
+        self,
+        path: str,
+        strict: bool = True,
+        reset_optimizer: bool = False,
+        reset_scheduler: bool = False,
+    ):
+        """
+        Restore the full training state from a checkpoint.
+
+        This is a more comprehensive version of load_checkpoint that handles all aspects of
+        training state restoration and provides options for partial resets.
+
+        Args:
+            path: Path to the checkpoint file
+            strict: Whether to strictly enforce model state dict key matching
+            reset_optimizer: If True, don't restore optimizer state (useful when changing batch size)
+            reset_scheduler: If True, don't restore scheduler state (useful when changing learning rate)
+
+        Returns:
+            bool: Whether restoration was successful
+        """
+        print(f"Restoring training state from: {path}")
+
+        try:
+            checkpoint = torch.load(path, map_location=self.device)
+
+            # Validate checkpoint contents
+            if "model_state_dict" not in checkpoint:
+                print("ERROR: Checkpoint does not contain model state dict")
+                return False
+
+            # Load model state dict (with proper error handling)
+            try:
+                self.model.load_state_dict(
+                    checkpoint["model_state_dict"], strict=strict
+                )
+                print("✓ Model weights restored successfully")
+            except Exception as e:
+                print(f"! Error restoring model weights: {e}")
+                if not strict:
+                    print("  Attempting non-strict loading...")
+                    try:
+                        self.model.load_state_dict(
+                            checkpoint["model_state_dict"], strict=False
+                        )
+                        print("✓ Model weights restored with strict=False")
+                    except Exception as e2:
+                        print(f"! Failed even with non-strict loading: {e2}")
+                        return False
+
+            # Restore optimizer state if requested
+            if not reset_optimizer and "optimizer_state_dict" in checkpoint:
+                try:
+                    self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                    # Handle device placement for optimizer state
+                    for state in self.optimizer.state.values():
+                        for k, v in state.items():
+                            if isinstance(v, torch.Tensor):
+                                state[k] = v.to(self.device)
+                    print("✓ Optimizer state restored")
+                except Exception as e:
+                    print(f"! Error restoring optimizer state: {e}")
+                    print("  Creating fresh optimizer state")
+            else:
+                # Log that we're intentionally skipping optimizer restoration
+                if reset_optimizer:
+                    print("✓ Optimizer state reset as requested")
+                else:
+                    print("! No optimizer state found in checkpoint")
+
+            # Restore scheduler state if requested
+            if not reset_scheduler and "scheduler_state_dict" in checkpoint:
+                try:
+                    self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+                    print("✓ Scheduler state restored")
+                except Exception as e:
+                    print(f"! Error restoring scheduler state: {e}")
+                    print("  Creating fresh scheduler state")
+            else:
+                # Log that we're intentionally skipping scheduler restoration
+                if reset_scheduler:
+                    print("✓ Scheduler state reset as requested")
+                else:
+                    print("! No scheduler state found in checkpoint")
+
+            # Restore training progress metrics
+            training_metrics = {
+                "current_epoch": "Current epoch",
+                "global_step": "Global step",
+                "best_val_loss": "Best validation loss",
+                "patience_counter": "Early stopping patience counter",
+            }
+
+            # Restore each training metric if available
+            for attr, desc in training_metrics.items():
+                if attr in checkpoint:
+                    setattr(self, attr, checkpoint[attr])
+                    if attr == "best_val_loss":
+                        print(f"✓ {desc} restored: {getattr(self, attr):.4f}")
+                    else:
+                        print(f"✓ {desc} restored: {getattr(self, attr)}")
+                else:
+                    print(f"! {desc} not found in checkpoint")
+
+            # Restore training history
+            if "history" in checkpoint:
+                # Check for non-empty history to avoid initializing with empty data
+                if (
+                    checkpoint["history"].get("train_loss")
+                    and len(checkpoint["history"]["train_loss"]) > 0
+                ):
+                    self.history = checkpoint["history"]
+                    print(
+                        f"✓ Training history restored ({len(self.history['train_loss'])} epochs)"
+                    )
+                else:
+                    print("! History found but contains no training data")
+            else:
+                print("! No training history found in checkpoint")
+
+            print("Training state restoration complete!")
+            return True
+
+        except FileNotFoundError:
+            print(f"! Checkpoint file not found: {path}")
+            return False
+        except Exception as e:
+            print(f"! Error during checkpoint restoration: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
 
     def plot_learning_rate(self):
         """
