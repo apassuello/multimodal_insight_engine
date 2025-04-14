@@ -903,9 +903,68 @@
     },
     {
       "filename": "vision_transformer_trainer.py",
-      "module_path": "src/training/vision_transformer_trainer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides a specialized trainer for Vision Transformer models with advanced training techniques",
+      "key_classes": [
+        {
+          "name": "VisionTransformerTrainer",
+          "purpose": "Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support",
+          "key_methods": [
+            {
+              "name": "train_epoch",
+              "signature": "train_epoch(self)",
+              "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support"
+            },
+            {
+              "name": "validate",
+              "signature": "validate(self)",
+              "brief_description": "Validate the model on validation dataset"
+            },
+            {
+              "name": "train",
+              "signature": "train(self) -> Dict[str, List[float]]",
+              "brief_description": "Train the model for specified number of epochs with early stopping"
+            },
+            {
+              "name": "save_checkpoint",
+              "signature": "save_checkpoint(self, filename: str) -> None",
+              "brief_description": "Save a checkpoint of the model and training state"
+            },
+            {
+              "name": "load_checkpoint",
+              "signature": "load_checkpoint(self, filename: str) -> None",
+              "brief_description": "Load a checkpoint of the model and training state"
+            },
+            {
+              "name": "_mixup_data",
+              "signature": "_mixup_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+              "brief_description": "Perform mixup data augmentation"
+            },
+            {
+              "name": "_cutmix_data",
+              "signature": "_cutmix_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+              "brief_description": "Perform cutmix data augmentation"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "VisionTransformer",
+            "matplotlib",
+            "numpy",
+            "tqdm"
+          ]
+        }
+      ],
+      "key_functions": [],
+      "external_dependencies": [
+        "torch",
+        "matplotlib",
+        "numpy",
+        "tqdm"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/vision_transformer_trainer.py"
     },
     {
       "filename": "optimizers.py",
@@ -2933,15 +2992,86 @@
     },
     {
       "filename": "curriculum_dataset.py",
-      "module_path": "src/data/curriculum_dataset.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements curriculum learning for translation datasets, gradually increasing difficulty during training",
+      "key_classes": [
+        {
+          "name": "CurriculumTranslationDataset",
+          "purpose": "Dataset that implements curriculum learning strategies for translation tasks",
+          "key_methods": [
+            {
+              "name": "_calculate_difficulties",
+              "signature": "_calculate_difficulties(self) -> List[float]",
+              "brief_description": "Calculate difficulty scores for all examples based on selected strategy"
+            },
+            {
+              "name": "update_stage",
+              "signature": "update_stage(self, new_stage: int) -> None",
+              "brief_description": "Update the curriculum stage to expose more complex examples"
+            },
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+              "brief_description": "Get an item from the dataset based on curriculum stage"
+            },
+            {
+              "name": "get_curriculum_stats",
+              "signature": "get_curriculum_stats(self) -> Dict[str, Any]",
+              "brief_description": "Get statistics about the current curriculum stage"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data.Dataset",
+            "numpy",
+            "collections.Counter"
+          ]
+        }
+      ],
+      "key_functions": [],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "collections"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/data/curriculum_dataset.py"
     },
     {
       "filename": "image_dataset.py",
-      "module_path": "src/data/image_dataset.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides dataset functionality for loading and preprocessing image data for vision transformer models",
+      "key_classes": [
+        {
+          "name": "ImageDataset",
+          "purpose": "Dataset for loading and preprocessing images for vision transformer models",
+          "key_methods": [
+            {
+              "name": "_get_class_idx",
+              "signature": "_get_class_idx(self, class_name: str) -> int",
+              "brief_description": "Get class index from class name using mapping or dynamic creation"
+            },
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
+              "brief_description": "Load, preprocess and return an image with its label and path"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data.Dataset",
+            "PIL.Image",
+            "ImagePreprocessor"
+          ]
+        }
+      ],
+      "key_functions": [],
+      "external_dependencies": [
+        "torch",
+        "PIL",
+        "pathlib",
+        "json"
+      ],
+      "complexity_score": 4,
+      "module_path": "src/data/image_dataset.py"
     },
     {
       "filename": "wmt_dataloader.py",
@@ -3371,9 +3501,42 @@
     },
     {
       "filename": "dataset_wrapper.py",
-      "module_path": "src/data/dataset_wrapper.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides dataset wrappers to standardize interfaces for different dataset types",
+      "key_classes": [
+        {
+          "name": "DictionaryDataset",
+          "purpose": "Wrapper for datasets that return tuples, converting them to dictionaries for a standardized interface",
+          "key_methods": [
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
+              "brief_description": "Get a sample from the dataset as a dictionary with standardized keys"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data.Dataset"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "create_dictionary_dataloader",
+          "signature": "create_dictionary_dataloader(dataset: Dataset, batch_size: int = 32, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True, keys: List[str] = None) -> DataLoader",
+          "brief_description": "Create a DataLoader that returns dictionary-format batches"
+        },
+        {
+          "name": "load_cifar10_dict",
+          "signature": "load_cifar10_dict(batch_size: int = 128, num_workers: int = 4, image_size: int = 32) -> Tuple[DataLoader, DataLoader, List[str]]",
+          "brief_description": "Load CIFAR-10 dataset with dictionary-format data loaders"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torch.utils.data"
+      ],
+      "complexity_score": 3,
+      "module_path": "src/data/dataset_wrapper.py"
     },
     {
       "filename": "wikipedia_dataset.py",
@@ -3576,9 +3739,32 @@
     },
     {
       "filename": "preprocessing.py",
-      "module_path": "src/data/tokenization/preprocessing.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides text preprocessing utilities for tokenization including Unicode normalization and text cleaning",
+      "key_classes": [],
+      "key_functions": [
+        {
+          "name": "normalize_unicode",
+          "signature": "normalize_unicode(text: str) -> str",
+          "brief_description": "Normalize Unicode characters in text using NFKC form"
+        },
+        {
+          "name": "clean_text",
+          "signature": "clean_text(text: str, lower: bool = True, remove_accents: bool = False, strip_html: bool = True, handle_contractions: bool = True) -> str",
+          "brief_description": "Clean and normalize text with configurable options for case, accents, HTML, and contractions"
+        },
+        {
+          "name": "segment_on_punc",
+          "signature": "segment_on_punc(text: str) -> str",
+          "brief_description": "Add spaces around punctuation to help with tokenization"
+        }
+      ],
+      "external_dependencies": [
+        "re",
+        "unicodedata",
+        "html"
+      ],
+      "complexity_score": 3,
+      "module_path": "src/data/tokenization/preprocessing.py"
     },
     {
       "filename": "bpe_tokenizer.py",
@@ -3758,11 +3944,11 @@
   ],
   "summary": {
     "total_modules": 74,
-    "modules_with_metadata": 60,
-    "modules_without_metadata": 14
+    "modules_with_metadata": 65,
+    "modules_without_metadata": 9
   },
   "complexity_summary": {
-    "average_complexity": 5.583333333333333,
+    "average_complexity": 5.538461538461538,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -3786,6 +3972,10 @@
       },
       {
         "module": "src/optimization/quantization.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/vision_transformer_trainer.py",
         "score": 8
       },
       {
@@ -3854,6 +4044,10 @@
       },
       {
         "module": "src/evaluation/language_model_evaluation.py",
+        "score": 7
+      },
+      {
+        "module": "src/data/curriculum_dataset.py",
         "score": 7
       },
       {
@@ -3941,6 +4135,10 @@
         "score": 4
       },
       {
+        "module": "src/data/image_dataset.py",
+        "score": 4
+      },
+      {
         "module": "src/data/europarl_dataset.py",
         "score": 4
       },
@@ -3989,6 +4187,14 @@
         "score": 3
       },
       {
+        "module": "src/data/dataset_wrapper.py",
+        "score": 3
+      },
+      {
+        "module": "src/data/tokenization/preprocessing.py",
+        "score": 3
+      },
+      {
         "module": "src/models/embeddings.py",
         "score": 2
       },
@@ -4007,27 +4213,27 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 31,
+    "total_external_dependencies": 36,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 39
+        "usage_count": 43
       },
       {
         "name": "numpy",
-        "usage_count": 17
+        "usage_count": 19
       },
       {
         "name": "json",
-        "usage_count": 7
+        "usage_count": 8
       },
       {
         "name": "matplotlib",
-        "usage_count": 7
+        "usage_count": 8
       },
       {
         "name": "tqdm",
-        "usage_count": 7
+        "usage_count": 8
       },
       {
         "name": "logging",
@@ -4035,6 +4241,10 @@
       },
       {
         "name": "typing",
+        "usage_count": 4
+      },
+      {
+        "name": "re",
         "usage_count": 4
       },
       {
@@ -4050,10 +4260,6 @@
         "usage_count": 3
       },
       {
-        "name": "re",
-        "usage_count": 3
-      },
-      {
         "name": "nltk",
         "usage_count": 2
       },
@@ -4063,6 +4269,10 @@
       },
       {
         "name": "psutil",
+        "usage_count": 2
+      },
+      {
+        "name": "PIL",
         "usage_count": 2
       },
       {
@@ -4098,10 +4308,6 @@
         "usage_count": 1
       },
       {
-        "name": "PIL",
-        "usage_count": 1
-      },
-      {
         "name": "math",
         "usage_count": 1
       },
@@ -4118,6 +4324,18 @@
         "usage_count": 1
       },
       {
+        "name": "collections",
+        "usage_count": 1
+      },
+      {
+        "name": "pathlib",
+        "usage_count": 1
+      },
+      {
+        "name": "torch.utils.data",
+        "usage_count": 1
+      },
+      {
         "name": "tensorflow",
         "usage_count": 1
       },
@@ -4127,6 +4345,14 @@
       },
       {
         "name": "abc",
+        "usage_count": 1
+      },
+      {
+        "name": "unicodedata",
+        "usage_count": 1
+      },
+      {
+        "name": "html",
         "usage_count": 1
       },
       {
