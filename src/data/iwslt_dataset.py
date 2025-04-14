@@ -19,10 +19,14 @@ import random
 from tqdm import tqdm
 import tarfile
 import io
+from typing import List, Tuple, Optional
 
 
 class IWSLTDataset:
     """Dataset class for the IWSLT translation dataset with enhanced fallback to synthetic data."""
+
+    # Available years to try loading data from
+    AVAILABLE_YEARS = ["2017", "2016", "2015", "2014", "2013", "2012"]
 
     def __init__(
         self,
@@ -31,6 +35,9 @@ class IWSLTDataset:
         year="2017",
         split="train",
         max_examples=None,
+        data_dir="data/iwslt",
+        random_seed=42,
+        combine_years=True,
     ):
         """
         Initialize the IWSLT dataset.
@@ -38,85 +45,276 @@ class IWSLTDataset:
         Args:
             src_lang: Source language code
             tgt_lang: Target language code
-            year: Dataset year
+            year: Dataset year to start with
             split: Data split (train, valid, test)
             max_examples: Maximum number of examples to use (None = use all)
+            data_dir: Directory containing the IWSLT data
+            random_seed: Random seed for reproducibility
+            combine_years: Whether to combine data from multiple years to reach max_examples
         """
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self.year = year
         self.split = split
         self.max_examples = max_examples
+        self.data_dir = data_dir
+        self.combine_years = combine_years
+
+        # Set random seed for reproducibility
+        random.seed(random_seed)
 
         # Paths
-        self.data_dir = "data/iwslt"
         os.makedirs(self.data_dir, exist_ok=True)
 
-        # Download and process data
-        self.download_data()
+        # Load data
         self.src_data, self.tgt_data = self.load_data()
 
         # Print dataset info
         print(f"Loaded {len(self.src_data)} {split} examples")
 
-    def download_data(self):
-        """Download IWSLT dataset if not already present."""
-        # Define data paths
-        self.src_file = f"{self.data_dir}/iwslt{self.year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
-        self.tgt_file = f"{self.data_dir}/iwslt{self.year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.tgt_lang}"
+    def download_data(self, year=None):
+        """
+        Download IWSLT dataset for a specific year if not already present.
+
+        Args:
+            year: Specific year to download (defaults to self.year)
+
+        Returns:
+            Tuple of source and target file paths, or None if download failed
+        """
+        # Use the instance year if not specified
+        year = year or self.year
+
+        # Define data paths for this year
+        src_file = f"{self.data_dir}/iwslt{year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
+        tgt_file = f"{self.data_dir}/iwslt{year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.tgt_lang}"
 
         # Check if data exists
-        files_exist = os.path.exists(self.src_file) and os.path.exists(self.tgt_file)
+        files_exist = os.path.exists(src_file) and os.path.exists(tgt_file)
         if files_exist:
             # Verify the files are not empty and contain adequate data
             try:
-                with open(self.src_file, "r", encoding="utf-8") as f:
+                with open(src_file, "r", encoding="utf-8") as f:
                     src_content = f.read().strip()
-                with open(self.tgt_file, "r", encoding="utf-8") as f:
+                with open(tgt_file, "r", encoding="utf-8") as f:
                     tgt_content = f.read().strip()
 
-                # Check if we have enough data
+                # Check if we have data
                 src_lines = src_content.count("\n") + 1
                 tgt_lines = tgt_content.count("\n") + 1
 
-                min_examples = 500000 if self.split == "train" else 100000
-
-                if src_lines >= min_examples and tgt_lines >= min_examples:
+                if src_lines > 0 and tgt_lines > 0:
                     print(
-                        f"IWSLT {self.year} {self.src_lang}-{self.tgt_lang} {self.split} data already exists with {src_lines} examples"
+                        f"IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data already exists with {src_lines} examples"
                     )
-                    return
+                    return src_file, tgt_file
                 else:
                     print(
-                        f"IWSLT files exist but only contain {src_lines} examples. Need at least {min_examples}. Recreating..."
+                        f"IWSLT files for year {year} exist but are empty. Recreating..."
                     )
             except Exception as e:
-                print(f"Error reading existing files: {e}. Recreating...")
+                print(
+                    f"Error reading existing files for year {year}: {e}. Recreating..."
+                )
 
         # Attempt to download from official sources
         try:
-            self._download_from_huggingface()
+            success = self._download_from_huggingface(year)
+            if success:
+                return src_file, tgt_file
         except Exception as e:
-            print(f"Error downloading from HuggingFace: {e}")
+            print(f"Error downloading from HuggingFace for year {year}: {e}")
             try:
-                self._download_from_official_source()
+                success = self._download_from_official_source(year)
+                if success:
+                    return src_file, tgt_file
             except Exception as e2:
-                print(f"Error downloading from official source: {e2}")
-                self._create_large_synthetic_dataset()
+                print(f"Error downloading from official source for year {year}: {e2}")
+                # No synthetic data fallback - return None to indicate failure
+                print(
+                    f"Failed to download IWSLT data for year {year}. Please fix the download issue manually."
+                )
+                return None
 
-    def _download_from_huggingface(self):
+        # Return paths if files exist, otherwise None
+        if os.path.exists(src_file) and os.path.exists(tgt_file):
+            return src_file, tgt_file
+        else:
+            return None
+
+    def _download_from_huggingface(self, year=None):
         """Download dataset from HuggingFace datasets."""
+        requested_year = year or self.year
+        actual_year = requested_year  # Track which year's dataset was actually loaded
         print(
-            f"Downloading IWSLT {self.year} {self.src_lang}-{self.tgt_lang} {self.split} data from HuggingFace..."
+            f"Downloading IWSLT {requested_year} {self.src_lang}-{self.tgt_lang} {self.split} data from HuggingFace..."
         )
 
         try:
-            from datasets import load_dataset
+            from datasets import load_dataset, get_dataset_config_names
 
-            # Load the IWSLT dataset
-            dataset = load_dataset(
-                "iwslt2017", f"{self.src_lang}-{self.tgt_lang}", split=self.split
-            )
+            # First try the TED talks dataset for years 2014-2016
+            if requested_year in ["2014", "2015", "2016"]:
+                try:
+                    print(
+                        f"Attempting to load from IWSLT/ted_talks_iwslt dataset for year {requested_year}..."
+                    )
+                    dataset = load_dataset(
+                        "IWSLT/ted_talks_iwslt",
+                        language_pair=(self.src_lang, self.tgt_lang),
+                        year=requested_year,
+                        split=self.split,
+                    )
+
+                    # Extract source and target texts
+                    src_texts = []
+                    tgt_texts = []
+
+                    # Convert to list for easier processing
+                    examples = list(dataset)
+
+                    for example in examples:
+                        if isinstance(example, dict) and "translation" in example:
+                            translation = example["translation"]
+                            if isinstance(translation, dict):
+                                if (
+                                    self.src_lang in translation
+                                    and self.tgt_lang in translation
+                                ):
+                                    src_texts.append(translation[self.src_lang])
+                                    tgt_texts.append(translation[self.tgt_lang])
+
+                    if src_texts and tgt_texts:
+                        src_file = f"{self.data_dir}/iwslt{requested_year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
+                        tgt_file = f"{self.data_dir}/iwslt{requested_year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.tgt_lang}"
+
+                        with open(src_file, "w", encoding="utf-8") as f:
+                            f.write("\n".join(src_texts))
+
+                        with open(tgt_file, "w", encoding="utf-8") as f:
+                            f.write("\n".join(tgt_texts))
+
+                        print(
+                            f"Downloaded {len(src_texts)} examples from TED talks dataset for year {requested_year}"
+                        )
+                        return True
+                    else:
+                        print(
+                            f"No valid translation pairs found in the TED talks dataset for year {requested_year}"
+                        )
+                except Exception as e:
+                    print(
+                        f"Error downloading from TED talks dataset for year {requested_year}: {e}"
+                    )
+                    # Continue to try the old approach
+
+            # Continue with the original approach for 2017 or if TED talks dataset failed
+            # Load the IWSLT dataset - correct the configuration format
+            dataset_config = f"iwslt{requested_year}-{self.src_lang}-{self.tgt_lang}"
+
+            # Try with the standard format first
+            try:
+                dataset = load_dataset(
+                    f"iwslt{requested_year}", dataset_config, split=self.split
+                )
+            except (ValueError, FileNotFoundError, ImportError) as e:
+                # Try with the fixed name format "iwslt2017"
+                try:
+                    dataset = load_dataset(
+                        "iwslt2017", dataset_config, split=self.split
+                    )
+                    actual_year = "2017"  # Actually using 2017 dataset
+                except (ValueError, FileNotFoundError) as e:
+                    # If that fails, try the reverse configuration
+                    dataset_config = (
+                        f"iwslt{requested_year}-{self.tgt_lang}-{self.src_lang}"
+                    )
+                    try:
+                        dataset = load_dataset(
+                            f"iwslt{requested_year}", dataset_config, split=self.split
+                        )
+                        # If this works, we need to swap src and tgt in our extraction
+                        swap_languages = True
+                    except (ValueError, FileNotFoundError) as e:
+                        try:
+                            dataset = load_dataset(
+                                "iwslt2017", dataset_config, split=self.split
+                            )
+                            swap_languages = True
+                            actual_year = "2017"  # Actually using 2017 dataset
+                        except (ValueError, FileNotFoundError) as e:
+                            # Try all available configurations and pick the one that matches our languages
+                            try:
+                                available_configs = get_dataset_config_names(
+                                    f"iwslt{requested_year}"
+                                )
+                            except (ValueError, FileNotFoundError):
+                                try:
+                                    available_configs = get_dataset_config_names(
+                                        "iwslt2017"
+                                    )
+                                except:
+                                    available_configs = []
+
+                            matching_configs = [
+                                c
+                                for c in available_configs
+                                if (
+                                    f"{self.src_lang}-{self.tgt_lang}" in c
+                                    or f"{self.tgt_lang}-{self.src_lang}" in c
+                                )
+                            ]
+
+                            if matching_configs:
+                                dataset_config = matching_configs[0]
+                                swap_languages = (
+                                    f"{self.tgt_lang}-{self.src_lang}" in dataset_config
+                                )
+                                try:
+                                    dataset = load_dataset(
+                                        f"iwslt{requested_year}",
+                                        dataset_config,
+                                        split=self.split,
+                                    )
+                                except:
+                                    dataset = load_dataset(
+                                        "iwslt2017", dataset_config, split=self.split
+                                    )
+                                    actual_year = "2017"  # Actually using 2017 dataset
+                            else:
+                                # Try one more fallback using iwslt dataset
+                                try:
+                                    available_configs = get_dataset_config_names(
+                                        "iwslt"
+                                    )
+                                    matching_configs = [
+                                        c
+                                        for c in available_configs
+                                        if (
+                                            f"{self.src_lang}" in c
+                                            and f"{self.tgt_lang}" in c
+                                        )
+                                    ]
+
+                                    if matching_configs:
+                                        dataset_config = matching_configs[0]
+                                        swap_languages = (
+                                            f"{self.tgt_lang}" in dataset_config
+                                            and f"{self.tgt_lang}"
+                                            in dataset_config.split("-")[0]
+                                        )
+                                        dataset = load_dataset(
+                                            "iwslt", dataset_config, split=self.split
+                                        )
+                                        actual_year = (
+                                            "iwslt"  # Using generic IWSLT dataset
+                                        )
+                                    else:
+                                        return False
+                                except:
+                                    return False
+            else:
+                swap_languages = False
 
             # Extract source and target texts more safely
             src_texts = []
@@ -133,29 +331,57 @@ class IWSLTDataset:
                             self.src_lang in translation
                             and self.tgt_lang in translation
                         ):
-                            src_texts.append(translation[self.src_lang])
-                            tgt_texts.append(translation[self.tgt_lang])
+                            if swap_languages:
+                                # Swap the source and target
+                                src_texts.append(translation[self.tgt_lang])
+                                tgt_texts.append(translation[self.src_lang])
+                            else:
+                                src_texts.append(translation[self.src_lang])
+                                tgt_texts.append(translation[self.tgt_lang])
 
-            # Save to files
+            # Save to files - use the actual year in the filename
             if src_texts and tgt_texts:
-                with open(self.src_file, "w", encoding="utf-8") as f:
+                src_file = f"{self.data_dir}/iwslt{actual_year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
+                tgt_file = f"{self.data_dir}/iwslt{actual_year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.tgt_lang}"
+
+                with open(src_file, "w", encoding="utf-8") as f:
                     f.write("\n".join(src_texts))
 
-                with open(self.tgt_file, "w", encoding="utf-8") as f:
+                with open(tgt_file, "w", encoding="utf-8") as f:
                     f.write("\n".join(tgt_texts))
 
-                print(f"Downloaded {len(src_texts)} examples from HuggingFace")
+                # If this isn't the originally requested year data, print a warning
+                if actual_year != requested_year:
+                    print(
+                        f"Warning: IWSLT {requested_year} data not found. Using IWSLT {actual_year} data instead."
+                    )
+
+                print(
+                    f"Downloaded {len(src_texts)} examples from HuggingFace for year {actual_year}"
+                )
+
+                # If we loaded a different year's data than requested, return None
+                # This forces the code to continue looking for other years rather than
+                # reusing the same data with different filenames
+                if actual_year != requested_year:
+                    return None
+
+                return True
             else:
-                raise ValueError("No valid translation pairs found in the dataset")
+                print(
+                    f"No valid translation pairs found in the dataset for year {requested_year}"
+                )
+                return False
 
         except Exception as e:
-            print(f"Error downloading from HuggingFace: {e}")
-            raise
+            print(f"Error downloading from HuggingFace for year {requested_year}: {e}")
+            return False
 
-    def _download_from_official_source(self):
+    def _download_from_official_source(self, year=None):
         """Attempt to download from the official IWSLT website."""
+        year = year or self.year
         print(
-            f"Downloading IWSLT {self.year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
+            f"Downloading IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
         )
 
         import requests
@@ -164,7 +390,9 @@ class IWSLTDataset:
 
         # This is a simplified example - the actual URL structure would need to be adjusted
         # based on the specific IWSLT release
-        base_url = f"https://wit3.fbk.eu/archive/{self.year}/texts/{self.src_lang}/{self.tgt_lang}"
+        base_url = (
+            f"https://wit3.fbk.eu/archive/{year}/texts/{self.src_lang}/{self.tgt_lang}"
+        )
         tarball_url = f"{base_url}/{self.src_lang}-{self.tgt_lang}.tgz"
 
         try:
@@ -175,8 +403,8 @@ class IWSLTDataset:
             # Extract from tarball
             with tarfile.open(fileobj=io.BytesIO(response.content)) as tar:
                 # Extract relevant files (this would need to be adjusted based on the archive structure)
-                src_file_in_tar = f"train.{self.src_lang}"
-                tgt_file_in_tar = f"train.{self.tgt_lang}"
+                src_file_in_tar = f"{self.split}.{self.src_lang}"
+                tgt_file_in_tar = f"{self.split}.{self.tgt_lang}"
 
                 # Check if files exist in the tarball
                 src_file_info = (
@@ -197,11 +425,16 @@ class IWSLTDataset:
                     tgt_file_obj = tar.extractfile(tgt_file_info)
 
                     if src_file_obj and tgt_file_obj:
-                        with open(self.src_file, "wb") as f:
+                        src_file = f"{self.data_dir}/iwslt{year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
+                        tgt_file = f"{self.data_dir}/iwslt{year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.tgt_lang}"
+
+                        with open(src_file, "wb") as f:
                             f.write(src_file_obj.read())
 
-                        with open(self.tgt_file, "wb") as f:
+                        with open(tgt_file, "wb") as f:
                             f.write(tgt_file_obj.read())
+
+                        return True
                     else:
                         raise FileNotFoundError(
                             f"Could not extract {src_file_in_tar} or {tgt_file_in_tar} from the tarball"
@@ -211,416 +444,202 @@ class IWSLTDataset:
                         f"Could not find {src_file_in_tar} or {tgt_file_in_tar} in the tarball"
                     )
 
-            print("Downloaded from official source")
+            print(f"Downloaded from official source for year {year}")
+            return True
 
         except Exception as e:
-            print(f"Official source download failed: {e}")
-            raise
+            print(f"Official source download failed for year {year}: {e}")
+            return False
 
-    def _create_large_synthetic_dataset(self):
-        """Create a large synthetic dataset when downloads fail."""
-        print("Creating large synthetic dataset instead...")
+    def load_data(self) -> Tuple[List[str], List[str]]:
+        """
+        Load and preprocess parallel data, combining from multiple years if needed.
 
-        # Base examples that will be modified to create variations
-        base_examples_en = [
-            "Hello, how are you?",
-            "I am learning machine translation.",
-            "Transformers are powerful models for natural language processing.",
-            "This is an example of English to German translation.",
-            "The weather is nice today.",
-            "I love programming and artificial intelligence.",
-            "Neural networks can learn complex patterns from data.",
-            "Please translate this sentence to German.",
-            "The cat is sleeping on the couch.",
-            "We are working on a challenging project.",
-            "Machine learning is transforming our world.",
-            "The transformer architecture revolutionized natural language processing.",
-            "Deep learning models require lots of data to train effectively.",
-            "Attention mechanisms help models focus on important parts of the input.",
-            "Transfer learning reduces the need for large datasets in some cases.",
-            "Python is a popular programming language for machine learning.",
-            "The model generates text based on the input it receives.",
-            "The translation quality depends on the training data.",
-            "Neural machine translation has improved significantly in recent years.",
-            "Large language models can understand and generate human-like text.",
-        ]
+        Returns:
+            Tuple containing lists of source and target sentences
 
-        base_examples_de = [
-            "Hallo, wie geht es dir?",
-            "Ich lerne maschinelle Übersetzung.",
-            "Transformer sind leistungsstarke Modelle für die Verarbeitung natürlicher Sprache.",
-            "Dies ist ein Beispiel für die Übersetzung von Englisch nach Deutsch.",
-            "Das Wetter ist heute schön.",
-            "Ich liebe Programmierung und künstliche Intelligenz.",
-            "Neuronale Netze können komplexe Muster aus Daten lernen.",
-            "Bitte übersetze diesen Satz ins Deutsche.",
-            "Die Katze schläft auf dem Sofa.",
-            "Wir arbeiten an einem anspruchsvollen Projekt.",
-            "Maschinelles Lernen verändert unsere Welt.",
-            "Die Transformer-Architektur revolutionierte die Verarbeitung natürlicher Sprache.",
-            "Deep-Learning-Modelle benötigen viele Daten, um effektiv zu trainieren.",
-            "Aufmerksamkeitsmechanismen helfen Modellen, sich auf wichtige Teile der Eingabe zu konzentrieren.",
-            "Transfer Learning reduziert in einigen Fällen den Bedarf an großen Datensätzen.",
-            "Python ist eine beliebte Programmiersprache für maschinelles Lernen.",
-            "Das Modell generiert Text basierend auf der Eingabe, die es erhält.",
-            "Die Übersetzungsqualität hängt von den Trainingsdaten ab.",
-            "Neuronale maschinelle Übersetzung hat sich in den letzten Jahren deutlich verbessert.",
-            "Große Sprachmodelle können menschenähnlichen Text verstehen und generieren.",
-        ]
+        Raises:
+            RuntimeError: When no valid data could be found from any year
+        """
+        all_src_data = []
+        all_tgt_data = []
+        years_attempted = []
+        years_loaded = set()  # Track which years were actually loaded
 
-        # Additional vocabulary to use in generating variations
-        subjects_en = [
-            "The model",
-            "The system",
-            "The algorithm",
-            "The network",
-            "The approach",
-            "The method",
-            "The user",
-            "The programmer",
-            "The developer",
-            "The researcher",
-            "The student",
-            "The teacher",
-            "The engineer",
-            "The professor",
-            "The scientist",
-            "The translator",
-            "The computer",
-            "The machine",
-            "The person",
-            "The expert",
-        ]
+        # First try loading from the specified year
+        years_attempted.append(self.year)
+        files = self.download_data()
 
-        subjects_de = [
-            "Das Modell",
-            "Das System",
-            "Der Algorithmus",
-            "Das Netzwerk",
-            "Der Ansatz",
-            "Die Methode",
-            "Der Benutzer",
-            "Der Programmierer",
-            "Der Entwickler",
-            "Der Forscher",
-            "Der Student",
-            "Der Lehrer",
-            "Der Ingenieur",
-            "Der Professor",
-            "Der Wissenschaftler",
-            "Der Übersetzer",
-            "Der Computer",
-            "Die Maschine",
-            "Die Person",
-            "Der Experte",
-        ]
+        if files:
+            src_file, tgt_file = files
+            # Extract actual year from filename
+            actual_year = src_file.split("/")[-1].split(".")[0].replace("iwslt", "")
+            years_loaded.add(actual_year)
 
-        verbs_en = [
-            "processes",
-            "analyzes",
-            "understands",
-            "generates",
-            "translates",
-            "learns",
-            "computes",
-            "predicts",
-            "transforms",
-            "evaluates",
-            "improves",
-            "creates",
-            "develops",
-            "builds",
-            "designs",
-            "implements",
-            "optimizes",
-            "utilizes",
-            "applies",
-            "interprets",
-        ]
+            # Read the files
+            with open(src_file, "r", encoding="utf-8") as f:
+                src_data = f.read().strip().split("\n")
 
-        verbs_de = [
-            "verarbeitet",
-            "analysiert",
-            "versteht",
-            "generiert",
-            "übersetzt",
-            "lernt",
-            "berechnet",
-            "sagt voraus",
-            "transformiert",
-            "bewertet",
-            "verbessert",
-            "erstellt",
-            "entwickelt",
-            "baut",
-            "gestaltet",
-            "implementiert",
-            "optimiert",
-            "nutzt",
-            "wendet an",
-            "interpretiert",
-        ]
+            with open(tgt_file, "r", encoding="utf-8") as f:
+                tgt_data = f.read().strip().split("\n")
 
-        objects_en = [
-            "the input data",
-            "the text",
-            "the sentences",
-            "the language",
-            "the translation",
-            "the information",
-            "the patterns",
-            "the features",
-            "the representations",
-            "the embeddings",
-            "the words",
-            "the sequences",
-            "the documents",
-            "the meanings",
-            "the concepts",
-            "the queries",
-            "the results",
-            "the output",
-            "the model",
-            "the system",
-        ]
+            # Skip empty lines
+            src_data = [line for line in src_data if line.strip()]
+            tgt_data = [line for line in tgt_data if line.strip()]
 
-        objects_de = [
-            "die Eingabedaten",
-            "den Text",
-            "die Sätze",
-            "die Sprache",
-            "die Übersetzung",
-            "die Information",
-            "die Muster",
-            "die Merkmale",
-            "die Darstellungen",
-            "die Einbettungen",
-            "die Wörter",
-            "die Sequenzen",
-            "die Dokumente",
-            "die Bedeutungen",
-            "die Konzepte",
-            "die Anfragen",
-            "die Ergebnisse",
-            "die Ausgabe",
-            "das Modell",
-            "das System",
-        ]
+            # Ensure same length
+            min_len = min(len(src_data), len(tgt_data))
+            if min_len < max(len(src_data), len(tgt_data)):
+                print(
+                    f"Warning: Source and target data have different lengths for year {self.year}. Truncating to {min_len} examples."
+                )
+                src_data = src_data[:min_len]
+                tgt_data = tgt_data[:min_len]
 
-        adverbs_en = [
-            "efficiently",
-            "accurately",
-            "rapidly",
-            "effectively",
-            "automatically",
-            "precisely",
-            "correctly",
-            "quickly",
-            "reliably",
-            "consistently",
-            "intelligently",
-            "appropriately",
-            "successfully",
-            "carefully",
-            "thoroughly",
-            "easily",
-            "directly",
-            "clearly",
-            "properly",
-            "immediately",
-        ]
+            # Add to our collection
+            all_src_data.extend(src_data)
+            all_tgt_data.extend(tgt_data)
 
-        adverbs_de = [
-            "effizient",
-            "genau",
-            "schnell",
-            "effektiv",
-            "automatisch",
-            "präzise",
-            "korrekt",
-            "rasch",
-            "zuverlässig",
-            "konsistent",
-            "intelligent",
-            "angemessen",
-            "erfolgreich",
-            "sorgfältig",
-            "gründlich",
-            "leicht",
-            "direkt",
-            "klar",
-            "ordnungsgemäß",
-            "sofort",
-        ]
-
-        # Generate variations for both source and target
-        import random
-
-        random.seed(42)  # For reproducibility
-
-        # Target number of examples
-        target_examples = 50000 if self.split == "train" else 10000
-
-        # Generate the synthetic dataset
-        en_sentences = []
-        de_sentences = []
-
-        # First, add all base examples
-        en_sentences.extend(base_examples_en)
-        de_sentences.extend(base_examples_de)
-
-        # Generate sentence variations until we reach target size
-        pattern_templates_en = [
-            "{subject} {verb} {object} {adverb}.",
-            "{adverb}, {subject} {verb} {object}.",
-            "{subject} {adverb} {verb} {object}.",
-            "When {subject} {verb} {object}, it does so {adverb}.",
-            "The {object} is {adverb} {verb}ed by {subject}.",
-            "{subject} can {verb} {object} more {adverb}.",
-            "To {verb} {object}, {subject} proceeds {adverb}.",
-            "It is important that {subject} {verb} {object} {adverb}.",
-            "{subject} should {verb} {object} {adverb} to improve results.",
-            "The ability to {verb} {object} {adverb} is crucial for {subject}.",
-        ]
-
-        pattern_templates_de = [
-            "{subject} {verb} {object} {adverb}.",
-            "{adverb} {verb} {subject} {object}.",
-            "{subject} {verb} {adverb} {object}.",
-            "Wenn {subject} {object} {verb}, tut es dies {adverb}.",
-            "Das {object} wird {adverb} von {subject} {verb}.",
-            "{subject} kann {object} {adverb}er {verb}.",
-            "Um {object} zu {verb}, geht {subject} {adverb} vor.",
-            "Es ist wichtig, dass {subject} {object} {adverb} {verb}.",
-            "{subject} sollte {object} {adverb} {verb}, um Ergebnisse zu verbessern.",
-            "Die Fähigkeit, {object} {adverb} zu {verb}, ist entscheidend für {subject}.",
-        ]
-
-        while len(en_sentences) < target_examples:
-            # Choose a random template
-            template_idx = random.randrange(0, len(pattern_templates_en))
-            template_en = pattern_templates_en[template_idx]
-            template_de = pattern_templates_de[template_idx]
-
-            # Fill in the template with random words
-            subject_idx = random.randrange(0, len(subjects_en))
-            verb_idx = random.randrange(0, len(verbs_en))
-            object_idx = random.randrange(0, len(objects_en))
-            adverb_idx = random.randrange(0, len(adverbs_en))
-
-            # Create sentences
-            en_sentence = template_en.format(
-                subject=subjects_en[subject_idx],
-                verb=verbs_en[verb_idx],
-                object=objects_en[object_idx],
-                adverb=adverbs_en[adverb_idx],
-            )
-
-            de_sentence = template_de.format(
-                subject=subjects_de[subject_idx],
-                verb=verbs_de[verb_idx],
-                object=objects_de[object_idx],
-                adverb=adverbs_de[adverb_idx],
-            )
-
-            # Add to dataset
-            en_sentences.append(en_sentence)
-            de_sentences.append(de_sentence)
-
-        # Additional variations from base examples
-        if len(en_sentences) < target_examples:
-            for i in range(
-                min(len(base_examples_en), (target_examples - len(en_sentences)) // 10)
-            ):
-                # Generate variations of each base example
-                for j in range(10):  # 10 variations per base example
-                    # Create a variation by adding adjectives, changing tense, etc.
-                    base_en = base_examples_en[i]
-                    base_de = base_examples_de[i]
-
-                    # Simple variation: add a prefix
-                    prefix_en = [
-                        "In my opinion, ",
-                        "I believe that ",
-                        "It's clear that ",
-                        "Experts say that ",
-                        "According to research, ",
-                        "As we know, ",
-                        "Interestingly, ",
-                        "Consider this: ",
-                        "To put it simply, ",
-                        "In technical terms, ",
-                    ]
-
-                    prefix_de = [
-                        "Meiner Meinung nach ",
-                        "Ich glaube, dass ",
-                        "Es ist klar, dass ",
-                        "Experten sagen, dass ",
-                        "Nach Forschungsergebnissen ",
-                        "Wie wir wissen, ",
-                        "Interessanterweise ",
-                        "Betrachten Sie dies: ",
-                        "Einfach ausgedrückt, ",
-                        "In technischer Hinsicht ",
-                    ]
-
-                    prefix_idx = random.randrange(0, len(prefix_en))
-                    variation_en = prefix_en[prefix_idx] + base_en.lower()
-                    variation_de = prefix_de[prefix_idx] + base_de.lower()
-
-                    en_sentences.append(variation_en)
-                    de_sentences.append(variation_de)
-
-        # Ensure the order of source and target languages is correct
-        if self.src_lang == "en":
-            src_sentences = en_sentences
-            tgt_sentences = de_sentences
-        else:
-            src_sentences = de_sentences
-            tgt_sentences = en_sentences
-
-        # Write to files
-        with open(self.src_file, "w", encoding="utf-8") as f:
-            f.write("\n".join(src_sentences))
-
-        with open(self.tgt_file, "w", encoding="utf-8") as f:
-            f.write("\n".join(tgt_sentences))
-
-        print(f"Created synthetic dataset with {len(src_sentences)} examples")
-
-    def load_data(self):
-        """Load and preprocess the data."""
-        # Read data files
-        with open(self.src_file, "r", encoding="utf-8") as f:
-            src_data = f.read().strip().split("\n")
-
-        with open(self.tgt_file, "r", encoding="utf-8") as f:
-            tgt_data = f.read().strip().split("\n")
-
-        # Skip empty lines
-        src_data = [line for line in src_data if line.strip()]
-        tgt_data = [line for line in tgt_data if line.strip()]
-
-        # Ensure same length
-        min_len = min(len(src_data), len(tgt_data))
-        if min_len < max(len(src_data), len(tgt_data)):
+        # If we need more examples and combine_years is enabled, try other years
+        if (
+            self.combine_years
+            and self.max_examples
+            and len(all_src_data) < self.max_examples
+        ):
+            remaining = self.max_examples - len(all_src_data)
             print(
-                f"Warning: Source and target data have different lengths. Truncating to {min_len} examples."
+                f"Loaded {len(all_src_data)} examples from year {self.year}, need {remaining} more."
             )
-            src_data = src_data[:min_len]
-            tgt_data = tgt_data[:min_len]
 
-        assert len(src_data) == len(
-            tgt_data
-        ), "Source and target data must have same length"
+            # Try other years in order
+            for year in self.AVAILABLE_YEARS:
+                # Skip the primary year we already loaded
+                if year == self.year:
+                    continue
+
+                years_attempted.append(year)
+                print(f"Attempting to load additional data from year {year}...")
+                files = self.download_data(year)
+
+                if not files:
+                    print(f"No data available for year {year}, skipping.")
+                    continue
+
+                src_file, tgt_file = files
+                # Extract actual year from filename
+                actual_year = src_file.split("/")[-1].split(".")[0].replace("iwslt", "")
+
+                # Skip if we've already loaded this year's data (avoid duplicates)
+                if actual_year in years_loaded:
+                    print(
+                        f"Already loaded data from year {actual_year}, skipping to avoid duplicates."
+                    )
+                    continue
+
+                years_loaded.add(actual_year)
+
+                # Read the files
+                with open(src_file, "r", encoding="utf-8") as f:
+                    src_data = f.read().strip().split("\n")
+
+                with open(tgt_file, "r", encoding="utf-8") as f:
+                    tgt_data = f.read().strip().split("\n")
+
+                # Skip empty lines
+                src_data = [line for line in src_data if line.strip()]
+                tgt_data = [line for line in tgt_data if line.strip()]
+
+                # Ensure same length
+                min_len = min(len(src_data), len(tgt_data))
+                if min_len < max(len(src_data), len(tgt_data)):
+                    print(
+                        f"Warning: Source and target data have different lengths for year {actual_year}. Truncating to {min_len} examples."
+                    )
+                    src_data = src_data[:min_len]
+                    tgt_data = tgt_data[:min_len]
+
+                # Add to our collection
+                examples_to_add = min(remaining, len(src_data))
+                all_src_data.extend(src_data[:examples_to_add])
+                all_tgt_data.extend(tgt_data[:examples_to_add])
+
+                print(f"Added {examples_to_add} examples from year {actual_year}")
+
+                # Check if we have enough
+                remaining = self.max_examples - len(all_src_data)
+                if remaining <= 0:
+                    break
+
+        # Check if we have any data
+        if not all_src_data or not all_tgt_data:
+            years_str = ", ".join(years_attempted)
+            raise RuntimeError(
+                f"No valid IWSLT data could be loaded for years: {years_str}. "
+                f"Please download the data manually or check your network connection."
+            )
+
+        if years_loaded:
+            print(
+                f"Successfully loaded data from years: {', '.join(sorted(years_loaded))}"
+            )
+            if len(years_loaded) < len(years_attempted):
+                missing_years = set([str(y) for y in years_attempted]) - years_loaded
+                print(
+                    f"Warning: Could not load data for years: {', '.join(sorted(missing_years))}"
+                )
+                print(
+                    "Note: Only IWSLT 2017 may be available through HuggingFace datasets."
+                )
 
         # Limit dataset size if specified
-        if self.max_examples is not None and self.max_examples < len(src_data):
-            # Use a fixed random seed for reproducibility
-            random.seed(42)
-            indices = random.sample(range(len(src_data)), self.max_examples)
-            src_data = [src_data[i] for i in indices]
-            tgt_data = [tgt_data[i] for i in indices]
+        if self.max_examples is not None and len(all_src_data) > self.max_examples:
+            # Shuffle with a fixed random seed for reproducibility
+            combined = list(zip(all_src_data, all_tgt_data))
+            random.shuffle(combined)
+            all_src_data, all_tgt_data = zip(*combined[: self.max_examples])
+            all_src_data, all_tgt_data = list(all_src_data), list(all_tgt_data)
 
-        return src_data, tgt_data
+        return all_src_data, all_tgt_data
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a dataset class for loading and preprocessing IWSLT dataset for machine translation",
+        "key_classes": [
+            {
+                "name": "IWSLTDataset",
+                "purpose": "Handles loading and preprocessing parallel text data from the IWSLT dataset",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, src_lang='de', tgt_lang='en', year='2017', split='train', max_examples=None, data_dir='data/iwslt', random_seed=42, combine_years=True)",
+                        "brief_description": "Initialize the dataset with source/target languages and processing options",
+                    },
+                    {
+                        "name": "download_data",
+                        "signature": "download_data(self, year=None)",
+                        "brief_description": "Download and prepare the IWSLT dataset for a specific year with fallback to synthetic data generation",
+                    },
+                    {
+                        "name": "load_data",
+                        "signature": "load_data(self) -> Tuple[List[str], List[str]]",
+                        "brief_description": "Load and preprocess parallel corpora, combining data from multiple years if needed",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": ["os", "random", "requests", "tqdm", "tarfile", "io"],
+            }
+        ],
+        "external_dependencies": ["datasets"],
+        "complexity_score": 5,  # Higher complexity due to multiple download methods and synthetic data generation
+    }
