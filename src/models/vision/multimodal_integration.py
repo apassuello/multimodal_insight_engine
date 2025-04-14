@@ -1,7 +1,16 @@
 # src/models/vision/multimodal_integration.py
+"""MODULE: multimodal_integration.py
+PURPOSE: Implements models for combining vision and text modalities in a unified architecture
+KEY COMPONENTS:
+- MultiModalTransformer: Combines vision and text transformers with projection layers
+DEPENDENCIES: torch, torch.nn, typing, ..base_model, ..transformer, .vision_transformer
+SPECIAL NOTES: Current implementation uses a simple integration approach that will be enhanced in future versions"""
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Dict, Optional, Tuple
+import os
 
 from ..base_model import BaseModel
 from ..transformer import EncoderDecoderTransformer
@@ -140,3 +149,46 @@ class MultiModalTransformer(BaseModel):
             results["similarity"] = similarity
 
         return results
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements models for combining vision and text modalities in a unified architecture",
+        "key_classes": [
+            {
+                "name": "MultiModalTransformer",
+                "purpose": "Combines vision and text transformer models with projection layers to a common embedding space",
+                "key_methods": [
+                    {
+                        "name": "encode_image",
+                        "signature": "encode_image(self, image: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Projects image features to multimodal embedding space"
+                    },
+                    {
+                        "name": "encode_text",
+                        "signature": "encode_text(self, text: Dict[str, torch.Tensor]) -> torch.Tensor",
+                        "brief_description": "Projects text features to multimodal embedding space"
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, image: Optional[torch.Tensor] = None, text: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Processes image and/or text inputs and computes similarity if both are provided"
+                    }
+                ],
+                "inheritance": "BaseModel",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "..base_model", "..transformer", ".vision_transformer"]
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 7  # High complexity due to multimodal integration
+    }

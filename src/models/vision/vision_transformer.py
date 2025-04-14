@@ -1,7 +1,13 @@
 # src/models/vision/vision_transformer.py
-"""
-Vision Transformer (ViT) implementation with robust tensor operations.
-Follows the architecture described in "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale".
+"""MODULE: vision_transformer.py
+PURPOSE: Implements Vision Transformer (ViT) architecture for image classification tasks
+KEY COMPONENTS:
+- PatchEmbed: Transforms images into sequence of patch embeddings
+- Attention: Multi-head self-attention mechanism for transformers
+- Block: Transformer encoder block with attention and MLP
+- VisionTransformer: Complete ViT model with configurable architecture
+DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing, math, ..base_model
+SPECIAL NOTES: Follows the architecture described in "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
 """
 
 import torch
@@ -9,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Optional, Union, List, Dict, Any
 import math
+import os
 
 from ..base_model import BaseModel
 
@@ -545,3 +552,90 @@ class VisionTransformer(BaseModel):
         optimizer = torch.optim.AdamW(optimizer_groups, lr=lr, betas=betas)
 
         return optimizer
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements Vision Transformer (ViT) architecture for image classification tasks",
+        "key_classes": [
+            {
+                "name": "PatchEmbed",
+                "purpose": "Converts images into sequences of patch embeddings using efficient convolution",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Projects image to patch embeddings"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            },
+            {
+                "name": "Attention",
+                "purpose": "Implements multi-head self-attention mechanism with combined QKV projection",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Performs multi-head attention operation"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            },
+            {
+                "name": "Block",
+                "purpose": "Transformer block with attention, MLP, and residual connections",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Processes input through attention and MLP layers with residual connections"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            },
+            {
+                "name": "VisionTransformer",
+                "purpose": "Complete Vision Transformer model for image classification",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, return_features: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]",
+                        "brief_description": "Forward pass through the model to get class logits and optionally features"
+                    },
+                    {
+                        "name": "forward_features",
+                        "signature": "forward_features(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Forward pass to extract features before classification head"
+                    },
+                    {
+                        "name": "extract_features",
+                        "signature": "extract_features(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Convenience method to extract features for external use"
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self, lr: float = 1e-3, weight_decay: float = 0.05, betas: Tuple[float, float] = (0.9, 0.999)) -> torch.optim.Optimizer",
+                        "brief_description": "Creates optimizer with weight decay excluded from bias and norm parameters"
+                    }
+                ],
+                "inheritance": "BaseModel",
+                "dependencies": ["torch", "torch.nn", "..base_model"]
+            }
+        ],
+        "external_dependencies": ["torch", "math"],
+        "complexity_score": 8  # High complexity due to complete transformer implementation
+    }

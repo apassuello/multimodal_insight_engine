@@ -1,4 +1,12 @@
 # src/models/vision/image_preprocessing.py
+"""MODULE: image_preprocessing.py
+PURPOSE: Provides utilities for preprocessing images for vision transformer models
+KEY COMPONENTS:
+- ImagePreprocessor: Class for resizing, normalizing, and converting images to tensor format
+- PatchExtractor: Module for extracting fixed-size patches from images efficiently
+DEPENDENCIES: torch, torch.nn, torch.nn.functional, torchvision, PIL, numpy, typing
+SPECIAL NOTES: Handles diverse input formats (file paths, PIL Images, numpy arrays, tensors)"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,6 +14,7 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 from typing import Tuple, Union, List, Optional
+import os
 
 
 class ImagePreprocessor:
@@ -156,3 +165,54 @@ class PatchExtractor(nn.Module):
         patches = patches.reshape(B, num_patches, -1)
 
         return patches, (num_patches_h, num_patches_w)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utilities for preprocessing images for vision transformer models",
+        "key_classes": [
+            {
+                "name": "ImagePreprocessor",
+                "purpose": "Handles image resizing, normalization, and conversion to tensor format for vision models",
+                "key_methods": [
+                    {
+                        "name": "preprocess",
+                        "signature": "preprocess(self, image: Union[str, Image.Image, np.ndarray, torch.Tensor]) -> torch.Tensor",
+                        "brief_description": "Processes a single image from various input formats to a standardized tensor"
+                    },
+                    {
+                        "name": "batch_preprocess",
+                        "signature": "batch_preprocess(self, images: List[Union[str, Image.Image, np.ndarray, torch.Tensor]]) -> torch.Tensor",
+                        "brief_description": "Processes multiple images into a batch tensor"
+                    }
+                ],
+                "inheritance": "object",
+                "dependencies": ["torchvision.transforms", "PIL.Image", "numpy", "torch.nn.functional"]
+            },
+            {
+                "name": "PatchExtractor",
+                "purpose": "Efficiently extracts fixed-size patches from image tensors using unfold operations",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Tuple[int, int]]",
+                        "brief_description": "Extracts patches from a batch of images and returns patch dimensions"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            }
+        ],
+        "external_dependencies": ["torch", "torchvision", "PIL", "numpy"],
+        "complexity_score": 6  # Moderate complexity due to handling multiple input formats
+    }

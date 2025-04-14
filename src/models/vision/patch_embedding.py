@@ -1,7 +1,16 @@
 # src/models/vision/patch_embedding.py
+"""MODULE: patch_embedding.py
+PURPOSE: Implements patch embedding for Vision Transformer (ViT) models
+KEY COMPONENTS:
+- PatchEmbedding: A module that extracts patches from images and embeds them into a continuous space
+- create_sinusoidal_embeddings: Function to create sinusoidal positional embeddings
+DEPENDENCIES: torch, torch.nn, typing
+SPECIAL NOTES: Supports both learned and sinusoidal positional embeddings and optional class tokens"""
+
 import torch
 import torch.nn as nn
 from typing import Tuple, Optional
+import os
 
 
 class PatchEmbedding(nn.Module):
@@ -144,3 +153,43 @@ def create_sinusoidal_embeddings(
     pe[0, :, 1::2] = torch.cos(position * div_term)
 
     return pe
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+    
+    Args:
+        file_path: Path to the source file (defaults to current file)
+        
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements patch embedding for Vision Transformer (ViT) models",
+        "key_classes": [
+            {
+                "name": "PatchEmbedding",
+                "purpose": "Extracts image patches and projects them to an embedding space with positional information",
+                "key_methods": [
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Transforms images into sequences of embedded patches with positional information"
+                    }
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"]
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "create_sinusoidal_embeddings",
+                "signature": "create_sinusoidal_embeddings(num_positions: int, embedding_dim: int) -> torch.Tensor",
+                "brief_description": "Creates fixed sinusoidal positional embeddings using the method from the Transformer paper"
+            }
+        ],
+        "external_dependencies": ["torch"],
+        "complexity_score": 5  # Moderate complexity for patch extraction and embedding
+    }
