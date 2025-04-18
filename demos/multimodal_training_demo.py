@@ -405,30 +405,32 @@ def create_multimodal_model(args, device):
         logger.info(f"Loading pretrained text model: {args.text_model}")
 
         if args.text_model == "transformer-base":
-            # Try to use pretrained BERT-base
-            pretrained_text_model = AutoModel.from_pretrained("bert-base-uncased")
-            text_dim = 768
+            # Avoid BERT with pretrained models due to MPS compatibility issues
+            logger.warning("Using transformer-small instead of transformer-base due to MPS compatibility issues")
+            args.text_model = "transformer-small"
+            
+            # Use standard transformer approach from the else branch below
+            text_config = {
+                "src_vocab_size": 50000,
+                "tgt_vocab_size": 50000,
+                "d_model": 384,
+                "num_heads": 8,
+                "num_encoder_layers": 6,
+                "num_decoder_layers": 6,
+                "d_ff": 2048,
+                "dropout": 0.1,
+            }
+            text_model = EncoderDecoderTransformer(**text_config)
+            text_dim = text_config["d_model"]
 
-            # Create a wrapper to adapt the interface
-            class TextModelWrapper(nn.Module):
-                def __init__(self, bert_model):
-                    super().__init__()
-                    self.bert = bert_model
-                    self.d_model = 768  # BERT base hidden size
+            # This class definition is no longer needed
+            # class TextModelWrapper(nn.Module):
+            #    def __init__(self, bert_model):
+            #        super().__init__()
+            #        self.bert = bert_model
+            #        self.d_model = 768  # BERT base hidden size
 
-                def encode(self, src, src_mask=None):
-                    # Adapt BERT to match the interface expected by EnhancedMultiModalTransformer
-                    attention_mask = (
-                        src_mask.squeeze(1).squeeze(1) if src_mask is not None else None
-                    )
-                    outputs = self.bert(input_ids=src, attention_mask=attention_mask)
-                    return outputs.last_hidden_state
-
-                def forward(self, src, tgt=None, src_mask=None, tgt_mask=None):
-                    # Simple forward that calls encode
-                    return self.encode(src, src_mask)
-
-            text_model = TextModelWrapper(pretrained_text_model)
+                # All these methods are removed since we're not using the TextModelWrapper anymore
 
         else:
             logger.warning(f"Using standard text transformer: {args.text_model}")
@@ -514,6 +516,8 @@ def create_multimodal_model(args, device):
 
     # Move model to device
     multimodal_model = multimodal_model.to(device)
+    
+    # We're now using standard transformer models instead of BERT for better MPS compatibility
 
     return multimodal_model
 

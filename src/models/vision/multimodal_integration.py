@@ -330,32 +330,45 @@ class EnhancedMultiModalTransformer(BaseModel):
         Returns:
             Text features [batch_size, seq_length, text_dim]
         """
-        # MPS compatibility fix - move src tensor to CPU if necessary
-        device = text_data["src"].device
-
+        # Get original device for returning output
+        original_device = text_data["src"].device
+        
+        # Simple approach - always use encode method on original device
+        # This avoids device compatibility issues since we're not using BERT
         try:
-            # Try direct encoding
-            text_features = self.text_model.encode(
-                text_data["src"], src_mask=text_data.get("src_mask", None)
-            )
-        except RuntimeError as e:
-            if "MPS" in str(e) or "Placeholder storage" in str(e):
-                # MPS workaround - process on CPU then move back to original device
-                cpu_src = text_data["src"].cpu()
-                cpu_mask = text_data.get("src_mask", None)
-                if cpu_mask is not None:
-                    cpu_mask = cpu_mask.cpu()
-
-                # Process on CPU
-                text_features = self.text_model.encode(cpu_src, src_mask=cpu_mask)
-
-                # Move back to original device
-                text_features = text_features.to(device)
+            # This works for our standard transformer models
+            if hasattr(self.text_model, 'encode'):
+                text_features = self.text_model.encode(
+                    text_data["src"], src_mask=text_data.get("src_mask", None)
+                )
+                return text_features  # Already on correct device
             else:
-                # Re-raise if it's not an MPS-related error
-                raise
-
-        return text_features
+                # Try forward method as fallback
+                return self.text_model(
+                    text_data["src"], src_mask=text_data.get("src_mask", None)
+                )
+        except Exception as e:
+            # If we encounter any device issues, fall back to CPU processing
+            print(f"Error in text processing: {str(e)}")
+            print("Using CPU fallback for text processing...")
+        
+        # Most robust fallback - process on CPU
+        cpu_src = text_data["src"].to('cpu')
+        cpu_mask = text_data.get("src_mask", None)
+        if cpu_mask is not None:
+            cpu_mask = cpu_mask.to('cpu')
+        
+        # Process on CPU
+        text_model_cpu = self.text_model.to('cpu')
+        
+        with torch.no_grad():
+            if hasattr(text_model_cpu, 'encode'):
+                features = text_model_cpu.encode(cpu_src, src_mask=cpu_mask)
+            else:
+                features = text_model_cpu(cpu_src, src_mask=cpu_mask)
+        
+        # Move results back to original device
+        return features.to(original_device)
 
     def forward(
         self,

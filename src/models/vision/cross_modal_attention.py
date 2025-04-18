@@ -226,8 +226,11 @@ class GatedCrossModalAttention(nn.Module):
         # Project query features to match embedding dimension using the pre-defined projection
         query_features_projected = self.query_proj_gate(query_features)
         
-        # Compute gate values with consistently dimensioned inputs
+        # Simplify the gating process - keep everything on the same device
+        # Concatenate inputs on the original device
         gate_input = torch.cat([query_features_projected, attended_features], dim=-1)
+        
+        # Apply gate - all operations stay on the same device
         gate_values = self.gate(gate_input)
         
         # Apply gated residual connection
@@ -343,23 +346,22 @@ class BidirectionalCrossAttention(nn.Module):
         vision_input = self.vision_input_proj(vision_features)
         text_input = self.text_input_proj(text_features)
 
-        # Create attention masks if provided
+        # Create attention masks if provided - simplified version
         if vision_mask is not None and text_mask is not None:
-            # Ensure masks are on the same device
+            # Get device
             device = vision_features.device
+            
+            # Ensure masks are on device
             vision_mask = vision_mask.to(device)
             text_mask = text_mask.to(device)
-
+            
             # Get shapes for mask creation
             batch_size = vision_mask.shape[0]
             text_seq_len = text_mask.shape[1]
             vision_seq_len = vision_mask.shape[1]
-
-            # For multimodal training, we'll simplify the masking process dramatically
-            # Instead of complex cross-attention masks, just use default all-True masks
-            # This simplification will help with MPS device compatibility and focus on core training
-
+            
             # Create simple masks that allow all tokens to attend to all other tokens
+            # Create directly on the target device
             text_to_vision_mask = torch.ones(
                 batch_size,
                 text_seq_len,
@@ -367,7 +369,7 @@ class BidirectionalCrossAttention(nn.Module):
                 dtype=torch.bool,
                 device=device,
             )
-
+            
             vision_to_text_mask = torch.ones(
                 batch_size,
                 vision_seq_len,
