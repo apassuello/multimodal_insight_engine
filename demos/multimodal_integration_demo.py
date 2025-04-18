@@ -1,45 +1,72 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
-MultiModal Integration Demo
+Multimodal Integration Training Demo
 
-This script demonstrates the integration of vision and text transformers in a simple
-multimodal architecture. It shows how to:
-1. Load image and text data
-2. Process both modalities with dedicated transformers
-3. Project features to a common embedding space
-4. Compute cross-modal similarity
+This script demonstrates a complete training pipeline for multimodal models with:
+1. Dataset loading and preprocessing (Flickr30k or synthetic)
+2. Advanced multimodal integration with cross-modal attention
+3. Contrastive learning training
+4. Evaluation on cross-modal retrieval tasks
+5. Visualization of results
 
-The demo uses a small synthetic dataset of image-text pairs to show the functionality.
+Author: Arthur PASSUELLO
 """
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
-from torchvision import transforms
-from PIL import Image
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any, Union
 import os
 import random
-from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
+import time
+import argparse
+import logging
+from tqdm import tqdm
 import warnings
 
-# Suppress warnings about dataset loading
+# Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# Import our models (adjust imports to match your project structure)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Import our modules (adjust paths as needed)
 from src.models.vision.vision_transformer import VisionTransformer
 from src.models.transformer import EncoderDecoderTransformer
-from src.models.vision.multimodal_integration import MultiModalTransformer
+from src.models.vision.multimodal_integration import (
+    MultiModalTransformer,
+    EnhancedMultiModalTransformer,
+)
+from src.models.vision.cross_modal_attention import (
+    CoAttentionFusion,
+    BidirectionalCrossAttention,
+)
 from src.models.vision.image_preprocessing import ImagePreprocessor
 from src.data.tokenization.optimized_bpe_tokenizer import OptimizedBPETokenizer
+from src.training.contrastive_learning import (
+    ContrastiveLoss,
+    MultiModalMixedContrastiveLoss,
+)
+from src.training.multimodal_trainer import MultimodalTrainer
 
-# Import Hugging Face datasets
-from datasets import load_dataset
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
-import torch
+# Try to import Hugging Face datasets
+try:
+    from datasets import load_dataset
+    from PIL import Image
+
+    DATASETS_AVAILABLE = True
+except ImportError:
+    logger.warning("Hugging Face datasets not available. Will use synthetic data only.")
+    DATASETS_AVAILABLE = False
 
 
 class FlickrMultiModalDataset(Dataset):
@@ -51,16 +78,30 @@ class FlickrMultiModalDataset(Dataset):
         image_preprocessor=None,
         tokenizer=None,
         max_text_length=77,
+        max_samples=None,
     ):
+        """
+        Initialize the Flickr30k dataset.
+
+        Args:
+            split: Dataset split ('train', 'val', or 'test')
+            image_preprocessor: Image preprocessing utility
+            tokenizer: Text tokenizer
+            max_text_length: Maximum text sequence length
+            max_samples: Maximum number of samples to use (for quick testing)
+        """
         try:
+            if not DATASETS_AVAILABLE:
+                raise ImportError("Hugging Face datasets not available")
+
             # Load the dataset from Hugging Face
-            print("Loading Flickr30k dataset...")
+            logger.info("Loading Flickr30k dataset...")
             try:
                 # Load the full dataset
                 dataset_dict = load_dataset("nlphuji/flickr30k")
 
                 # Convert to list format for easier handling
-                print(f"Filtering dataset for split: {split}")
+                logger.info(f"Filtering dataset for split: {split}")
                 filtered_data = []
 
                 # Get the test split since that's what's available
@@ -76,7 +117,7 @@ class FlickrMultiModalDataset(Dataset):
                         # Convert to dictionary and store
                         filtered_data.append(
                             {
-                                "image": item["image"],
+                                "images": item["images"],
                                 "captions": (
                                     [item["caption"]]
                                     if "caption" in item
@@ -90,18 +131,23 @@ class FlickrMultiModalDataset(Dataset):
                     raise ValueError(f"No examples found for split '{split}'")
 
                 self.dataset = filtered_data
-                print(
+                logger.info(
                     f"Successfully loaded {len(self.dataset)} examples from Flickr30k {split} split"
                 )
 
             except Exception as e:
-                print(f"Error with primary dataset source: {str(e)}")
+                logger.error(f"Error with dataset source: {str(e)}")
                 raise  # Re-raise to try alternative sources
 
         except Exception as e:
-            print(f"Error loading Flickr30k dataset: {str(e)}")
-            print("Falling back to synthetic data generation...")
-            self._generate_synthetic_data()
+            logger.warning(f"Error loading Flickr30k dataset: {str(e)}")
+            logger.info("Falling back to synthetic data generation...")
+            self._generate_synthetic_data(max_samples or 1000)
+
+        # Limit dataset size if specified
+        if max_samples and len(self.dataset) > max_samples:
+            logger.info(f"Limiting dataset to {max_samples} samples")
+            self.dataset = self.dataset[:max_samples]
 
         self.image_preprocessor = image_preprocessor
         self.tokenizer = tokenizer
@@ -115,39 +161,122 @@ class FlickrMultiModalDataset(Dataset):
         if not hasattr(self.tokenizer, "special_tokens"):
             raise ValueError("Tokenizer must have 'special_tokens' attribute")
 
-    def _generate_synthetic_data(self):
-        """Generate synthetic data as a fallback."""
-        # Create a small synthetic dataset with random images and captions
-        n_samples = 100
+    def _generate_synthetic_data(self, n_samples=1000):
+        """
+        Generate synthetic data as a fallback.
+
+        Args:
+            n_samples: Number of synthetic samples to generate
+        """
+        logger.info(f"Generating {n_samples} synthetic samples")
         self.dataset = []
+
+        # Create simple shapes for more diverse synthetic images
+        shapes = ["circle", "square", "triangle", "rectangle", "star"]
+        colors = ["red", "green", "blue", "yellow", "purple", "orange"]
+        objects = ["cat", "dog", "car", "tree", "house", "person", "bird"]
+        attributes = ["small", "large", "colorful", "bright", "dark", "shiny"]
 
         for i in range(n_samples):
             # Create a random RGB image
             img = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+
+            # Add some structure to make it more interesting
+            x, y = np.mgrid[0:224, 0:224]
+
+            # Randomly choose colors for elements
+            primary_color = np.random.randint(0, 3)  # RGB channel index
+            secondary_color = (primary_color + 1) % 3
+
+            # Add a random shape
+            shape_type = i % 5
+            shape_size = np.random.randint(40, 100)
+            center_x = np.random.randint(shape_size, 224 - shape_size)
+            center_y = np.random.randint(shape_size, 224 - shape_size)
+
+            if shape_type == 0:  # Circle
+                circle = (x - center_x) ** 2 + (y - center_y) ** 2 < shape_size**2
+                img[circle, primary_color] = np.random.randint(180, 250)
+            elif shape_type == 1:  # Square
+                square = (abs(x - center_x) < shape_size // 2) & (
+                    abs(y - center_y) < shape_size // 2
+                )
+                img[square, primary_color] = np.random.randint(180, 250)
+            elif shape_type == 2:  # Triangle
+                tri_y, tri_x = np.mgrid[
+                    center_y - shape_size : center_y + shape_size,
+                    center_x - shape_size : center_x + shape_size,
+                ]
+                mask = (0 <= tri_y) & (tri_y < 224) & (0 <= tri_x) & (tri_x < 224)
+                tri_y, tri_x = tri_y[mask], tri_x[mask]
+                triangle = (tri_x - center_x) < (tri_y - center_y)
+                img[tri_y[triangle], tri_x[triangle], primary_color] = (
+                    np.random.randint(180, 250)
+                )
+            elif shape_type == 3:  # Rectangle
+                rect = (abs(x - center_x) < shape_size) & (
+                    abs(y - center_y) < shape_size // 2
+                )
+                img[rect, primary_color] = np.random.randint(180, 250)
+            else:  # Random noise pattern
+                pattern = np.random.rand(224, 224) > 0.8
+                img[pattern, primary_color] = np.random.randint(180, 250)
+
+            # Add a secondary element
+            secondary_x = (center_x + 112) % 224
+            secondary_y = (center_y + 112) % 224
+            secondary_size = shape_size // 2
+
+            secondary = (x - secondary_x) ** 2 + (
+                y - secondary_y
+            ) ** 2 < secondary_size**2
+            img[secondary, secondary_color] = np.random.randint(180, 250)
+
+            # Create image from array
             img = Image.fromarray(img)
 
-            # Create a simple caption
-            caption = f"A synthetic image {i} with random patterns"
+            # Create descriptive caption
+            shape_name = shapes[shape_type]
+            color_name = colors[primary_color]
+            secondary_color_name = colors[secondary_color]
+
+            caption_templates = [
+                f"A {color_name} {shape_name} with a {secondary_color_name} circle",
+                f"An image showing a {color_name} {shape_name} and a {secondary_color_name} dot",
+                f"A synthetic image with a {color_name} {shape_name} and {secondary_color_name} element",
+                f"A {color_name} {shape_name} next to a {secondary_color_name} circle",
+                f"A computer-generated image of a {color_name} {shape_name} and {secondary_color_name} circle",
+            ]
+
+            caption = random.choice(caption_templates)
 
             self.dataset.append(
                 {
-                    "image": img,
-                    "captions": [caption],  # Match Flickr format with list of captions
+                    "images": img,
+                    "captions": [caption],
                     "image_id": str(i),
                 }
             )
 
-        print(f"Generated {len(self.dataset)} synthetic examples")
+        logger.info(f"Generated {len(self.dataset)} synthetic examples")
 
     def __len__(self):
         """Return the number of examples in the dataset."""
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        """Get a single example from the dataset."""
+        """
+        Get a single example from the dataset.
+
+        Args:
+            idx: Index of the example
+
+        Returns:
+            Dictionary containing image, text, caption, and index information
+        """
         # Get image and caption
         item = self.dataset[idx]
-        image = item["image"]  # This is a PIL Image
+        image = item["images"]  # This is a PIL Image
 
         # Randomly select one caption if multiple are available
         caption = random.choice(item["captions"])
@@ -185,256 +314,166 @@ class FlickrMultiModalDataset(Dataset):
         )
 
         return {
-            "image": image_tensor,
-            "text": {
+            "images": image_tensor,
+            "text_data": {
                 "src": src.unsqueeze(0),  # Add batch dimension
                 "src_mask": src_mask,
             },
             "raw_text": caption,
             "image_id": item["image_id"],
+            "idx": torch.tensor(
+                idx, dtype=torch.long
+            ),  # Add index for retrieval evaluation
         }
 
 
-class MultiModalDemoDataset(Dataset):
-    """
-    A simple dataset for multimodal demo that pairs images with text descriptions.
-
-    For demo purposes, we can use a small set of sample images and texts.
-    In a real application, you would load this from a proper dataset.
-    """
-
-    def __init__(
-        self,
-        image_dir: str,
-        captions_file: str,
-        image_preprocessor: ImagePreprocessor,
-        tokenizer: OptimizedBPETokenizer,
-        max_text_length: int = 77,
-    ):
-        """
-        Initialize the multimodal demo dataset.
-
-        Args:
-            image_dir: Directory containing images
-            captions_file: File containing captions (one per line)
-            image_preprocessor: Image preprocessor to transform images
-            tokenizer: Tokenizer for text processing
-            max_text_length: Maximum text sequence length
-        """
-        self.image_dir = Path(image_dir)
-        self.captions_file = Path(captions_file)
-        self.image_preprocessor = image_preprocessor
-        self.tokenizer = tokenizer
-        self.max_text_length = max_text_length
-
-        # Load image paths and captions
-        self.image_paths = []
-        self.captions = []
-
-        # Check if the image directory exists
-        if self.image_dir.exists():
-            # Find all image files
-            self.image_paths = (
-                list(self.image_dir.glob("*.jpg"))
-                + list(self.image_dir.glob("*.png"))
-                + list(self.image_dir.glob("*.jpeg"))
-            )
-
-        # Check if the captions file exists
-        if self.captions_file.exists():
-            with open(self.captions_file, "r", encoding="utf-8") as f:
-                self.captions = [line.strip() for line in f if line.strip()]
-
-        # Generate synthetic data if no real data is available
-        if not self.image_paths or not self.captions:
-            print("No real data found. Generating synthetic data for demo purposes.")
-            self._generate_synthetic_data()
-
-        # Ensure same number of images and captions
-        min_len = min(len(self.image_paths), len(self.captions))
-        self.image_paths = self.image_paths[:min_len]
-        self.captions = self.captions[:min_len]
-
-        print(f"Loaded {len(self.image_paths)} image-text pairs")
-
-    def _generate_synthetic_data(self):
-        """Generate synthetic data for demo purposes."""
-        # For this demo, we'll create random noise images and generic captions
-        os.makedirs("demo_data/images", exist_ok=True)
-
-        # Generate 10 synthetic samples
-        synthetic_samples = 10
-
-        # Generate random noise images
-        for i in range(synthetic_samples):
-            # Create a random RGB image (3 channels)
-            img = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
-
-            # Add some structure to make it more interesting
-            x, y = np.mgrid[0:224, 0:224]
-            circle = (x - 112) ** 2 + (y - 112) ** 2 < 50**2
-            img[circle, 0] = 200  # Add a red circle
-
-            # Add a random shape
-            shape_type = i % 3
-            if shape_type == 0:  # Square
-                img[70:140, 70:140, 1] = 200  # Green square
-            elif shape_type == 1:  # Rectangle
-                img[60:100, 60:160, 2] = 200  # Blue rectangle
-            else:  # Triangle
-                tri_y, tri_x = np.mgrid[40:140, 40:140]
-                triangle = tri_x > tri_y
-                img[tri_y[triangle], tri_x[triangle], 1] = 180  # Green triangle
-
-            # Save the image
-            img_path = f"demo_data/images/synthetic_{i}.png"
-            Image.fromarray(img).save(img_path)
-            self.image_paths.append(Path(img_path))
-
-        # Generate generic captions
-        shapes = ["circle", "square", "rectangle", "triangle", "shape"]
-        colors = ["red", "green", "blue", "colorful", "bright"]
-        templates = [
-            "An image containing a {color} {shape}",
-            "A {color} {shape} on a plain background",
-            "A simple {shape} with {color} coloring",
-            "Abstract image with a {color} {shape}",
-            "Synthetic image showing a {color} {shape}",
-        ]
-
-        for i in range(synthetic_samples):
-            shape = shapes[i % len(shapes)]
-            color = colors[(i + 1) % len(colors)]
-            template = templates[i % len(templates)]
-            caption = template.format(shape=shape, color=color)
-            self.captions.append(caption)
-
-        # Write captions to file
-        with open("demo_data/captions.txt", "w", encoding="utf-8") as f:
-            for caption in self.captions:
-                f.write(caption + "\n")
-
-    def __len__(self):
-        """Return the number of samples in the dataset."""
-        return len(self.image_paths)
-
-    def __getitem__(self, idx):
-        """
-        Get a single image-text pair.
-
-        Args:
-            idx: Index of the pair
-
-        Returns:
-            Dictionary containing:
-            - 'image': Preprocessed image tensor
-            - 'text': Dictionary with 'src' and 'src_mask' for the tokenized caption
-            - 'raw_text': Original caption text
-            - 'image_path': Path to the image file
-        """
-        # Get image path and caption
-        image_path = self.image_paths[idx]
-        caption = self.captions[idx]
-
-        # Load and preprocess image
-        try:
-            image = Image.open(image_path).convert("RGB")
-            image_tensor = self.image_preprocessor.preprocess(image)
-        except Exception as e:
-            print(f"Error loading image {image_path}: {e}")
-            # Fallback to a blank image
-            image_tensor = torch.zeros(3, 224, 224)
-
-        # Process caption
-        token_ids = self.tokenizer.encode(caption)
-
-        # Pad or truncate to max_text_length
-        if len(token_ids) > self.max_text_length:
-            token_ids = token_ids[: self.max_text_length]
-        else:
-            padding = [self.tokenizer.special_tokens["pad_token_idx"]] * (
-                self.max_text_length - len(token_ids)
-            )
-            token_ids = token_ids + padding
-
-        # Create source tensor
-        src = torch.tensor(token_ids, dtype=torch.long)
-
-        # Create source mask (1 for real tokens, 0 for padding)
-        src_mask = (
-            (src != self.tokenizer.special_tokens["pad_token_idx"])
-            .unsqueeze(0)
-            .unsqueeze(0)
-        )
-
-        return {
-            "image": image_tensor,
-            "text": {
-                "src": src.unsqueeze(0),  # Add batch dimension
-                "src_mask": src_mask,
-            },
-            "raw_text": caption,
-            "image_path": str(image_path),
-        }
-
-
-def create_multimodal_demo_model(
-    device: Union[str, torch.device],
-    vit_pretrained: bool = False,
-    text_pretrained: bool = False,
+def create_dataloaders(
+    image_preprocessor,
+    tokenizer,
+    batch_size=32,
+    max_samples=None,
+    train_val_test_split=(0.8, 0.1, 0.1),
 ):
     """
-    Create models for the multimodal demo.
+    Create train, validation, and test dataloaders.
 
     Args:
-        device: Device to place models on (can be string 'cpu'/'cuda'/'mps' or torch.device)
-        vit_pretrained: Whether to load pretrained Vision Transformer
-        text_pretrained: Whether to load pretrained Text Transformer
+        image_preprocessor: Image preprocessing utility
+        tokenizer: Text tokenizer
+        batch_size: Batch size for dataloaders
+        max_samples: Maximum number of samples to use
+        train_val_test_split: Train/val/test split ratios
 
     Returns:
-        Tuple of (multimodal model, vision preprocessor, text tokenizer)
+        Tuple of (train_dataloader, val_dataloader, test_dataloader)
     """
-    # Convert string device to torch.device if needed
-    if isinstance(device, str):
-        device = torch.device(device)
+    # Determine number of workers
+    if torch.backends.mps.is_available():
+        # For MPS (Apple Silicon), use minimal number of workers
+        num_workers = 0
+    else:
+        num_workers = min(4, os.cpu_count() or 1)
 
+    logger.info(f"Using {num_workers} dataloader workers")
+
+    # Create full dataset
+    full_dataset = FlickrMultiModalDataset(
+        split="train",  # Use train split for all data
+        image_preprocessor=image_preprocessor,
+        tokenizer=tokenizer,
+        max_samples=max_samples,
+    )
+
+    # Calculate split sizes
+    total_size = len(full_dataset)
+    train_size = int(total_size * train_val_test_split[0])
+    val_size = int(total_size * train_val_test_split[1])
+    test_size = total_size - train_size - val_size
+
+    # Split dataset
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
+        full_dataset, [train_size, val_size, test_size]
+    )
+
+    logger.info(
+        f"Dataset split: {train_size} train, {val_size} validation, {test_size} test samples"
+    )
+
+    # Create dataloaders
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        drop_last=True,
+    )
+
+    val_dataloader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+
+    test_dataloader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+
+    return train_dataloader, val_dataloader, test_dataloader
+
+
+def create_models(device, fusion_type="bidirectional"):
+    """
+    Create Vision Transformer, Text Transformer, and Multimodal Transformer models.
+
+    Args:
+        device: Device to place models on
+        fusion_type: Type of fusion to use ('bidirectional' or 'co_attention')
+
+    Returns:
+        Tuple of (multimodal_model, image_preprocessor, tokenizer)
+    """
     # Initialize Vision Transformer
     vit_config = {
         "image_size": 224,
         "patch_size": 16,
         "in_channels": 3,
         "num_classes": 1000,  # ImageNet classes
-        "embed_dim": 768,
-        "depth": 12,
-        "num_heads": 12,
+        "embed_dim": 512,  # Using smaller dim for faster training
+        "depth": 6,  # Smaller model for demo
+        "num_heads": 8,
         "mlp_ratio": 4.0,
         "dropout": 0.1,
     }
 
     vision_model = VisionTransformer(**vit_config)
+    logger.info(
+        f"Created Vision Transformer with {sum(p.numel() for p in vision_model.parameters()):,} parameters"
+    )
 
     # Initialize Text Transformer
-    # This is a simplified example - in a real application you would
-    # use your actual text transformer architecture
     text_config = {
         "src_vocab_size": 50000,  # Approximate vocabulary size
         "tgt_vocab_size": 50000,
         "d_model": 512,
         "num_heads": 8,
         "num_encoder_layers": 6,
-        "num_decoder_layers": 6,
+        "num_decoder_layers": 0,  # Use encoder-only for embedding
         "d_ff": 2048,
         "dropout": 0.1,
     }
 
     text_model = EncoderDecoderTransformer(**text_config)
+    logger.info(
+        f"Created Text Transformer with {sum(p.numel() for p in text_model.parameters()):,} parameters"
+    )
 
     # Initialize Multimodal Transformer
-    multimodal_model = MultiModalTransformer(
-        vision_model=vision_model,
-        text_model=text_model,
-        projection_dim=512,
-        dropout=0.1,
+    if fusion_type == "simple":
+        multimodal_model = MultiModalTransformer(
+            vision_model=vision_model,
+            text_model=text_model,
+            projection_dim=512,
+            dropout=0.1,
+        )
+        logger.info("Using simple projection-based multimodal integration")
+    else:
+        multimodal_model = EnhancedMultiModalTransformer(
+            vision_model=vision_model,
+            text_model=text_model,
+            fusion_dim=512,
+            num_fusion_layers=2,
+            num_heads=8,
+            dropout=0.1,
+            fusion_type=fusion_type,  # "bidirectional" or "co_attention"
+        )
+        logger.info(f"Using enhanced multimodal integration with {fusion_type} fusion")
+
+    logger.info(
+        f"Created Multimodal Transformer with {sum(p.numel() for p in multimodal_model.parameters()):,} parameters"
     )
 
     # Move models to device
@@ -447,44 +486,106 @@ def create_multimodal_demo_model(
         std=(0.229, 0.224, 0.225),
     )
 
-    # Create text tokenizer (simplified for demo)
-    # In a real application, use your actual tokenizer
-    tokenizer = OptimizedBPETokenizer()
+    # Create text tokenizer
+    tokenizer = TokenizerWithSpecials(OptimizedBPETokenizer())
 
     return multimodal_model, image_preprocessor, tokenizer
 
 
-def visualize_multimodal_results(
-    images: torch.Tensor,
-    captions: List[str],
-    similarity_matrix: torch.Tensor,
-    num_samples: int = 5,
+class TokenizerWithSpecials:
+    """
+    Wrapper for tokenizer to ensure it has required special tokens.
+    """
+
+    def __init__(self, base_tokenizer):
+        self.base_tokenizer = base_tokenizer
+        self._special_tokens = {
+            "pad_token_idx": 0,
+            "unk_token_idx": 1,
+            "bos_token_idx": 2,
+            "eos_token_idx": 3,
+            "mask_token_idx": 4,
+        }
+
+    def encode(self, text):
+        if hasattr(self.base_tokenizer, "encode"):
+            return self.base_tokenizer.encode(text)
+        # Fallback encoding method
+        return (
+            [self._special_tokens["bos_token_idx"]]
+            + [hash(token) % 50000 for token in text.split()]
+            + [self._special_tokens["eos_token_idx"]]
+        )
+
+    @property
+    def special_tokens(self):
+        return self._special_tokens
+
+
+def visualize_image_text_matches(
+    model, dataset, device, num_examples=5, output_dir="outputs"
 ):
     """
-    Visualize the results of multimodal integration.
+    Visualize image-text matches.
 
     Args:
-        images: Batch of images
-        captions: List of captions
-        similarity_matrix: Image-text similarity matrix
-        num_samples: Number of samples to display
+        model: Trained multimodal model
+        dataset: Dataset to sample from
+        device: Device to use
+        num_examples: Number of examples to visualize
+        output_dir: Directory to save visualizations
     """
-    # Limit to the specified number of samples
-    n = min(num_samples, len(captions), images.shape[0])
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create dataloader with batch size = num_examples
+    dataloader = DataLoader(dataset, batch_size=num_examples, shuffle=True)
+
+    # Get a batch
+    batch = next(iter(dataloader))
+
+    # Move data to device
+    batch = {
+        k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()
+    }
+
+    # Run model
+    with torch.no_grad():
+        outputs = model(images=batch["images"], text_data=batch["text_data"])
+
+    # Get similarity matrix
+    if "similarity" in outputs:
+        similarity = outputs["similarity"]
+    elif "raw_similarity" in outputs:
+        similarity = outputs["raw_similarity"]
+    else:
+        # Calculate similarity from embeddings
+        image_emb = outputs["vision_features"]
+        text_emb = outputs["text_features"]
+
+        # Normalize
+        image_emb = torch.nn.functional.normalize(image_emb, p=2, dim=1)
+        text_emb = torch.nn.functional.normalize(text_emb, p=2, dim=1)
+
+        # Compute similarity
+        similarity = torch.matmul(image_emb, text_emb.T)
+
+    # Get images and captions
+    images = batch["images"].cpu()
+    captions = batch["raw_text"]
 
     # Create figure with subplots
-    fig, axes = plt.subplots(n, 2, figsize=(12, 3 * n))
+    fig, axes = plt.subplots(num_examples, 2, figsize=(14, 3 * num_examples))
 
     # Set a title for the figure
     fig.suptitle("Multimodal Integration Results", fontsize=16)
 
     # Get the most similar caption for each image
-    most_similar_idxs = similarity_matrix.argmax(dim=1)
+    most_similar_idxs = similarity.argmax(dim=1).cpu().numpy()
 
     # Draw images and captions
-    for i in range(n):
+    for i in range(num_examples):
         # Get image
-        img = images[i].cpu().numpy().transpose(1, 2, 0)
+        img = images[i].numpy().transpose(1, 2, 0)
 
         # Un-normalize image
         mean = np.array([0.485, 0.456, 0.406])
@@ -498,23 +599,32 @@ def visualize_multimodal_results(
         axes[i, 0].axis("off")
 
         # Display caption
+        gt_caption = captions[i]
+        matched_caption = captions[most_similar_idxs[i]]
+        is_correct = i == most_similar_idxs[i]
+
+        caption_text = f"Ground truth caption:\n{gt_caption}\n\n"
+        caption_text += f"Best match caption:\n{matched_caption}\n\n"
+        caption_text += f"Match correct: {'✓' if is_correct else '✗'}"
+
         axes[i, 1].text(
             0.5,
             0.5,
-            f"Ground truth caption:\n{captions[i]}\n\nBest match caption:\n{captions[most_similar_idxs[i]]}",
+            caption_text,
             horizontalalignment="center",
             verticalalignment="center",
             wrap=True,
+            color="green" if is_correct else "red",
         )
         axes[i, 1].axis("off")
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
-    plt.show()
+    plt.savefig(os.path.join(output_dir, "image_text_matches.png"))
 
     # Show similarity matrix as a heatmap
     plt.figure(figsize=(10, 8))
-    plt.imshow(similarity_matrix.cpu().numpy(), cmap="viridis")
+    plt.imshow(similarity.cpu().numpy(), cmap="viridis")
     plt.colorbar(label="Similarity")
     plt.xlabel("Text")
     plt.ylabel("Image")
@@ -532,201 +642,168 @@ def visualize_multimodal_results(
     plt.yticks(range(len(captions)), [f"Image {i}" for i in range(len(captions))])
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(output_dir, "similarity_matrix.png"))
+
+    logger.info(f"Visualizations saved to {output_dir}")
 
 
-def run_multimodal_demo_with_flickr():
-    """Run the multimodal integration demo with Flickr30k dataset."""
-    # First create models on CPU
-    multimodal_model, image_preprocessor, base_tokenizer = create_multimodal_demo_model(
-        device="cpu"  # Initially create on CPU
+def main():
+    """Main function to run the multimodal training demo."""
+    parser = argparse.ArgumentParser(description="Multimodal Training Demo")
+    parser.add_argument(
+        "--batch_size", type=int, default=32, help="Batch size for training"
     )
-
-    # Always wrap the tokenizer to ensure required methods and attributes
-    class TokenizerWithSpecials:
-        def __init__(self, base_tokenizer):
-            self.base_tokenizer = base_tokenizer
-            self._special_tokens = {
-                "pad_token_idx": 0,
-                "unk_token_idx": 1,
-                "bos_token_idx": 2,
-                "eos_token_idx": 3,
-                "mask_token_idx": 4,
-            }
-
-        def encode(self, text):
-            if hasattr(self.base_tokenizer, "encode"):
-                return self.base_tokenizer.encode(text)
-            return (
-                [self._special_tokens["bos_token_idx"]]
-                + [hash(token) % 50000 for token in text.split()]
-                + [self._special_tokens["eos_token_idx"]]
-            )
-
-        @property
-        def special_tokens(self):
-            return self._special_tokens
-
-    tokenizer = TokenizerWithSpecials(base_tokenizer)
-
-    # Create dataset
-    flickr_dataset = FlickrMultiModalDataset(
-        split="train",  # Use training split by default
-        image_preprocessor=image_preprocessor,
-        tokenizer=tokenizer,  # Now guaranteed to have required methods
-        max_text_length=77,
+    parser.add_argument(
+        "--num_epochs", type=int, default=5, help="Number of epochs to train"
     )
+    parser.add_argument(
+        "--learning_rate", type=float, default=5e-5, help="Learning rate"
+    )
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=1000,
+        help="Max number of samples to use (for quick testing)",
+    )
+    parser.add_argument(
+        "--fusion_type",
+        type=str,
+        default="bidirectional",
+        choices=["simple", "bidirectional", "co_attention"],
+        help="Fusion type",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="outputs",
+        help="Output directory for logs and checkpoints",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
+    parser.add_argument(
+        "--eval_only",
+        action="store_true",
+        help="Only run evaluation on a pretrained model",
+    )
+    parser.add_argument(
+        "--checkpoint", type=str, default=None, help="Load model from checkpoint"
+    )
+    args = parser.parse_args()
 
-    # Determine device after dataset creation
+    # Set random seed
+    torch.manual_seed(args.seed)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+
+    # Set up directories
+    checkpoint_dir = os.path.join(args.output_dir, "checkpoints")
+    log_dir = os.path.join(args.output_dir, "logs")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Set device
     if torch.backends.mps.is_available():
         device = torch.device("mps")
-        # For MPS, we need to disable multiprocessing
-        num_workers = 0
+        logger.info("Using MPS (Apple Silicon) for training")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+        logger.info(f"Using CUDA for training ({torch.cuda.get_device_name(0)})")
     else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        num_workers = 2
-
-    print(f"Using device: {device}")
-
-    # Move model to device after dataset creation
-    multimodal_model = multimodal_model.to(device)
-
-    # Create dataloader with appropriate num_workers
-    batch_size = 16  # Adjust based on your GPU memory
-    dataloader = DataLoader(
-        flickr_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-    )
-
-    # Get a batch of data
-    batch = next(iter(dataloader))
-
-    # Move data to device after loading
-    images = batch["image"].to(device)
-    texts = {
-        "src": batch["text"]["src"].squeeze(1).to(device),
-        "src_mask": batch["text"]["src_mask"].to(device),
-    }
-
-    # Forward pass through the multimodal model
-    with torch.no_grad():
-        results = multimodal_model(images, texts)
-
-    # Get similarity matrix
-    similarity_matrix = results["similarity"]
-
-    # Visualize results
-    captions = batch["raw_text"]
-    visualize_multimodal_results(
-        images=images.cpu(),  # Move back to CPU for visualization
-        captions=captions,
-        similarity_matrix=similarity_matrix.cpu(),  # Move back to CPU for visualization
-        num_samples=min(5, len(captions)),
-    )
-
-    # Calculate matching accuracy
-    max_sim_idx = torch.argmax(similarity_matrix, dim=1)
-    accuracy = (
-        (torch.arange(len(max_sim_idx), device=device) == max_sim_idx)
-        .float()
-        .mean()
-        .item()
-    )
-    print(f"Cross-modal matching accuracy: {accuracy * 100:.2f}%")
-
-    return {
-        "similarity_matrix": similarity_matrix.cpu(),  # Return CPU tensors
-        "accuracy": accuracy,
-        "captions": captions,
-    }
-
-
-def run_multimodal_demo():
-    """Run the multimodal integration demo."""
-    # Set device (prefer MPS for Apple Silicon)
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    print(f"Using device: {device}")
+        device = torch.device("cpu")
+        logger.info("Using CPU for training (this will be slow)")
 
     # Create models
-    multimodal_model, image_preprocessor, tokenizer = create_multimodal_demo_model(
-        device
+    model, image_preprocessor, tokenizer = create_models(
+        device, fusion_type=args.fusion_type
     )
 
-    # Create dataset
-    demo_dataset = MultiModalDemoDataset(
-        image_dir="demo_data/images",
-        captions_file="demo_data/captions.txt",
+    # Create dataloaders
+    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(
         image_preprocessor=image_preprocessor,
         tokenizer=tokenizer,
-        max_text_length=77,
+        batch_size=args.batch_size,
+        max_samples=args.max_samples,
     )
 
-    # Create dataloader
-    demo_loader = DataLoader(
-        demo_dataset,
-        batch_size=5,
-        shuffle=True,
+    # Create loss function
+    contrastive_loss = ContrastiveLoss(temperature=0.07)
+
+    # Create optimizer
+    optimizer = optim.AdamW(
+        model.parameters(),
+        lr=args.learning_rate,
+        weight_decay=0.01,
+        betas=(0.9, 0.999),
     )
 
-    # Get a batch of data
-    batch = next(iter(demo_loader))
+    # Create scheduler with warmup
+    warmup_steps = len(train_dataloader) // 10  # 10% of steps for warmup
+    total_steps = len(train_dataloader) * args.num_epochs
 
-    # Move data to device
-    images = batch["image"].to(device)
-    texts = {
-        "src": batch["text"]["src"].squeeze(1).to(device),
-        "src_mask": batch["text"]["src_mask"].to(device),
-    }
+    def lr_lambda(step):
+        if step < warmup_steps:
+            return float(step) / float(max(1, warmup_steps))
+        return max(
+            0.0,
+            float(total_steps - step) / float(max(1, total_steps - warmup_steps)),
+        )
 
-    # Forward pass through the multimodal model
-    with torch.no_grad():
-        results = multimodal_model(images, texts)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
-    # Get similarity matrix
-    similarity_matrix = results["similarity"]
+    # Create trainer
+    trainer = MultimodalTrainer(
+        model=model,
+        train_dataloader=train_dataloader,
+        val_dataloader=val_dataloader,
+        test_dataloader=test_dataloader,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        loss_fn=contrastive_loss,
+        num_epochs=args.num_epochs,
+        checkpoint_dir=checkpoint_dir,
+        log_dir=log_dir,
+        device=device,
+        mixed_precision=device.type == "cuda",  # Use mixed precision only on CUDA
+        evaluation_steps=len(train_dataloader) // 2,  # Evaluate twice per epoch
+        early_stopping_patience=3,
+    )
+
+    # Load checkpoint if specified
+    if args.checkpoint:
+        trainer.load_checkpoint(args.checkpoint)
+        logger.info(f"Loaded checkpoint from {args.checkpoint}")
+
+    # Train or evaluate
+    if not args.eval_only:
+        logger.info("Starting training...")
+        start_time = time.time()
+        history = trainer.train()
+        train_time = time.time() - start_time
+        logger.info(f"Training completed in {train_time:.2f} seconds")
+
+        # Save plots after training
+        trainer.plot_history(os.path.join(log_dir, "history"))
+
+    # Final evaluation
+    logger.info("Running final evaluation...")
+    test_metrics = trainer.evaluate(test_dataloader)
+    logger.info("Test metrics:")
+    for k, v in test_metrics.items():
+        logger.info(f"  {k}: {v:.4f}")
 
     # Visualize results
-    captions = batch["raw_text"]
-    visualize_multimodal_results(
-        images=images,
-        captions=captions,
-        similarity_matrix=similarity_matrix,
-        num_samples=min(5, len(captions)),
+    logger.info("Visualizing results...")
+    visualize_image_text_matches(
+        model=model,
+        dataset=test_dataloader.dataset,
+        device=device,
+        num_examples=min(5, len(test_dataloader.dataset)),
+        output_dir=args.output_dir,
     )
 
-    # Print some statistics
-    print(f"Cross-modal similarity matrix shape: {similarity_matrix.shape}")
-
-    # Calculate matching accuracy (diagonal elements should be high)
-    diagonal_sim = torch.diag(similarity_matrix)
-    print(f"Self-similarity scores: {diagonal_sim}")
-
-    # Get index of maximum similarity for each image
-    max_sim_idx = torch.argmax(similarity_matrix, dim=1)
-
-    # Calculate accuracy (how many images matched with their corresponding text)
-    accuracy = (
-        (torch.arange(len(max_sim_idx), device=device) == max_sim_idx)
-        .float()
-        .mean()
-        .item()
-    )
-    print(f"Cross-modal matching accuracy: {accuracy * 100:.2f}%")
-
-    return {
-        "similarity_matrix": similarity_matrix,
-        "accuracy": accuracy,
-        "captions": captions,
-    }
+    logger.info("Demo completed successfully!")
 
 
 if __name__ == "__main__":
-    print("Running Multimodal Integration Demo")
-    results = run_multimodal_demo_with_flickr()
-    print("Demo completed!")
+    main()

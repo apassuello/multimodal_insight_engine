@@ -89,3 +89,13 @@ cache/wikipedia/wikipedia_processed_30000/state.json
 cache/wikipedia/wikipedia_processed_500/data-00000-of-00001.arrow
 cache/wikipedia/wikipedia_processed_500/dataset_info.json
 cache/wikipedia/wikipedia_processed_500/state.json
+demos/data/iwslt/de_corpus.txt
+demos/data/iwslt/iwslt2017.de-en.train.de
+demos/data/iwslt/iwslt2017.de-en.train.en
+demos/models/tokenizers/de/config.json
+demos/models/tokenizers/de/merges.json
+demos/models/tokenizers/de/merges.txt
+demos/models/tokenizers/de/vocab.json
+multimodal_outputs/demo_results.json
+multimodal_outputs/test_metrics.json
+multimodal_outputs/logs/history.json

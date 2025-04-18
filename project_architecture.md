@@ -1,7 +1,7 @@
 # MultiModal Insight Engine Architecture
 ## Project Overview
 This document provides an overview of the project structure, key components, and architecture.
-Generated from 61 source files.
+Generated from 78 source files.
 
 ## Directory Structure
 ```
@@ -13,12 +13,15 @@ Generated from 61 source files.
         📄 benchmarking.py
     📁 training/
         📄 metrics.py
+        📄 contrastive_learning.py
         📄 transformer_utils.py
+        📄 vision_transformer_trainer.py
         📄 optimizers.py
         📄 language_model_trainer.py
         📄 transformer_trainer.py
         📄 losses.py
         📄 trainer.py
+        📄 multimodal_trainer.py
         📄 joint_bpe_training.py
     📁 utils/
         📄 logging.py
@@ -30,6 +33,12 @@ Generated from 61 source files.
         📄 attention.py
         📄 activations.py
         📄 feed_forward.py
+        📁 vision/
+            📄 image_preprocessing.py
+            📄 multimodal_integration.py
+            📄 vision_transformer.py
+            📄 cross_modal_attention.py
+            📄 patch_embedding.py
         📄 base_model.py
         📄 embeddings.py
         📄 transformer.py
@@ -58,9 +67,15 @@ Generated from 61 source files.
         📄 translation_metrics.py
         📄 language_model_evaluation.py
     📁 data/
+        📄 wmt_dataset.py
+        📄 curriculum_dataset.py
+        📄 image_dataset.py
         📄 wmt_dataloader.py
+        📄 combined_dataset.py
+        📄 iwslt_dataset.py
         📄 language_modeling.py
         📄 europarl_dataset.py
+        📄 combined_wmt_translation_dataset.py
         📄 combined_translation_dataset.py
         📁 tokenization/
             📄 wmt_bpe_tokenizer.py
@@ -73,33 +88,45 @@ Generated from 61 source files.
             📄 vocabulary.py
             📄 turbo_bpe_preprocessor.py
             📄 simple_tokenizer.py
+        📄 multimodal_dataset.py
         📄 preprocessing.py
         📄 sequence_data.py
         📄 opensubtitles_dataset.py
         📄 dataloader.py
+        📄 dataset_wrapper.py
+        📄 wikipedia_dataset.py
 ```
 
 ## Module Summary
 | Module | Purpose | Complexity |
 |--------|---------|------------|
+| `src/data/combined_dataset.py` | No metadata function available | N/A |
 | `src/data/combined_translation_dataset.py` | Implements dataset class for combining multiple translation datasets with configurable sampling | 2 |
+| `src/data/combined_wmt_translation_dataset.py` | No metadata function available | N/A |
+| `src/data/curriculum_dataset.py` | Implements curriculum learning for translation datasets, gradually increasing difficulty during t... | 7 |
 | `src/data/dataloader.py` | Provides utilities for handling multimodal data with PyTorch DataLoader | 3 |
+| `src/data/dataset_wrapper.py` | Provides dataset wrappers to standardize interfaces for different dataset types | 3 |
 | `src/data/europarl_dataset.py` | Provides a dataset class for loading and preprocessing Europarl parallel corpus data | 4 |
+| `src/data/image_dataset.py` | Provides dataset functionality for loading and preprocessing image data for vision transformer mo... | 4 |
+| `src/data/iwslt_dataset.py` | Provides a dataset class for loading and preprocessing IWSLT dataset for machine translation | 5 |
 | `src/data/language_modeling.py` | Implements dataset and dataloaders for language modeling tasks with efficient tokenization and ba... | 5 |
-| `src/data/opensubtitles_dataset.py` | No metadata function available | N/A |
+| `src/data/multimodal_dataset.py` | No metadata function available | N/A |
+| `src/data/opensubtitles_dataset.py` | Provides a dataset class for loading and preprocessing OpenSubtitles parallel corpus data for mac... | 4 |
 | `src/data/preprocessing.py` | Provides data preprocessing utilities for time series data and machine learning datasets | 4 |
 | `src/data/sequence_data.py` | Provides dataset and dataloader utilities for transformer sequence-to-sequence tasks | 6 |
 | `src/data/tokenization/base_tokenizer.py` | Defines the abstract base class for all tokenizers in the system with standard interface | 2 |
 | `src/data/tokenization/bpe_tokenizer.py` | Implements Byte Pair Encoding tokenizer for subword tokenization with merge operations | 7 |
 | `src/data/tokenization/optimized_bpe_tokenizer.py` | Implements an optimized Byte Pair Encoding tokenizer with smart caching and batch processing | 9 |
-| `src/data/tokenization/preprocessing.py` | No metadata function available | N/A |
+| `src/data/tokenization/preprocessing.py` | Provides text preprocessing utilities for tokenization including Unicode normalization and text c... | 3 |
 | `src/data/tokenization/simple_tokenizer.py` | No metadata function available | N/A |
 | `src/data/tokenization/turbo_bpe_preprocessor.py` | No metadata function available | N/A |
 | `src/data/tokenization/utils.py` | No metadata function available | N/A |
 | `src/data/tokenization/vocabulary.py` | Implements a flexible vocabulary system for mapping between tokens and indices with special token... | 6 |
 | `src/data/tokenization/wmt_bpe_tokenizer.py` | No metadata function available | N/A |
 | `src/data/tokenization/work_tokenizer.py` | No metadata function available | N/A |
+| `src/data/wikipedia_dataset.py` | Provides a dataset class for loading and preprocessing Wikipedia Web2M data from TFRecord format | 5 |
 | `src/data/wmt_dataloader.py` | Provides a data loader for WMT (Workshop on Machine Translation) parallel corpus | 3 |
+| `src/data/wmt_dataset.py` | Provides a dataset class for loading and preprocessing WMT dataset for machine translation | 4 |
 | `src/evaluation/language_model_evaluation.py` | Provides comprehensive evaluation utilities for language models, including perplexity calculation... | 7 |
 | `src/evaluation/translation_metrics.py` | Implements standard evaluation metrics for machine translation tasks including BLEU and TER scoring | 3 |
 | `src/models/activations.py` | Implements various activation functions used in the transformer architecture | 1 |
@@ -116,6 +143,11 @@ Generated from 61 source files.
 | `src/models/pretrained/vision_transformer.py` | Provides a wrapper for Hugging Face Vision Transformer models with standardized interface | 3 |
 | `src/models/text_generation.py` | Provides utilities for text generation using language models | 7 |
 | `src/models/transformer.py` | Implements transformer models for sequence processing tasks | 9 |
+| `src/models/vision/cross_modal_attention.py` | No metadata function available | N/A |
+| `src/models/vision/image_preprocessing.py` | Provides utilities for preprocessing images for vision transformer models | 6 |
+| `src/models/vision/multimodal_integration.py` | Implements models for combining vision and text modalities in a unified architecture | 7 |
+| `src/models/vision/patch_embedding.py` | Implements patch embedding for Vision Transformer (ViT) models | 5 |
+| `src/models/vision/vision_transformer.py` | Implements Vision Transformer (ViT) architecture for image classification tasks | 8 |
 | `src/optimization/benchmarking.py` | Provides a framework for measuring and comparing model optimization techniques. | 6 |
 | `src/optimization/mixed_precision.py` | Converts models to use mixed precision formats for training and inference. | 5 |
 | `src/optimization/pruning.py` | Implements various pruning techniques for neural networks. | 7 |
@@ -130,14 +162,17 @@ Generated from 61 source files.
 | `src/safety/red_teaming/model_loader.py` | No metadata function available | N/A |
 | `src/safety/red_teaming/prompt_injection.py` | No metadata function available | N/A |
 | `src/safety/utils.py` | Provides utility functions and constants for safety evaluation, including pattern matching, scori... | 9 |
+| `src/training/contrastive_learning.py` | No metadata function available | N/A |
 | `src/training/joint_bpe_training.py` | Implements joint BPE tokenizer training for multilingual text processing in machine translation t... | 3 |
 | `src/training/language_model_trainer.py` | Implements a specialized trainer for language modeling tasks with support for causal language mod... | 8 |
 | `src/training/losses.py` | Implements custom loss functions for model training with support for label smoothing and weighted... | 4 |
 | `src/training/metrics.py` | Implements common training metrics for model evaluation with support for various tasks | 7 |
+| `src/training/multimodal_trainer.py` | No metadata function available | N/A |
 | `src/training/optimizers.py` | Implements custom optimizers and learning rate schedulers for model training | 8 |
 | `src/training/trainer.py` | Provides a generic, flexible training loop for PyTorch models with support for callbacks and earl... | 6 |
 | `src/training/transformer_trainer.py` | Implements a specialized trainer for transformer models with support for encoder-decoder architec... | 8 |
 | `src/training/transformer_utils.py` | Provides utility functions and classes for transformer model training, including attention maskin... | 6 |
+| `src/training/vision_transformer_trainer.py` | Provides a specialized trainer for Vision Transformer models with advanced training techniques | 8 |
 | `src/utils/config.py` | Provides configuration management utilities with file loading and environment support | 3 |
 | `src/utils/list_models.py` | Provides utilities for listing and retrieving information about available models | 4 |
 | `src/utils/logging.py` | Provides custom logging functionality with configurable file and console output | 4 |
@@ -155,13 +190,13 @@ src/safety/harness.py                            | █████████�
 src/safety/utils.py                              | ██████████████████████████████ (9)
 src/data/tokenization/optimized_bpe_tokenizer.py | ██████████████████████████████ (9)
 src/optimization/quantization.py                 | ██████████████████████████ (8)
+src/training/vision_transformer_trainer.py       | ██████████████████████████ (8)
 src/training/optimizers.py                       | ██████████████████████████ (8)
 src/training/language_model_trainer.py           | ██████████████████████████ (8)
 src/training/transformer_trainer.py              | ██████████████████████████ (8)
-src/models/attention.py                          | ██████████████████████████ (8)
 ```
 
-**Average Module Complexity:** 5.60
+**Average Module Complexity:** 5.54
 
 ## Dependencies
 **External Dependencies:**
@@ -170,31 +205,42 @@ src/models/attention.py                          | █████████�
 
 |---------|-------------|
 
-| torch | 34 |
-| numpy | 15 |
-| json | 7 |
-| matplotlib | 7 |
-| tqdm | 6 |
+| torch | 43 |
+| numpy | 19 |
+| json | 8 |
+| matplotlib | 8 |
+| tqdm | 8 |
 | logging | 5 |
 | typing | 4 |
+| re | 4 |
 | random | 4 |
 | os | 3 |
 | seaborn | 3 |
-| re | 3 |
 | nltk | 2 |
 | sklearn | 2 |
 | psutil | 2 |
+| PIL | 2 |
+| datasets | 2 |
 | collections.Counter | 2 |
 | time | 1 |
 | src.data.tokenization | 1 |
 | argparse | 1 |
 | huggingface_hub | 1 |
 | pandas | 1 |
+| torchvision | 1 |
+| math | 1 |
 | transformers | 1 |
 | open_clip | 1 |
 | datetime | 1 |
+| collections | 1 |
+| pathlib | 1 |
+| torch.utils.data | 1 |
+| tensorflow | 1 |
 | threading | 1 |
 | abc | 1 |
+| unicodedata | 1 |
+| html | 1 |
+| multiprocessing.Pool | 1 |
 
 ## Key Components
 ### MixedPrecisionConverter (`optimization/mixed_precision.py`)
@@ -404,6 +450,27 @@ Implements label smoothing loss for improved model generalization
 - `forward`: Computes smoothed loss with proper handling of padding tokens
 
 
+### VisionTransformerTrainer (`training/vision_transformer_trainer.py`)
+Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `VisionTransformer`
+- `matplotlib`
+- `numpy`
+- `tqdm`
+
+**Key Methods:**
+- `train_epoch`: Train the model for one epoch with mixup/cutmix augmentation support
+- `validate`: Validate the model on validation dataset
+- `train`: Train the model for specified number of epochs with early stopping
+- `save_checkpoint`: Save a checkpoint of the model and training state
+- `load_checkpoint`: Load a checkpoint of the model and training state
+- `_mixup_data`: Perform mixup data augmentation
+- `_cutmix_data`: Perform cutmix data augmentation
+
+
 ### AdamW (`training/optimizers.py`)
 AdamW optimizer with improved weight decay handling and gradient clipping
 
@@ -458,6 +525,8 @@ Main trainer class for language model training with comprehensive training and e
 **Key Methods:**
 - `train`: Main training loop with support for validation and checkpointing
 - `evaluate`: Evaluates the model on validation data and returns loss and perplexity
+- `save_model`: Saves the model and training state to disk
+- `load_model`: Loads a saved model and training state from disk
 - `plot_training_curves`: Visualizes training metrics including loss, perplexity, and learning rate
 
 
@@ -476,6 +545,12 @@ Main trainer class for transformer model training with comprehensive training an
 - `train`: Main training loop with support for validation and early stopping
 - `train_epoch`: Trains the model for a single epoch with progress tracking
 - `validate`: Evaluates the model on validation data and returns loss metrics
+- `get_lr_scheduler`: Creates learning rate scheduler with warmup and decay strategies
+- `save_checkpoint`: Saves model checkpoint with training state
+- `load_checkpoint`: Loads model checkpoint and training state
+- `plot_learning_rate`: Visualizes the learning rate schedule
+- `plot_training_history`: Visualizes training and validation metrics over time
+- `plot_epoch_metrics`: Visualizes detailed metrics for a specific epoch
 
 
 ### CrossEntropyLoss (`training/losses.py`)
@@ -549,9 +624,12 @@ Utility for profiling PyTorch models with execution time, memory usage, and laye
 - `__init__`: Initialize the profiler with a model and target device
 - `measure_execution_time`: Measure the execution time of a forward pass
 - `measure_memory_usage`: Measure the memory usage during a forward pass
+- `generate_report`: Generate a comprehensive profiling report with all metrics
+- `plot_metrics`: Create visualization plots for performance metrics
 - `profile_with_pytorch_profiler`: Profile the model using PyTorch's built-in profiler
 - `trace_memory_by_layer`: Trace memory usage by layer in the model
 - `benchmark_model`: Benchmark the model across different batch sizes and sequence lengths
+- `monitor_hardware_utilization`: Monitor CPU, GPU, and memory utilization during model execution
 
 
 ### ModelBenchmarkSuite (`utils/profiling.py`)
@@ -754,6 +832,37 @@ Implements the encoder part of the transformer with multiple layers and position
 - `forward`: Forward pass through the encoder with token embeddings and positional encoding
 
 
+### TransformerDecoderLayer (`models/transformer.py`)
+Implements a single transformer decoder layer with self-attention, cross-attention, and feed-forward networks
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `.attention`
+- `.layers`
+- `.positional`
+
+**Key Methods:**
+- `forward`: Forward pass through the decoder layer with self-attention, cross-attention and feed-forward
+
+
+### TransformerDecoder (`models/transformer.py`)
+Implements the decoder part of the transformer with multiple layers and positional encoding
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `.embeddings`
+- `.positional`
+
+**Key Methods:**
+- `forward`: Forward pass through the decoder with token embeddings, positional encoding and encoder memory
+
+
 ### Transformer (`models/transformer.py`)
 Implements a complete transformer model with encoder-only architecture
 
@@ -781,7 +890,12 @@ Implements the full transformer architecture with both encoder and decoder
 
 **Key Methods:**
 - `forward`: Forward pass through the encoder-decoder transformer
+- `encode`: Encode source sequence
+- `decode`: Decode target sequence given encoder memory
 - `generate`: Generate output sequences using the trained model
+- `generate_square_subsequent_mask`: Generate a square mask for preventing attending to future tokens
+- `clone`: Create a deep copy of the transformer model
+- `configure_optimizers`: Configure optimizer and learning rate scheduler for training
 
 
 ### TextGenerator (`models/text_generation.py`)
@@ -860,6 +974,121 @@ Implements Rotary Position Embedding (RoPE) for enhanced relative position handl
 - `__init__`: Initializes rotary embeddings with given dimensions
 - `forward`: Applies rotary position encoding to query and key tensors
 - `visualize_rotation`: Visualizes the rotation effects on different sequence positions
+
+
+### ImagePreprocessor (`models/vision/image_preprocessing.py`)
+Handles image resizing, normalization, and conversion to tensor format for vision models
+
+**Dependencies:**
+- `torchvision.transforms`
+- `PIL.Image`
+- `numpy`
+- `torch.nn.functional`
+
+**Key Methods:**
+- `preprocess`: Processes a single image from various input formats to a standardized tensor
+- `batch_preprocess`: Processes multiple images into a batch tensor
+
+
+### PatchExtractor (`models/vision/image_preprocessing.py`)
+Efficiently extracts fixed-size patches from image tensors using unfold operations
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Extracts patches from a batch of images and returns patch dimensions
+
+
+### MultiModalTransformer (`models/vision/multimodal_integration.py`)
+Combines vision and text transformer models with projection layers to a common embedding space
+
+**Inherits from:** `BaseModel`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `..base_model`
+- `..transformer`
+- `.vision_transformer`
+
+**Key Methods:**
+- `encode_image`: Projects image features to multimodal embedding space
+- `encode_text`: Projects text features to multimodal embedding space
+- `forward`: Processes image and/or text inputs and computes similarity if both are provided
+
+
+### PatchEmbed (`models/vision/vision_transformer.py`)
+Converts images into sequences of patch embeddings using efficient convolution
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Projects image to patch embeddings
+
+
+### Attention (`models/vision/vision_transformer.py`)
+Implements multi-head self-attention mechanism with combined QKV projection
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Performs multi-head attention operation
+
+
+### Block (`models/vision/vision_transformer.py`)
+Transformer block with attention, MLP, and residual connections
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Processes input through attention and MLP layers with residual connections
+
+
+### VisionTransformer (`models/vision/vision_transformer.py`)
+Complete Vision Transformer model for image classification
+
+**Inherits from:** `BaseModel`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `..base_model`
+
+**Key Methods:**
+- `forward`: Forward pass through the model to get class logits and optionally features
+- `forward_features`: Forward pass to extract features before classification head
+- `extract_features`: Convenience method to extract features for external use
+- `configure_optimizers`: Creates optimizer with weight decay excluded from bias and norm parameters
+
+
+### PatchEmbedding (`models/vision/patch_embedding.py`)
+Extracts image patches and projects them to an embedding space with positional information
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Transforms images into sequences of embedded patches with positional information
 
 
 ### VisionTransformerWrapper (`models/pretrained/vision_transformer.py`)
@@ -955,6 +1184,7 @@ Main class for safety testing and evaluation of models against benchmark test ca
 
 **Key Methods:**
 - `create_test_suite`: Creates a basic test suite with examples for each safety category
+- `load_test_cases`: Loads test cases from disk, optionally filtered by category
 - `evaluate_model`: Evaluates a model against safety test cases and tracks performance metrics
 - `generate_report`: Generates detailed safety evaluation reports with performance metrics
 
@@ -1065,9 +1295,57 @@ Evaluation class for language models with metrics and visualization capabilities
 
 **Key Methods:**
 - `calculate_perplexity`: Calculates perplexity score for a given text under the model
+- `calculate_batch_perplexity`: Calculate perplexity for a batch of texts with optimized processing
 - `visualize_attention`: Visualizes attention patterns for a given text at specified layer and head
+- `visualize_attention_patterns`: Visualizes attention patterns across all layers and heads
 - `analyze_token_probabilities`: Analyzes token probabilities in a text to identify high and low confidence predictions
 - `evaluate_on_dataset`: Evaluates model performance on a dataset of texts
+- `plot_perplexity_distribution`: Plot the distribution of perplexities as a histogram with statistics
+
+
+### WMTDataset (`data/wmt_dataset.py`)
+Handles loading and preprocessing parallel text data from the WMT dataset
+
+**Dependencies:**
+- `os`
+- `random`
+- `tqdm`
+
+**Key Methods:**
+- `__init__`: Initialize the dataset with source/target languages and processing options
+- `load_data`: Load and preprocess parallel corpora from WMT dataset
+
+
+### CurriculumTranslationDataset (`data/curriculum_dataset.py`)
+Dataset that implements curriculum learning strategies for translation tasks
+
+**Inherits from:** `Dataset`
+
+**Dependencies:**
+- `torch.utils.data.Dataset`
+- `numpy`
+- `collections.Counter`
+
+**Key Methods:**
+- `_calculate_difficulties`: Calculate difficulty scores for all examples based on selected strategy
+- `update_stage`: Update the curriculum stage to expose more complex examples
+- `__getitem__`: Get an item from the dataset based on curriculum stage
+- `get_curriculum_stats`: Get statistics about the current curriculum stage
+
+
+### ImageDataset (`data/image_dataset.py`)
+Dataset for loading and preprocessing images for vision transformer models
+
+**Inherits from:** `Dataset`
+
+**Dependencies:**
+- `torch.utils.data.Dataset`
+- `PIL.Image`
+- `ImagePreprocessor`
+
+**Key Methods:**
+- `_get_class_idx`: Get class index from class name using mapping or dynamic creation
+- `__getitem__`: Load, preprocess and return an image with its label and path
 
 
 ### WMTDataLoader (`data/wmt_dataloader.py`)
@@ -1081,6 +1359,23 @@ Loads and preprocesses WMT parallel corpus data with batching capability
 - `__init__`: Initialize the WMT data loader with configurable batch size and filtering
 - `load_data`: Load and preprocess parallel data
 - `__iter__`: Yield batches of source and target sentences
+
+
+### IWSLTDataset (`data/iwslt_dataset.py`)
+Handles loading and preprocessing parallel text data from the IWSLT dataset
+
+**Dependencies:**
+- `os`
+- `random`
+- `requests`
+- `tqdm`
+- `tarfile`
+- `io`
+
+**Key Methods:**
+- `__init__`: Initialize the dataset with source/target languages and processing options
+- `download_data`: Download and prepare the IWSLT dataset for a specific year with fallback to synthetic data generation
+- `load_data`: Load and preprocess parallel corpora, combining data from multiple years if needed
 
 
 ### LanguageModelingDataset (`data/language_modeling.py`)
@@ -1168,6 +1463,23 @@ Complete data module for handling loading, preprocessing, and batching transform
 - `_setup`: Set up datasets and dataloaders with train/validation splits
 - `get_train_dataloader`: Get the training dataloader
 - `get_val_dataloader`: Get the validation dataloader
+- `_collate_fn`: Collate function to create batches with padding
+- `update_curriculum_stage`: Update curriculum stage based on epoch
+- `get_curriculum_stats`: Get statistics about the current curriculum stage
+- `estimate_steps_per_epoch`: Estimate the number of steps per epoch
+
+
+### OpenSubtitlesDataset (`data/opensubtitles_dataset.py`)
+Handles loading and preprocessing parallel text data from the OpenSubtitles corpus
+
+**Dependencies:**
+- `os`
+- `random`
+- `typing`
+
+**Key Methods:**
+- `__init__`: Initialize the dataset with source/target languages and processing options
+- `load_data`: Load and preprocess parallel corpora with support for multiple file patterns
 
 
 ### MultimodalDataset (`data/dataloader.py`)
@@ -1181,6 +1493,33 @@ Dataset class for handling multiple modalities of data with consistent length va
 **Key Methods:**
 - `__getitem__`: Get an item from each modality at the specified index
 - `__len__`: Return the length of the dataset
+
+
+### DictionaryDataset (`data/dataset_wrapper.py`)
+Wrapper for datasets that return tuples, converting them to dictionaries for a standardized interface
+
+**Inherits from:** `Dataset`
+
+**Dependencies:**
+- `torch.utils.data.Dataset`
+
+**Key Methods:**
+- `__getitem__`: Get a sample from the dataset as a dictionary with standardized keys
+
+
+### WikipediaDataset (`data/wikipedia_dataset.py`)
+Handles loading and preprocessing multimodal (image-text) data from WikiWeb2M TFRecords
+
+**Dependencies:**
+- `tensorflow`
+- `torch`
+- `numpy`
+- `tqdm`
+
+**Key Methods:**
+- `__init__`: Initialize the dataset with data split and processing options
+- `load_data`: Load and preprocess data from TFRecord files with caching capability
+- `to_pytorch_dataset`: Convert to a PyTorch dataset compatible with MultimodalDataset
 
 
 ### LRUCache (`data/tokenization/optimized_bpe_tokenizer.py`)
@@ -1242,12 +1581,17 @@ Tokenizer that implements Byte Pair Encoding algorithm for subword tokenization
 - `.preprocessing`
 
 **Key Methods:**
+- `preprocess`: Preprocess text before tokenization
 - `train`: Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs
+- `_tokenize_word`: Tokenize a single word using BPE merge operations
 - `tokenize`: Convert text into subword tokens based on learned merge operations
 - `encode`: Convert text to token indices using the vocabulary
+- `batch_encode`: Encode a batch of texts into token indices
 - `decode`: Convert token indices back to text
 - `save_pretrained`: Save tokenizer configuration, vocabulary and merges to disk
 - `from_pretrained`: Load a tokenizer from a saved directory
+- `vocab_size`: Get the size of the tokenizer vocabulary (property)
+- `special_tokens`: Get the special token IDs (property)
 
 
 ### Vocabulary (`data/tokenization/vocabulary.py`)
@@ -1271,10 +1615,10 @@ Manages token-to-index and index-to-token mappings with special token handling
 
 
 ## Statistics
-- Total Python modules: 61
-- Modules with metadata: 52
-- Modules without metadata: 9
-- External dependencies: 25
+- Total Python modules: 78
+- Modules with metadata: 65
+- Modules without metadata: 13
+- External dependencies: 36
 
 ---
 Generated automatically from source code metadata

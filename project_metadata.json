@@ -40,6 +40,11 @@
             "path": "src/training/metrics.py"
           },
           {
+            "name": "contrastive_learning.py",
+            "type": "file",
+            "path": "src/training/contrastive_learning.py"
+          },
+          {
             "name": "transformer_utils.py",
             "type": "file",
             "path": "src/training/transformer_utils.py"
@@ -73,6 +78,11 @@
             "name": "trainer.py",
             "type": "file",
             "path": "src/training/trainer.py"
+          },
+          {
+            "name": "multimodal_trainer.py",
+            "type": "file",
+            "path": "src/training/multimodal_trainer.py"
           },
           {
             "name": "joint_bpe_training.py",
@@ -149,6 +159,11 @@
                 "name": "vision_transformer.py",
                 "type": "file",
                 "path": "src/models/vision/vision_transformer.py"
+              },
+              {
+                "name": "cross_modal_attention.py",
+                "type": "file",
+                "path": "src/models/vision/cross_modal_attention.py"
               },
               {
                 "name": "patch_embedding.py",
@@ -407,6 +422,11 @@
                 "path": "src/data/tokenization/simple_tokenizer.py"
               }
             ]
+          },
+          {
+            "name": "multimodal_dataset.py",
+            "type": "file",
+            "path": "src/data/multimodal_dataset.py"
           },
           {
             "name": "preprocessing.py",
@@ -857,6 +877,12 @@
       "module_path": "src/training/metrics.py"
     },
     {
+      "filename": "contrastive_learning.py",
+      "module_path": "src/training/contrastive_learning.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "transformer_utils.py",
       "module_purpose": "Provides utility functions and classes for transformer model training, including attention masking and label smoothing",
       "key_classes": [
@@ -1219,6 +1245,12 @@
       ],
       "complexity_score": 6,
       "module_path": "src/training/trainer.py"
+    },
+    {
+      "filename": "multimodal_trainer.py",
+      "module_path": "src/training/multimodal_trainer.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "joint_bpe_training.py",
@@ -2281,6 +2313,12 @@
       "module_path": "src/models/vision/vision_transformer.py"
     },
     {
+      "filename": "cross_modal_attention.py",
+      "module_path": "src/models/vision/cross_modal_attention.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "patch_embedding.py",
       "module_purpose": "Implements patch embedding for Vision Transformer (ViT) models",
       "key_classes": [
@@ -3270,6 +3308,12 @@
       "module_path": "src/data/combined_translation_dataset.py"
     },
     {
+      "filename": "multimodal_dataset.py",
+      "module_path": "src/data/multimodal_dataset.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "preprocessing.py",
       "module_purpose": "Provides data preprocessing utilities for time series data and machine learning datasets",
       "key_classes": [
@@ -3943,9 +3987,9 @@
     }
   ],
   "summary": {
-    "total_modules": 74,
+    "total_modules": 78,
     "modules_with_metadata": 65,
-    "modules_without_metadata": 9
+    "modules_without_metadata": 13
   },
   "complexity_summary": {
     "average_complexity": 5.538461538461538,
