@@ -282,21 +282,41 @@ class EnhancedMultiModalTransformer(BaseModel):
         # 1. Extract patch embeddings
         x = self.vision_model.patch_embed(images)
 
-        # 2. Add class token if the model uses it
-        if self.vision_model.pool == "cls" and hasattr(self.vision_model, "cls_token"):
+        # Important: Check the shape of positional embeddings to determine if we need a class token
+        expected_seq_len = self.vision_model.pos_embed.shape[1]
+
+        # 2. Add class token if needed (ensuring compatibility with pos_embed shape)
+        if hasattr(self.vision_model, "cls_token"):
             cls_tokens = self.vision_model.cls_token.expand(B, -1, -1)
             x = torch.cat((cls_tokens, x), dim=1)
+        elif expected_seq_len > x.shape[1]:
+            # If we don't have cls_token but pos_embed expects one more token
+            # Create a learnable cls token on the fly
+            cls_dim = x.shape[-1]
+            cls_tokens = torch.zeros(B, 1, cls_dim, device=x.device)
+            x = torch.cat((cls_tokens, x), dim=1)
+
+        # Check that shapes match before adding positional embeddings
+        if x.shape[1] != expected_seq_len:
+            raise ValueError(
+                f"Sequence length mismatch: features shape={x.shape}, "
+                f"positional embeddings expect length {expected_seq_len}"
+            )
 
         # 3. Add positional embeddings
         x = x + self.vision_model.pos_embed
-        x = self.vision_model.pos_drop(x)
+
+        # Apply dropout if available
+        if hasattr(self.vision_model, "pos_drop"):
+            x = self.vision_model.pos_drop(x)
 
         # 4. Pass through transformer blocks
         for blk in self.vision_model.blocks:
             x = blk(x)
 
         # 5. Apply final normalization
-        x = self.vision_model.norm(x)
+        if hasattr(self.vision_model, "norm"):
+            x = self.vision_model.norm(x)
 
         return x
 
@@ -310,11 +330,30 @@ class EnhancedMultiModalTransformer(BaseModel):
         Returns:
             Text features [batch_size, seq_length, text_dim]
         """
-        # Removed torch.no_grad() to allow gradient flow through the text model
-        # Use the encoder part of the text model to get sequence representations
-        text_features = self.text_model.encode(
-            text_data["src"], src_mask=text_data.get("src_mask", None)
-        )
+        # MPS compatibility fix - move src tensor to CPU if necessary
+        device = text_data["src"].device
+
+        try:
+            # Try direct encoding
+            text_features = self.text_model.encode(
+                text_data["src"], src_mask=text_data.get("src_mask", None)
+            )
+        except RuntimeError as e:
+            if "MPS" in str(e) or "Placeholder storage" in str(e):
+                # MPS workaround - process on CPU then move back to original device
+                cpu_src = text_data["src"].cpu()
+                cpu_mask = text_data.get("src_mask", None)
+                if cpu_mask is not None:
+                    cpu_mask = cpu_mask.cpu()
+
+                # Process on CPU
+                text_features = self.text_model.encode(cpu_src, src_mask=cpu_mask)
+
+                # Move back to original device
+                text_features = text_features.to(device)
+            else:
+                # Re-raise if it's not an MPS-related error
+                raise
 
         return text_features
 

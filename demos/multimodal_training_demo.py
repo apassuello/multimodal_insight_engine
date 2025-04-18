@@ -93,6 +93,12 @@ def parse_args():
         choices=["flickr30k", "custom", "synthetic"],
         help="Dataset to use",
     )
+
+    parser.add_argument(
+        "--use_multistage_training",
+        action="store_true",
+        help="Use multi-stage training approach for better performance",
+    )
     parser.add_argument(
         "--data_dir", type=str, default="data", help="Directory containing dataset"
     )
@@ -339,19 +345,45 @@ def print_model_summary(model, title="MODEL SUMMARY"):
 
 def create_multimodal_model(args, device):
     """
-    Create vision transformer, text transformer, and multimodal model.
-
-    Args:
-        args: Command line arguments
-        device: Device to place models on
-
-    Returns:
-        Multimodal model
+    Create vision transformer, text transformer, and multimodal model
+    with pretrained foundation models.
     """
-    logger.info("Creating multimodal model...")
+    logger.info("Creating multimodal model with pretrained components...")
 
-    # Create vision transformer
-    if args.vision_model == "vit-base":
+    # Create vision transformer with pretrained weights
+    try:
+        import timm
+
+        logger.info(f"Loading pretrained vision model: {args.vision_model}")
+        if args.vision_model == "vit-base":
+            vision_model = timm.create_model("vit_base_patch16_224", pretrained=True)
+            # Remove classification head
+            vision_model.head = nn.Identity()
+            vision_dim = 768
+        elif args.vision_model == "vit-small":
+            vision_model = timm.create_model("vit_small_patch16_224", pretrained=True)
+            vision_model.head = nn.Identity()
+            vision_dim = 384
+        else:
+            logger.warning(f"Using standard vision transformer: {args.vision_model}")
+            # Fallback to standard implementation
+            vision_config = {
+                "image_size": 224,
+                "patch_size": 16,
+                "in_channels": 3,
+                "num_classes": 1000,
+                "embed_dim": 768,
+                "depth": 12,
+                "num_heads": 12,
+                "mlp_ratio": 4.0,
+                "dropout": 0.1,
+            }
+            vision_model = VisionTransformer(**vision_config)
+            vision_dim = vision_config["embed_dim"]
+
+    except ImportError:
+        logger.warning("timm library not found, using standard vision transformer")
+        # Fallback to standard implementation
         vision_config = {
             "image_size": 224,
             "patch_size": 16,
@@ -363,67 +395,87 @@ def create_multimodal_model(args, device):
             "mlp_ratio": 4.0,
             "dropout": 0.1,
         }
-    elif args.vision_model == "vit-small":
-        vision_config = {
-            "image_size": 224,
-            "patch_size": 16,
-            "in_channels": 3,
-            "num_classes": 1000,
-            "embed_dim": 512,
-            "depth": 6,
+        vision_model = VisionTransformer(**vision_config)
+        vision_dim = vision_config["embed_dim"]
+
+    # Create text transformer with pretrained weights
+    try:
+        from transformers import AutoModel, AutoTokenizer
+
+        logger.info(f"Loading pretrained text model: {args.text_model}")
+
+        if args.text_model == "transformer-base":
+            # Try to use pretrained BERT-base
+            pretrained_text_model = AutoModel.from_pretrained("bert-base-uncased")
+            text_dim = 768
+
+            # Create a wrapper to adapt the interface
+            class TextModelWrapper(nn.Module):
+                def __init__(self, bert_model):
+                    super().__init__()
+                    self.bert = bert_model
+                    self.d_model = 768  # BERT base hidden size
+
+                def encode(self, src, src_mask=None):
+                    # Adapt BERT to match the interface expected by EnhancedMultiModalTransformer
+                    attention_mask = (
+                        src_mask.squeeze(1).squeeze(1) if src_mask is not None else None
+                    )
+                    outputs = self.bert(input_ids=src, attention_mask=attention_mask)
+                    return outputs.last_hidden_state
+
+                def forward(self, src, tgt=None, src_mask=None, tgt_mask=None):
+                    # Simple forward that calls encode
+                    return self.encode(src, src_mask)
+
+            text_model = TextModelWrapper(pretrained_text_model)
+
+        else:
+            logger.warning(f"Using standard text transformer: {args.text_model}")
+            # Fallback to standard implementation
+            text_config = {
+                "src_vocab_size": 50000,
+                "tgt_vocab_size": 50000,
+                "d_model": 384,
+                "num_heads": 8,
+                "num_encoder_layers": 6,
+                "num_decoder_layers": 6,
+                "d_ff": 2048,
+                "dropout": 0.1,
+            }
+            text_model = EncoderDecoderTransformer(**text_config)
+            text_dim = text_config["d_model"]
+
+    except ImportError:
+        logger.warning(
+            "transformers library not found, using standard text transformer"
+        )
+        # Fallback to standard implementation
+        text_config = {
+            "src_vocab_size": 50000,
+            "tgt_vocab_size": 50000,
+            "d_model": 768,
             "num_heads": 8,
-            "mlp_ratio": 4.0,
+            "num_encoder_layers": 6,
+            "num_decoder_layers": 6,
+            "d_ff": 2048,
             "dropout": 0.1,
         }
-    else:
-        raise ValueError(f"Unsupported vision model: {args.vision_model}")
+        text_model = EncoderDecoderTransformer(**text_config)
+        text_dim = text_config["d_model"]
 
-    logger.info(f"Creating vision transformer: {args.vision_model}")
-    vision_model = VisionTransformer(**vision_config)
+    # Log parameter counts
     vision_params = count_parameters(vision_model)
-    logger.info(f"Vision transformer parameters: {vision_params:,}")
-
-    # Create text transformer
-    if args.text_model == "transformer-base":
-        text_config = {
-            "src_vocab_size": 50000,
-            "tgt_vocab_size": 50000,
-            "d_model": 768,  # Match vision_model's embed_dim (768 for ViT-base)
-            "num_heads": 8,
-            "num_encoder_layers": 6,
-            "num_decoder_layers": 6,
-            "d_ff": 2048,
-            "dropout": 0.1,
-        }
-    elif args.text_model == "transformer-small":
-        text_config = {
-            "src_vocab_size": 50000,
-            "tgt_vocab_size": 50000,
-            "d_model": 512,  # Match vision_model's embed_dim (512 for ViT-small)
-            "num_heads": 8,
-            "num_encoder_layers": 6,
-            "num_decoder_layers": 6,
-            "d_ff": 2048,
-            "dropout": 0.1,
-        }
-    else:
-        raise ValueError(f"Unsupported text model: {args.text_model}")
-
-    logger.info(f"Creating text transformer: {args.text_model}")
-    text_model = EncoderDecoderTransformer(**text_config)
     text_params = count_parameters(text_model)
+    logger.info(f"Vision transformer parameters: {vision_params:,}")
     logger.info(f"Text transformer parameters: {text_params:,}")
 
-    # Create multimodal model
+    # Create multimodal model with custom initialization
     logger.info(
         f"Creating enhanced multimodal transformer with {args.fusion_type} fusion"
     )
 
-    # Ensure consistent dimensions between vision and text models
-    vision_dim = vision_model.embed_dim  # typically 768 for ViT-base
-    text_dim = text_model.d_model  # typically 512 for transformer-base
-
-    # Use the same fusion dimension for consistency
+    # Use the real dimensions from the models
     fusion_dim = args.fusion_dim
 
     # Log dimension information for debugging
@@ -435,18 +487,30 @@ def create_multimodal_model(args, device):
         vision_model=vision_model,
         text_model=text_model,
         fusion_dim=fusion_dim,
-        num_fusion_layers=2,
+        num_fusion_layers=3,  # Increased from 2 for better fusion
         num_heads=8,
         dropout=0.1,
         fusion_type=args.fusion_type,
     )
 
-    # Calculate total parameters
+    # Freeze base models initially (will be unfrozen during multi-stage training)
+    for name, param in multimodal_model.named_parameters():
+        if "vision_model" in name or "text_model" in name:
+            param.requires_grad = False
+
+    logger.info("Base models frozen for initial training phase")
+
+    # Calculate trainable parameters
+    trainable_params = sum(
+        p.numel() for p in multimodal_model.parameters() if p.requires_grad
+    )
     total_params = count_parameters(multimodal_model)
-    logger.info(f"Total model parameters: {total_params:,}")
+    logger.info(
+        f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params*100:.1f}% of total)"
+    )
 
     # Print detailed model summary
-    print_model_summary(multimodal_model, "MULTIMODAL MODEL ARCHITECTURE")
+    print_model_summary(multimodal_model, "MULTIMODAL MODEL ARCHITECTURE (PRETRAINED)")
 
     # Move model to device
     multimodal_model = multimodal_model.to(device)
@@ -660,12 +724,12 @@ def create_data_loaders(args, image_preprocessor, tokenizer):
         # First, make sure we have access to match_ids
         # Try different approaches to get match_ids
         match_ids = None
-        
+
         # Try to access match_ids as an attribute
-        if hasattr(dataset, 'match_ids'):
+        if hasattr(dataset, "match_ids"):
             match_ids = dataset.match_ids
         # Try to access through a method
-        elif hasattr(dataset, 'get_match_ids') and callable(dataset.get_match_ids):
+        elif hasattr(dataset, "get_match_ids") and callable(dataset.get_match_ids):
             match_ids = dataset.get_match_ids()
         # Try to extract from each item
         else:
@@ -674,46 +738,50 @@ def create_data_loaders(args, image_preprocessor, tokenizer):
             try:
                 # Check first item
                 first_item = dataset[0]
-                if isinstance(first_item, dict) and 'match_id' in first_item:
+                if isinstance(first_item, dict) and "match_id" in first_item:
                     # Extract match_ids from all items
                     match_ids = []
                     for i in range(len(dataset)):
                         item = dataset[i]
-                        match_ids.append(item.get('match_id', f"id_{i}"))
-                    print(f"Successfully extracted {len(match_ids)} match_ids from items")
+                        match_ids.append(item.get("match_id", f"id_{i}"))
+                    print(
+                        f"Successfully extracted {len(match_ids)} match_ids from items"
+                    )
             except Exception as e:
                 print(f"Error extracting match_ids from items: {e}")
-        
+
         # If we still don't have match_ids, use default
         if match_ids is None:
             print("WARNING: Couldn't access match_ids, using fallback with unique IDs")
             match_ids = [f"id_{i}" for i in range(len(dataset))]
-        
+
         # Store match_ids in the dataset for future reference
         if not hasattr(dataset, "match_ids"):
             dataset.match_ids = match_ids
-            
+
         # Group indices by match_id
         match_id_groups = {}
         for idx, match_id in enumerate(match_ids):
             if match_id not in match_id_groups:
                 match_id_groups[match_id] = []
             match_id_groups[match_id].append(idx)
-            
-        print(f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items")
-        
+
+        print(
+            f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items"
+        )
+
         # Create shuffled indices that preserve semantic relationships but break position
         shuffled_indices = []
         # Mix up groups as much as possible
         group_keys = list(match_id_groups.keys())
         random.shuffle(group_keys)
-        
+
         # For each group, randomize indices within the group
         for match_id in group_keys:
             indices = match_id_groups[match_id]
             random.shuffle(indices)
             shuffled_indices.extend(indices)
-            
+
         print(f"Created shuffled indices list with {len(shuffled_indices)} items")
         return shuffled_indices
 
@@ -1638,7 +1706,19 @@ def main():
     # Train model
     print("Starting training...")
     print_model_summary(model, "TRAINING MULTIMODAL MODEL")
-    trainer.train()
+    # Print model summary before training
+    print_model_summary(model, "MULTIMODAL MODEL BEFORE TRAINING")
+
+    # Use multi-stage training if enabled
+    if args.use_multistage_training:
+        print("\nStarting multi-stage training with pretrained components...")
+        trainer.train_multistage()
+    else:
+        print("\nStarting standard training...")
+        trainer.train()
+
+    # Print model summary after training
+    print_model_summary(model, "MULTIMODAL MODEL AFTER TRAINING")
 
     # Run final evaluation
     print("Running final evaluation...")

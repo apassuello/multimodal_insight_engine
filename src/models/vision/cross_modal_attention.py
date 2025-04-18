@@ -143,6 +143,87 @@ class CrossModalAttention(nn.Module):
         return output, attention_weights
 
 
+class GatedCrossModalAttention(nn.Module):
+    """
+    Enhanced cross-modal attention with gating mechanism.
+
+    This module extends basic cross-attention with a gate that controls
+    how much information from one modality flows into the other.
+    """
+
+    def __init__(
+        self,
+        query_dim: int,
+        key_dim: int,
+        embed_dim: int,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ):
+        """
+        Initialize the gated cross-modal attention module.
+
+        Args:
+            query_dim: Dimension of the query modality features
+            key_dim: Dimension of the key/value modality features
+            embed_dim: Dimension of the cross-attention output
+            num_heads: Number of attention heads
+            dropout: Dropout rate
+        """
+        super().__init__()
+
+        # Base cross-attention mechanism
+        self.cross_attention = CrossModalAttention(
+            query_dim=query_dim,
+            key_dim=key_dim,
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+        )
+
+        # Gating mechanism
+        self.gate = nn.Sequential(
+            nn.Linear(embed_dim * 2, embed_dim),
+            nn.LayerNorm(embed_dim),
+            nn.GELU(),
+            nn.Linear(embed_dim, embed_dim),
+            nn.Sigmoid(),
+        )
+
+    def forward(
+        self,
+        query_features: torch.Tensor,
+        key_features: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:  # , torch.Tensor]:
+        """
+        Forward pass for gated cross-modal attention.
+
+        Args:
+            query_features: Features from the query modality [batch_size, query_seq_len, query_dim]
+            key_features: Features from the key/value modality [batch_size, key_seq_len, key_dim]
+            attention_mask: Optional mask for attention weights [batch_size, query_seq_len, key_seq_len]
+
+        Returns:
+            Tuple containing:
+            - Updated query features with gated cross-modal information [batch_size, query_seq_len, embed_dim]
+            - Attention weights [batch_size, num_heads, query_seq_len, key_seq_len]
+            - Gate values [batch_size, query_seq_len, embed_dim]
+        """
+        # Apply cross-attention
+        attended_features, attention_weights = self.cross_attention(
+            query_features, key_features, attention_mask
+        )
+
+        # Compute gate values
+        gate_input = torch.cat([query_features, attended_features], dim=-1)
+        gate_values = self.gate(gate_input)
+
+        # Apply gated residual connection
+        output = query_features + gate_values * attended_features
+
+        return output, attention_weights  # , gate_values
+
+
 # Continuing in src/models/vision/cross_modal_attention.py
 class BidirectionalCrossAttention(nn.Module):
     """
@@ -173,7 +254,8 @@ class BidirectionalCrossAttention(nn.Module):
         super().__init__()
 
         # Cross-attention from text to vision (text attends to vision)
-        self.text_to_vision_attn = CrossModalAttention(
+        # ENHANCEMENT: Use GatedCrossModalAttention instead of CrossModalAttention
+        self.text_to_vision_attn = GatedCrossModalAttention(
             query_dim=text_dim,
             key_dim=vision_dim,
             embed_dim=fusion_dim,
@@ -182,7 +264,8 @@ class BidirectionalCrossAttention(nn.Module):
         )
 
         # Cross-attention from vision to text (vision attends to text)
-        self.vision_to_text_attn = CrossModalAttention(
+        # ENHANCEMENT: Use GatedCrossModalAttention instead of CrossModalAttention
+        self.vision_to_text_attn = GatedCrossModalAttention(
             query_dim=vision_dim,
             key_dim=text_dim,
             embed_dim=fusion_dim,

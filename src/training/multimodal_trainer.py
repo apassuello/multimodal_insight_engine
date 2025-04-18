@@ -224,6 +224,239 @@ class MultimodalTrainer:
 
         return dict(history)
 
+    def train_multistage(self):
+        """
+        Implement multi-stage training for multimodal models.
+
+        Stage 1: Train modality-specific components
+        Stage 2: Train cross-modal fusion components
+        Stage 3: Fine-tune the full model with hard negative mining
+        """
+        logger.info("Starting multi-stage training...")
+
+        # Save initial model state for reference - use the full path
+        initial_checkpoint_path = os.path.join(
+            self.checkpoint_dir, "initial_checkpoint.pt"
+        )
+        self.save_checkpoint(initial_checkpoint_path)
+
+        # Store original configuration
+        original_optimizer = self.optimizer
+        original_loss_fn = self.loss_fn
+        original_num_epochs = self.num_epochs
+
+        # Get total epochs and divide among stages
+        total_epochs = self.num_epochs
+        stage1_epochs = max(2, total_epochs // 3)
+        stage2_epochs = max(2, total_epochs // 3)
+        stage3_epochs = total_epochs - stage1_epochs - stage2_epochs
+
+        # === Stage 1: Train modality-specific projections ===
+        logger.info(
+            f"=== Stage 1: Training modality-specific projections ({stage1_epochs} epochs) ==="
+        )
+
+        # Freeze cross-attention and fusion layers
+        for name, param in self.model.named_parameters():
+            if any(x in name for x in ["cross", "fusion", "gate"]):
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
+
+        # Create optimizer for Stage 1
+        stage1_optimizer = torch.optim.AdamW(
+            [
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "vision_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.1,
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "text_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.1,
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if not any(
+                            x in n
+                            for x in [
+                                "vision_model",
+                                "text_model",
+                                "cross",
+                                "fusion",
+                                "gate",
+                            ]
+                        )
+                        and p.requires_grad
+                    ],
+                    "lr": self.learning_rate,
+                },
+            ],
+            weight_decay=self.weight_decay,
+        )
+
+        # Use standard contrastive loss for Stage 1
+        from src.training.contrastive_learning import ContrastiveLoss
+
+        stage1_loss = ContrastiveLoss(temperature=0.07)
+
+        # Set up for Stage 1
+        self.optimizer = stage1_optimizer  # Replace optimizer
+        self.loss_fn = stage1_loss  # Replace loss function
+        self.num_epochs = stage1_epochs  # Set epochs for this stage
+
+        # Train Stage 1
+        self.train()  # Use the existing train method
+
+        # Save stage 1 model
+        stage1_checkpoint_path = os.path.join(
+            self.checkpoint_dir, "stage1_checkpoint.pt"
+        )
+        self.save_checkpoint(stage1_checkpoint_path)
+
+        # === Stage 2: Train cross-modal fusion ===
+        logger.info(
+            f"=== Stage 2: Training cross-modal fusion ({stage2_epochs} epochs) ==="
+        )
+
+        # Freeze base models, unfreeze fusion components
+        for name, param in self.model.named_parameters():
+            if any(x in name for x in ["vision_model", "text_model"]):
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
+
+        # Create optimizer for Stage 2
+        stage2_optimizer = torch.optim.AdamW(
+            [
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if any(x in n for x in ["cross", "fusion", "gate"])
+                        and p.requires_grad
+                    ],
+                    "lr": self.learning_rate,
+                }
+            ],
+            weight_decay=self.weight_decay,
+        )
+
+        # Use memory queue contrastive loss for Stage 2
+        from src.training.contrastive_learning import MemoryQueueContrastiveLoss
+
+        stage2_loss = MemoryQueueContrastiveLoss(
+            dim=512, queue_size=8192, temperature=0.07  # Use fixed dimension for safety
+        )
+
+        # Set up for Stage 2
+        self.optimizer = stage2_optimizer  # Replace optimizer
+        self.loss_fn = stage2_loss  # Replace loss function
+        self.num_epochs = stage2_epochs  # Set epochs for this stage
+
+        # Train Stage 2
+        self.train()  # Use the existing train method
+
+        # Save stage 2 model
+        stage2_checkpoint_path = os.path.join(
+            self.checkpoint_dir, "stage2_checkpoint.pt"
+        )
+        self.save_checkpoint(stage2_checkpoint_path)
+
+        # === Stage 3: Fine-tune everything with hard negative mining ===
+        logger.info(
+            f"=== Stage 3: Fine-tuning with hard negative mining ({stage3_epochs} epochs) ==="
+        )
+
+        # Unfreeze everything for full fine-tuning
+        for param in self.model.parameters():
+            param.requires_grad = True
+
+        # Create optimizer for Stage 3 with layer-wise learning rates
+        stage3_optimizer = torch.optim.AdamW(
+            [
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "vision_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.01,
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "text_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.01,
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if any(x in n for x in ["cross", "fusion", "gate"])
+                        and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.1,
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if not any(
+                            x in n
+                            for x in [
+                                "vision_model",
+                                "text_model",
+                                "cross",
+                                "fusion",
+                                "gate",
+                            ]
+                        )
+                        and p.requires_grad
+                    ],
+                    "lr": self.learning_rate,
+                },
+            ],
+            weight_decay=self.weight_decay,
+        )
+
+        # Use hard negative mining loss for Stage 3
+        from src.training.contrastive_learning import HardNegativeMiningContrastiveLoss
+
+        stage3_loss = HardNegativeMiningContrastiveLoss(
+            temperature=0.07, hard_negative_factor=2.0, mining_strategy="semi-hard"
+        )
+
+        # Set up for Stage 3
+        self.optimizer = stage3_optimizer  # Replace optimizer
+        self.loss_fn = stage3_loss  # Replace loss function
+        self.num_epochs = stage3_epochs  # Set epochs for this stage
+
+        # Train Stage 3
+        self.train()  # Use the existing train method
+
+        # Save final model
+        final_checkpoint_path = os.path.join(self.checkpoint_dir, "final_checkpoint.pt")
+        self.save_checkpoint(final_checkpoint_path)
+
+        logger.info("Multi-stage training completed successfully!")
+
+        # Restore original configuration in case needed later
+        self.optimizer = original_optimizer
+        self.loss_fn = original_loss_fn
+        self.num_epochs = original_num_epochs
+
     def train_epoch(self) -> Dict[str, float]:
         """
         Train for one epoch.
@@ -567,7 +800,9 @@ class MultimodalTrainer:
             all_metrics["global_accuracy"] = avg_accuracy
 
             # Print global metrics for clarity - with emphasis that these are the CORRECT ones to use
-            print("\n*** GLOBAL EVALUATION METRICS (THESE ARE THE REAL METRICS - USE THESE) ***")
+            print(
+                "\n*** GLOBAL EVALUATION METRICS (THESE ARE THE REAL METRICS - USE THESE) ***"
+            )
             print(
                 f"  Accuracy: {avg_accuracy:.4f} (I2T: {i2t_accuracy:.4f}, T2I: {t2i_accuracy:.4f})"
             )
@@ -586,7 +821,9 @@ class MultimodalTrainer:
 
             # Print comparison with warning about in-batch metrics being misleading
             print("\n⚠️ IN-BATCH VS GLOBAL METRICS COMPARISON ⚠️")
-            print("WARNING: In-batch metrics are often misleadingly high due to batch-level shortcuts!")
+            print(
+                "WARNING: In-batch metrics are often misleadingly high due to batch-level shortcuts!"
+            )
             print(
                 f"  Accuracy: In-Batch={in_batch_metrics['accuracy']:.4f}, Global={avg_accuracy:.4f}, "
                 + f"Ratio={in_batch_metrics['accuracy']/max(1e-5, avg_accuracy):.1f}x higher (artificial)"
@@ -712,63 +949,73 @@ class MultimodalTrainer:
     def _prepare_loss_inputs(self, batch, outputs):
         loss_inputs = {}
 
-        # CRITICAL FIX: Make sure features are properly extracted and normalized 
+        # CRITICAL FIX: Make sure features are properly extracted and normalized
         # No matter which feature type is used, always normalize them for cosine similarity
-        
+
         # Use enhanced features if available (properly overriding originals)
         if (
             "vision_features_enhanced" in outputs
             and "text_features_enhanced" in outputs
         ):
             # Get pooled features and explicitly normalize
-            vision_features = self._get_pooled_features(outputs["vision_features_enhanced"])
+            vision_features = self._get_pooled_features(
+                outputs["vision_features_enhanced"]
+            )
             text_features = self._get_pooled_features(outputs["text_features_enhanced"])
-            
+
             # Normalize for cosine similarity (CRUCIAL for contrastive learning)
             vision_features = F.normalize(vision_features, p=2, dim=1)
             text_features = F.normalize(text_features, p=2, dim=1)
-            
+
             loss_inputs["vision_features"] = vision_features
             loss_inputs["text_features"] = text_features
-            
+
         # Otherwise use base features
         elif "vision_features" in outputs and "text_features" in outputs:
             # Get pooled features and explicitly normalize
             vision_features = self._get_pooled_features(outputs["vision_features"])
             text_features = self._get_pooled_features(outputs["text_features"])
-            
+
             # Normalize for cosine similarity (CRUCIAL for contrastive learning)
             vision_features = F.normalize(vision_features, p=2, dim=1)
             text_features = F.normalize(text_features, p=2, dim=1)
-            
+
             loss_inputs["vision_features"] = vision_features
             loss_inputs["text_features"] = text_features
-            
+
         # ENHANCEMENT: Add noise to features during training to discourage shortcut learning
         # This makes the task harder and forces the model to learn more robust representations
-        if self.model.training:  # Check if model is in training mode instead of self.training
+        if (
+            self.model.training
+        ):  # Check if model is in training mode instead of self.training
             # Small amount of noise to prevent trivial solutions and shortcut learning
             # Scale noise based on global_step - start higher, then gradually reduce
-            noise_scale = max(0.05 * (1.0 - self.global_step/10000), 0.01)
-            
+            noise_scale = max(0.05 * (1.0 - self.global_step / 10000), 0.01)
+
             # Only apply noise with 70% probability for variability
-            if random.random() < 0.7:  
+            if random.random() < 0.7:
                 # Apply the noise to both vision and text features
                 vision_noise = torch.randn_like(vision_features) * noise_scale
                 text_noise = torch.randn_like(text_features) * noise_scale
-                
+
                 # Apply noise and renormalize
-                loss_inputs["vision_features"] = F.normalize(vision_features + vision_noise, p=2, dim=1)
-                loss_inputs["text_features"] = F.normalize(text_features + text_noise, p=2, dim=1)
-                
+                loss_inputs["vision_features"] = F.normalize(
+                    vision_features + vision_noise, p=2, dim=1
+                )
+                loss_inputs["text_features"] = F.normalize(
+                    text_features + text_noise, p=2, dim=1
+                )
+
                 # Log noise level occasionally
                 if self.global_step % 500 == 0:
-                    logger.info(f"Applied feature noise with scale {noise_scale:.4f} at step {self.global_step}")
-                    
+                    logger.info(
+                        f"Applied feature noise with scale {noise_scale:.4f} at step {self.global_step}"
+                    )
+
         # Store original features for other loss components that might need them
-        loss_inputs["original_vision_features"] = vision_features
-        loss_inputs["original_text_features"] = text_features
-        
+        # loss_inputs["original_vision_features"] = vision_features
+        # loss_inputs["original_text_features"] = text_features
+
         # FIX: Ensure match IDs are properly passed for training and evaluation
         if "match_id" in batch:
             # This is critical - the match_id determines the semantic relationships
@@ -776,16 +1023,22 @@ class MultimodalTrainer:
         elif "idx" in batch:
             # Fallback to indices - not ideal but better than nothing
             loss_inputs["indices"] = batch["idx"]
-            
+
             # Print warning if we have to use indices instead of match_ids
             if self.global_step == 0:
-                logger.warning("Using idx as fallback for match_ids - this may lead to poor performance!")
+                logger.warning(
+                    "Using idx as fallback for match_ids - this may lead to poor performance!"
+                )
         else:
             # Last resort - use position-based matching
             # This is highly problematic and will cause shortcut learning!
             if self.global_step == 0:
-                logger.warning("No match_id or idx found in batch - using position-based matching!")
-                logger.warning("THIS WILL LIKELY CAUSE SHORTCUT LEARNING AND POOR EVALUATION RESULTS!")
+                logger.warning(
+                    "No match_id or idx found in batch - using position-based matching!"
+                )
+                logger.warning(
+                    "THIS WILL LIKELY CAUSE SHORTCUT LEARNING AND POOR EVALUATION RESULTS!"
+                )
 
         # Add classification logits if available
         if "classification" in outputs and "label" in batch:
@@ -803,15 +1056,23 @@ class MultimodalTrainer:
         # Debugging: Check feature norms to ensure proper normalization
         if self.global_step % 100 == 0:
             if "vision_features" in loss_inputs and "text_features" in loss_inputs:
-                vision_norm = torch.norm(loss_inputs["vision_features"], dim=1).mean().item()
-                text_norm = torch.norm(loss_inputs["text_features"], dim=1).mean().item()
-                logger.debug(f"Feature norms - Vision: {vision_norm:.6f}, Text: {text_norm:.6f}")
-                
+                vision_norm = (
+                    torch.norm(loss_inputs["vision_features"], dim=1).mean().item()
+                )
+                text_norm = (
+                    torch.norm(loss_inputs["text_features"], dim=1).mean().item()
+                )
+                logger.debug(
+                    f"Feature norms - Vision: {vision_norm:.6f}, Text: {text_norm:.6f}"
+                )
+
                 # Check if match_ids are properly distributed
                 if "match_ids" in loss_inputs:
                     unique_ids = len(set(loss_inputs["match_ids"]))
                     batch_size = len(loss_inputs["match_ids"])
-                    logger.debug(f"Match IDs - Unique: {unique_ids}, Total: {batch_size}, Ratio: {unique_ids/max(1, batch_size):.2f}")
+                    logger.debug(
+                        f"Match IDs - Unique: {unique_ids}, Total: {batch_size}, Ratio: {unique_ids/max(1, batch_size):.2f}"
+                    )
 
         return loss_inputs
 

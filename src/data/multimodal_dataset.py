@@ -725,74 +725,194 @@ class EnhancedMultimodalDataset(Dataset):
         self.match_ids = []
         match_id_counter = 0
         image_id_to_match_id = {}  # Map image_ids to semantic match_ids
-        
+
         # CRITICAL FIX: Create semantically meaningful match groups
         # Proper semantic grouping is essential for contrastive learning
-        
+
         # CRITICAL FIX FOR FLICKR30K - ARTIFICIAL SEMANTIC GROUPS
         # We've discovered that Flickr30k (as cached) doesn't have multiple captions per image
         # We need to artificially create semantic groups to enable contrastive learning
-        
+
         # First, print diagnostics about the dataset structure
         has_image_id = len([item for item in self.dataset if "image_id" in item])
-        logger.info(f"Dataset has {len(self.dataset)} items, {has_image_id} with image_id")
-        
+        logger.info(
+            f"Dataset has {len(self.dataset)} items, {has_image_id} with image_id"
+        )
+
         if len(self.dataset) > 0:
             sample_item = self.dataset[0]
             logger.info(f"Sample item keys: {sample_item.keys()}")
-            
+
             # Check if we have captions embedded in the items
             if "captions" in sample_item:
                 captions = sample_item["captions"]
                 if isinstance(captions, list) and len(captions) > 0:
                     logger.info(f"Found captions list with {len(captions)} items")
-        
+
         # SYNTHETIC STRATEGY: For Flickr30k, we'll create artificial semantic groups
         # by clustering similar items together
-        
+
         # Option 1: Group by visual similarity by using nearby indices as proxies
         # This assumes consecutive images in the dataset might have some relationship
         # For training, this provides variation while maintaining some coherence
         group_size = 5  # Each group will have this many items
-        num_groups = (len(self.dataset) + group_size - 1) // group_size  # Ceiling division
-        
-        logger.info(f"Creating {num_groups} artificial semantic groups with ~{group_size} items each")
-        
-        # Create groups and assign match_ids
-        for group_idx in range(num_groups):
-            # Create a unique match_id for this group
-            match_id = f"semantic_group_{group_idx}"
-            
-            # Assign this match_id to all items in the group
-            start_idx = group_idx * group_size
-            end_idx = min(start_idx + group_size, len(self.dataset))
-            
-            for idx in range(start_idx, end_idx):
-                self.dataset[idx]["match_id"] = match_id
-        
+        num_groups = (
+            len(self.dataset) + group_size - 1
+        ) // group_size  # Ceiling division
+
+        logger.info(
+            f"Creating {num_groups} artificial semantic groups with ~{group_size} items each"
+        )
+
+        try:
+            import numpy as np
+            from sklearn.cluster import KMeans
+            import torch
+            from tqdm import tqdm
+
+            logger.info(
+                "Creating embedding-based semantic groups using pretrained features..."
+            )
+
+            # Import a pretrained model for feature extraction
+            try:
+                from torchvision.models import resnet18, ResNet18_Weights
+
+                pretrained_model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+                pretrained_model.fc = torch.nn.Identity()  # Remove classification layer
+                device = torch.device(
+                    "cuda"
+                    if torch.cuda.is_available()
+                    else "mps" if torch.backends.mps.is_available() else "cpu"
+                )
+                pretrained_model = pretrained_model.to(device)
+                pretrained_model.eval()
+
+                # Create preprocessing transform
+                from torchvision import transforms
+
+                preprocess = transforms.Compose(
+                    [
+                        transforms.Resize(256),
+                        transforms.CenterCrop(224),
+                        transforms.ToTensor(),
+                        transforms.Normalize(
+                            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                        ),
+                    ]
+                )
+
+                # Extract features from each image
+                features = []
+                logger.info("Extracting image features for semantic grouping...")
+                with torch.no_grad():
+                    for item in tqdm(self.dataset):
+                        try:
+                            # Handle different image formats
+                            if isinstance(item["image"], str):
+                                # It's a path - load the image
+                                from PIL import Image
+
+                                img = Image.open(item["image"]).convert("RGB")
+                                img_tensor = preprocess(img).unsqueeze(0).to(device)
+                            elif isinstance(item["image"], torch.Tensor):
+                                # It's already a tensor - ensure proper shape and normalization
+                                img_tensor = item["image"].unsqueeze(0).to(device)
+                            else:
+                                # It's likely a PIL image
+                                img_tensor = (
+                                    preprocess(item["image"]).unsqueeze(0).to(device)
+                                )
+
+                            # Extract features
+                            feature = (
+                                pretrained_model(img_tensor).squeeze().cpu().numpy()
+                            )
+                            features.append(feature)
+                        except Exception as e:
+                            # On error, add zero features
+                            logger.warning(f"Error extracting features: {e}")
+                            features.append(np.zeros(512))  # ResNet18 feature size
+
+                # Convert to numpy array
+                features = np.array(features)
+
+                # Determine optimal number of clusters - we want average ~5 items per cluster
+                n_clusters = max(
+                    10, len(self.dataset) // 5
+                )  # At least 10 clusters, aim for 5 items per cluster
+                n_clusters = min(
+                    n_clusters, len(self.dataset) // 2
+                )  # But no more than half the dataset size
+
+                # Apply K-means clustering
+                logger.info(f"Clustering into {n_clusters} semantic groups...")
+                kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+                clusters = kmeans.fit_predict(features)
+
+                # Assign match_ids based on clusters
+                for idx, cluster_id in enumerate(clusters):
+                    self.dataset[idx]["match_id"] = f"semantic_group_{cluster_id}"
+
+                logger.info(
+                    f"Successfully created {n_clusters} embedding-based semantic groups"
+                )
+
+            except ImportError as e:
+                logger.warning(
+                    f"Couldn't import required libraries for embedding-based grouping: {e}"
+                )
+                logger.warning("Falling back to sequential grouping")
+
+                # Original sequential grouping as fallback
+                for group_idx in range(num_groups):
+                    match_id = f"sequential_group_{group_idx}"
+                    start_idx = group_idx * group_size
+                    end_idx = min(start_idx + group_size, len(self.dataset))
+                    for idx in range(start_idx, end_idx):
+                        self.dataset[idx]["match_id"] = match_id
+
+        except Exception as e:
+            logger.error(f"Error in embedding-based grouping: {e}")
+            logger.warning("Falling back to sequential grouping")
+
+            # Original sequential grouping as fallback
+            for group_idx in range(num_groups):
+                match_id = f"sequential_group_{group_idx}"
+                start_idx = group_idx * group_size
+                end_idx = min(start_idx + group_size, len(self.dataset))
+                for idx in range(start_idx, end_idx):
+                    self.dataset[idx]["match_id"] = match_id
+
         # Store all match_ids for convenience
         self.match_ids = [item["match_id"] for item in self.dataset]
-        
+
         # Diagnostics: check how many unique match_ids we created
         unique_match_ids = len(set(self.match_ids))
         items_with_match_id = sum(1 for item in self.dataset if "match_id" in item)
-        logger.info(f"Created {unique_match_ids} artificial semantic groups for {items_with_match_id} items")
-        
+        logger.info(
+            f"Created {unique_match_ids} artificial semantic groups for {items_with_match_id} items"
+        )
+
         # Calculate average group size
         id_counts = defaultdict(int)
         for match_id in self.match_ids:
             id_counts[match_id] += 1
-            
+
         group_sizes = list(id_counts.values())
         avg_group_size = sum(group_sizes) / len(group_sizes) if group_sizes else 0
-        logger.info(f"Group statistics: min={min(group_sizes) if group_sizes else 0}, "
-                   f"max={max(group_sizes) if group_sizes else 0}, avg={avg_group_size:.2f}")
-            
+        logger.info(
+            f"Group statistics: min={min(group_sizes) if group_sizes else 0}, "
+            f"max={max(group_sizes) if group_sizes else 0}, avg={avg_group_size:.2f}"
+        )
+
         # Print statistics about semantic groups
         unique_match_ids = len(set(self.match_ids))
         avg_group_size = len(self.dataset) / max(1, unique_match_ids)
-        logger.info(f"Created {unique_match_ids} semantic match groups with average size {avg_group_size:.2f}")
-            
+        logger.info(
+            f"Created {unique_match_ids} semantic match groups with average size {avg_group_size:.2f}"
+        )
+
         # Thoroughly break position correlation by completely shuffling (for all splits)
         # This is critical to prevent the model from learning shortcuts
         combined = list(zip(self.dataset, self.match_ids))
@@ -802,7 +922,7 @@ class EnhancedMultimodalDataset(Dataset):
         # Unpack the shuffled data
         self.dataset = list(self.dataset)  # Convert back to list
         self.match_ids = list(self.match_ids)  # Convert back to list
-        
+
         # Double-check shuffling by comparing first 10 indices and match_ids
         logger.info(f"First 10 match_ids after shuffling: {self.match_ids[:10]}")
         # This should show varying match_ids, not a simple pattern
@@ -1139,20 +1259,26 @@ class EnhancedMultimodalDataset(Dataset):
         # Ensure match_id is properly included in the return dictionary
         # This is critical for content-based contrastive learning
         match_id = item.get("match_id")
-        
+
         # As a fallback, use the stored match_ids if available
-        if match_id is None and hasattr(self, "match_ids") and idx < len(self.match_ids):
+        if (
+            match_id is None
+            and hasattr(self, "match_ids")
+            and idx < len(self.match_ids)
+        ):
             match_id = self.match_ids[idx]
-            
+
         # Last resort - create a unique ID for this item (should never happen)
         if match_id is None:
             match_id = f"fallback_{idx}"
-            
+
         # Replace the warning with a more specific check
         # We don't want to warn about group_123 when idx=23, which is a false positive
-        # Only warn if the exact idx is used as a match_id 
+        # Only warn if the exact idx is used as a match_id
         if match_id == f"fallback_{idx}" and self.split == "train":
-            logger.warning(f"Using fallback match_id ({match_id}) for item {idx} - this may cause shortcut learning!")
+            logger.warning(
+                f"Using fallback match_id ({match_id}) for item {idx} - this may cause shortcut learning!"
+            )
 
         # Return properly formatted batch item
         return {

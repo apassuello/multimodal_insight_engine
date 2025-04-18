@@ -14,15 +14,15 @@ class MemoryQueueContrastiveLoss(nn.Module):
         self.dim = dim
 
         # We'll initialize the queues on first forward pass to get correct dimensions
-        self.register_buffer("vision_queue", None) 
+        self.register_buffer("vision_queue", None)
         self.register_buffer("text_queue", None)
-        
+
         # Queue pointers
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
-        
+
         # Flag to track device and initialization
         self.initialized = False
-        
+
         # For gradient computation safety, we'll use two separate buffers:
         # - One for storing previous iterations' embeddings (non-gradient)
         # - One for the current computation (with gradient)
@@ -32,31 +32,51 @@ class MemoryQueueContrastiveLoss(nn.Module):
         # Get device and feature dimensions
         device = vision_features.device
         feature_dim = vision_features.shape[1]
-        
+
         # Initialize queues on first forward pass with correct dimensions
         if not self.initialized:
             # Create and normalize queues with the correct feature dimension
             # Use .data to avoid tracking in autograd
-            self.register_buffer("vision_queue", 
-                               F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach())
-            self.register_buffer("text_queue", 
-                               F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach())
+            self.register_buffer(
+                "vision_queue",
+                F.normalize(
+                    torch.randn(feature_dim, self.queue_size, device=device), dim=0
+                ).detach(),
+            )
+            self.register_buffer(
+                "text_queue",
+                F.normalize(
+                    torch.randn(feature_dim, self.queue_size, device=device), dim=0
+                ).detach(),
+            )
             self.queue_ptr = self.queue_ptr.to(device)
             self.initialized = True
-            print(f"Initialized memory queues with dimension {feature_dim}x{self.queue_size}")
+            print(
+                f"Initialized memory queues with dimension {feature_dim}x{self.queue_size}"
+            )
         elif self.vision_queue.shape[0] != feature_dim:
             # Handle case where feature dimensions have changed
-            print(f"Feature dimension changed from {self.vision_queue.shape[0]} to {feature_dim}, reinitializing queues")
-            self.register_buffer("vision_queue", 
-                               F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach())
-            self.register_buffer("text_queue", 
-                               F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach())
+            print(
+                f"Feature dimension changed from {self.vision_queue.shape[0]} to {feature_dim}, reinitializing queues"
+            )
+            self.register_buffer(
+                "vision_queue",
+                F.normalize(
+                    torch.randn(feature_dim, self.queue_size, device=device), dim=0
+                ).detach(),
+            )
+            self.register_buffer(
+                "text_queue",
+                F.normalize(
+                    torch.randn(feature_dim, self.queue_size, device=device), dim=0
+                ).detach(),
+            )
         elif self.vision_queue.device != device:
             # Move queues to the correct device if needed
             self.vision_queue = self.vision_queue.to(device).detach()
             self.text_queue = self.text_queue.to(device).detach()
             self.queue_ptr = self.queue_ptr.to(device)
-        
+
         # Get batch size and normalize features
         batch_size = vision_features.shape[0]
         vision_features = F.normalize(vision_features, dim=1)
@@ -77,11 +97,11 @@ class MemoryQueueContrastiveLoss(nn.Module):
         # Make sure queues are detached from computation graph
         text_queue_detached = self.text_queue.detach()
         vision_queue_detached = self.vision_queue.detach()
-        
+
         # Vision-to-queue text similarities
         v2q_similarities = torch.matmul(vision_features, text_queue_detached)
 
-        # Text-to-queue vision similarities  
+        # Text-to-queue vision similarities
         t2q_similarities = torch.matmul(text_features, vision_queue_detached)
 
         # For each vision query, compute InfoNCE loss against in-batch and queue texts
@@ -160,11 +180,11 @@ class MemoryQueueContrastiveLoss(nn.Module):
         # Check if queues are properly initialized
         if not self.initialized:
             return  # Skip update if not initialized yet
-            
+
         # Create new queue tensors instead of in-place updates
         new_vision_queue = self.vision_queue.clone().detach()
         new_text_queue = self.text_queue.clone().detach()
-        
+
         # Detach input features
         vision_features_detached = vision_features.detach()
         text_features_detached = text_features.detach()
@@ -174,7 +194,9 @@ class MemoryQueueContrastiveLoss(nn.Module):
             new_vision_queue[:, ptr : ptr + batch_size] = vision_features_detached.T
         else:
             # Handle wrap-around
-            new_vision_queue[:, ptr:] = vision_features_detached[: self.queue_size - ptr].T
+            new_vision_queue[:, ptr:] = vision_features_detached[
+                : self.queue_size - ptr
+            ].T
             new_vision_queue[:, : batch_size - (self.queue_size - ptr)] = (
                 vision_features_detached[self.queue_size - ptr :].T
             )
@@ -185,17 +207,18 @@ class MemoryQueueContrastiveLoss(nn.Module):
         else:
             # Handle wrap-around
             new_text_queue[:, ptr:] = text_features_detached[: self.queue_size - ptr].T
-            new_text_queue[:, : batch_size - (self.queue_size - ptr)] = text_features_detached[
-                self.queue_size - ptr :
-            ].T
+            new_text_queue[:, : batch_size - (self.queue_size - ptr)] = (
+                text_features_detached[self.queue_size - ptr :].T
+            )
 
         # Replace old queues with new ones
         self.register_buffer("vision_queue", new_vision_queue)
         self.register_buffer("text_queue", new_text_queue)
 
         # Update pointer - create new tensor to avoid in-place operation
-        new_ptr = torch.tensor([(ptr + batch_size) % self.queue_size], 
-                               dtype=torch.long, device=device)
+        new_ptr = torch.tensor(
+            [(ptr + batch_size) % self.queue_size], dtype=torch.long, device=device
+        )
         self.register_buffer("queue_ptr", new_ptr)
 
 
@@ -208,7 +231,7 @@ class DynamicTemperatureContrastiveLoss(nn.Module):
 
     def forward(self, vision_features, text_features, match_ids):
         device = vision_features.device
-        
+
         # Normalize features
         vision_features = F.normalize(vision_features, dim=1)
         text_features = F.normalize(text_features, dim=1)
@@ -273,7 +296,7 @@ class DynamicTemperatureContrastiveLoss(nn.Module):
 
             # Compute all logits for this text (against all images)
             t2v_logits = sim_matrix[:, i] / dynamic_temp
-            
+
             # For each positive pair, compute InfoNCE loss
             for pos_idx in pos_indices:
                 t2v_loss += -t2v_logits[pos_idx] + torch.logsumexp(t2v_logits, dim=0)
@@ -292,10 +315,10 @@ class DynamicTemperatureContrastiveLoss(nn.Module):
         return {
             "loss": loss,
             "temperature": dynamic_temp.item(),
-            "pos_similarity": pos_mean.item(), 
+            "pos_similarity": pos_mean.item(),
             "neg_similarity": neg_mean.item(),
             "v2t_loss": v2t_loss.item(),
-            "t2v_loss": t2v_loss.item()
+            "t2v_loss": t2v_loss.item(),
         }
 
 
@@ -310,7 +333,7 @@ class HardNegativeMiningContrastiveLoss(nn.Module):
 
     def forward(self, vision_features, text_features, match_ids):
         device = vision_features.device
-        
+
         # Normalize features
         vision_features = F.normalize(vision_features, dim=1)
         text_features = F.normalize(text_features, dim=1)
@@ -392,35 +415,37 @@ class HardNegativeMiningContrastiveLoss(nn.Module):
             pos_indices = torch.where(match_matrix[:, i])[0]
             if len(pos_indices) == 0:
                 continue
-                
+
             # Get similarities for this text with all images
             text_sims = sim_matrix[:, i]
-            
+
             # Get positive and negative similarities
             pos_sims = text_sims[pos_indices]
             mean_pos_sim = pos_sims.mean()
-            
+
             # Get negative indices and similarities
             neg_indices = torch.where(~match_matrix[:, i])[0]
             if len(neg_indices) == 0:
                 continue
-                
+
             neg_sims = text_sims[neg_indices]
-            
+
             # Apply the same mining strategy as for vision-to-text
             if self.mining_strategy == "hard":
                 # Get hard negatives (highest similarity non-matches)
                 num_hard = max(1, int(len(neg_indices) * 0.1))
                 hard_indices = torch.topk(neg_sims, num_hard)[1]
-                
+
                 # Weight hard negatives more heavily
                 hard_weights = torch.ones_like(neg_sims)
                 hard_weights[hard_indices] = self.hard_negative_factor
-                
+
             elif self.mining_strategy == "semi-hard":
                 # Get semi-hard negatives (close to but below positives)
-                semi_hard_mask = (neg_sims < mean_pos_sim) & (neg_sims > mean_pos_sim - 0.2)
-                
+                semi_hard_mask = (neg_sims < mean_pos_sim) & (
+                    neg_sims > mean_pos_sim - 0.2
+                )
+
                 if semi_hard_mask.sum() > 0:
                     hard_weights = torch.ones_like(neg_sims)
                     hard_weights[semi_hard_mask] = self.hard_negative_factor
@@ -428,11 +453,11 @@ class HardNegativeMiningContrastiveLoss(nn.Module):
                     hard_weights = torch.ones_like(neg_sims)
             else:
                 hard_weights = torch.ones_like(neg_sims)
-                
+
             # Compute weighted loss
             pos_exp = torch.exp(pos_sims / self.temperature)
             weighted_neg_exp = torch.exp(neg_sims / self.temperature) * hard_weights
-            
+
             # Calculate loss for each positive pair
             for pos_idx in range(len(pos_sims)):
                 pos_term = pos_exp[pos_idx]
@@ -451,10 +476,10 @@ class HardNegativeMiningContrastiveLoss(nn.Module):
         loss = (v2t_loss + t2v_loss) / 2
 
         return {
-            "loss": loss, 
-            "v2t_loss": v2t_loss.item(), 
+            "loss": loss,
+            "v2t_loss": v2t_loss.item(),
             "t2v_loss": t2v_loss.item(),
-            "hard_negative_factor": self.hard_negative_factor
+            "hard_negative_factor": self.hard_negative_factor,
         }
 
 
@@ -1484,4 +1509,200 @@ class MultiModalMixedContrastiveLoss(nn.Module):
             "v2t_accuracy": v2t_accuracy.item(),
             "t2v_accuracy": t2v_accuracy.item(),
             "accuracy": accuracy.item(),
+        }
+
+
+class DecoupledContrastiveLoss(nn.Module):
+    """
+    Decoupled contrastive loss that separates instance discrimination from cross-modal matching.
+
+    This loss function helps models learn both modality-specific features and cross-modal alignment.
+    """
+
+    def __init__(
+        self,
+        temperature: float = 0.07,
+        lambda_v: float = 0.5,  # Weight for vision instance discrimination
+        lambda_t: float = 0.5,  # Weight for text instance discrimination
+        reduction: str = "mean",
+    ):
+        """
+        Initialize the decoupled contrastive loss.
+
+        Args:
+            temperature: Temperature parameter for scaling similarity
+            lambda_v: Weight for vision instance discrimination loss
+            lambda_t: Weight for text instance discrimination loss
+            reduction: Reduction method ('mean', 'sum', or 'none')
+        """
+        super().__init__()
+        self.temperature = temperature
+        self.lambda_v = lambda_v
+        self.lambda_t = lambda_t
+        self.reduction = reduction
+
+    def forward(
+        self,
+        vision_features: torch.Tensor,
+        text_features: torch.Tensor,
+        match_ids: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Compute decoupled contrastive loss.
+
+        Args:
+            vision_features: Vision features [batch_size, vision_dim]
+            text_features: Text features [batch_size, text_dim]
+            match_ids: IDs that determine which items should match
+
+        Returns:
+            Dictionary with loss values and additional metrics
+        """
+        device = vision_features.device
+        batch_size = vision_features.shape[0]
+
+        # Normalize features
+        vision_features = F.normalize(vision_features, p=2, dim=1)
+        text_features = F.normalize(text_features, p=2, dim=1)
+
+        # Create match matrix based on match_ids
+        match_matrix = torch.zeros(
+            (batch_size, batch_size), dtype=torch.bool, device=device
+        )
+        for i in range(batch_size):
+            for j in range(batch_size):
+                match_matrix[i, j] = match_ids[i] == match_ids[j]
+
+        # Create mask to exclude self-matching for instance discrimination
+        self_mask = torch.eye(batch_size, dtype=torch.bool, device=device)
+        diag_mask = ~self_mask
+
+        # ==== Cross-Modal Contrastive Loss ====
+        # Compute all-pairs similarity
+        similarity = torch.matmul(vision_features, text_features.T) / self.temperature
+
+        # Vision-to-text direction
+        v2t_loss = 0.0
+        v2t_correct = 0
+
+        for i in range(batch_size):
+            # Find positive pairs for this vision feature
+            pos_indices = torch.where(match_matrix[i])[0]
+            if len(pos_indices) == 0:
+                continue
+
+            # Compute loss for each positive pair
+            pos_logits = similarity[i, pos_indices]
+            all_logits = similarity[i]
+
+            # For each positive, compute InfoNCE loss
+            for pos_idx in pos_indices:
+                v2t_loss += -all_logits[pos_idx] + torch.logsumexp(all_logits, dim=0)
+
+            # Track accuracy for metrics
+            pred_idx = torch.argmax(similarity[i])
+            if match_matrix[i, pred_idx]:
+                v2t_correct += 1
+
+        # Text-to-vision direction
+        t2v_loss = 0.0
+        t2v_correct = 0
+
+        for i in range(batch_size):
+            # Find positive pairs for this text feature
+            pos_indices = torch.where(match_matrix[:, i])[0]
+            if len(pos_indices) == 0:
+                continue
+
+            # Compute loss for each positive pair
+            pos_logits = similarity[pos_indices, i]
+            all_logits = similarity[:, i]
+
+            # For each positive, compute InfoNCE loss
+            for pos_idx in pos_indices:
+                t2v_loss += -all_logits[pos_idx] + torch.logsumexp(all_logits, dim=0)
+
+            # Track accuracy for metrics
+            pred_idx = torch.argmax(similarity[:, i])
+            if match_matrix[pred_idx, i]:
+                t2v_correct += 1
+
+        # ==== Instance Discrimination Losses ====
+        # Vision-to-vision similarity
+        vision_sim = torch.matmul(vision_features, vision_features.T) / self.temperature
+        # Apply mask to exclude self-similarity
+        vision_sim_masked = vision_sim.masked_fill(self_mask, -float("inf"))
+
+        # Text-to-text similarity
+        text_sim = torch.matmul(text_features, text_features.T) / self.temperature
+        # Apply mask to exclude self-similarity
+        text_sim_masked = text_sim.masked_fill(self_mask, -float("inf"))
+
+        # Instance discrimination loss for vision
+        vision_inst_loss = 0.0
+        for i in range(batch_size):
+            # Find positive examples (same match_id) but not self
+            pos_indices = torch.where(match_matrix[i] & diag_mask[i])[0]
+            if len(pos_indices) == 0:
+                continue
+
+            # Compute loss for each positive pair
+            for pos_idx in pos_indices:
+                vision_inst_loss += -vision_sim_masked[i, pos_idx] + torch.logsumexp(
+                    vision_sim_masked[i], dim=0
+                )
+
+        # Instance discrimination loss for text
+        text_inst_loss = 0.0
+        for i in range(batch_size):
+            # Find positive examples (same match_id) but not self
+            pos_indices = torch.where(match_matrix[i] & diag_mask[i])[0]
+            if len(pos_indices) == 0:
+                continue
+
+            # Compute loss for each positive pair
+            for pos_idx in pos_indices:
+                text_inst_loss += -text_sim_masked[i, pos_idx] + torch.logsumexp(
+                    text_sim_masked[i], dim=0
+                )
+
+        # ==== Calculate Final Loss ====
+        # Count number of positive pairs (excluding self-matches)
+        num_pos_pairs = (match_matrix & diag_mask).sum().item()
+
+        # Normalize losses
+        if num_pos_pairs > 0:
+            v2t_loss = v2t_loss / max(1, num_pos_pairs)
+            t2v_loss = t2v_loss / max(1, num_pos_pairs)
+            vision_inst_loss = vision_inst_loss / max(1, num_pos_pairs)
+            text_inst_loss = text_inst_loss / max(1, num_pos_pairs)
+        else:
+            v2t_loss = torch.tensor(0.0, device=device)
+            t2v_loss = torch.tensor(0.0, device=device)
+            vision_inst_loss = torch.tensor(0.0, device=device)
+            text_inst_loss = torch.tensor(0.0, device=device)
+
+        # Calculate accuracies
+        v2t_accuracy = v2t_correct / batch_size if batch_size > 0 else 0.0
+        t2v_accuracy = t2v_correct / batch_size if batch_size > 0 else 0.0
+
+        # Combine losses
+        cross_modal_loss = (v2t_loss + t2v_loss) / 2
+        instance_loss = (
+            self.lambda_v * vision_inst_loss + self.lambda_t * text_inst_loss
+        )
+
+        total_loss = cross_modal_loss + instance_loss
+
+        return {
+            "loss": total_loss,
+            "cross_modal_loss": cross_modal_loss.item(),
+            "instance_loss": instance_loss.item(),
+            "v2t_loss": v2t_loss.item(),
+            "t2v_loss": t2v_loss.item(),
+            "vision_inst_loss": vision_inst_loss.item(),
+            "text_inst_loss": text_inst_loss.item(),
+            "v2t_accuracy": v2t_accuracy,
+            "t2v_accuracy": t2v_accuracy,
+            "accuracy": (v2t_accuracy + t2v_accuracy) / 2,
         }
