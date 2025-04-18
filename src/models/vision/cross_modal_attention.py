@@ -181,6 +181,15 @@ class GatedCrossModalAttention(nn.Module):
         )
 
         # Gating mechanism
+        # We'll add a projection layer to handle dimension mismatches
+        self.query_dim = query_dim
+        self.embed_dim = embed_dim
+        
+        # Add query projection if dimensions don't match
+        self.query_proj_gate = (
+            nn.Linear(query_dim, embed_dim) if query_dim != embed_dim else nn.Identity()
+        )
+        
         self.gate = nn.Sequential(
             nn.Linear(embed_dim * 2, embed_dim),
             nn.LayerNorm(embed_dim),
@@ -214,12 +223,15 @@ class GatedCrossModalAttention(nn.Module):
             query_features, key_features, attention_mask
         )
 
-        # Compute gate values
-        gate_input = torch.cat([query_features, attended_features], dim=-1)
+        # Project query features to match embedding dimension using the pre-defined projection
+        query_features_projected = self.query_proj_gate(query_features)
+        
+        # Compute gate values with consistently dimensioned inputs
+        gate_input = torch.cat([query_features_projected, attended_features], dim=-1)
         gate_values = self.gate(gate_input)
-
+        
         # Apply gated residual connection
-        output = query_features + gate_values * attended_features
+        output = query_features_projected + gate_values * attended_features
 
         return output, attention_weights  # , gate_values
 
