@@ -115,8 +115,13 @@ class MultimodalTrainer:
 
         logger.info(f"Initialized MultimodalTrainer with device: {self.device}")
 
-        # Initialize model on device
+        # Initialize model on device with comprehensive device handling
         self.model = self.model.to(self.device)
+
+        # Ensure all model parameters are on the same device
+        # This is especially important for complex multimodal models that may have
+        # submodules with different devices, especially on MPS systems
+        self._ensure_model_on_device()
 
         # Initialize optimizer if not provided
         if self.optimizer is None:
@@ -151,6 +156,72 @@ class MultimodalTrainer:
 
         # Initialize metric storage
         self.history = defaultdict(list)
+
+    def _ensure_model_on_device(self):
+        """
+        Ensure all model components are on the correct device.
+        This is critically important for models with multiple components
+        like multimodal models, especially when using MPS device.
+        """
+        # First check if model is an instance of nn.Module
+        if not isinstance(self.model, nn.Module):
+            logger.warning(
+                f"Model is not an instance of nn.Module, cannot ensure device consistency"
+            )
+            return
+
+        # Helper for explicitly moving submodules when needed
+        def move_submodules(module_name, module):
+            # Check if this module has parameters
+            if list(module.parameters()):
+                # Check if any parameter is on a different device
+                param_device = next(module.parameters()).device
+                if param_device != self.device:
+                    logger.warning(
+                        f"Moving {module_name} from {param_device} to {self.device}"
+                    )
+                    try:
+                        module.to(self.device)
+                    except Exception as e:
+                        logger.error(
+                            f"Error moving {module_name} to {self.device}: {str(e)}"
+                        )
+
+        # Start with the main model modules
+        # First, check if the model has vision/text/fusion components (common in multimodal models)
+        if hasattr(self.model, "vision_model"):
+            move_submodules("vision_model", self.model.vision_model)
+
+        if hasattr(self.model, "text_model"):
+            move_submodules("text_model", self.model.text_model)
+
+        if hasattr(self.model, "fusion_module"):
+            move_submodules("fusion_module", self.model.fusion_module)
+
+        # Handle other common components
+        for name, module in self.model.named_children():
+            move_submodules(name, module)
+
+        # Verify all parameters are on the correct device
+        for name, param in self.model.named_parameters():
+            if param.device != self.device:
+                logger.warning(
+                    f"Parameter {name} is on {param.device}, expected {self.device}"
+                )
+                try:
+                    # Try to move this specific parameter
+                    param.data = param.data.to(self.device)
+                except Exception as e:
+                    logger.error(
+                        f"Error moving parameter {name} to {self.device}: {str(e)}"
+                    )
+
+        # Final verification
+        devices = {param.device for param in self.model.parameters()}
+        if len(devices) > 1:
+            logger.warning(f"Model parameters are on multiple devices: {devices}")
+        else:
+            logger.info(f"All model parameters are on device: {self.device}")
 
     def train(self) -> Dict[str, List[float]]:
         """
@@ -1100,18 +1171,43 @@ class MultimodalTrainer:
     def _to_device(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
         Move batch to device and ensure consistent naming for the model.
+        Handles complex nested data structures with device consistency checks.
 
         Args:
-            batch: Batch of data
+            batch: Batch of data which may contain nested dictionaries
 
         Returns:
             Batch on device with consistent naming
         """
-        # Move tensors to device
-        processed_batch = {
-            k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-            for k, v in batch.items()
-        }
+        # Check model device for consistency - ensures the model is on the expected device
+        model_device = next(self.model.parameters()).device
+        if model_device != self.device:
+            logger.warning(
+                f"Model device ({model_device}) differs from trainer device ({self.device})"
+            )
+            # Re-ensure model is on correct device
+            self._ensure_model_on_device()
+
+        # Process batch items recursively
+        def process_item(item):
+            if isinstance(item, torch.Tensor):
+                # If tensor already on device, skip moving
+                if item.device == self.device:
+                    return item
+                # Otherwise move to device
+                return item.to(self.device)
+            elif isinstance(item, dict):
+                # For dictionaries, process each item recursively
+                return {k: process_item(v) for k, v in item.items()}
+            elif isinstance(item, list):
+                # For lists, process each item recursively
+                return [process_item(i) for i in item]
+            else:
+                # Return other types unchanged
+                return item
+
+        # Process the full batch
+        processed_batch = process_item(batch)
 
         # Make sure naming is consistent with model's expected arguments
         # Model expects 'images' but dataset returns 'image'
@@ -1122,6 +1218,16 @@ class MultimodalTrainer:
         if "text" in processed_batch and "text_data" not in processed_batch:
             processed_batch["text_data"] = processed_batch.pop("text")
 
+        # Special handling for text data if it's a nested dictionary
+        if "text_data" in processed_batch and isinstance(
+            processed_batch["text_data"], dict
+        ):
+            # Ensure all text data tensors are on the device
+            text_data = processed_batch["text_data"]
+            for k, v in text_data.items():
+                if isinstance(v, torch.Tensor) and v.device != self.device:
+                    text_data[k] = v.to(self.device)
+
         return processed_batch
 
     def _prepare_model_inputs(
@@ -1129,6 +1235,7 @@ class MultimodalTrainer:
     ) -> Dict[str, torch.Tensor]:
         """
         Extract only the inputs that are needed by the model's forward method.
+        Includes additional device consistency checks.
 
         Args:
             batch: Full batch of data
@@ -1144,13 +1251,51 @@ class MultimodalTrainer:
 
         model_inputs = {}
 
+        # Final device check - critical for MPS compatibility
+        target_device = self.device
+
         # Add images if available
         if "images" in batch:
+            # Double check device
+            if batch["images"].device != target_device:
+                batch["images"] = batch["images"].to(target_device)
+                logger.debug(
+                    f"Had to move images to {target_device} in _prepare_model_inputs"
+                )
+
             model_inputs["images"] = batch["images"]
 
-        # Add text_data if available
+        # Add text_data if available with device consistency check
         if "text_data" in batch:
-            model_inputs["text_data"] = batch["text_data"]
+            # For text_data, we need to check nested dictionaries
+            if isinstance(batch["text_data"], dict):
+                # First check if any tensors are on wrong device
+                text_data = batch["text_data"]
+                needs_device_fix = False
+
+                for k, v in text_data.items():
+                    if isinstance(v, torch.Tensor) and v.device != target_device:
+                        needs_device_fix = True
+                        break
+
+                if needs_device_fix:
+                    # Copy dictionary and move all tensors to correct device
+                    text_data_fixed = {}
+                    for k, v in text_data.items():
+                        if isinstance(v, torch.Tensor) and v.device != target_device:
+                            text_data_fixed[k] = v.to(target_device)
+                            logger.debug(
+                                f"Had to move text_data[{k}] to {target_device}"
+                            )
+                        else:
+                            text_data_fixed[k] = v
+                    model_inputs["text_data"] = text_data_fixed
+                else:
+                    # Dictionary already has all tensors on correct device
+                    model_inputs["text_data"] = text_data
+            else:
+                # Not a dictionary, just use directly
+                model_inputs["text_data"] = batch["text_data"]
 
         # Other arguments like raw_text, idx, etc. should not be passed to the model
 

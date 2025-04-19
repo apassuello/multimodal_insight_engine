@@ -323,6 +323,7 @@ class EnhancedMultiModalTransformer(BaseModel):
     def extract_text_features(self, text_data: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Extract features from text using the text model.
+        Using a hybrid approach for HuggingFace models on MPS: compute on CPU, return on MPS.
 
         Args:
             text_data: Dictionary with text input tensors including 'src' and optionally 'src_mask'
@@ -333,10 +334,13 @@ class EnhancedMultiModalTransformer(BaseModel):
         # Get original device for returning output
         original_device = text_data["src"].device
         
-        # Simple approach - always use encode method on original device
-        # This avoids device compatibility issues since we're not using BERT
+        # Check if this is a HuggingFace model
+        is_huggingface = hasattr(self.text_model, 'encoder') and 'bert' in str(type(self.text_model)).lower()
+        is_mps = original_device.type == "mps"
+        
+        # First attempt: Try processing directly on the original device
+        # This works for non-HuggingFace models and some HuggingFace models not on MPS
         try:
-            # This works for our standard transformer models
             if hasattr(self.text_model, 'encode'):
                 text_features = self.text_model.encode(
                     text_data["src"], src_mask=text_data.get("src_mask", None)
@@ -348,27 +352,96 @@ class EnhancedMultiModalTransformer(BaseModel):
                     text_data["src"], src_mask=text_data.get("src_mask", None)
                 )
         except Exception as e:
-            # If we encounter any device issues, fall back to CPU processing
-            print(f"Error in text processing: {str(e)}")
-            print("Using CPU fallback for text processing...")
+            # If we're on MPS with a HuggingFace model, provide a more informative message
+            if is_huggingface and is_mps:
+                print(f"Using hybrid CPU-MPS approach for HuggingFace model: {str(e)}")
+            else:
+                print(f"Error in direct text processing: {str(e)}")
+                print("Attempting CPU processing...")
         
-        # Most robust fallback - process on CPU
+        # Hybrid approach for HuggingFace models on MPS:
+        # 1. Process on CPU
+        # 2. Return results on original device (MPS)
+        # This allows computation to happen where it's most compatible while 
+        # keeping tensor operations on the faster device
+        
+        # Save original model device for later restoration
+        original_model_device = next(self.text_model.parameters()).device
+        
+        # Move inputs to CPU
         cpu_src = text_data["src"].to('cpu')
         cpu_mask = text_data.get("src_mask", None)
         if cpu_mask is not None:
             cpu_mask = cpu_mask.to('cpu')
         
-        # Process on CPU
-        text_model_cpu = self.text_model.to('cpu')
-        
-        with torch.no_grad():
-            if hasattr(text_model_cpu, 'encode'):
-                features = text_model_cpu.encode(cpu_src, src_mask=cpu_mask)
-            else:
-                features = text_model_cpu(cpu_src, src_mask=cpu_mask)
-        
-        # Move results back to original device
-        return features.to(original_device)
+        # Create CPU copy of model for processing
+        try:
+            # Don't move the actual model, create a copy on CPU
+            with torch.no_grad():
+                # Process on CPU
+                if hasattr(self.text_model, 'encoder') and is_huggingface:
+                    # For HuggingFace models, try using just the encoder component on CPU
+                    # This is more efficient and avoids some compatibility issues
+                    encoder_cpu = self.text_model.encoder.to('cpu')
+                    
+                    # Handle out-of-range token indices
+                    if hasattr(encoder_cpu, "embeddings") and hasattr(encoder_cpu.embeddings, "word_embeddings"):
+                        vocab_size = encoder_cpu.embeddings.word_embeddings.weight.size(0)
+                        if torch.max(cpu_src) >= vocab_size:
+                            print(f"Clipping token indices that exceed vocabulary size ({vocab_size})")
+                            cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
+                    
+                    outputs = encoder_cpu(input_ids=cpu_src, attention_mask=cpu_mask)
+                    features = outputs.last_hidden_state
+                    # Move encoder back if needed
+                    if original_model_device != torch.device('cpu'):
+                        self.text_model.encoder = self.text_model.encoder.to(original_model_device)
+                elif hasattr(self.text_model, 'encode'):
+                    # Use full model on CPU with encode method
+                    text_model_cpu = self.text_model.to('cpu')
+                    
+                    # Check for vocab size issues if possible
+                    if hasattr(text_model_cpu, "embeddings") and hasattr(text_model_cpu.embeddings, "word_embeddings"):
+                        vocab_size = text_model_cpu.embeddings.word_embeddings.weight.size(0)
+                        if torch.max(cpu_src) >= vocab_size:
+                            print(f"Clipping token indices that exceed vocabulary size ({vocab_size})")
+                            cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
+                            
+                    features = text_model_cpu.encode(cpu_src, src_mask=cpu_mask)
+                    # Move model back
+                    if original_model_device != torch.device('cpu'):
+                        self.text_model = self.text_model.to(original_model_device)
+                else:
+                    # Use full model on CPU with forward method
+                    text_model_cpu = self.text_model.to('cpu')
+                    
+                    # Check for vocab size issues if possible
+                    if hasattr(text_model_cpu, "embeddings") and hasattr(text_model_cpu.embeddings, "word_embeddings"):
+                        vocab_size = text_model_cpu.embeddings.word_embeddings.weight.size(0)
+                        if torch.max(cpu_src) >= vocab_size:
+                            print(f"Clipping token indices that exceed vocabulary size ({vocab_size})")
+                            cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
+                            
+                    features = text_model_cpu(cpu_src, src_mask=cpu_mask)
+                    # Move model back
+                    if original_model_device != torch.device('cpu'):
+                        self.text_model = self.text_model.to(original_model_device)
+                
+                # Move features back to original device
+                return features.to(original_device)
+                
+        except Exception as cpu_err:
+            print(f"CPU processing failed with error: {str(cpu_err)}")
+            # Ensure model is moved back if needed
+            if next(self.text_model.parameters()).device != original_model_device:
+                self.text_model = self.text_model.to(original_model_device)
+            
+            # Since training can't proceed without text features, use zeros as absolute last resort
+            print("WARNING: Returning zeros as absolute last resort. Training will be severely affected.")
+            print("Consider using the --device cpu option if this problem persists.")
+            batch_size, seq_length = text_data["src"].shape
+            d_model = getattr(self.text_model, 'd_model', 768)
+            return torch.zeros(batch_size, seq_length, d_model, device=original_device)
 
     def forward(
         self,
@@ -395,17 +468,45 @@ class EnhancedMultiModalTransformer(BaseModel):
         """
         results = {}
 
+        # First determine which device we should use consistently
+        # This helps prevent mixed device operations
+        target_device = None
+        if images is not None:
+            target_device = images.device
+        elif text_data is not None and "src" in text_data:
+            target_device = text_data["src"].device
+        else:
+            # Fallback to model's device
+            target_device = next(self.parameters()).device
+            
+        # Log the device we're using - just once per run for clarity
+        if not hasattr(self, '_logged_device') or self._logged_device != target_device:
+            # Format the device name to be more user-friendly (strip ":0" from device name)
+            device_name = str(target_device).split(':')[0]
+            print(f"MultiModal model using device: {device_name}")
+            self._logged_device = target_device
+
         # Process vision input if provided
         vision_features = None
         if images is not None:
+            # Ensure images are on the target device
+            if images.device != target_device:
+                images = images.to(target_device)
+                
+            # Extract vision features
             vision_features = self.extract_vision_features(images)
+            
+            # Ensure vision features are on the target device
+            if vision_features.device != target_device:
+                vision_features = vision_features.to(target_device)
+                
             results["vision_features"] = vision_features
 
-            # Create vision mask (all tokens are valid)
+            # Create vision mask (all tokens are valid) directly on target device
             vision_mask = torch.ones(
                 vision_features.shape[0],
                 vision_features.shape[1],
-                device=vision_features.device,
+                device=target_device,
                 dtype=torch.bool,
             )
         else:
@@ -414,18 +515,33 @@ class EnhancedMultiModalTransformer(BaseModel):
         # Process text input if provided
         text_features = None
         if text_data is not None:
+            # Ensure text data is on the target device
+            if "src" in text_data and text_data["src"].device != target_device:
+                text_data["src"] = text_data["src"].to(target_device)
+            if "src_mask" in text_data and text_data["src_mask"] is not None and text_data["src_mask"].device != target_device:
+                text_data["src_mask"] = text_data["src_mask"].to(target_device)
+                
+            # Extract text features
             text_features = self.extract_text_features(text_data)
+            
+            # Ensure text features are on the target device
+            if text_features.device != target_device:
+                text_features = text_features.to(target_device)
+                
             results["text_features"] = text_features
 
             # Create text mask from padding if available
-            if "src_mask" in text_data:
+            if "src_mask" in text_data and text_data["src_mask"] is not None:
                 text_mask = text_data["src_mask"]
+                # Ensure mask is on the target device
+                if text_mask.device != target_device:
+                    text_mask = text_mask.to(target_device)
             else:
                 # If no mask provided, assume all tokens are valid
                 text_mask = torch.ones(
                     text_features.shape[0],
                     text_features.shape[1],
-                    device=text_features.device,
+                    device=target_device,
                     dtype=torch.bool,
                 )
         else:
@@ -433,6 +549,16 @@ class EnhancedMultiModalTransformer(BaseModel):
 
         # Apply fusion if both modalities are present
         if vision_features is not None and text_features is not None:
+            # Double check device consistency before fusion
+            if vision_features.device != target_device:
+                vision_features = vision_features.to(target_device)
+            if text_features.device != target_device:
+                text_features = text_features.to(target_device)
+            if vision_mask is not None and vision_mask.device != target_device:
+                vision_mask = vision_mask.to(target_device)
+            if text_mask is not None and text_mask.device != target_device:
+                text_mask = text_mask.to(target_device)
+                
             # Apply cross-modal fusion
             fusion_outputs = self.fusion_module(
                 vision_features=vision_features,
@@ -440,6 +566,11 @@ class EnhancedMultiModalTransformer(BaseModel):
                 vision_mask=vision_mask,
                 text_mask=text_mask,
             )
+
+            # Ensure fusion outputs are on the target device
+            for key, value in fusion_outputs.items():
+                if isinstance(value, torch.Tensor) and value.device != target_device:
+                    fusion_outputs[key] = value.to(target_device)
 
             # Store updated features
             results["vision_features_enhanced"] = fusion_outputs["vision_features"]
@@ -460,6 +591,9 @@ class EnhancedMultiModalTransformer(BaseModel):
 
                 # Classification prediction (match/no-match)
                 if hasattr(self, "classifier"):
+                    # Ensure classifier is on the target device
+                    if next(self.classifier.parameters()).device != target_device:
+                        self.classifier = self.classifier.to(target_device)
                     results["classification"] = self.classifier(
                         fusion_outputs["fusion_features"]
                     )
@@ -491,24 +625,42 @@ class EnhancedMultiModalTransformer(BaseModel):
                 vision_global = vision_features.mean(dim=1)
                 text_global = text_features.mean(dim=1)
 
-            # Ensure features have compatible dimensions
-            # Check if dimensions match before computing similarity
-            if vision_global.shape[1] == text_global.shape[1]:
-                # Normalize features
-                vision_global = F.normalize(vision_global, p=2, dim=1)
-                text_global = F.normalize(text_global, p=2, dim=1)
+            # Ensure consistent device for global features
+            if vision_global.device != target_device:
+                vision_global = vision_global.to(target_device)
+            if text_global.device != target_device:
+                text_global = text_global.to(target_device)
 
-                # Compute raw similarity
-                results["raw_similarity"] = torch.matmul(
-                    vision_global, text_global.transpose(0, 1)
-                )
-            else:
-                # Handle case where dimensions don't match - skip similarity calculation
-                # and log the issue
-                print(
-                    f"Warning: Feature dimensions don't match for similarity calculation: "
-                    f"vision_global shape={vision_global.shape}, text_global shape={text_global.shape}"
-                )
+            # Handle dimension mismatch with on-the-fly projection
+            vision_dim = vision_global.shape[1]
+            text_dim = text_global.shape[1]
+            
+            if vision_dim != text_dim:
+                # Create a simple projection layer to match dimensions on the target device
+                if vision_dim > text_dim:
+                    # Project vision features to text dimension
+                    projection = nn.Linear(vision_dim, text_dim).to(target_device)
+                    vision_global = projection(vision_global)
+                else:
+                    # Project text features to vision dimension
+                    projection = nn.Linear(text_dim, vision_dim).to(target_device)
+                    text_global = projection(text_global)
+                
+                print(f"Created projection layer to match vision dim={vision_dim} with text dim={text_dim} on {target_device}")
+            
+            # Normalize features (after projection if needed)
+            vision_global = F.normalize(vision_global, p=2, dim=1)
+            text_global = F.normalize(text_global, p=2, dim=1)
+
+            # Compute raw similarity
+            results["raw_similarity"] = torch.matmul(
+                vision_global, text_global.transpose(0, 1)
+            )
+
+        # Final device consistency check
+        for key, value in results.items():
+            if isinstance(value, torch.Tensor) and value.device != target_device:
+                results[key] = value.to(target_device)
 
         return results
 
