@@ -177,9 +177,9 @@ class MultimodalTrainer:
                 # Check if any parameter is on a different device
                 param_device = next(module.parameters()).device
                 if param_device != self.device:
-                    logger.warning(
-                        f"Moving {module_name} from {param_device} to {self.device}"
-                    )
+                    # logger.warning(
+                    #     f"Moving {module_name} from {param_device} to {self.device}"
+                    # )
                     try:
                         module.to(self.device)
                     except Exception as e:
@@ -205,9 +205,9 @@ class MultimodalTrainer:
         # Verify all parameters are on the correct device
         for name, param in self.model.named_parameters():
             if param.device != self.device:
-                logger.warning(
-                    f"Parameter {name} is on {param.device}, expected {self.device}"
-                )
+                # logger.warning(
+                #     f"Parameter {name} is on {param.device}, expected {self.device}"
+                # )
                 try:
                     # Try to move this specific parameter
                     param.data = param.data.to(self.device)
@@ -220,8 +220,8 @@ class MultimodalTrainer:
         devices = {param.device for param in self.model.parameters()}
         if len(devices) > 1:
             logger.warning(f"Model parameters are on multiple devices: {devices}")
-        else:
-            logger.info(f"All model parameters are on device: {self.device}")
+        # else:
+        #     logger.info(f"All model parameters are on device: {self.device}")
 
     def train(self) -> Dict[str, List[float]]:
         """
@@ -1182,9 +1182,9 @@ class MultimodalTrainer:
         # Check model device for consistency - ensures the model is on the expected device
         model_device = next(self.model.parameters()).device
         if model_device != self.device:
-            logger.warning(
-                f"Model device ({model_device}) differs from trainer device ({self.device})"
-            )
+            # logger.warning(
+            #     f"Model device ({model_device}) differs from trainer device ({self.device})"
+            # )
             # Re-ensure model is on correct device
             self._ensure_model_on_device()
 

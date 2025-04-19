@@ -58,6 +58,7 @@ from src.models.transformer import EncoderDecoderTransformer
 from src.models.vision.multimodal_integration import EnhancedMultiModalTransformer
 from src.models.vision.image_preprocessing import ImagePreprocessor
 from src.data.tokenization.optimized_bpe_tokenizer import OptimizedBPETokenizer
+from src.data.tokenization.simple_tokenizer import SimpleTokenizer
 from src.training.contrastive_learning import (
     ContrastiveLoss,
     MultiModalMixedContrastiveLoss,
@@ -1813,29 +1814,6 @@ def run_inference_demo(model, image_preprocessor, tokenizer, device, args):
     return recalls
 
 
-class SimpleTokenizer:
-    def __init__(self):
-        self._special_tokens = {
-            "pad_token_idx": 0,
-            "unk_token_idx": 1,
-            "bos_token_idx": 2,
-            "eos_token_idx": 3,
-            "mask_token_idx": 4,
-        }
-        self.vocab_size = 50000
-
-    def encode(self, text):
-        # Simple encoding based on character hashing
-        tokens = [self._special_tokens["bos_token_idx"]]
-        tokens.extend([hash(c) % (self.vocab_size - 10) + 10 for c in text])
-        tokens.append(self._special_tokens["eos_token_idx"])
-        return tokens
-
-    @property
-    def special_tokens(self):
-        return self._special_tokens
-
-
 def visualize_test_samples(model, test_dataset, device, save_path, num_samples=10):
     """
     Visualize specific test samples with their matched captions.
@@ -2147,8 +2125,37 @@ def main():
         std=(0.229, 0.224, 0.225),
     )
 
-    # Create a simple tokenizer with required interface
-    tokenizer = SimpleTokenizer()
+    # Create a tokenizer that's compatible with our model choices
+    if args.use_pretrained_text:
+        # If using pretrained text models from HuggingFace, match the tokenizer to the text model
+        if args.text_model == "mobilebert":
+            # Use MobileBERT tokenizer for MobileBERT model
+            tokenizer = SimpleTokenizer(pretrained_model_name="google/mobilebert-uncased", max_length=args.max_text_length)
+            print(f"Using MobileBERT tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "albert-base":
+            # Use ALBERT tokenizer for ALBERT model
+            tokenizer = SimpleTokenizer(pretrained_model_name="albert-base-v2", max_length=args.max_text_length)
+            print(f"Using ALBERT tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "bert-base":
+            # Use BERT tokenizer for BERT model
+            tokenizer = SimpleTokenizer(pretrained_model_name="bert-base-uncased", max_length=args.max_text_length)
+            print(f"Using BERT tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "roberta-base":
+            # Use RoBERTa tokenizer for RoBERTa model
+            tokenizer = SimpleTokenizer(pretrained_model_name="roberta-base", max_length=args.max_text_length)
+            print(f"Using RoBERTa tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "distilbert-base":
+            # Use DistilBERT tokenizer for DistilBERT model
+            tokenizer = SimpleTokenizer(pretrained_model_name="distilbert-base-uncased", max_length=args.max_text_length)
+            print(f"Using DistilBERT tokenizer with max length {args.max_text_length}")
+        else:
+            # Default to basic SimpleTokenizer for non-HuggingFace text models
+            tokenizer = SimpleTokenizer(max_length=args.max_text_length)
+            print(f"Using basic SimpleTokenizer with max length {args.max_text_length}")
+    else:
+        # For custom transformers, use the basic SimpleTokenizer
+        tokenizer = SimpleTokenizer(max_length=args.max_text_length)
+        print(f"Using basic SimpleTokenizer with max length {args.max_text_length}")
 
     # Create model
     model = create_multimodal_model(args, device)
