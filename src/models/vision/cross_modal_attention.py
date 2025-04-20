@@ -184,12 +184,12 @@ class GatedCrossModalAttention(nn.Module):
         # We'll add a projection layer to handle dimension mismatches
         self.query_dim = query_dim
         self.embed_dim = embed_dim
-        
+
         # Add query projection if dimensions don't match
         self.query_proj_gate = (
             nn.Linear(query_dim, embed_dim) if query_dim != embed_dim else nn.Identity()
         )
-        
+
         self.gate = nn.Sequential(
             nn.Linear(embed_dim * 2, embed_dim),
             nn.LayerNorm(embed_dim),
@@ -225,14 +225,14 @@ class GatedCrossModalAttention(nn.Module):
 
         # Project query features to match embedding dimension using the pre-defined projection
         query_features_projected = self.query_proj_gate(query_features)
-        
+
         # Simplify the gating process - keep everything on the same device
         # Concatenate inputs on the original device
         gate_input = torch.cat([query_features_projected, attended_features], dim=-1)
-        
+
         # Apply gate - all operations stay on the same device
         gate_values = self.gate(gate_input)
-        
+
         # Apply gated residual connection
         output = query_features_projected + gate_values * attended_features
 
@@ -350,16 +350,16 @@ class BidirectionalCrossAttention(nn.Module):
         if vision_mask is not None and text_mask is not None:
             # Get device
             device = vision_features.device
-            
+
             # Ensure masks are on device
             vision_mask = vision_mask.to(device)
             text_mask = text_mask.to(device)
-            
+
             # Get shapes for mask creation
             batch_size = vision_mask.shape[0]
             text_seq_len = text_mask.shape[1]
             vision_seq_len = vision_mask.shape[1]
-            
+
             # Create simple masks that allow all tokens to attend to all other tokens
             # Create directly on the target device
             text_to_vision_mask = torch.ones(
@@ -369,7 +369,7 @@ class BidirectionalCrossAttention(nn.Module):
                 dtype=torch.bool,
                 device=device,
             )
-            
+
             vision_to_text_mask = torch.ones(
                 batch_size,
                 vision_seq_len,
@@ -444,9 +444,27 @@ class CoAttentionFusion(nn.Module):
         super().__init__()
 
         # Initial projections to fusion dimension
-        self.vision_proj = nn.Linear(vision_dim, fusion_dim)
-        self.text_proj = nn.Linear(text_dim, fusion_dim)
+        # self.vision_proj = nn.Linear(vision_dim, fusion_dim)
+        # self.text_proj = nn.Linear(text_dim, fusion_dim)
 
+        # Increase feature scale in initial projections
+        self.vision_proj = nn.Sequential(
+            nn.Linear(vision_dim, fusion_dim),
+            nn.LayerNorm(fusion_dim),
+            nn.GELU(),  # Add activation for better non-linearity
+            nn.Linear(fusion_dim, fusion_dim),  # Add second layer for more capacity
+        )
+        self.text_proj = nn.Sequential(
+            nn.Linear(text_dim, fusion_dim),
+            nn.LayerNorm(fusion_dim),
+            nn.GELU(),  # Add activation for better non-linearity
+            nn.Linear(fusion_dim, fusion_dim),  # Add second layer for more capacity
+        )
+        # Initialize the projections with higher scale
+        for module in [self.vision_proj, self.text_proj]:
+            for m in module.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.xavier_uniform_(m.weight, gain=2.0)  # Higher gain
         # Stack of bidirectional cross-attention layers
         self.fusion_layers = nn.ModuleList(
             [
@@ -476,7 +494,7 @@ class CoAttentionFusion(nn.Module):
 
         # Global fusion token for pooled representation
         self.fusion_token = nn.Parameter(torch.zeros(1, 1, fusion_dim))
-        nn.init.normal_(self.fusion_token, std=0.02)
+        nn.init.normal_(self.fusion_token, mean=0.0, std=0.5)
 
     def forward(
         self,

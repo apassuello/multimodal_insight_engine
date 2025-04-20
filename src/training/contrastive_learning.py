@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, List, Optional, Tuple, Any, Union
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryQueueContrastiveLoss(nn.Module):
@@ -19,7 +22,7 @@ class MemoryQueueContrastiveLoss(nn.Module):
 
         # Queue pointers
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
-        
+
         # Add a fill level tracker for smoother stage transitions
         self.register_buffer("queue_fill_level", torch.zeros(1, dtype=torch.long))
 
@@ -30,29 +33,33 @@ class MemoryQueueContrastiveLoss(nn.Module):
         # - One for storing previous iterations' embeddings (non-gradient)
         # - One for the current computation (with gradient)
         self.use_two_buffers = True
-        
+
         # Store initial temperature for adaptive adjustment
         self.initial_temperature = temperature
-        self.max_temperature = temperature * 1.3  # Higher temperature for early training
+        self.max_temperature = (
+            temperature * 1.3
+        )  # Higher temperature for early training
 
     def initialize_queue(self, vision_features, text_features):
         """
         Initialize the queue with the provided features.
         This is useful for pre-filling the queue when transitioning between training stages.
-        
+
         Args:
             vision_features: Vision features [batch_size, dim]
             text_features: Text features [batch_size, dim]
         """
-        if not isinstance(vision_features, torch.Tensor) or not isinstance(text_features, torch.Tensor):
+        if not isinstance(vision_features, torch.Tensor) or not isinstance(
+            text_features, torch.Tensor
+        ):
             print("Warning: initialize_queue requires tensor inputs")
             return
-            
+
         # Get device and feature dimensions
         device = vision_features.device
         feature_dim = vision_features.shape[1]
         batch_size = vision_features.shape[0]
-        
+
         # Initialize queues if not initialized yet
         if not self.initialized:
             # Create and normalize queues with the correct feature dimension
@@ -71,18 +78,22 @@ class MemoryQueueContrastiveLoss(nn.Module):
             self.queue_ptr = self.queue_ptr.to(device)
             self.queue_fill_level = self.queue_fill_level.to(device)
             self.initialized = True
-            print(f"Initialized memory queues with dimension {feature_dim}x{self.queue_size}")
-            
+            print(
+                f"Initialized memory queues with dimension {feature_dim}x{self.queue_size}"
+            )
+
         # Normalize the features if they're not already normalized
         vision_features = F.normalize(vision_features, dim=1)
         text_features = F.normalize(text_features, dim=1)
-            
+
         # Call update queue to add these features
         self._update_queue(vision_features, text_features)
-            
+
         # Print initialization info
         fill_level = int(self.queue_fill_level.item())
-        print(f"Queue initialized with {fill_level}/{self.queue_size} entries ({fill_level/self.queue_size:.1%} full)")
+        print(
+            f"Queue initialized with {fill_level}/{self.queue_size} entries ({fill_level/self.queue_size:.1%} full)"
+        )
 
     def forward(self, vision_features, text_features, match_ids):
         # Get device and feature dimensions
@@ -153,34 +164,45 @@ class MemoryQueueContrastiveLoss(nn.Module):
         # Get current fill level for queue weighting and adaptive temperature
         fill_level = min(int(self.queue_fill_level.item()), self.queue_size)
         fill_ratio = fill_level / self.queue_size
-        
+
         # Adjust temperature based on fill level - higher at beginning, lower as queue fills
         # This makes learning smoother when transitioning between stages
-        effective_temperature = self.max_temperature - (self.max_temperature - self.initial_temperature) * fill_ratio
+        effective_temperature = (
+            self.max_temperature
+            - (self.max_temperature - self.initial_temperature) * fill_ratio
+        )
         if fill_ratio >= 0.95:  # Once queue is nearly full, use base temperature
             effective_temperature = self.initial_temperature
-        
+
         # Apply temperature to similarities
         # CRITICAL ENHANCEMENT: Compare with queue embeddings too
         # Current batch similarities
-        batch_similarities = torch.matmul(vision_features, text_features.T) / effective_temperature
+        batch_similarities = (
+            torch.matmul(vision_features, text_features.T) / effective_temperature
+        )
 
         # Make sure queues are detached from computation graph
         text_queue_detached = self.text_queue.detach()
         vision_queue_detached = self.vision_queue.detach()
 
         # Vision-to-queue text similarities
-        v2q_similarities = torch.matmul(vision_features, text_queue_detached) / effective_temperature
+        v2q_similarities = (
+            torch.matmul(vision_features, text_queue_detached) / effective_temperature
+        )
 
         # Text-to-queue vision similarities
-        t2q_similarities = torch.matmul(text_features, vision_queue_detached) / effective_temperature
+        t2q_similarities = (
+            torch.matmul(text_features, vision_queue_detached) / effective_temperature
+        )
 
         # Apply weighting to queue similarities based on fill level
         # For sparse/empty queues, reduce their influence to avoid noisy gradients
-        queue_weight = min(1.0, fill_ratio * 1.5)  # Gradually increase queue weight as it fills
+        queue_weight = min(
+            1.0, fill_ratio * 1.5
+        )  # Gradually increase queue weight as it fills
         if fill_ratio < 0.2:  # Very sparse queue
             queue_weight = fill_ratio * 0.5  # Significantly reduce influence
-        
+
         # Apply weighting
         v2q_similarities = v2q_similarities * queue_weight
         t2q_similarities = t2q_similarities * queue_weight
@@ -252,15 +274,17 @@ class MemoryQueueContrastiveLoss(nn.Module):
 
         # Periodically log queue status and temperature
         if torch.rand(1).item() < 0.01:  # ~1% chance of logging
-            print(f"Memory queue: {fill_level}/{self.queue_size} filled ({fill_ratio:.2f}), " 
-                  f"using temperature={effective_temperature:.3f}")
+            print(
+                f"Memory queue: {fill_level}/{self.queue_size} filled ({fill_ratio:.2f}), "
+                f"using temperature={effective_temperature:.3f}"
+            )
 
         return {
-            "loss": loss, 
-            "loss_v2t": v2t_loss.item(), 
+            "loss": loss,
+            "loss_v2t": v2t_loss.item(),
             "loss_t2v": t2v_loss.item(),
             "temperature": effective_temperature,
-            "queue_fill": fill_ratio
+            "queue_fill": fill_ratio,
         }
 
     @torch.no_grad()
@@ -312,20 +336,26 @@ class MemoryQueueContrastiveLoss(nn.Module):
             [(ptr + batch_size) % self.queue_size], dtype=torch.long, device=device
         )
         self.register_buffer("queue_ptr", new_ptr)
-        
+
         # Update fill level - will max out at queue_size
         current_fill = int(self.queue_fill_level.item())
         new_fill = min(current_fill + batch_size, self.queue_size)
-        self.register_buffer("queue_fill_level", 
-                             torch.tensor([new_fill], dtype=torch.long, device=device))
+        self.register_buffer(
+            "queue_fill_level",
+            torch.tensor([new_fill], dtype=torch.long, device=device),
+        )
 
 
 class DynamicTemperatureContrastiveLoss(nn.Module):
-    def __init__(self, base_temperature=0.07, min_temp=0.04, max_temp=0.2):
+    def __init__(self, base_temperature=0.07, min_temp=0.04, max_temp=0.2, dim=768):
         super().__init__()
         self.base_temperature = base_temperature
         self.min_temp = min_temp
         self.max_temp = max_temp
+        self.dim = dim
+
+        # Store dimension for debugging
+        print(f"DynamicTemperatureContrastiveLoss initialized with dimension: {dim}")
 
     def forward(self, vision_features, text_features, match_ids):
         device = vision_features.device
@@ -422,12 +452,20 @@ class DynamicTemperatureContrastiveLoss(nn.Module):
 
 class HardNegativeMiningContrastiveLoss(nn.Module):
     def __init__(
-        self, temperature=0.07, hard_negative_factor=2.0, mining_strategy="semi-hard"
+        self,
+        temperature=0.07,
+        hard_negative_factor=2.0,
+        mining_strategy="semi-hard",
+        dim=768,
     ):
         super().__init__()
         self.temperature = temperature
         self.hard_negative_factor = hard_negative_factor  # Weight for hard negatives
         self.mining_strategy = mining_strategy  # "hard" or "semi-hard"
+        self.dim = dim
+
+        # Store dimension for debugging
+        print(f"HardNegativeMiningContrastiveLoss initialized with dimension: {dim}")
 
     def forward(self, vision_features, text_features, match_ids):
         device = vision_features.device
@@ -850,6 +888,16 @@ class ContrastiveLoss(nn.Module):
             raise ValueError(
                 f"Batch size mismatch: vision={vision_features.shape}, text={text_features.shape}"
             )
+
+        # Log feature shapes at debug level only
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"Vision features shape: {vision_features.shape}, device: {vision_features.device}"
+            )
+            logger.debug(
+                f"Text features shape: {text_features.shape}, device: {text_features.device}"
+            )
+            logger.debug(f"Projection input_dim: {getattr(self, 'input_dim', None)}")
 
         # Apply projection and normalization
         vision_features, text_features = self.project(vision_features, text_features)
@@ -1407,6 +1455,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         temperature: float = 0.07,
         use_hard_negatives: bool = False,
         hard_negative_weight: float = 0.5,
+        dim: int = 768,  # Default to modern vision transformer dimension
     ):
         """
         Initialize mixed contrastive loss.
@@ -1418,6 +1467,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
             temperature: Temperature parameter for contrastive loss
             use_hard_negatives: Whether to use hard negatives mining
             hard_negative_weight: Weight for hard negatives (if used)
+            dim: Feature dimension for the models (default: 768 for ViT-base)
         """
         super().__init__()
         self.contrastive_weight = contrastive_weight
@@ -1426,9 +1476,20 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         self.temperature = temperature
         self.use_hard_negatives = use_hard_negatives
         self.hard_negative_weight = hard_negative_weight
+        self.dim = dim
 
-        # Base contrastive loss
-        self.contrastive_loss = ContrastiveLoss(temperature=temperature)
+        # Store dimension for debugging
+        print(f"MultiModalMixedContrastiveLoss initialized with dimension: {dim}")
+
+        # Base contrastive loss with correct input dimension
+        self.contrastive_loss = ContrastiveLoss(
+            temperature=temperature,
+            add_projection=False,
+            input_dim=dim,  # Pass the correct dimension
+            projection_dim=min(
+                512, dim // 2
+            ),  # Smaller projection size for better generalization
+        )
 
         # Classification loss
         self.classification_loss = nn.CrossEntropyLoss()
