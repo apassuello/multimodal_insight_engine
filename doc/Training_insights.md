@@ -1,442 +1,324 @@
 
-# Translation Model Parameter Guide
-
-This guide explains the key parameters for training neural machine translation models with the `translation_example.py` script, including how each parameter impacts model performance, training behavior, and resource utilization.
-
-## Model Architecture Parameters
-
-### `--d_model` (Default: 512)
-
-- **Description:** Dimensionality of the embedding vectors and hidden representations
-- **Impact:**
-  - **Model Size:** Linear relationship with parameter count
-  - **Memory Usage:** Higher values increase memory usage
-  - **Learning Quality:** Larger values capture more information but risk overfitting on small datasets
-- **Recommended Values:**
-  - Small datasets (<100K examples): 256-384
-  - Medium datasets (100K-1M examples): 512-768
-  - Large datasets (>1M examples): 768-1024
-
-### `--num_heads` (Default: 8)
-
-- **Description:** Number of attention heads in multi-head attention
-- **Impact:**
-  - **Model Capability:** More heads enable attention to different representation subspaces
-  - **Computation:** Higher values increase computation during attention calculation
-- **Constraints:** Must divide `d_model` evenly (`d_model % num_heads == 0`)
-- **Recommended Values:**
-  - For d_model=512: 8 heads (each with dimension 64)
-  - For d_model=768: 12 heads (each with dimension 64)
-
-```mermaid
-graph TD
-    dmodel["d_model"] -->|"Determines size of"| A["Embeddings"]
-    dmodel -->|"Determines size of"| B["Attention Matrices"]
-    dmodel -->|"Must be divisible by"| C["num_heads"]
-    dmodel -->|"Proportional to"| D["Model Parameters"]
-    C -->|"Each head captures different<br>aspects of the input"| E["Feature Representation"]
-    A --> F["Model Understanding Capacity"]
-    B --> F
-    E --> F
-```
-
-### `--num_encoder_layers` and `--num_decoder_layers` (Default: 4)
-
-- **Description:** Number of transformer layers in encoder and decoder
-- **Impact:**
-  - **Model Depth:** More layers provide deeper representations
-  - **Parameter Count:** Linear increase with more layers
-  - **Training Difficulty:** Deeper models can be harder to train
-- **Tradeoffs:**
-  - More layers improve modeling complex relationships but increase:
-    - Training time (linearly)
-    - GPU memory usage (linearly)
-    - Risk of overfitting on smaller datasets
-- **Recommended Values:**
-  - Small/Medium datasets: 4-6 layers
-  - Large datasets: 6-12 layers
-
-### `--d_ff` (Default: 2048)
-
-- **Description:** Dimension of the feed-forward networks in transformer layers
-- **Impact:**
-  - **Model Capacity:** Larger values increase model's representational capacity
-  - **Parameter Count:** Significant impact on model size (typically 4× the d_model)
-- **Recommended Values:**
-  - Typically 4× the `d_model` value (e.g., d_model=512 → d_ff=2048)
-
-## Training Parameters
-
-### `--learning_rate` (Default: 0.0001)
-
-- **Description:** Base learning rate for optimization
-- **Impact:**
-  - **Training Speed:** Higher values may converge faster but risk instability
-  - **Final Performance:** Too high → divergence, Too low → slow convergence or suboptimal results
-- **Critical Parameter:** One of the most important parameters to tune
-- **Recommended Values:**
-  - Conservative start: 5e-5
-  - For larger batches: 1e-4
-  - With gradient clipping: Can use slightly higher values
-
-```mermaid
-graph LR
-    A["Learning Rate"] -->|"Too Low"| B["Slow Convergence<br>May Get Stuck"]
-    A -->|"Too High"| C["Unstable Training<br>Divergence"]
-    A -->|"Just Right"| D["Optimal Convergence"]
-    E["Batch Size"] -->|"Larger"| F["Can Use Higher Learning Rate"]
-    G["Gradient Clipping"] -->|"Enables"| H["More Aggressive Learning Rates"]
-```
-
-### `--warmup_steps` (Default: 4000)
-
-- **Description:** Steps for learning rate warmup
-- **Impact:**
-  - **Training Stability:** Prevents large gradient updates early in training
-  - **Learning Dynamics:** Helps model settle into good parameter space
-- **Scaling:** Should scale with dataset size
-- **Recommended Values:**
-  - Small dataset (<100K examples): 2000-4000 steps
-  - Medium dataset (100K-1M): 4000-8000 steps
-  - Large dataset (>1M): 8000-12000 steps
-
-```mermaid
-graph TD
-    subgraph "Learning Rate Schedule"
-    warmup["Warmup Phase"] -->|"Linear increase"| peak["Peak Learning Rate"]
-    peak -->|"Decay according to schedule"| decay["Decay Phase"]
-    end
-    
-    config1["warmup_steps = 4000"] --> short["Shorter warmup (more aggressive)"]
-    config2["warmup_steps = 8000"] --> medium["Medium warmup (balanced)"]
-    config3["warmup_steps = 12000"] --> long["Longer warmup (more conservative)"]
-```
-
-### `--clip_grad` (Default: None)
-
-- **Description:** Maximum gradient norm for gradient clipping
-- **Impact:**
-  - **Training Stability:** Prevents exploding gradients
-  - **Learning Dynamics:** Allows more aggressive learning rates
-- **When to Use:**
-  - Deep models (many layers)
-  - When seeing loss spikes or NaNs
-  - With mixed precision training
-- **Recommended Values:**
-  - Conservative: 0.5
-  - Standard: 1.0
-  - Aggressive: 5.0
-
-### `--label_smoothing` (Default: 0.2)
-
-- **Description:** Smoothing factor for loss calculation
-- **Impact:**
-  - **Regularization:** Prevents model overconfidence
-  - **Generalization:** Improves model generalization
-- **Tradeoffs:** Higher values may slow convergence but improve final performance
-- **Recommended Values:**
-  - Conservative: 0.1
-  - Standard: 0.2
-  - Aggressive smoothing: 0.3
-
-### `--epochs` (Default: 3)
-
-- **Description:** Number of training passes through the dataset
-- **Impact:**
-  - **Training Time:** Linear relationship
-  - **Final Performance:** More epochs typically improve performance, with diminishing returns
-- **Best Practice:** Use with early stopping patience
-- **Recommended Values:**
-  - Small dataset: 10-20 epochs
-  - Medium/Large dataset: 5-10 epochs
-
-## Resource and Performance Parameters
-
-### `--batch_size` (Default: 128)
-
-- **Description:** Number of examples processed together
-- **Impact:**
-  - **Memory Usage:** Directly proportional
-  - **Training Speed:** Larger batches = faster epochs but may need more epochs
-  - **Convergence:** Affects gradient quality and optimization dynamics
-- **Hardware Constraints:** Limited by GPU memory
-- **Recommended Values:**
-  - 16GB GPU: 32-64
-  - 24GB+ GPU: 64-128
-  - With gradient accumulation: Can effectively use larger values
-
-```mermaid
-graph TD
-    bs["Batch Size"] -->|"Increases"| mem["GPU Memory Usage"]
-    bs -->|"Affects"| noise["Gradient Noise"]
-    bs -->|"Larger requires"| lr["Learning Rate Adjustment"]
-    
-    subgraph "Memory Requirements"
-    bs32["Batch Size = 32"] --> mem8["~8GB GPU Memory"]
-    bs64["Batch Size = 64"] --> mem16["~16GB GPU Memory"]
-    bs128["Batch Size = 128"] --> mem32["~32GB GPU Memory"]
-    end
-```
-
-### `--num_workers` (Internal Default: 4)
-
-- **Description:** Number of data loading worker processes
-- **Impact:**
-  - **Data Loading Speed:** More workers = faster data loading
-  - **CPU Usage:** Increases with more workers
-- **Note:** Set to 0 if encountering multiprocessing issues
-- **Recommended Values:**
-  - Number of CPU cores - 2 (leaves resources for other processes)
-
-### `--max_train_examples` and `--max_val_examples`
-
-- **Description:** Maximum number of examples to use from dataset
-- **Impact:**
-  - **Training Time:** Directly proportional
-  - **Memory Usage:** For preprocessing/tokenization overhead
-  - **Model Quality:** More data generally improves performance
-- **Use Cases:**
-  - Quick experiments: 10K-100K examples
-  - Production models: Use as many as practical (1M+)
-
-## Advanced Parameters
-
-### `--use_gradient_scaling` (Flag)
-
-- **Description:** Enables gradient scaling for mixed precision training
-- **Impact:**
-  - **Training Stability:** Prevents underflow in FP16 formats
-  - **Memory Usage:** Slightly increased
-- **Recommended:** Enable when using mixed precision
-
-### `--early_stopping_patience` (Default: None)
-
-- **Description:** Epochs to wait before stopping if no improvement
-- **Impact:**
-  - **Training Efficiency:** Prevents wasted computation
-  - **Model Selection:** Helps select the best model
-- **Recommended Values:**
-  - 3-5 epochs for most cases
-
-### `--use_joint_tokenizer` (Default: True)
-
-- **Description:** Whether to use shared vocabulary for source and target languages
-- **Impact:**
-  - **Model Size:** Reduces model size through embedding sharing
-  - **Performance:** Better for similar languages (e.g., English-German)
-  - **Memory Efficiency:** Reduces memory footprint
-- **Recommended:**
-  - True for related languages
-  - False for very different language pairs (e.g., English-Chinese)
-
-## Parameter Interdependencies
-
-```mermaid
-flowchart TD
-    dataset["Dataset Size"] -->|"Influences"| dm["d_model"]
-    dataset -->|"Influences"| ep["epochs"]
-    dataset -->|"Influences"| layers["num_encoder/decoder_layers"]
-    dataset -->|"Influences"| warmup["warmup_steps"]
-    
-    bs["batch_size"] -->|"Affects"| lr["learning_rate"]
-    bs -->|"Affects"| warmup
-    
-    dm -->|"Should be 4x"| dff["d_ff"]
-    dm -->|"Must be divisible by"| heads["num_heads"]
-    
-    layers -->|"Deeper models may need"| clip["clip_grad"]
-    layers -->|"Deeper models may need"| smooth["label_smoothing"]
-    
-    subgraph "Training Dynamics"
-    lr --- warmup
-    lr --- clip
-    end
-```
-
-## Recommended Configurations
-
-### Quick Experimentation
-```bash
---max_train_examples 50000 --max_val_examples 5000 --batch_size 32
---d_model 256 --num_encoder_layers 2 --num_decoder_layers 2
---learning_rate 5e-5 --warmup_steps 1000 --epochs 5
-```
-
-### Balanced (Medium Dataset)
-```bash
---max_train_examples 500000 --max_val_examples 50000 --batch_size 64
---d_model 512 --num_encoder_layers 4 --num_decoder_layers 4 --d_ff 2048
---learning_rate 5e-5 --warmup_steps 4000 --clip_grad 1.0 --epochs 10
-```
-
-### Production Quality (Large Dataset)
-
-```bash
---max_train_examples 2000000 --max_val_examples 100000 --batch_size 64
---d_model 768 --num_encoder_layers 6 --num_decoder_layers 6 --d_ff 3072
---learning_rate 3e-5 --warmup_steps 8000 --clip_grad 1.0
---label_smoothing 0.2 --epochs 5 --early_stopping_patience 3
-```
-
-## Troubleshooting Training Issues
-
-| Issue                   | Symptoms                                      | Parameter Adjustments                       |
-| ----------------------- | --------------------------------------------- | ------------------------------------------- |
-| Slow learning           | Loss decreases very slowly                    | Increase learning rate, check d_model       |
-| Unstable training       | Loss spikes or NaN values                     | Add clip_grad, reduce learning rate         |
-| Overfitting             | Val loss increases while train loss decreases | Add label_smoothing, reduce model size      |
-| GPU OOM errors          | Training crashes with memory errors           | Reduce batch_size, d_model, or layers       |
-| Low translation quality | Poor BLEU scores                              | Increase d_model, layers, and training data |
-
-## Conclusion
-
-Parameter tuning is both an art and science. While following these guidelines provides a strong starting point, every language pair and dataset may require specific adjustments. The most critical parameters (learning rate, model size, batch size) should be tuned first, followed by fine adjustments to other parameters.
-
-Monitor training curves and validation performance closely to determine when further tuning is needed. With proper tuning, the translation model can achieve strong performance while efficiently using available computational resources.x
-
-
-## Data Generation Issues and Fixes
-
-
-# Translation Model Generation: Issues & Fixes
-
-## The Generation Process in Transformer Translation Models
-
-Translation generation in transformer models follows an auto-regressive process:
-
-```mermaid
-sequenceDiagram
-    participant Input as Source Text
-    participant Encoder
-    participant Decoder
-    participant Output as Generated Text
-
-    Input->>Encoder: Process entire source sequence
-    Note over Encoder: Creates context representation
-    
-    Decoder->>Decoder: Start with <BOS> token
-    loop Auto-regressive generation
-        Decoder->>Encoder: Attend to encoder states
-        Encoder-->>Decoder: Context information
-        Decoder->>Decoder: Generate token probabilities
-        Decoder->>Output: Output most likely token
-        Output-->>Decoder: Add token to partial translation
-        Note over Decoder: Stop if <EOS> token or max length
-    end
-```
-
-## Issues in the Original Implementation
-
-The original model was experiencing severe problems during generation:
-
-1. **Model Loading Mismatch**
-   - State dictionary keys didn't match model structure
-   - Output projection weights were at different paths
-
-2. **Sub-optimal Decoding Strategy**
-   - Pure greedy decoding (always picking the highest probability token)
-   - No temperature sampling to encourage diversity
-   - Weak handling of repetitive outputs
-
-3. **Ineffective Repetition Management**
-   - Only detected repetition after it occurred extensively
-   - Limited attempts to break out of repetition loops
-
-## Key Fixes Implemented
-
-### 1. Model Loading Fix
-
-```mermaid
-flowchart TD
-    A[Checkpoint Load] --> B{Key Mismatch?}
-    B -->|Yes| C[Remap Keys]
-    B -->|No| D[Load Directly]
-    C --> E[output_projection.weight → decoder.output_projection.weight]
-    C --> F[output_projection.bias → decoder.output_projection.bias]
-    E --> G[Load State Dict]
-    F --> G
-    D --> G
-```
-
-Fixed with this code:
-```python
-# Fix output projection key mismatch if needed
-if "output_projection.weight" in state_dict and "decoder.output_projection.weight" not in state_dict:
-    state_dict["decoder.output_projection.weight"] = state_dict.pop("output_projection.weight")
-    state_dict["decoder.output_projection.bias"] = state_dict.pop("output_projection.bias")
-```
-
-### 2. Improved Decoding Strategy
-
-The new implementation includes:
-
-- **Temperature Sampling** (default 0.7 instead of 1.0)
-  - Divides logits by temperature before softmax
-  - Lower values = more deterministic, higher = more random
-
-- **Top-k Sampling** (default 5 instead of 1)
-  - Samples from top k most probable tokens
-  - Balances quality and diversity
-
-- **Dynamic Temperature Adjustment**
-  - Increases temperature when repetition detected
-  - Returns to base value when generation is healthy
-
-```mermaid
-flowchart TB
-    Start[Token Prediction] --> Logits[Calculate Logits]
-    Logits --> Temp[Apply Temperature]
-    Temp --> TopK[Select Top-k Tokens]
-    TopK --> Sample[Sample from Distribution]
-    Sample --> Check{Repetition?}
-    Check -->|Yes| Adjust[Increase Temperature]
-    Check -->|No| Normal[Decrease Temperature]
-    Adjust --> Next[Next Token]
-    Normal --> Next
-    Next --> Output[Add to Output]
-    Output --> Continue{Continue?}
-    Continue -->|Yes| Start
-    Continue -->|No| End[Finish Translation]
-```
-
-### 3. Multi-attempt Generation with Adaptive Parameters
-
-The new implementation tries multiple generation attempts with increasing randomness when it detects problematic outputs:
-
-```mermaid
-flowchart TD
-    Start[Start Generation] --> Attempt[Generation Attempt]
-    Attempt --> Quality{Quality Check}
-    Quality -->|Good| Success[Return Translation]
-    Quality -->|Poor| Count{Max Attempts?}
-    Count -->|No| Adjust[Increase Randomness]
-    Count -->|Yes| Fail[Return Failure Message]
-    Adjust --> Attempt
-```
-
-## How It Now Works
-
-The new generation process:
-
-1. **Initializes** with conservative randomness (temp=0.7, top-k=5)
-2. **Generates** tokens auto-regressively
-3. **Monitors** for repetition patterns
-4. **Adapts** sampling parameters if issues occur
-5. **Validates** the final output for quality
-6. **Re-attempts** with more randomness if needed
-
-## The Before/After Difference
-
-Before:
-```bash
-Source: Ich bin ein Student.
-Output: What what what what what what what...
-```
-
-After:
-```bash
-Source: Ich bin ein Student.
-Output: I am a student.
-```
-
-This dramatic improvement comes from properly loading model weights and implementing a more sophisticated generation algorithm that balances deterministic and stochastic elements in the decoding process.
+# Advanced Multimodal Training Strategies
+
+This document outlines strategies to significantly improve performance in multimodal contrastive learning systems, focusing on image-text retrieval tasks. While our baseline system with semantic batch sampling can achieve reasonable results, this guide details potential improvements to push performance beyond 0.8+ accuracy toward state-of-the-art levels.
+
+## Current Setup
+
+Our baseline multimodal system uses:
+- **Models**: ViT-base for vision, MobileBERT for text
+- **Training**: 20 epochs with multistage approach
+- **Data**: Flickr30k dataset with semantic group batch sampling
+- **Hardware**: Apple Silicon (MPS)
+- **Loss**: Standard contrastive loss with in-batch negatives
+
+## Improvement Pathways
+
+### 1. Better Pretrained Models
+
+**Why**: Model capacity and pretraining significantly impact performance ceiling.
+
+**What & Where**:
+- **Text Models**: 
+  ```python
+  # In src/utils/argument_configs.py - Update choices
+  parser.add_argument(
+      "--text_model",
+      choices=["transformer-base", ..., "roberta-large", "deberta-v3-large"],
+  )
+  
+  # In demos/multimodal_training_demo.py - Command line
+  --text_model roberta-base  # For better performance
+  ```
+  
+- **Vision Models**:
+  ```python
+  # In src/models/model_factory.py - Add support for larger models
+  if vision_model == "vit-large":
+      model = timm.create_model("vit_large_patch16_224", pretrained=True)
+  elif vision_model == "eva02-large":
+      model = timm.create_model("eva02_large_patch14_336", pretrained=True)
+  
+  # In demos/multimodal_training_demo.py - Command line
+  --vision_model vit-large
+  ```
+
+### 2. Data Augmentation
+
+**Why**: Augmentation creates diverse training examples, improving generalization and reducing overfitting.
+
+**What & Where**:
+- **Image Augmentation**: 
+  ```python
+  # In src/data/multimodal_dataset.py - EnhancedMultimodalDataset
+  from torchvision import transforms
+  
+  # Add strong augmentations in __init__ method
+  self.transform_train = transforms.Compose([
+      transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
+      transforms.RandomHorizontalFlip(),
+      transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+      transforms.RandomGrayscale(p=0.1),
+  ])
+  
+  # Use in __getitem__ method for training split
+  if self.split == "train" and self.transform_train:
+      image = self.transform_train(image)
+  ```
+  
+- **Text Augmentation**:
+  ```python
+  # In src/data/multimodal_data_utils.py - Create a new text augmentation function
+  def augment_text(text, p=0.3):
+      """Apply simple text augmentations"""
+      import random
+      import nltk
+      from nltk.corpus import wordnet
+      
+      if random.random() > p:
+          return text
+          
+      words = text.split()
+      if len(words) <= 3:
+          return text
+          
+      # Simple word replacement or deletion
+      for i in range(len(words)):
+          if random.random() < 0.1:
+              if random.random() < 0.5:
+                  # Delete word
+                  words[i] = ""
+              else:
+                  # Try synonym replacement
+                  try:
+                      synonyms = wordnet.synsets(words[i])
+                      if synonyms and random.random() < 0.5:
+                          words[i] = synonyms[0].lemmas()[0].name()
+                  except:
+                      pass
+      
+      return " ".join([w for w in words if w])
+  ```
+  
+- **MixUp and CutMix**:
+  ```python
+  # In src/training/multimodal_trainer.py - Add mixup to training loop
+  
+  # Add to __init__
+  self.mixup_alpha = 0.2  # Controls interpolation strength
+  
+  # In training step, before forward pass
+  if self.training and self.mixup_alpha > 0:
+      # Apply mixup to batch
+      lam = np.random.beta(self.mixup_alpha, self.mixup_alpha)
+      batch_size = images.size(0)
+      index = torch.randperm(batch_size).to(images.device)
+      
+      # Mix images
+      mixed_images = lam * images + (1 - lam) * images[index]
+      
+      # Update batch
+      images = mixed_images
+  ```
+
+### 3. Advanced Training Techniques
+
+**Why**: Training dynamics heavily influence final model performance.
+
+**What & Where**:
+- **Longer Training**:
+  ```bash
+  # Command line
+  --num_epochs 40
+  ```
+  
+- **Better Learning Rate Schedule**:
+  ```python
+  # In src/training/multimodal_trainer.py - Update optimizer configuration
+  
+  # In __init__ method
+  self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+      self.optimizer,
+      max_lr=learning_rate,
+      total_steps=self.num_epochs * len(self.train_dataloader),
+      pct_start=0.1,  # Spend 10% of steps warming up
+      div_factor=25,  # Initial LR is max_lr/25
+      final_div_factor=10000,  # End with very small LR
+  )
+  ```
+  
+- **Curriculum Learning**:
+  ```python
+  # In src/data/multimodal_dataset.py - Add curriculum learning
+  
+  # In EnhancedMultimodalDataset.__init__
+  self.curriculum_weights = None
+  if split == "train":
+      # Initialize difficulty scores based on caption complexity
+      self.difficulty_scores = [
+          min(1.0, 0.3 + 0.7 * (len(item.get("captions", [""])[0].split()) / 20))
+          for item in self.dataset
+      ]
+  
+  # Add method to update curriculum weights
+  def update_curriculum(self, epoch, total_epochs):
+      """Update curriculum sampling weights based on training progress"""
+      if self.split != "train":
+          return
+          
+      # Start with easier examples, gradually include harder ones
+      progress = min(1.0, epoch / (total_epochs * 0.7))
+      threshold = 0.3 + progress * 0.7
+      
+      # Update sampling weights
+      self.curriculum_weights = [
+          1.0 if score <= threshold else 0.2
+          for score in self.difficulty_scores
+      ]
+  ```
+  
+- **Larger Projection Dimension**:
+  ```bash
+  # Command line
+  --projection_dim 512
+  ```
+
+### 4. Loss Function Improvements
+
+**Why**: Better loss functions create more useful embeddings by improving the signal-to-noise ratio in training.
+
+**What & Where**:
+- **Memory Queue Contrastive Loss**:
+  ```bash
+  # Command line
+  --loss_type memory_queue --queue_size 16384
+  ```
+  
+- **Hard Negative Mining**:
+  ```python
+  # In src/training/multimodal_trainer.py - Add hard negative mining
+  
+  # In train_multistage method, for the final stage
+  # Update loss function to hard negative mining for last stage
+  if stage == 3:  # Final stage
+      logger.info("Switching to hard negative mining for final stage")
+      self.loss_fn = HardNegativeMiningContrastiveLoss(
+          temperature=0.07,
+          hard_negative_factor=2.0,
+          mining_strategy="semi-hard", 
+          dim=self.model.vision_dim
+      )
+  ```
+  
+- **Supervised Contrastive Learning** (if labels available):
+  ```python
+  # In src/training/contrastive_learning.py - Modify loss function
+  
+  # Add label support to contrastive loss forward method
+  labels = torch.tensor([
+      self.label_to_id.get(item.get("category", "unknown"), 0)
+      for item in batch
+  ]).to(device)
+  
+  # Use SupervisedContrastiveLoss from existing implementation
+  ```
+
+### 5. Ensemble Techniques
+
+**Why**: Ensembles reduce variance and improve generalization by combining multiple perspectives.
+
+**What & Where**:
+- **Multiple Initializations**:
+  ```python
+  # In demos/multimodal_training_demo.py - Add ensemble capability
+  
+  # Train multiple models with different seeds
+  trained_models = []
+  for seed in [42, 43, 44]:
+      set_seed(seed)
+      model = create_multimodal_model(args, device)
+      trainer = MultimodalTrainer(model=model, ...)
+      trainer.train_multistage()
+      trained_models.append(model)
+  
+  # Use ensemble for inference
+  def ensemble_predict(models, image, text):
+      """Combine predictions from multiple models"""
+      similarities = []
+      for model in models:
+          with torch.no_grad():
+              image_features = model.encode_image(image)
+              text_features = model.encode_text(text)
+              sim = (image_features @ text_features.T).cpu()
+              similarities.append(sim)
+              
+      # Average similarities
+      return torch.stack(similarities).mean(dim=0)
+  ```
+  
+- **Model Distillation**:
+  ```python
+  # In src/training/losses.py - Add distillation loss
+  
+  class DistillationLoss(nn.Module):
+      """Knowledge distillation loss"""
+      def __init__(self, temp=2.0, alpha=0.5):
+          super().__init__()
+          self.temp = temp
+          self.alpha = alpha
+          
+      def forward(self, student_logits, teacher_logits, labels=None):
+          """
+          Compute distillation loss between student and teacher
+          """
+          # Soften probabilities
+          soft_targets = F.softmax(teacher_logits / self.temp, dim=1)
+          soft_prob = F.log_softmax(student_logits / self.temp, dim=1)
+          
+          # Distillation loss
+          dist_loss = F.kl_div(soft_prob, soft_targets, reduction='batchmean') * self.temp**2
+          
+          if labels is not None and self.alpha > 0:
+              # Add cross entropy loss if labels available
+              ce_loss = F.cross_entropy(student_logits, labels)
+              return self.alpha * ce_loss + (1 - self.alpha) * dist_loss
+          
+          return dist_loss
+  ```
+
+## Implementation Prioritization
+
+For practical implementation, prioritize these improvements in this order:
+
+1. **Quick Wins (Immediate Impact)**:
+   - Increase training epochs to 30-40
+   - Switch to memory queue loss
+   - Use all 5 captions per image
+   - Increase projection dimension to 512
+
+2. **Medium Effort (Strong Impact)**:
+   - Add image augmentations
+   - Implement OneCycle learning rate schedule
+   - Try roberta-base instead of mobilebert
+
+3. **Higher Effort (Maximum Impact)**:
+   - Implement text augmentations
+   - Add curriculum learning
+   - Try larger vision models (hardware permitting)
+   - Implement ensembles
+
+## Estimated Performance Impact
+
+| Strategy | Complexity | Est. Accuracy Gain |
+|----------|------------|-------------------|
+| Longer Training | Low | +5-10% |
+| Memory Queue Loss | Low | +3-7% |
+| Better Pretrained Models | Medium | +7-12% |
+| Image Augmentations | Medium | +3-6% |
+| Text Augmentations | High | +2-4% |
+| Better LR Schedule | Low | +2-5% |
+| Curriculum Learning | High | +1-3% |
+| Ensembles | High | +3-5% |
+
+With these improvements implemented strategically, reaching accuracy above 0.85 is feasible even on limited hardware.
+

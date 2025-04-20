@@ -19,6 +19,167 @@ from ..training.contrastive_learning import (
     MultiModalMixedContrastiveLoss,
 )
 
+# Simple and effective InfoNCE-style contrastive loss for SimpleMultimodalModel
+class SimpleContrastiveLoss(nn.Module):
+    """Simple and effective contrastive loss focused on clear cross-modal alignment."""
+    
+    def __init__(self, temperature: float = 0.1):
+        """
+        Initialize the contrastive loss.
+        
+        Args:
+            temperature: Temperature parameter to scale logits
+        """
+        super().__init__()
+        self.temperature = temperature
+        self.iteration = 0
+        logger.info(f"Initialized SimpleContrastiveLoss with temperature={temperature}")
+    
+    def forward(self, 
+                vision_features: torch.Tensor, 
+                text_features: torch.Tensor, 
+                match_ids: Optional[torch.Tensor] = None, 
+                **kwargs: Any) -> Dict[str, Any]:
+        """
+        Compute contrastive loss between vision and text features.
+        
+        Args:
+            vision_features: Vision feature tensor [batch_size x dim]
+            text_features: Text feature tensor [batch_size x dim]
+            match_ids: Optional tensor of IDs for matching pairs
+            **kwargs: Additional arguments
+            
+        Returns:
+            Dict containing loss and metrics
+        """
+        self.iteration += 1
+        batch_size = vision_features.shape[0]
+        
+        # Print raw feature statistics periodically
+        if self.iteration % 5 == 0:
+            with torch.no_grad():
+                v_var = torch.var(vision_features).item()
+                t_var = torch.var(text_features).item()
+                logger.info(f"Raw feature variance - Vision: {v_var:.4f}, Text: {t_var:.4f}")
+        
+        # L2 normalize the features
+        vision_features = torch.nn.functional.normalize(vision_features, p=2, dim=1)
+        text_features = torch.nn.functional.normalize(text_features, p=2, dim=1)
+        
+        # Compute similarity matrix
+        logits = torch.matmul(vision_features, text_features.T) / self.temperature
+        
+        # Create target matrix based on match_ids
+        if match_ids is None:
+            # If no match_ids, use identity matrix (diagonal matching)
+            targets = torch.arange(batch_size, device=logits.device)
+            positive_mask = torch.eye(batch_size, device=logits.device).bool()
+        else:
+            # Create mask where pairs with same match_id are positives
+            positive_mask = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=logits.device)
+            for i in range(batch_size):
+                for j in range(batch_size):
+                    if match_ids[i] == match_ids[j]:
+                        positive_mask[i, j] = True
+        
+        # Create matrix of positive pair masks
+        # For InfoNCE, each row should sum to at least 1 (need at least one positive)
+        row_sums = positive_mask.float().sum(dim=1, keepdim=True)
+        if (row_sums == 0).any():
+            # Add self as positive if no other positives exist
+            identity_mask = torch.eye(batch_size, dtype=torch.bool, device=logits.device)
+            positive_mask = positive_mask | identity_mask
+        
+        # Create standard targets for cross-entropy
+        # For each row, randomly choose one of the positive columns as target
+        targets_v2t = []
+        for i in range(batch_size):
+            pos_indices = torch.where(positive_mask[i])[0]
+            if len(pos_indices) > 0:
+                selected_idx = pos_indices[torch.randint(0, len(pos_indices), (1,))]
+                targets_v2t.append(selected_idx.item())
+            else:
+                # Fallback to self as target
+                targets_v2t.append(i)
+        
+        targets_v2t = torch.tensor(targets_v2t, device=logits.device)
+        
+        # Same for text to vision direction
+        targets_t2v = []
+        for j in range(batch_size):
+            pos_indices = torch.where(positive_mask[:, j])[0]
+            if len(pos_indices) > 0:
+                selected_idx = pos_indices[torch.randint(0, len(pos_indices), (1,))]
+                targets_t2v.append(selected_idx.item())
+            else:
+                # Fallback to self as target
+                targets_t2v.append(j)
+        
+        targets_t2v = torch.tensor(targets_t2v, device=logits.device)
+        
+        # Calculate InfoNCE loss for both directions
+        loss_v2t = torch.nn.functional.cross_entropy(logits, targets_v2t)
+        loss_t2v = torch.nn.functional.cross_entropy(logits.T, targets_t2v)
+        
+        # Add direct supervised alignment loss
+        mse_loss = 0.0
+        mse_pairs = 0
+        
+        # For each vision sample, align with a random matched text sample  
+        for i in range(batch_size):
+            pos_indices = torch.where(positive_mask[i])[0]
+            if len(pos_indices) > 0 and len(pos_indices) < batch_size:  # Make sure not all samples match
+                j = pos_indices[torch.randint(0, len(pos_indices), (1,))].item()
+                mse_loss += torch.nn.functional.mse_loss(vision_features[i], text_features[j])
+                mse_pairs += 1
+        
+        if mse_pairs > 0:
+            mse_loss = mse_loss / mse_pairs
+        
+        # Calculate metrics
+        with torch.no_grad():
+            # Calculate accuracy
+            v2t_pred = torch.argmax(logits, dim=1)
+            t2v_pred = torch.argmax(logits.T, dim=1)
+            
+            v2t_correct = torch.sum(positive_mask[torch.arange(batch_size), v2t_pred]).float()
+            t2v_correct = torch.sum(positive_mask[t2v_pred, torch.arange(batch_size)]).float()
+            
+            v2t_acc = v2t_correct / batch_size
+            t2v_acc = t2v_correct / batch_size
+            accuracy = (v2t_acc + t2v_acc) / 2
+            
+            # Calculate positive and negative similarity statistics
+            pos_sim = logits[positive_mask].mean().item() if positive_mask.sum() > 0 else 0.0
+            neg_sim = logits[~positive_mask].mean().item() if (~positive_mask).sum() > 0 else 0.0
+            separation = pos_sim - neg_sim
+            
+            # Log stats occasionally
+            if self.iteration % 5 == 0:
+                logger.info(f"Sim stats - Pos: {pos_sim:.4f}, Neg: {neg_sim:.4f}, Gap: {separation:.4f}")
+        
+        # Use the anti-collapse loss from the model if available
+        decor_loss = kwargs.get('decor_loss', 0.0)
+        if isinstance(decor_loss, torch.Tensor):
+            decor_weight = 0.2  # Moderate weight
+            total_loss = (loss_v2t + loss_t2v) / 2 + 0.5 * mse_loss + decor_weight * decor_loss
+        else:
+            total_loss = (loss_v2t + loss_t2v) / 2 + 0.5 * mse_loss
+        
+        return {
+            "loss": total_loss,
+            "infonce_loss": (loss_v2t + loss_t2v).item() / 2,
+            "mse_loss": mse_loss.item() if isinstance(mse_loss, torch.Tensor) else 0.0,
+            "v2t_loss": loss_v2t.item(),
+            "t2v_loss": loss_t2v.item(),
+            "accuracy": accuracy.item(),
+            "pos_sim": pos_sim,
+            "neg_sim": neg_sim,
+            "separation": separation,
+            "temperature": self.temperature,
+            "decor_loss": decor_loss.item() if isinstance(decor_loss, torch.Tensor) else 0.0,
+        }
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,6 +203,11 @@ def create_loss_function(
     # Log which loss function is being used
     logger.info(f"Creating loss function of type: {loss_type}")
 
+    # Check if we're using SimpleMultimodalModel
+    if hasattr(args, "use_simple_model") and args.use_simple_model:
+        logger.info("Using SimpleContrastiveLoss for simple model architecture")
+        return SimpleContrastiveLoss(temperature=args.temperature)
+            
     # Use args.use_mixed_loss to override if it's explicitly set
     if args.use_mixed_loss:
         loss_type = "mixed"
