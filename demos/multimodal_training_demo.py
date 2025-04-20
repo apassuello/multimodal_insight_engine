@@ -26,23 +26,12 @@ python multimodal_training_demo.py --loss_type hard_negative --mining_strategy s
 
 import os
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
 import numpy as np
 import logging
-import argparse
-import json
 import random
-from tqdm import tqdm
-from pathlib import Path
+import math
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional, Union, Any
-from torch.utils.data import DataLoader
-from src.models.vision.multimodal_integration import (
-    MultiModalTransformer,
-    EnhancedMultiModalTransformer,
-)
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
@@ -53,276 +42,685 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import our models and utilities
-from src.models.vision.vision_transformer import VisionTransformer
-from src.models.transformer import EncoderDecoderTransformer
-from src.models.vision.multimodal_integration import EnhancedMultiModalTransformer
 from src.models.vision.image_preprocessing import ImagePreprocessor
-from src.data.tokenization.optimized_bpe_tokenizer import OptimizedBPETokenizer
 from src.data.tokenization.simple_tokenizer import SimpleTokenizer
-from src.training.contrastive_learning import (
-    ContrastiveLoss,
-    MultiModalMixedContrastiveLoss,
-)
 from src.training.multimodal_trainer import MultimodalTrainer
-
-# Import our custom dataset
-from src.data.multimodal_dataset import EnhancedMultimodalDataset
-
-
-def count_parameters(model):
-    """
-    Count the total number of trainable parameters in a model.
-
-    Args:
-        model: PyTorch model
-
-    Returns:
-        int: Total number of trainable parameters
-    """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+from src.utils.argument_configs import get_multimodal_training_args
+from src.utils.model_utils import (
+    print_model_summary,
+    convert_tensors_to_python_types,
+    count_parameters,
+)
+from src.models.model_factory import create_multimodal_model
+from src.data.multimodal_data_utils import create_data_loaders
+from src.training.loss_factory import create_loss_function
+from src.evaluation.inference_demo import run_inference_demo
 
 
-def parse_args():
-    """Parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Multimodal Training Demo")
+# Add these classes after imports in multimodal_training_demo.py
 
-    # Data arguments
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="flickr30k",
-        choices=["flickr30k", "custom", "synthetic"],
-        help="Dataset to use",
-    )
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-    parser.add_argument(
-        "--use_multistage_training",
-        action="store_true",
-        help="Use multi-stage training approach for better performance",
-    )
-    parser.add_argument(
-        "--from_scratch",
-        action="store_true",
-        help="Use specialized curriculum learning approach for training from scratch (without pretrained weights)",
-    )
-    parser.add_argument(
-        "--freeze_base_models",
-        action="store_true",
-        default=False,  # Default to NOT freezing for better performance
-        help="Freeze the base vision and text models (only train fusion layers)",
-    )
-    parser.add_argument(
-        "--use_pretrained",
-        action="store_true",
-        default=True,  # Default to using pretrained when available
-        help="Use pretrained weights for vision model",
-    )
-    parser.add_argument(
-        "--data_dir", type=str, default="data", help="Directory containing dataset"
-    )
-    parser.add_argument(
-        "--use_synthetic",
-        action="store_true",
-        help="Use synthetic data instead of real data",
-    )
-    parser.add_argument(
-        "--synthetic_samples",
-        type=int,
-        default=100,
-        help="Number of synthetic samples if using synthetic data",
-    )
-    parser.add_argument(
-        "--max_train_examples",
-        type=int,
-        default=None,
-        help="Maximum number of training examples to use (None uses all available data)",
-    )
-    parser.add_argument(
-        "--max_val_examples",
-        type=int,
-        default=None,
-        help="Maximum number of validation examples to use (None uses all available data)",
-    )
-    parser.add_argument(
-        "--max_test_examples",
-        type=int,
-        default=None,
-        help="Maximum number of test examples to use (None uses all available data)",
-    )
-    parser.add_argument(
-        "--max_text_length", type=int, default=77, help="Maximum text sequence length"
-    )
 
-    # Model arguments
-    parser.add_argument(
-        "--vision_model",
-        type=str,
-        default="vit-base",
-        help="Vision transformer model size",
-    )
-    parser.add_argument(
-        "--text_model",
-        type=str,
-        default="transformer-base",
-        choices=[
-            "transformer-base",
-            "transformer-small",
-            "bert-base",
-            "roberta-base",
-            "distilbert-base",
-            "mobilebert",
-            "albert-base",
-        ],
-        help="Text transformer model size or HuggingFace model name to load (MobileBERT and ALBERT are more MPS-friendly)",
-    )
-    parser.add_argument(
-        "--use_pretrained_text",
-        action="store_true",
-        default=False,
-        help="Use pretrained text model from HuggingFace (bert-base, roberta-base, distilbert-base)",
-    )
-    parser.add_argument(
-        "--fusion_type",
-        type=str,
-        default="co_attention",
-        choices=["co_attention", "bidirectional"],
-        help="Type of multimodal fusion",
-    )
-    parser.add_argument(
-        "--fusion_dim", type=int, default=512, help="Dimension for multimodal fusion"
-    )
-    parser.add_argument(
-        "--projection_dim",
-        type=int,
-        default=256,
-        help="Projection dimension for contrastive learning",
-    )
+# Enhanced multimodal model with anti-collapse mechanisms
+class SimpleMultimodalModel(nn.Module):
+    def __init__(self, vision_model, text_model, projection_dim=512):
+        super().__init__()
+        self.vision_model = vision_model
+        self.text_model = text_model
 
-    # Contrastive learning arguments
-    parser.add_argument(
-        "--contrastive_sampling",
-        type=str,
-        default="auto",
-        choices=["auto", "in-batch", "memory-bank", "global"],
-        help="Contrastive sampling strategy",
-    )
-    parser.add_argument(
-        "--memory_bank_size",
-        type=int,
-        default=4096,
-        help="Size of memory bank for contrastive learning",
-    )
+        # Get dimensions
+        if hasattr(vision_model, "num_features"):
+            vision_dim = vision_model.num_features
+        elif hasattr(vision_model, "embed_dim"):
+            vision_dim = vision_model.embed_dim
+        else:
+            vision_dim = 768  # Default
 
-    # NEW: Add loss type selection
-    parser.add_argument(
-        "--loss_type",
-        type=str,
-        default="contrastive",
-        choices=[
-            "contrastive",
-            "memory_queue",
-            "dynamic_temp",
-            "hard_negative",
-            "mixed",
-        ],
-        help="Type of contrastive loss to use",
-    )
+        if hasattr(text_model, "encoder") and hasattr(text_model.encoder, "config"):
+            text_dim = text_model.encoder.config.hidden_size
+        elif hasattr(text_model, "d_model"):
+            text_dim = text_model.d_model
+        else:
+            text_dim = 768  # Default
 
-    # NEW: Memory Queue specific arguments
-    parser.add_argument(
-        "--queue_size",
-        type=int,
-        default=8192,
-        help="Size of the memory queue for MemoryQueueContrastiveLoss",
-    )
+        print(
+            f"Creating SimpleMultimodalModel with dims: vision={vision_dim}, text={text_dim}, proj={projection_dim}"
+        )
 
-    # NEW: Dynamic Temperature specific arguments
-    parser.add_argument(
-        "--dynamic_temp_min",
-        type=float,
-        default=None,
-        help="Minimum temperature for dynamic temperature adjustment",
-    )
-    parser.add_argument(
-        "--dynamic_temp_max",
-        type=float,
-        default=None,
-        help="Maximum temperature for dynamic temperature adjustment",
-    )
+        # IMPORTANT CHANGE: Simpler model with explicit normalization layer to prevent collapse
+        # Vision projection: single layer with batch norm to enforce feature distribution
+        self.vision_proj = nn.Sequential(
+            nn.Linear(vision_dim, projection_dim),
+            nn.BatchNorm1d(projection_dim, affine=True),  # BN prevents feature collapse
+        )
 
-    # NEW: Hard Negative Mining specific arguments
-    parser.add_argument(
-        "--mining_strategy",
-        type=str,
-        default="auto",
-        choices=["auto", "hard", "semi-hard"],
-        help="Strategy for mining hard negatives",
-    )
-    parser.add_argument(
-        "--hard_negative_factor",
-        type=float,
-        default=None,
-        help="Weight factor for hard negatives (higher = more emphasis)",
-    )
+        # Text projection: different structure to ensure asymmetry
+        self.text_proj = nn.Sequential(
+            nn.Linear(text_dim, projection_dim),
+            nn.BatchNorm1d(projection_dim, affine=True),  # BN prevents feature collapse
+        )
 
-    # Training arguments
-    parser.add_argument(
-        "--batch_size", type=int, default=16, help="Batch size for training"
-    )
-    parser.add_argument(
-        "--num_epochs", type=int, default=20, help="Number of training epochs"
-    )
-    parser.add_argument(
-        "--learning_rate", type=float, default=1e-4, help="Learning rate"
-    )
-    parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
-    parser.add_argument(
-        "--warmup_steps", type=int, default=1000, help="Number of warmup steps"
-    )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.07,
-        help="Temperature for contrastive loss",
-    )
-    parser.add_argument(
-        "--use_mixed_loss", action="store_true", help="Use mixed contrastive loss"
-    )
-    parser.add_argument(
-        "--use_mixed_precision",
-        action="store_true",
-        help="Use mixed precision training",
-    )
+        # Initialize with strong orthogonal initialization
+        # This creates diverse starting features that aren't correlated
+        for m in self.vision_proj.modules():
+            if isinstance(m, nn.Linear):
+                # Orthogonal initialization ensures diverse features from the start
+                nn.init.orthogonal_(m.weight, gain=1.4)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.2)
 
-    # Output arguments
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="multimodal_outputs",
-        help="Directory to save outputs",
-    )
-    parser.add_argument(
-        "--checkpoint_dir",
-        type=str,
-        default="checkpoints",
-        help="Directory to save checkpoints",
-    )
-    parser.add_argument(
-        "--log_dir", type=str, default="logs", help="Directory to save logs"
-    )
-    parser.add_argument(
-        "--visualize_attention",
-        action="store_true",
-        help="Visualize attention maps during evaluation",
-    )
+        for m in self.text_proj.modules():
+            if isinstance(m, nn.Linear):
+                # Different gain for text model to create asymmetry
+                nn.init.orthogonal_(m.weight, gain=1.2)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, -0.2)
 
-    # System arguments
-    parser.add_argument(
-        "--device", type=str, default="mps", help="Device to use (cuda, mps, cpu)"
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+        # BatchNorm params with different initialization to ensure asymmetry
+        for name, m in self.named_modules():
+            if isinstance(m, nn.BatchNorm1d):
+                if "vision" in name:
+                    # Vision BN - slightly different from text BN
+                    nn.init.constant_(m.weight, 1.0)
+                    nn.init.constant_(m.bias, 0.1)
+                else:
+                    # Text BN - different initialization
+                    nn.init.constant_(m.weight, 0.9)
+                    nn.init.constant_(m.bias, -0.1)
 
-    return parser.parse_args()
+        # Learnable temperature parameter for similarity scaling
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+
+        # Track variance statistics to detect collapse
+        self.register_buffer("running_vision_var", torch.ones(1))
+        self.register_buffer("running_text_var", torch.ones(1))
+        self.register_buffer("update_count", torch.zeros(1))
+
+        # Feature whitening/scaling - explicitly prevents feature collapse
+        # by rescaling feature distributions
+        self.feature_scale = 10.0  # Increased scaling factor to prevent collapse
+
+        print(
+            f"Model initialized with anti-collapse techniques: BatchNorm + orthogonal init + feature scaling"
+        )
+        print(f"Feature scale: {self.feature_scale}")
+
+    def forward(self, images=None, text_data=None, return_attention=False):
+        outputs = {}
+
+        # Vision forward
+        if images is not None:
+            # Extract vision features
+            if hasattr(self.vision_model, "forward_features"):
+                vision_features = self.vision_model.forward_features(images)
+            else:
+                vision_features = self.vision_model(images)
+            # Handle different output formats
+            if isinstance(vision_features, dict) and "pooler_output" in vision_features:
+                vision_features = vision_features["pooler_output"]
+            elif isinstance(vision_features, tuple):
+                vision_features = vision_features[
+                    0
+                ]  # Typically the features are the first element
+
+            # Store full sequence features for reference
+            outputs["vision_features_seq"] = vision_features
+
+            # Get pooled representation if needed
+            if len(vision_features.shape) == 3:  # [batch, seq_len, dim]
+                # Use CLS token if available (typically first token)
+                pooled_vision = vision_features[:, 0]
+            else:
+                pooled_vision = vision_features
+
+            # Apply projection with BatchNorm to prevent feature collapse
+            vision_features = self.vision_proj(pooled_vision)
+
+            # Explicit feature scaling to prevent collapse - higher scale forces features apart
+            # This is a critical change - it ensures features don't collapse to the same values
+            # by explicitly increasing their scale/variance
+            if self.training:
+                # Scale features to have specific variance (prevents collapse but don't scale too aggressively)
+                vision_features = vision_features * self.feature_scale
+
+            # Track variance statistics
+            if self.training:
+                with torch.no_grad():
+                    batch_var = torch.var(vision_features, dim=0).mean().item()
+                    # Update running statistics with momentum
+                    self.running_vision_var = (
+                        0.9 * self.running_vision_var + 0.1 * batch_var
+                    )
+
+            outputs["vision_features"] = vision_features
+            outputs["vision_features_enhanced"] = vision_features  # For compatibility
+
+        # Text forward
+        if text_data is not None:
+            # Extract text features
+            if hasattr(self.text_model, "encode"):
+                text_features = self.text_model.encode(**text_data)
+            else:
+                text_features = self.text_model(**text_data)
+
+            # Handle different output formats
+            if isinstance(text_features, dict) and "pooler_output" in text_features:
+                text_features = text_features["pooler_output"]
+            elif isinstance(text_features, tuple):
+                text_features = text_features[
+                    0
+                ]  # Typically the features are the first element
+
+            # Store full sequence features for reference
+            outputs["text_features_seq"] = text_features
+
+            # Get pooled representation if needed
+            if len(text_features.shape) == 3:  # [batch, seq_len, dim]
+                # Use CLS token if available (typically first token)
+                pooled_text = text_features[:, 0]
+            else:
+                pooled_text = text_features
+
+            # Apply projection with BatchNorm to prevent feature collapse
+            text_features = self.text_proj(pooled_text)
+
+            # Apply scaling with slightly different factor for asymmetry
+            if self.training:
+                # Scale features to have specific variance (prevents collapse)
+                # Use a slightly different scale from vision to create asymmetry
+                text_features = text_features * (
+                    self.feature_scale * 0.9
+                )  # Increased asymmetry between modalities
+
+            # Track variance statistics
+            if self.training:
+                with torch.no_grad():
+                    batch_var = torch.var(text_features, dim=0).mean().item()
+                    # Update running statistics with momentum
+                    self.running_text_var = (
+                        0.9 * self.running_text_var + 0.1 * batch_var
+                    )
+                    # Update counter (used for logging)
+                    self.update_count += 1
+
+            outputs["text_features"] = text_features
+            outputs["text_features_enhanced"] = text_features  # For compatibility
+
+        # If both modalities present, compute similarity
+        if images is not None and text_data is not None:
+            # Normalize features AFTER scaling to ensure proper normalization
+            # This is critical - the normalization removes the scale but maintains the learned directions
+            vision_norm = F.normalize(vision_features, p=2, dim=1)
+            text_norm = F.normalize(text_features, p=2, dim=1)
+
+            # Compute feature statistics before and after normalization to detect collapse
+            if self.training:
+                with torch.no_grad():
+                    # Calculate pre-normalization variance by feature dimension
+                    v_var_by_dim = torch.var(vision_features, dim=0)
+                    t_var_by_dim = torch.var(text_features, dim=0)
+
+                    # Calculate post-normalization variance by feature dimension
+                    v_norm_var_by_dim = torch.var(vision_norm, dim=0)
+                    t_norm_var_by_dim = torch.var(text_norm, dim=0)
+
+                    # Count low-variance dimensions (indication of partial collapse)
+                    v_low_var_dims = (v_norm_var_by_dim < 0.01).sum().item()
+                    t_low_var_dims = (t_norm_var_by_dim < 0.01).sum().item()
+
+                    # Log warning if many dimensions have low variance
+                    if v_low_var_dims > 10 or t_low_var_dims > 10:
+                        print(
+                            f"WARNING: Many low-variance dimensions - Vision: {v_low_var_dims}, Text: {t_low_var_dims}"
+                        )
+
+            # Add powerful regularization loss to prevent feature collapse - force features to be decorrelated
+            if self.training:
+                # Compute centered features
+                vision_centered = vision_norm - vision_norm.mean(dim=0, keepdim=True)
+                text_centered = text_norm - text_norm.mean(dim=0, keepdim=True)
+
+                batch_size = vision_norm.size(0)
+
+                # Compute covariance matrices
+                vision_cov = torch.matmul(vision_centered.T, vision_centered) / (
+                    batch_size - 1
+                )
+                text_cov = torch.matmul(text_centered.T, text_centered) / (
+                    batch_size - 1
+                )
+
+                # Identity matrix for computing off-diagonal elements
+                I = torch.eye(vision_cov.size(0), device=vision_cov.device)
+
+                # Compute orthogonality loss (stronger regularization than before)
+                # This loss specifically targets the off-diagonal elements of the covariance matrix
+                # making features more orthogonal/decorrelated
+                vision_ortho_loss = torch.sum(torch.pow(vision_cov * (1 - I), 2))
+                text_ortho_loss = torch.sum(torch.pow(text_cov * (1 - I), 2))
+
+                # Combined loss with higher weight for strong regularization
+                decor_loss = vision_ortho_loss + text_ortho_loss
+                outputs["decor_loss"] = (
+                    decor_loss * 0.5
+                )  # Increased weight for stronger anti-collapse effect
+
+            # Calculate temperature-scaled similarity
+            # Clamp logit_scale to prevent extreme values
+            logit_scale_value = torch.clamp(self.logit_scale.exp(), min=1.0, max=100.0)
+            similarity = logit_scale_value * torch.matmul(vision_norm, text_norm.T)
+
+            outputs["similarity"] = similarity
+            outputs["raw_similarity"] = torch.matmul(
+                vision_norm, text_norm.T
+            )  # Without scaling
+            outputs["logit_scale"] = logit_scale_value.item()  # For debugging
+
+            # Track feature statistics for monitoring
+            outputs["vision_var"] = self.running_vision_var.item()
+            outputs["text_var"] = self.running_text_var.item()
+
+            # Add fusion features (mean of two modalities) for compatibility
+            fusion_features = (vision_features + text_features) / 2
+            outputs["fusion_features"] = fusion_features
+            outputs["pooled_fusion"] = fusion_features
+
+            # Print diagnostics periodically during training
+            if self.training and self.update_count % 5 == 0:
+                print(
+                    f"FEATURE STATS: Vision var: {self.running_vision_var.item():.4f}, Text var: {self.running_text_var.item():.4f}, Scale: {self.feature_scale:.1f}"
+                )
+
+        return outputs
+
+
+# Enhanced supervised contrastive loss with anti-collapse mechanisms
+class SupervisedAlignmentLoss(nn.Module):
+    def __init__(self, temperature=0.07):  # Use lower temperature for sharper contrasts
+        super().__init__()
+        self.temperature = (
+            temperature  # Lower temperature makes positive pairs more distinct
+        )
+        self.mse = nn.MSELoss()
+        self.dim = 768  # Match model's projection_dim for 768-dim models
+
+        # Add a diversity loss weight to actively prevent feature collapse
+        self.diversity_weight = 1.0  # Increased from 0.5 for stronger anti-collapse
+
+        # Track iteration count
+        self.iteration = 0
+
+        print(f"Initialized SupervisedAlignmentLoss with temperature={temperature}")
+
+    def forward(self, vision_features, text_features, match_ids=None, **kwargs):
+        self.iteration += 1
+
+        # Handle additional losses from model output
+        decor_loss = kwargs.get("decor_loss", 0.0)
+        extra_loss = 0.0
+
+        if isinstance(decor_loss, torch.Tensor):
+            extra_loss = extra_loss + decor_loss
+
+        # Extract logit scale if provided
+        logit_scale = kwargs.get("logit_scale", 1.0)
+        if not isinstance(logit_scale, float):
+            logit_scale = 1.0
+
+        # Always add diversity loss to prevent feature collapse proactively
+        # This is the core fix - actively enforce feature diversity in each batch
+        if isinstance(vision_features, torch.Tensor) and isinstance(
+            text_features, torch.Tensor
+        ):
+            # Get unnormalized features for better diversity calculation
+            batch_size = vision_features.shape[0]
+
+            # Calculate feature statistics to detect collapse
+            v_var = torch.var(vision_features, dim=0).mean()
+            t_var = torch.var(text_features, dim=0).mean()
+
+            # Log warning if variance is too low (features are collapsing)
+            if v_var < 0.01 or t_var < 0.01:
+                print(
+                    f"WARNING: Feature collapse detected - Vision var: {v_var.item():.6f}, Text var: {t_var.item():.6f}"
+                )
+
+            # Calculate similarity matrices
+            # For normalizing later, store original norms
+            v_norms = torch.norm(vision_features, p=2, dim=1, keepdim=True)
+            t_norms = torch.norm(text_features, p=2, dim=1, keepdim=True)
+
+            # Calculate pairwise feature similarity (to reduce, promoting diversity)
+            vision_sim = torch.matmul(vision_features, vision_features.T)
+            text_sim = torch.matmul(text_features, text_features.T)
+
+            # Identity matrix to mask out diagonal elements (same feature with itself)
+            I = torch.eye(batch_size, device=vision_features.device)
+
+            # Diversity loss: minimize similarity between different samples' features
+            # This directly prevents feature collapse by making features more orthogonal
+            feature_diversity_loss = torch.pow(vision_sim * (1 - I), 2).sum() / (
+                batch_size * (batch_size - 1)
+            ) + torch.pow(text_sim * (1 - I), 2).sum() / (batch_size * (batch_size - 1))
+
+            # Add to extra loss - stronger weight when variance is low
+            diversity_weight = self.diversity_weight * (
+                0.1 + 10.0 * torch.exp(-5.0 * (v_var + t_var))
+            )
+            extra_loss = extra_loss + feature_diversity_loss * diversity_weight
+
+        # Normalize features
+        vision_features = F.normalize(vision_features, p=2, dim=1)
+        text_features = F.normalize(text_features, p=2, dim=1)
+
+        # Compute similarity
+        batch_size = vision_features.shape[0]
+
+        # Use adaptive temperature
+        effective_temp = self.temperature
+        if "logit_scale" in kwargs:
+            # If model provides logit scale, use it for consistency
+            effective_temp = 1.0 / logit_scale
+
+        sim = torch.matmul(vision_features, text_features.T) / effective_temp
+
+        if match_ids is None:
+            # If no match_ids, use diagonal matching (fallback)
+            print("WARNING: No match_ids provided, using diagonal matching")
+            targets_v2t = torch.arange(batch_size, device=sim.device)
+            targets_t2v = torch.arange(batch_size, device=sim.device)
+            alignment_loss = 0
+        else:
+            # Create targets based on match_ids
+            targets_v2t = []
+            targets_t2v = []
+
+            # For all pairs tracking
+            all_matches = {}
+            for i in range(batch_size):
+                # Group all matches by match_id for efficient lookup
+                mid_str = str(match_ids[i])
+                if mid_str not in all_matches:
+                    all_matches[mid_str] = []
+                all_matches[mid_str].append(i)
+
+            # For each item, find matching targets from the same group
+            for i in range(batch_size):
+                mid_str = str(match_ids[i])
+                matches = [j for j in all_matches[mid_str] if j != i]
+
+                if matches:
+                    # Randomly select one match
+                    match_idx = matches[torch.randint(0, len(matches), (1,)).item()]
+                    targets_v2t.append(match_idx)
+                else:
+                    # If no matches, use itself as target
+                    targets_v2t.append(i)
+
+            # Repeat for text to vision direction
+            for i in range(batch_size):
+                mid_str = str(match_ids[i])
+                matches = [j for j in all_matches[mid_str] if j != i]
+
+                if matches:
+                    match_idx = matches[torch.randint(0, len(matches), (1,)).item()]
+                    targets_t2v.append(match_idx)
+                else:
+                    targets_t2v.append(i)
+
+            targets_v2t = torch.tensor(targets_v2t, device=sim.device)
+            targets_t2v = torch.tensor(targets_t2v, device=sim.device)
+
+            # Compute direct alignment loss within groups with stronger weighting
+            alignment_loss = 0
+            groups = {}
+            for i, mid in enumerate(match_ids):
+                mid_str = str(mid)  # Convert to string to ensure consistent keys
+                if mid_str not in groups:
+                    groups[mid_str] = []
+                groups[mid_str].append(i)
+
+            # Track number of valid alignment pairs for normalization
+            total_alignment_pairs = 0
+
+            for group_indices in groups.values():
+                if len(group_indices) < 2:
+                    continue
+
+                # Get features for this group
+                group_vision = vision_features[group_indices]
+                group_text = text_features[group_indices]
+
+                # Direct pairwise alignment within group with stronger supervision
+                for i in range(len(group_indices)):
+                    for j in range(i + 1, len(group_indices)):
+                        vision_i = group_vision[i]
+                        vision_j = group_vision[j]
+                        text_i = group_text[i]
+                        text_j = group_text[j]
+
+                        # Cross-modal alignment: align vision with matching text (directly)
+                        vision_to_text_alignment = F.mse_loss(
+                            vision_i, text_j
+                        ) + F.mse_loss(vision_j, text_i)
+
+                        # Same-modal cohesion: make same-modality features similar
+                        vision_cohesion = F.mse_loss(vision_i, vision_j)
+                        text_cohesion = F.mse_loss(text_i, text_j)
+
+                        # Stronger weighting for cross-modal alignment
+                        alignment_loss += vision_to_text_alignment + 0.5 * (
+                            vision_cohesion + text_cohesion
+                        )
+                        total_alignment_pairs += 1
+
+                # Compute centroids and align them as well - useful for multi-sample groups
+                if len(group_indices) > 2:
+                    vision_centroid = group_vision.mean(dim=0)
+                    text_centroid = group_text.mean(dim=0)
+
+                    # Centroid alignment is very effective for handling variance across a semantic group
+                    centroid_alignment = F.mse_loss(vision_centroid, text_centroid)
+                    alignment_loss += centroid_alignment * len(group_indices) * 0.5
+                    total_alignment_pairs += 1
+
+            # Normalize alignment loss by number of pairs to keep scale consistent
+            if total_alignment_pairs > 0:
+                alignment_loss = alignment_loss / total_alignment_pairs
+
+                # Add explicit tracking of positive similarities
+                positive_similarities = []
+                negative_similarities = []
+
+                # Calculate average similarity for all matching and non-matching pairs
+                with torch.no_grad():
+                    for i in range(batch_size):
+                        for j in range(batch_size):
+                            similarity_val = F.cosine_similarity(
+                                vision_features[i].unsqueeze(0),
+                                text_features[j].unsqueeze(0),
+                            ).item()
+                            if match_ids[i] == match_ids[j] and i != j:
+                                positive_similarities.append(similarity_val)
+                            elif match_ids[i] != match_ids[j]:
+                                negative_similarities.append(similarity_val)
+
+                # Log the separation stats if we have both positives and negatives
+                if positive_similarities and negative_similarities:
+                    avg_pos_sim = sum(positive_similarities) / len(
+                        positive_similarities
+                    )
+                    avg_neg_sim = sum(negative_similarities) / len(
+                        negative_similarities
+                    )
+                    separation = avg_pos_sim - avg_neg_sim
+
+                    if self.iteration % 10 == 0:  # Only log occasionally to avoid spam
+                        print(
+                            f"Similarity stats - Pos: {avg_pos_sim:.4f}, Neg: {avg_neg_sim:.4f}, Gap: {separation:.4f}"
+                        )
+
+            # Add hard negative mining for more challenging learning
+            # Focus on highly confusing negative pairs (textually similar but semantically different)
+            if batch_size > 4 and self.iteration > 10:
+                # Find hard negatives - high similarity pairs that shouldn't match
+                hard_negatives_loss = 0.0
+                hard_count = 0
+
+                # Create match matrix for easy lookup
+                match_matrix = torch.zeros(
+                    (batch_size, batch_size), dtype=torch.bool, device=sim.device
+                )
+                for i in range(batch_size):
+                    for j in range(batch_size):
+                        match_matrix[i, j] = match_ids[i] == match_ids[j]
+
+                # Find top k% most similar non-matching pairs
+                with torch.no_grad():
+                    similarity = torch.matmul(vision_features, text_features.T)
+
+                    # Create negative mask (where pairs don't match)
+                    negative_mask = ~match_matrix
+
+                    # Find hardest negatives (highest similarity non-matches)
+                    hard_negative_values, _ = torch.topk(
+                        similarity[negative_mask], k=max(5, batch_size // 4)
+                    )
+                    hard_threshold = hard_negative_values.min()
+
+                    # Create mask for hard negatives
+                    hard_negative_mask = (similarity > hard_threshold) & negative_mask
+
+                    # Count hard negatives
+                    hard_count = hard_negative_mask.sum().item()
+
+                # Push hard negatives further apart
+                if hard_count > 0:
+                    # Push apart vision-text pairs that are similar but shouldn't be
+                    repulsion_loss = (
+                        torch.sum(similarity * hard_negative_mask) / hard_count
+                    )
+                    hard_negatives_loss = (
+                        repulsion_loss * 0.5
+                    )  # Lower weight than main loss
+
+                    # Add to alignment loss
+                    alignment_loss = alignment_loss + hard_negatives_loss
+
+        # Compute cross-entropy loss for both directions
+        loss_v2t = F.cross_entropy(sim, targets_v2t)
+        loss_t2v = F.cross_entropy(sim.T, targets_t2v)
+        ce_loss = (loss_v2t + loss_t2v) / 2
+
+        # Add contrastive margin to ensure clear separation between positives and negatives
+        if batch_size > 4 and match_ids is not None:
+            # Create match matrix for easier indexing
+            match_matrix = torch.zeros(
+                (batch_size, batch_size), dtype=torch.bool, device=sim.device
+            )
+            for i in range(batch_size):
+                for j in range(batch_size):
+                    match_matrix[i, j] = match_ids[i] == match_ids[j]
+
+            # Extract diagonal elements (each item with itself)
+            diag_mask = torch.eye(batch_size, dtype=torch.bool, device=sim.device)
+            match_matrix = match_matrix & ~diag_mask  # Remove self-matches
+
+            # Calculate margin contrastive loss
+            pos_margin = 0.8  # Positives should be above this
+            neg_margin = 0.3  # Negatives should be below this
+
+            # Margin losses
+            pos_mask = match_matrix.float()
+            neg_mask = (~match_matrix & ~diag_mask).float()
+
+            # Positive pairs should have high similarity
+            pos_loss = torch.sum(F.relu(pos_margin - sim) * pos_mask) / max(
+                1, pos_mask.sum()
+            )
+
+            # Negative pairs should have lower similarity
+            neg_loss = torch.sum(F.relu(sim - neg_margin) * neg_mask) / max(
+                1, neg_mask.sum()
+            )
+
+            # Add margin loss with appropriate weighting
+            margin_loss = (pos_loss + neg_loss) * 0.3
+            ce_loss = ce_loss + margin_loss
+
+        # Combine losses with higher alignment weight and include extra losses
+        # total_loss = ce_loss + 0.8 * alignment_loss + extra_loss
+
+        # Make sure to log the extra loss components
+        if isinstance(extra_loss, torch.Tensor) and extra_loss > 0:
+            print(
+                f"Extra diversity loss: {extra_loss.item():.4f} with weight {diversity_weight.item():.4f}"
+            )
+
+        # Adjust weights to balance contrastive learning with alignment
+        total_loss = 0.3 * ce_loss + 1.0 * alignment_loss + extra_loss
+
+        # Compute accuracy
+        with torch.no_grad():
+            v2t_pred = torch.argmax(sim, dim=1)
+            t2v_pred = torch.argmax(sim.T, dim=1)
+            v2t_correct = (v2t_pred == targets_v2t).float().mean()
+            t2v_correct = (t2v_pred == targets_t2v).float().mean()
+            accuracy = (v2t_correct + t2v_correct) / 2
+
+            # Calculate positive-negative separation for diagnostics
+            if match_ids is not None and batch_size > 2:
+                # Create match matrix
+                match_matrix = torch.zeros(
+                    (batch_size, batch_size), dtype=torch.bool, device=sim.device
+                )
+                for i in range(batch_size):
+                    for j in range(batch_size):
+                        match_matrix[i, j] = match_ids[i] == match_ids[j]
+
+                # Calculate mean similarity for matching vs non-matching pairs
+                diag_mask = torch.eye(batch_size, dtype=torch.bool, device=sim.device)
+                matches = match_matrix & ~diag_mask  # Remove self-matches
+                non_matches = ~match_matrix & ~diag_mask  # Remove self-non-matches
+
+                raw_sim = torch.matmul(vision_features, text_features.T)
+
+                if matches.sum() > 0:
+                    pos_sim_mean = raw_sim[matches].mean().item()
+                else:
+                    pos_sim_mean = 0.0
+
+                if non_matches.sum() > 0:
+                    neg_sim_mean = raw_sim[non_matches].mean().item()
+                else:
+                    neg_sim_mean = 0.0
+
+                # Calculate positive-negative separation
+                separation = pos_sim_mean - neg_sim_mean
+
+        # Return comprehensive metrics
+        return {
+            "loss": total_loss,
+            "ce_loss": ce_loss.item(),
+            "alignment_loss": (
+                alignment_loss.item()
+                if isinstance(alignment_loss, torch.Tensor)
+                else alignment_loss
+            ),
+            "v2t_loss": loss_v2t.item(),
+            "t2v_loss": loss_t2v.item(),
+            "accuracy": accuracy.item(),
+            "temperature": effective_temp,
+            "pos_sim": pos_sim_mean if "pos_sim_mean" in locals() else 0.0,
+            "neg_sim": neg_sim_mean if "neg_sim_mean" in locals() else 0.0,
+            "separation": separation if "separation" in locals() else 0.0,
+            "extra_loss": (
+                extra_loss.item() if isinstance(extra_loss, torch.Tensor) else 0.0
+            ),
+        }
 
 
 def set_seed(seed):
@@ -333,1770 +731,15 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-
-def print_model_summary(model, title="MODEL SUMMARY"):
-    """
-    Print a concise summary of the model architecture and parameter counts.
-
-    Args:
-        model: PyTorch model
-        title: Title for the summary
-    """
-    total_params = count_parameters(model)
-
-    # Try to get submodule parameter counts if available
-    vision_params = text_params = fusion_params = 0
-
-    if hasattr(model, "vision_model"):
-        vision_params = count_parameters(model.vision_model)
-
-    if hasattr(model, "text_model"):
-        text_params = count_parameters(model.text_model)
-
-    # Fusion parameters (estimate)
-    fusion_params = total_params - vision_params - text_params
-
-    print("\n" + "=" * 50)
-    print(f"{title}")
-    print("-" * 50)
-    print(f"Total parameters:       {total_params:,}")
-    if vision_params > 0:
-        print(
-            f"Vision model parameters: {vision_params:,} ({vision_params/total_params*100:.1f}%)"
-        )
-    if text_params > 0:
-        print(
-            f"Text model parameters:   {text_params:,} ({text_params/total_params*100:.1f}%)"
-        )
-    if fusion_params > 0:
-        print(
-            f"Fusion parameters:       {fusion_params:,} ({fusion_params/total_params*100:.1f}%)"
-        )
-    print("=" * 50 + "\n")
-
-
-def create_multimodal_model(args, device):
-    """
-    Create vision transformer, text transformer, and multimodal model
-    with pretrained foundation models.
-    """
-    logger.info("Creating multimodal model with pretrained components...")
-
-    # Create vision transformer with pretrained weights
-    try:
-        import timm
-
-        if args.use_pretrained:
-            logger.info(f"Loading pretrained vision model: {args.vision_model}")
-        else:
-            logger.info(
-                f"Creating vision model (without pretraining): {args.vision_model}"
-            )
-
-        if args.vision_model == "vit-base":
-            vision_model = timm.create_model(
-                "vit_base_patch16_224", pretrained=args.use_pretrained
-            )
-            # Remove classification head
-            vision_model.head = nn.Identity()
-            vision_dim = 512
-        elif args.vision_model == "vit-small":
-            vision_model = timm.create_model(
-                "vit_small_patch16_224", pretrained=args.use_pretrained
-            )
-            vision_model.head = nn.Identity()
-            vision_dim = 384
-        else:
-            logger.warning(f"Using standard vision transformer: {args.vision_model}")
-            # Fallback to standard implementation
-            vision_config = {
-                "image_size": 224,
-                "patch_size": 16,
-                "in_channels": 3,
-                "num_classes": 1000,
-                "embed_dim": 512,
-                "depth": 12,
-                "num_heads": 12,
-                "mlp_ratio": 4.0,
-                "dropout": 0.1,
-            }
-            vision_model = VisionTransformer(**vision_config)
-            vision_dim = vision_config["embed_dim"]
-
-    except ImportError:
-        logger.warning("timm library not found, using standard vision transformer")
-        # Fallback to standard implementation
-        vision_config = {
-            "image_size": 224,
-            "patch_size": 16,
-            "in_channels": 3,
-            "num_classes": 1000,
-            "embed_dim": 512,
-            "depth": 12,
-            "num_heads": 12,
-            "mlp_ratio": 4.0,
-            "dropout": 0.1,
-        }
-        vision_model = VisionTransformer(**vision_config)
-        vision_dim = vision_config["embed_dim"]
-
-    # Create text transformer with pretrained weights
-    try:
-        from transformers import AutoModel, AutoTokenizer
-
-        logger.info(f"Loading pretrained text model: {args.text_model}")
-
-        # Check if we should use a pretrained text model from HuggingFace
-        if args.use_pretrained_text:
-            logger.info(
-                f"Loading pretrained text model from HuggingFace: {args.text_model}"
-            )
-
-            # Create a wrapper class for HuggingFace models
-            class HuggingFaceTextModelWrapper(nn.Module):
-                """Wrapper for HuggingFace models to provide compatible interface."""
-
-                def __init__(self, model_name):
-                    super().__init__()
-
-                    # Get system device
-                    system_device = torch.device(
-                        "cuda"
-                        if torch.cuda.is_available()
-                        else "mps" if torch.backends.mps.is_available() else "cpu"
-                    )
-
-                    # Map to MPS-friendly models when needed
-                    if (
-                        system_device.type == "mps"
-                        and "bert-base" in model_name.lower()
-                    ):
-                        print(
-                            "⚠️ Detected MPS device - using MobileBERT instead of BERT for better compatibility"
-                        )
-                        model_name = "google/mobilebert-uncased"
-
-                    # Load the model on appropriate device
-                    if "mobilebert" in model_name.lower():
-                        from transformers import MobileBertModel, MobileBertTokenizer
-
-                        print(f"Loading MobileBERT model: {model_name}")
-                        self.encoder = MobileBertModel.from_pretrained(
-                            "google/mobilebert-uncased"
-                        )
-                        self.d_model = self.encoder.config.hidden_size
-                        self.encoder_type = "mobilebert"
-                    elif "albert" in model_name.lower():
-                        from transformers import AlbertModel, AlbertTokenizer
-
-                        print(f"Loading ALBERT model: {model_name}")
-                        self.encoder = AlbertModel.from_pretrained("albert-base-v2")
-                        self.d_model = self.encoder.config.hidden_size
-                        self.encoder_type = "albert"
-                    elif (
-                        "bert" in model_name.lower()
-                        and "distil" not in model_name.lower()
-                    ):
-                        from transformers import BertModel, BertTokenizer
-
-                        print(f"Loading BERT model: {model_name}")
-                        self.encoder = BertModel.from_pretrained(model_name)
-                        self.d_model = self.encoder.config.hidden_size
-                        self.encoder_type = "bert"
-                    elif "roberta" in model_name.lower():
-                        from transformers import RobertaModel, RobertaTokenizer
-
-                        print(f"Loading RoBERTa model: {model_name}")
-                        self.encoder = RobertaModel.from_pretrained(model_name)
-                        self.d_model = self.encoder.config.hidden_size
-                        self.encoder_type = "roberta"
-                    elif "distilbert" in model_name.lower():
-                        from transformers import DistilBertModel, DistilBertTokenizer
-
-                        print(f"Loading DistilBERT model: {model_name}")
-                        self.encoder = DistilBertModel.from_pretrained(model_name)
-                        self.d_model = self.encoder.config.hidden_size
-                        self.encoder_type = "distilbert"
-                    else:
-                        raise ValueError(f"Unsupported model: {model_name}")
-
-                    # Try moving to the system device if MPS-compatible
-                    try:
-                        self.encoder = self.encoder.to(system_device)
-                        print(f"Successfully moved {model_name} to {system_device}")
-                    except Exception as e:
-                        print(
-                            f"Could not move model to {system_device}, using CPU instead: {str(e)}"
-                        )
-                        self.encoder = self.encoder.to("cpu")
-
-                    logger.info(f"Loaded {model_name} with dimension {self.d_model}")
-
-                def encode(self, src, src_mask=None):
-                    """Encode text using the HuggingFace model."""
-                    # Get original device
-                    input_device = src.device
-
-                    # MPS compatibility mode - check if we're on MPS and handle specially
-                    is_mps = (
-                        input_device.type == "mps" or torch.backends.mps.is_available()
-                    )
-
-                    # Get encoder's current device
-                    encoder_device = next(self.encoder.parameters()).device
-
-                    # Try direct processing for all models first
-                    # The extract_text_features method in multimodal_integration.py
-                    # will handle the CPU fallback if needed
-                    use_cpu_path = False
-
-                    # Define a CPU fallback function for reuse
-                    def process_on_cpu():
-                        print(
-                            f"Processing {getattr(self, 'encoder_type', 'model')} on CPU for compatibility"
-                        )
-                        # Move everything to CPU
-                        cpu_src = src.to("cpu")
-                        cpu_mask = src_mask.to("cpu") if src_mask is not None else None
-
-                        # Format mask if needed
-                        if cpu_mask is not None:
-                            if cpu_mask.dim() > 2:
-                                cpu_mask = cpu_mask.squeeze(1)
-                                if cpu_mask.dim() > 2:
-                                    cpu_mask = cpu_mask.squeeze(1)
-
-                        # Move encoder to CPU temporarily
-                        original_device = next(self.encoder.parameters()).device
-                        cpu_encoder = self.encoder.to("cpu")
-
-                        # Handle out-of-range indices if needed
-                        if hasattr(cpu_encoder, "embeddings") and hasattr(
-                            cpu_encoder.embeddings, "word_embeddings"
-                        ):
-                            vocab_size = (
-                                cpu_encoder.embeddings.word_embeddings.weight.size(0)
-                            )
-                            if torch.max(cpu_src) >= vocab_size:
-                                cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
-
-                        try:
-                            # Process on CPU
-                            with torch.no_grad():
-                                outputs = cpu_encoder(
-                                    input_ids=cpu_src, attention_mask=cpu_mask
-                                )
-
-                            # Move encoder back
-                            self.encoder = self.encoder.to(original_device)
-
-                            # Return results on input device
-                            return outputs.last_hidden_state.to(input_device)
-                        except Exception as cpu_err:
-                            print(f"CPU fallback processing failed: {str(cpu_err)}")
-                            self.encoder = self.encoder.to(original_device)
-
-                            # Return zeros as last resort
-                            batch_size, seq_length = src.shape
-                            return torch.zeros(
-                                batch_size,
-                                seq_length,
-                                self.d_model,
-                                device=input_device,
-                            )
-
-                    # If we've decided to use CPU path, do it now
-                    if use_cpu_path:
-                        return process_on_cpu()
-
-                    # Otherwise, try normal processing
-                    try:
-                        # Format attention mask if needed
-                        if src_mask is not None:
-                            if src_mask.dim() > 2:
-                                attention_mask = src_mask.squeeze(1)
-                                if attention_mask.dim() > 2:
-                                    attention_mask = attention_mask.squeeze(1)
-                            else:
-                                attention_mask = src_mask
-
-                            # Move mask to encoder device
-                            attention_mask = attention_mask.to(encoder_device)
-                        else:
-                            attention_mask = None
-
-                        # Move input to encoder device
-                        input_ids = src.to(encoder_device)
-
-                        # Handle out-of-range indices (important for BERT)
-                        if hasattr(self.encoder, "embeddings") and hasattr(
-                            self.encoder.embeddings, "word_embeddings"
-                        ):
-                            vocab_size = (
-                                self.encoder.embeddings.word_embeddings.weight.size(0)
-                            )
-                            # Check if indices are in range
-                            if torch.max(input_ids) >= vocab_size:
-                                print(
-                                    f"Warning: Found input indices larger than vocabulary size ({vocab_size}). Clipping."
-                                )
-                                # Clip indices to valid range
-                                input_ids = torch.clamp(input_ids, max=vocab_size - 1)
-
-                        # Regular processing with device alignment
-                        with torch.no_grad():
-                            outputs = self.encoder(
-                                input_ids=input_ids, attention_mask=attention_mask
-                            )
-
-                            # Move result back to original device
-                            return outputs.last_hidden_state.to(input_device)
-
-                    except Exception as e:
-                        print(f"Error in HuggingFace text encoding: {str(e)}")
-                        print(
-                            f"Encoder type: {getattr(self, 'encoder_type', 'unknown')}"
-                        )
-                        print(
-                            f"Encoder device: {encoder_device}, Input device: {input_device}"
-                        )
-
-                        # Try CPU fallback
-                        try:
-                            return process_on_cpu()
-                        except Exception as fallback_err:
-                            print(f"All fallback attempts failed: {str(fallback_err)}")
-
-                        # Final emergency fallback - generate features with correct shape
-                        batch_size, seq_length = src.shape
-                        print(
-                            f"Using final fallback: zeros in correct shape on device {input_device}"
-                        )
-                        return torch.zeros(
-                            batch_size, seq_length, self.d_model, device=input_device
-                        )
-
-                def forward(self, src, tgt=None, src_mask=None, tgt_mask=None):
-                    """Forward pass - just calls encode for encoder-only models."""
-                    return self.encode(src, src_mask)
-
-            # Map model name to HuggingFace model name
-            system_device = torch.device(
-                "cuda"
-                if torch.cuda.is_available()
-                else "mps" if torch.backends.mps.is_available() else "cpu"
-            )
-
-            # Use MPS-friendly models if on MPS device
-            if system_device.type == "mps":
-                if args.text_model == "bert-base":
-                    huggingface_model_name = (
-                        "google/mobilebert-uncased"  # MPS-friendly alternative
-                    )
-                    print(
-                        "⚠️ Automatically switched from BERT-base to MobileBERT for MPS compatibility"
-                    )
-                elif args.text_model == "roberta-base":
-                    huggingface_model_name = "distilroberta-base"  # Smaller model for better MPS compatibility
-                    print(
-                        "⚠️ Automatically switched from RoBERTa-base to DistilRoBERTa for MPS compatibility"
-                    )
-                elif args.text_model == "distilbert-base":
-                    huggingface_model_name = "distilbert-base-uncased"
-                elif args.text_model == "mobilebert":
-                    huggingface_model_name = "google/mobilebert-uncased"
-                elif args.text_model == "albert-base":
-                    huggingface_model_name = "albert-base-v2"
-                else:
-                    # Default to MobileBERT for MPS
-                    huggingface_model_name = "google/mobilebert-uncased"
-            else:
-                # Standard mapping for CPU/CUDA
-                if args.text_model == "bert-base":
-                    huggingface_model_name = "bert-base-uncased"
-                elif args.text_model == "roberta-base":
-                    huggingface_model_name = "roberta-base"
-                elif args.text_model == "distilbert-base":
-                    huggingface_model_name = "distilbert-base-uncased"
-                elif args.text_model == "mobilebert":
-                    huggingface_model_name = "google/mobilebert-uncased"
-                elif args.text_model == "albert-base":
-                    huggingface_model_name = "albert-base-v2"
-                else:
-                    # Default to bert-base if not specified
-                    huggingface_model_name = "bert-base-uncased"
-
-            # Create model
-            text_model = HuggingFaceTextModelWrapper(huggingface_model_name)
-            text_dim = text_model.d_model
-
-        else:
-            # Not using pretrained - create standard transformer
-            logger.info(
-                f"Creating custom text transformer (without pretraining): {args.text_model}"
-            )
-
-            if args.text_model == "transformer-base":
-                # Create larger custom transformer
-                text_config = {
-                    "src_vocab_size": 50000,
-                    "tgt_vocab_size": 50000,
-                    "d_model": 512,  # Match BERT dimension
-                    "num_heads": 12,
-                    "num_encoder_layers": 6,
-                    "num_decoder_layers": 6,
-                    "d_ff": 3072,
-                    "dropout": 0.1,
-                }
-            else:
-                # Use transformer-small
-                logger.info("Using transformer-small configuration")
-                text_config = {
-                    "src_vocab_size": 50000,
-                    "tgt_vocab_size": 50000,
-                    "d_model": 384,  # Match vit-small dimension
-                    "num_heads": 8,
-                    "num_encoder_layers": 6,
-                    "num_decoder_layers": 6,
-                    "d_ff": 2048,
-                    "dropout": 0.1,
-                }
-
-            # Create model
-            text_model = EncoderDecoderTransformer(**text_config)
-            text_dim = text_config["d_model"]
-
-    except ImportError:
-        logger.warning(
-            "transformers library not found, using standard text transformer"
-        )
-        # Fallback to standard implementation
-        text_config = {
-            "src_vocab_size": 50000,
-            "tgt_vocab_size": 50000,
-            "d_model": 512,
-            "num_heads": 8,
-            "num_encoder_layers": 6,
-            "num_decoder_layers": 6,
-            "d_ff": 2048,
-            "dropout": 0.1,
-        }
-        text_model = EncoderDecoderTransformer(**text_config)
-        text_dim = text_config["d_model"]
-
-    # Log parameter counts
-    vision_params = count_parameters(vision_model)
-    text_params = count_parameters(text_model)
-    logger.info(f"Vision transformer parameters: {vision_params:,}")
-    logger.info(f"Text transformer parameters: {text_params:,}")
-
-    # Create multimodal model with custom initialization
-    logger.info(
-        f"Creating enhanced multimodal transformer with {args.fusion_type} fusion"
-    )
-
-    # Use the real dimensions from the models
-    fusion_dim = args.fusion_dim
-
-    # Log dimension information for debugging
-    logger.info(
-        f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
-    )
-
-    # Check for dimension mismatch between vision and text models
-    if vision_dim != text_dim:
-        logger.warning(
-            f"Dimension mismatch detected between vision ({vision_dim}) and text ({text_dim}) models"
-        )
-
-        # Create a dimension alignment layer to ensure they match before fusion
-        if (
-            args.text_model == "transformer-base"
-            or args.text_model == "transformer-small"
-        ):
-            # For custom transformers, we can adjust the transformer itself
-            logger.info(
-                f"Setting text model dimension to match vision model: {vision_dim}"
-            )
-            # Update the model's dimension
-            text_model.d_model = vision_dim
-            text_dim = vision_dim
-        else:
-            # For pretrained models, add a projection layer
-            logger.info(
-                f"Adding explicit projection layer to match dimensions: {text_dim} → {vision_dim}"
-            )
-
-            # Create a wrapper to add projection
-            class DimensionMatchingWrapper(nn.Module):
-                def __init__(self, base_model, input_dim, output_dim):
-                    super().__init__()
-                    self.base_model = base_model
-                    self.projection = nn.Linear(input_dim, output_dim)
-                    self.d_model = output_dim  # Update dimension
-
-                    # Move projection to same device as base model initially
-                    base_device = next(base_model.parameters()).device
-                    self.projection = self.projection.to(base_device)
-
-                def encode(self, *args, **kwargs):
-                    # Track original device for consistent return
-                    original_device = None
-                    if "src" in kwargs:
-                        original_device = kwargs["src"].device
-                    elif len(args) > 0:
-                        original_device = args[0].device
-
-                    # Get device from base model for consistency
-                    base_device = next(self.base_model.parameters()).device
-
-                    # Move inputs to base model device if needed
-                    if "src" in kwargs and kwargs["src"].device != base_device:
-                        kwargs["src"] = kwargs["src"].to(base_device)
-                    if (
-                        "src_mask" in kwargs
-                        and kwargs["src_mask"] is not None
-                        and kwargs["src_mask"].device != base_device
-                    ):
-                        kwargs["src_mask"] = kwargs["src_mask"].to(base_device)
-                    if len(args) > 0 and args[0].device != base_device:
-                        args = list(args)
-                        args[0] = args[0].to(base_device)
-                        args = tuple(args)
-
-                    # Get output from base model (now everything is on same device)
-                    base_output = self.base_model.encode(*args, **kwargs)
-
-                    # Ensure projection is on same device
-                    proj_device = next(self.projection.parameters()).device
-                    if base_output.device != proj_device:
-                        self.projection = self.projection.to(base_output.device)
-
-                    # Project to new dimension
-                    projected = self.projection(base_output)
-
-                    # Return to original device if requested
-                    if (
-                        original_device is not None
-                        and projected.device != original_device
-                    ):
-                        projected = projected.to(original_device)
-
-                    return projected
-
-                def forward(self, *args, **kwargs):
-                    return self.encode(*args, **kwargs)
-
-            # Wrap the text model with a projection
-            text_model = DimensionMatchingWrapper(text_model, text_dim, vision_dim)
-            # Move to the same device as the text model
-            device = next(text_model.base_model.parameters()).device
-            text_model.projection = text_model.projection.to(device)
-            text_dim = vision_dim
-            logger.info(f"Projection layer created on device: {device}")
-
-    # After alignment, dimensions should match
-    logger.info(
-        f"Aligned dimensions - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
-    )
-
-    multimodal_model = EnhancedMultiModalTransformer(
-        vision_model=vision_model,
-        text_model=text_model,
-        fusion_dim=fusion_dim,
-        num_fusion_layers=3,  # Increased from 2 for better fusion
-        num_heads=8,
-        dropout=0.1,
-        fusion_type=args.fusion_type,
-    )
-
-    # Set up parameter freezing based on argument
-    if args.freeze_base_models:
-        # Freeze base models initially (will be unfrozen during multi-stage training)
-        for name, param in multimodal_model.named_parameters():
-            if "vision_model" in name or "text_model" in name:
-                param.requires_grad = False
-        logger.info("Base models frozen for initial training phase")
-    else:
-        # Keep all parameters trainable for full fine-tuning
-        for param in multimodal_model.parameters():
-            param.requires_grad = True
-        logger.info("All model parameters are trainable (including base models)")
-
-    # Calculate trainable parameters
-    trainable_params = sum(
-        p.numel() for p in multimodal_model.parameters() if p.requires_grad
-    )
-    total_params = count_parameters(multimodal_model)
-    logger.info(
-        f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params*100:.1f}% of total)"
-    )
-
-    # Print detailed model summary
-    print_model_summary(multimodal_model, "MULTIMODAL MODEL ARCHITECTURE (PRETRAINED)")
-
-    # Move model to device - ensure all components are on the same device
-    multimodal_model = multimodal_model.to(device)
-
-    # Explicitly check and move all submodules to ensure consistency
-    multimodal_model.vision_model = multimodal_model.vision_model.to(device)
-    multimodal_model.text_model = multimodal_model.text_model.to(device)
-    multimodal_model.fusion_module = multimodal_model.fusion_module.to(device)
-    if hasattr(multimodal_model, "classifier"):
-        multimodal_model.classifier = multimodal_model.classifier.to(device)
-
-    # Print device confirmation
-    print(f"Model components successfully moved to {device}")
-    print(f"- Vision model: {next(multimodal_model.vision_model.parameters()).device}")
-    print(f"- Text model: {next(multimodal_model.text_model.parameters()).device}")
-    print(
-        f"- Fusion module: {next(multimodal_model.fusion_module.parameters()).device}"
-    )
-
-    # We're now using standard transformer models instead of BERT for better MPS compatibility
-
-    return multimodal_model
-
-
-def convert_tensors_to_python_types(obj):
-    """Convert PyTorch tensors to native Python types for JSON serialization."""
-    if isinstance(obj, torch.Tensor):
-        # Convert tensor to Python type
-        return obj.item() if obj.numel() == 1 else obj.detach().cpu().tolist()
-    elif isinstance(obj, dict):
-        # Recursively convert dictionary values
-        return {k: convert_tensors_to_python_types(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        # Recursively convert list elements
-        return [convert_tensors_to_python_types(item) for item in obj]
-    elif isinstance(obj, tuple):
-        # Recursively convert tuple elements
-        return tuple(convert_tensors_to_python_types(item) for item in obj)
-    else:
-        # Return other types as is
-        return obj
-
-
-def create_data_loaders(args, image_preprocessor, tokenizer):
-    """
-    Create data loaders for training, validation, and testing.
-
-    Args:
-        args: Command line arguments
-        image_preprocessor: Image preprocessor
-        tokenizer: Text tokenizer
-
-    Returns:
-        Train, validation, and test data loaders
-    """
-    print(f"Creating data loaders for {args.dataset} dataset...")
-
-    # Create dataset and data loaders
-    if args.dataset == "flickr30k":
-        if args.use_synthetic:
-            print("WARNING: Using synthetic data instead of real Flickr30k data!")
-            synthetic_samples = args.synthetic_samples
-        else:
-            # When using real data, don't specify synthetic_samples
-            synthetic_samples = args.synthetic_samples if args.use_synthetic else 0
-
-        # Try to create Flickr30k dataset splits
-        try:
-            print("Loading Flickr30k train split...")
-            train_dataset = EnhancedMultimodalDataset(
-                dataset_name="flickr30k",
-                split="train",
-                image_preprocessor=image_preprocessor,
-                tokenizer=tokenizer,
-                max_text_length=args.max_text_length,
-                synthetic_samples=synthetic_samples,
-                cache_dir=os.path.join(args.data_dir, "flickr30k"),
-                max_samples=args.max_train_examples,
-            )
-
-            # Check if we actually got real data or synthetic fallback
-            dataset_info = train_dataset.get_split_proportions()
-            if (
-                dataset_info.get("total_samples", 0) <= args.synthetic_samples
-                and not args.use_synthetic
-            ):
-                print(
-                    f"WARNING: Got {dataset_info.get('total_samples', 0)} samples which may indicate synthetic data fallback"
-                )
-                print(
-                    "If you want to use synthetic data explicitly, use --use_synthetic flag"
-                )
-
-            print("Loading Flickr30k validation split...")
-            val_dataset = EnhancedMultimodalDataset(
-                dataset_name="flickr30k",
-                split="val",
-                image_preprocessor=image_preprocessor,
-                tokenizer=tokenizer,
-                max_text_length=args.max_text_length,
-                synthetic_samples=(
-                    synthetic_samples // 4 if synthetic_samples > 0 else 0
-                ),
-                cache_dir=os.path.join(args.data_dir, "flickr30k"),
-                max_samples=args.max_val_examples,
-            )
-
-            print("Loading Flickr30k test split...")
-            test_dataset = EnhancedMultimodalDataset(
-                dataset_name="flickr30k",
-                split="test",
-                image_preprocessor=image_preprocessor,
-                tokenizer=tokenizer,
-                max_text_length=args.max_text_length,
-                synthetic_samples=(
-                    synthetic_samples // 4 if synthetic_samples > 0 else 0
-                ),
-                cache_dir=os.path.join(args.data_dir, "flickr30k"),
-                max_samples=args.max_test_examples,
-            )
-
-        except Exception as e:
-            print(f"ERROR: Failed to load Flickr30k dataset: {str(e)}")
-            print(
-                "If you intended to use synthetic data, please use --dataset synthetic or --use_synthetic flag"
-            )
-            raise
-
-    elif args.dataset == "synthetic":
-        print("Creating synthetic datasets for training demo")
-        # Create synthetic datasets explicitly
-        # Adjust the number of synthetic samples based on max_examples settings
-        train_synthetic_samples = args.synthetic_samples
-        if (
-            args.max_train_examples is not None
-            and args.max_train_examples < train_synthetic_samples
-        ):
-            train_synthetic_samples = args.max_train_examples
-
-        val_synthetic_samples = args.synthetic_samples // 4
-        if (
-            args.max_val_examples is not None
-            and args.max_val_examples < val_synthetic_samples
-        ):
-            val_synthetic_samples = args.max_val_examples
-
-        test_synthetic_samples = args.synthetic_samples // 4
-        if (
-            args.max_test_examples is not None
-            and args.max_test_examples < test_synthetic_samples
-        ):
-            test_synthetic_samples = args.max_test_examples
-
-        train_dataset = EnhancedMultimodalDataset(
-            dataset_name="synthetic",
-            split="train",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=train_synthetic_samples,
-            cache_dir=os.path.join(args.data_dir, "synthetic"),
-            max_samples=args.max_train_examples,
-        )
-
-        val_dataset = EnhancedMultimodalDataset(
-            dataset_name="synthetic",
-            split="val",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=val_synthetic_samples,
-            cache_dir=os.path.join(args.data_dir, "synthetic"),
-            max_samples=args.max_val_examples,
-        )
-
-        test_dataset = EnhancedMultimodalDataset(
-            dataset_name="synthetic",
-            split="test",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=test_synthetic_samples,
-            cache_dir=os.path.join(args.data_dir, "synthetic"),
-            max_samples=args.max_test_examples,
-        )
-    else:
-        # Custom dataset handling remains the same
-        train_dataset = EnhancedMultimodalDataset(
-            dataset_name="custom",
-            split="train",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=args.synthetic_samples,
-            cache_dir=os.path.join(args.data_dir, "custom"),
-            max_samples=args.max_train_examples,
-        )
-
-        val_dataset = EnhancedMultimodalDataset(
-            dataset_name="custom",
-            split="val",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=args.synthetic_samples // 4,
-            cache_dir=os.path.join(args.data_dir, "custom"),
-            max_samples=args.max_val_examples,
-        )
-
-        test_dataset = EnhancedMultimodalDataset(
-            dataset_name="custom",
-            split="test",
-            image_preprocessor=image_preprocessor,
-            tokenizer=tokenizer,
-            max_text_length=args.max_text_length,
-            synthetic_samples=args.synthetic_samples // 4,
-            cache_dir=os.path.join(args.data_dir, "custom"),
-            max_samples=args.max_test_examples,
-        )
-
-    # Let's use a simpler but effective approach to prevent shortcut learning
-    # Instead of a complex custom sampler, we'll use a simple but effective approach
-
-    # First, we need to ensure our datasets have the match_ids properly set
-    # We'll do this by adding a randomization method
-    def randomize_dataset_positions(dataset):
-        """Randomize the positions of items in the dataset to break positional correlation."""
-        # First, make sure we have access to match_ids
-        # Try different approaches to get match_ids
-        match_ids = None
-
-        # Try to access match_ids as an attribute
-        if hasattr(dataset, "match_ids"):
-            match_ids = dataset.match_ids
-        # Try to access through a method
-        elif hasattr(dataset, "get_match_ids") and callable(dataset.get_match_ids):
-            match_ids = dataset.get_match_ids()
-        # Try to extract from each item
-        else:
-            print("Attempting to extract match_ids from dataset items...")
-            # Check if we can access items and if they have match_id
-            try:
-                # Check first item
-                first_item = dataset[0]
-                if isinstance(first_item, dict) and "match_id" in first_item:
-                    # Extract match_ids from all items
-                    match_ids = []
-                    for i in range(len(dataset)):
-                        item = dataset[i]
-                        match_ids.append(item.get("match_id", f"id_{i}"))
-                    print(
-                        f"Successfully extracted {len(match_ids)} match_ids from items"
-                    )
-            except Exception as e:
-                print(f"Error extracting match_ids from items: {e}")
-
-        # If we still don't have match_ids, use default
-        if match_ids is None:
-            print("WARNING: Couldn't access match_ids, using fallback with unique IDs")
-            match_ids = [f"id_{i}" for i in range(len(dataset))]
-
-        # Store match_ids in the dataset for future reference
-        if not hasattr(dataset, "match_ids"):
-            dataset.match_ids = match_ids
-
-        # Group indices by match_id
-        match_id_groups = {}
-        for idx, match_id in enumerate(match_ids):
-            if match_id not in match_id_groups:
-                match_id_groups[match_id] = []
-            match_id_groups[match_id].append(idx)
-
-        print(
-            f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items"
-        )
-
-        # Create shuffled indices that preserve semantic relationships but break position
-        shuffled_indices = []
-        # Mix up groups as much as possible
-        group_keys = list(match_id_groups.keys())
-        random.shuffle(group_keys)
-
-        # For each group, randomize indices within the group
-        for match_id in group_keys:
-            indices = match_id_groups[match_id]
-            random.shuffle(indices)
-            shuffled_indices.extend(indices)
-
-        print(f"Created shuffled indices list with {len(shuffled_indices)} items")
-        return shuffled_indices
-
-    # Randomize our datasets and get shuffled indices
-    print("Randomizing dataset positions to prevent shortcut learning...")
-    train_indices = randomize_dataset_positions(train_dataset)
-    val_indices = randomize_dataset_positions(val_dataset)
-
-    # Use PyTorch's SubsetRandomSampler for simplicity
-    from torch.utils.data import SubsetRandomSampler
-
-    # Create samplers using our shuffled indices
-    train_sampler = SubsetRandomSampler(train_indices)
-    val_sampler = SubsetRandomSampler(val_indices)
-
-    # Create data loaders with these samplers
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        sampler=train_sampler,
-        num_workers=0,  # Keep at 0 for MPS
-        drop_last=True,  # Important for consistent batch sizes
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=args.batch_size,
-        sampler=val_sampler,
-        num_workers=0,  # Keep at 0 for MPS
-        drop_last=True,  # Consistent batch sizes for validation
-    )
-
-    # For testing we still use a standard loader without custom sampling
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,  # Important for reproducible testing
-        num_workers=0,  # Keep at 0 for MPS
-    )
-
-    # Print dataset statistics
-    print(f"Train split: {train_dataset.get_split_proportions()}")
-    print(f"Val split: {val_dataset.get_split_proportions()}")
-    print(f"Test split: {test_dataset.get_split_proportions()}")
-
-    return train_loader, val_loader, test_loader
-
-
-def create_loss_function(args, dataset_size=None, train_loader=None):
-    """
-    Create the appropriate loss function based on arguments.
-
-    Args:
-        args: Command line arguments
-        dataset_size: Size of the dataset for auto-selecting sampling strategy
-        train_loader: Training dataloader for advanced loss configuration
-
-    Returns:
-        Loss function
-    """
-    # Get loss type directly from args now that we've added it to the argument parser
-    loss_type = args.loss_type
-
-    # Log which loss function is being used
-    logger.info(f"Creating loss function of type: {loss_type}")
-
-    # Use args.use_mixed_loss to override if it's explicitly set
-    if args.use_mixed_loss:
-        loss_type = "mixed"
-        logger.info(
-            "Overriding to Mixed Contrastive Loss based on --use_mixed_loss flag"
-        )
-
-    # Switch based on the loss type
-    if loss_type == "memory_queue":
-        # Memory Queue-Based Contrastive Loss
-        logger.info("Using Memory Queue-Based Contrastive Loss")
-        from src.training.contrastive_learning import MemoryQueueContrastiveLoss
-
-        # Use queue_size from args if provided, otherwise determine based on dataset size
-        if args.queue_size:
-            queue_size = args.queue_size
-        elif dataset_size is not None:
-            # Larger datasets benefit from larger queues
-            if dataset_size > 10000:
-                queue_size = 16384  # Very large queue for large datasets
-            elif dataset_size > 5000:
-                queue_size = 8192  # Large queue for medium-large datasets
-            elif dataset_size > 1000:
-                queue_size = 4096  # Medium queue for medium datasets
-            else:
-                queue_size = 2048  # Smaller queue for small datasets
-        else:
-            queue_size = 8192  # Default to a reasonably large queue size
-
-        # Adjust temperature for memory queue approach
-        # Generally needs slightly higher temperature than standard contrastive
-        adjusted_temp = args.temperature * 1.1
-
-        logger.info(
-            f"Memory Queue size: {queue_size}, Temperature: {adjusted_temp:.4f}"
-        )
-
-        return MemoryQueueContrastiveLoss(
-            dim=512,  # Feature dimension
-            queue_size=queue_size,
-            temperature=adjusted_temp,
-        )
-
-    elif loss_type == "dynamic_temp":
-        # Dynamic Temperature Calibration
-        logger.info("Using Dynamic Temperature Calibration Contrastive Loss")
-        from src.training.contrastive_learning import DynamicTemperatureContrastiveLoss
-
-        # Base temperature is provided by args
-        base_temp = args.temperature
-
-        # Use min/max from args if provided, otherwise calculate sensible defaults
-        if args.dynamic_temp_min is not None:
-            min_temp = args.dynamic_temp_min
-        else:
-            min_temp = max(0.01, base_temp * 0.6)  # Don't go below 0.01 or 60% of base
-
-        if args.dynamic_temp_max is not None:
-            max_temp = args.dynamic_temp_max
-        else:
-            max_temp = min(0.3, base_temp * 2.0)  # Don't go above 0.3 or 200% of base
-
-        logger.info(
-            f"Dynamic Temperature - Base: {base_temp:.4f}, Range: [{min_temp:.4f}, {max_temp:.4f}]"
-        )
-
-        return DynamicTemperatureContrastiveLoss(
-            base_temperature=base_temp, min_temp=min_temp, max_temp=max_temp
-        )
-
-    elif loss_type == "hard_negative":
-        # Hard Negative Mining Contrastive Loss
-        logger.info("Using Hard Negative Mining Contrastive Loss")
-        from src.training.contrastive_learning import HardNegativeMiningContrastiveLoss
-
-        # Use mining strategy from args if not 'auto', otherwise determine based on batch size
-        if args.mining_strategy and args.mining_strategy != "auto":
-            mining_strategy = args.mining_strategy
-        elif args.batch_size < 32:
-            # For small batches, semi-hard negatives work better
-            mining_strategy = "semi-hard"
-        else:
-            # For larger batches, full hard negative mining is effective
-            mining_strategy = "hard"
-
-        # Use hard negative factor from args if provided
-        if args.hard_negative_factor is not None:
-            hard_negative_factor = args.hard_negative_factor
-        elif mining_strategy == "semi-hard":
-            # Higher weighting for semi-hard approach
-            hard_negative_factor = 3.0
-        else:
-            # Moderate weighting for hard approach
-            hard_negative_factor = 2.0
-
-        logger.info(
-            f"Hard Negative Mining - Strategy: {mining_strategy}, Weight: {hard_negative_factor:.1f}x"
-        )
-
-        return HardNegativeMiningContrastiveLoss(
-            temperature=args.temperature,
-            hard_negative_factor=hard_negative_factor,
-            mining_strategy=mining_strategy,
-        )
-
-    elif loss_type == "mixed":
-        # Mixed Contrastive Loss with multiple objectives
-        logger.info("Using Mixed Contrastive Loss with multiple objectives")
-        return MultiModalMixedContrastiveLoss(
-            contrastive_weight=1.0,
-            classification_weight=0.2,
-            multimodal_matching_weight=0.2,
-            temperature=args.temperature,
-            use_hard_negatives=True,  # ENABLED hard negative mining
-            hard_negative_weight=(
-                0.3 if args.hard_negative_factor is None else args.hard_negative_factor
-            ),
-        )
-
-    else:
-        # Standard Contrastive Loss (default)
-        logger.info("Using Standard Contrastive Loss with enhanced settings")
-
-        # Determine which sampling strategy to use
-        if args.contrastive_sampling == "auto":
-            if dataset_size is not None:
-                if dataset_size < 1000:
-                    sampling_strategy = "global"
-                    logger.info(
-                        f"Auto-selecting 'global' sampling strategy for small dataset size ({dataset_size})"
-                    )
-                elif dataset_size < 10000:
-                    sampling_strategy = "memory-bank"
-                    logger.info(
-                        f"Auto-selecting 'memory-bank' sampling strategy for medium dataset size ({dataset_size})"
-                    )
-                else:
-                    sampling_strategy = "in-batch"
-                    logger.info(
-                        f"Auto-selecting 'in-batch' sampling strategy for large dataset size ({dataset_size})"
-                    )
-            else:
-                sampling_strategy = "memory-bank"  # CHANGED default to memory-bank
-                logger.info(
-                    "Dataset size unknown, defaulting to 'memory-bank' sampling strategy for better performance"
-                )
-        else:
-            sampling_strategy = args.contrastive_sampling
-            logger.info(f"Using '{sampling_strategy}' sampling strategy as specified")
-
-        # IMPROVEMENT: Add a warning about in-batch sampling
-        if sampling_strategy == "in-batch":
-            logger.warning(
-                "WARNING: Using 'in-batch' sampling can lead to shortcut learning for small batches. "
-                "Consider using 'memory-bank' or 'global' for more robust training."
-            )
-
-        # IMPROVED: Use a more appropriate temperature based on strategy and batch size
-        # Smaller batches need lower temperature for more focused learning
-        if args.batch_size < 64:
-            temp_scale = 0.85  # More aggressive scaling for small batches
-        elif args.batch_size < 128:
-            temp_scale = 0.9
-        else:
-            temp_scale = 0.95  # Less aggressive for large batches
-
-        # Apply temperature adjustment based on sampling strategy
-        if sampling_strategy == "in-batch":
-            adjusted_temp = args.temperature * temp_scale  # Lower temp for in-batch
-        elif sampling_strategy == "memory-bank":
-            adjusted_temp = args.temperature * 1.0  # Standard temp for memory-bank
-        else:
-            adjusted_temp = (
-                args.temperature * 1.05
-            )  # Slightly higher for global (more diverse negatives)
-
-        logger.info(
-            f"Using Contrastive Loss with temperature {adjusted_temp:.4f} "
-            f"(original: {args.temperature}, adjusted by {adjusted_temp/args.temperature:.2f}x) "
-            f"and {sampling_strategy} sampling strategy"
-        )
-
-        # CRITICAL FIX: Create a more advanced contrastive loss with better settings
-        return ContrastiveLoss(
-            temperature=adjusted_temp,
-            loss_type="infonce",  # InfoNCE loss is standard for contrastive learning
-            reduction="mean",
-            add_projection=True,  # ENABLED: Use projection heads for better representation
-            projection_dim=256,  # Smaller dimension for the projection space
-            input_dim=512,  # Match model dimension
-            sampling_strategy=sampling_strategy,
-            memory_bank_size=args.memory_bank_size
-            * 2,  # INCREASED: Use larger memory bank
-            dataset_size=dataset_size,
-        )
-
-
-def visualize_similarity_matrix(similarity_matrix, captions, save_path=None):
-    """
-    Visualize the similarity matrix between images and texts.
-
-    Args:
-        similarity_matrix: Image-text similarity matrix
-        captions: List of captions
-        save_path: Path to save the visualization
-    """
-    plt.figure(figsize=(10, 8))
-    plt.imshow(similarity_matrix.cpu().numpy(), cmap="viridis")
-    plt.colorbar(label="Similarity")
-    plt.xlabel("Text")
-    plt.ylabel("Image")
-    plt.title("Cross-Modal Similarity Matrix")
-
-    # Add grid
-    plt.grid(False)
-
-    # Add labels (limit to 20 for readability)
-    max_captions = min(20, len(captions))
-    short_captions = [
-        c[:20] + "..." if len(c) > 20 else c for c in captions[:max_captions]
-    ]
-
-    plt.xticks(
-        range(max_captions),
-        [f"{i}: {c}" for i, c in enumerate(short_captions)],
-        rotation=90,
-        fontsize=8,
-    )
-    plt.yticks(
-        range(max_captions),
-        [f"{i}" for i in range(max_captions)],
-        fontsize=8,
-    )
-
-    plt.tight_layout()
-
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=300)
-    else:
-        plt.show()
-
-    plt.close()
-
-
-def visualize_attention_maps(
-    attention_maps, images, captions, save_dir=None, model=None
-):
-    """
-    Visualize attention maps between images and texts.
-
-    Args:
-        attention_maps: Dictionary of attention maps
-        images: Batch of images
-        captions: List of captions
-        save_dir: Directory to save visualizations
-        model: Model to display parameter count (optional)
-    """
-    if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
-
-    batch_size = min(4, len(images))  # Limit to first 4 examples
-
-    # Model parameter count info
-    param_info = ""
-    if model is not None:
-        param_count = count_parameters(model)
-        param_info = f" | Model: {param_count:,} parameters"
-
-    # Process each attention type
-    for attn_name, attn_maps in attention_maps.items():
-        # Skip if not a tensor
-        if not isinstance(attn_maps, torch.Tensor):
-            continue
-
-        # Get attention shape
-        if len(attn_maps.shape) == 4:  # [batch, heads, seq_len_q, seq_len_k]
-            num_heads = attn_maps.shape[1]
-
-            # For each example in the batch
-            for b in range(batch_size):
-                plt.figure(figsize=(20, 4 * num_heads))
-                plt.suptitle(
-                    f"Attention Maps: {attn_name} - Example {b}{param_info}\nCaption: {captions[b][:80]}...",
-                    fontsize=16,
-                )
-
-                # For each attention head
-                for h in range(num_heads):
-                    plt.subplot(num_heads, 1, h + 1)
-                    plt.imshow(attn_maps[b, h].cpu().numpy(), cmap="viridis")
-                    plt.title(f"Head {h}")
-                    plt.colorbar(label="Attention Weight")
-
-                plt.tight_layout()
-                plt.subplots_adjust(top=0.9)
-
-                if save_dir:
-                    plt.savefig(
-                        os.path.join(save_dir, f"{attn_name}_example{b}.png"), dpi=200
-                    )
-                else:
-                    plt.show()
-
-                plt.close()
-
-
-def run_inference_demo(model, image_preprocessor, tokenizer, device, args):
-    """
-    Run inference demo with the trained model.
-
-    Args:
-        model: Trained multimodal model
-        image_preprocessor: Image preprocessor
-        tokenizer: Text tokenizer
-        device: Device to run inference on
-        args: Command line arguments
-    """
-    logger.info("Running inference demo...")
-    logger.info(f"Model has {count_parameters(model):,} trainable parameters")
-
-    # Use real test dataset instead of synthetic for better accuracy
-    # The main test split is already created and available in the test loader
-    test_dataset = EnhancedMultimodalDataset(
-        split="test",
-        image_preprocessor=image_preprocessor,
-        tokenizer=tokenizer,
-        max_text_length=args.max_text_length,
-        dataset_name=args.dataset,
-        # No synthetic samples - use real data
-        cache_dir=args.data_dir,
-    )
-
-    # Create a smaller test loader for the demo
-    demo_batch_size = 16
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=demo_batch_size,
-        shuffle=False,
-    )
-
-    # Get a batch of data
-    batch = next(iter(test_loader))
-
-    # Move to device
-    batch = {
-        k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()
-    }
-
-    # Run inference with attention visualization
-    model.eval()
-    with torch.no_grad():
-        outputs = model(
-            images=batch["image"],
-            text_data=batch["text"],
-            return_attention=args.visualize_attention,
-        )
-
-    # Extract and visualize similarity matrix
-    if "raw_similarity" in outputs:
-        similarity = outputs["raw_similarity"]
-    elif "similarity" in outputs:
-        similarity = outputs["similarity"]
-    else:
-        # Compute similarity from features - prefer enhanced features if available
-        if (
-            "vision_features_enhanced" in outputs
-            and "text_features_enhanced" in outputs
-        ):
-            vision_features = F.normalize(
-                outputs["vision_features_enhanced"], p=2, dim=1
-            )
-            text_features = F.normalize(outputs["text_features_enhanced"], p=2, dim=1)
-        else:
-            vision_features = F.normalize(outputs["vision_features"], p=2, dim=1)
-            text_features = F.normalize(outputs["text_features"], p=2, dim=1)
-        similarity = torch.matmul(vision_features, text_features.T)
-
-    # Get captions
-    captions = batch["raw_text"]
-
-    # Visualize similarity matrix
-    logger.info("Visualizing similarity matrix...")
-    similarity_matrix_path = os.path.join(args.output_dir, "similarity_matrix.png")
-    visualize_similarity_matrix(
-        similarity,
-        captions,
-        save_path=similarity_matrix_path,
-    )
-    logger.info(f"Saved similarity matrix to {similarity_matrix_path}")
-
-    # Create example visualization using the same batch
-    # This creates a visualization where we match each image with text based on similarity
-    logger.info("Creating example test pair visualizations...")
-    example_viz_path = os.path.join(args.output_dir, "test_examples_visualization.png")
-
-    # Directly use the visualize_test_samples function with our batch
-    test_samples_accuracy = visualize_test_samples(
-        model=model,
-        test_dataset=test_dataset,  # Use the full test dataset
-        device=device,
-        save_path=example_viz_path,
-        num_samples=10,  # Show 10 samples
-    )
-
-    logger.info(f"Example visualization saved to {example_viz_path}")
-    logger.info(f"Example accuracy: {test_samples_accuracy:.4f}")
-
-    # Calculate retrieval metrics for the current batch
-    logger.info("Computing retrieval metrics...")
-
-    # For proper match-based evaluation, we need match IDs
-    match_ids = []
-    if "match_id" in batch:
-        match_ids = batch["match_id"]
-
-    # Create match matrix based on match IDs if available
-    batch_size = len(similarity)
-    if match_ids:
-        match_matrix = torch.zeros(
-            (batch_size, batch_size), dtype=torch.bool, device=device
-        )
-        for i in range(batch_size):
-            for j in range(batch_size):
-                match_matrix[i, j] = match_ids[i] == match_ids[j]
-    else:
-        # Fallback to diagonal matching
-        match_matrix = torch.eye(batch_size, dtype=torch.bool, device=device)
-
-    # Image-to-text retrieval with proper match IDs
-    recalls = {}
-    for k in [1, 5, 10]:
-        i2t_hits = 0
-        t2i_hits = 0
-
-        # For each image, find if any of its matching texts are in the top-k
-        for i in range(batch_size):
-            # Get indices of all matching texts for this image
-            matching_text_indices = torch.where(match_matrix[i])[0]
-            if len(matching_text_indices) == 0:
-                continue
-
-            # Get top-k predictions for this image
-            topk_indices = torch.topk(similarity[i], min(k, batch_size), dim=0)[1]
-
-            # Check if any matching text is in the top-k predictions
-            hit = any(
-                idx.item() in matching_text_indices.tolist() for idx in topk_indices
-            )
-            i2t_hits += int(hit)
-
-        # For each text, find if any of its matching images are in the top-k
-        for j in range(batch_size):
-            # Get indices of all matching images for this text
-            matching_image_indices = torch.where(match_matrix[:, j])[0]
-            if len(matching_image_indices) == 0:
-                continue
-
-            # Get top-k predictions for this text
-            topk_indices = torch.topk(similarity[:, j], min(k, batch_size), dim=0)[1]
-
-            # Check if any matching image is in the top-k predictions
-            hit = any(
-                idx.item() in matching_image_indices.tolist() for idx in topk_indices
-            )
-            t2i_hits += int(hit)
-
-        # Calculate recall
-        i2t_recall = i2t_hits / batch_size
-        t2i_recall = t2i_hits / batch_size
-        avg_recall = (i2t_recall + t2i_recall) / 2
-
-        recalls[f"i2t_recall@{k}"] = i2t_recall
-        recalls[f"t2i_recall@{k}"] = t2i_recall
-        recalls[f"avg_recall@{k}"] = avg_recall
-
-    logger.info(f"Retrieval metrics: {recalls}")
-
-    # Visualize attention maps if available
-    if args.visualize_attention and "attention_maps" in outputs:
-        logger.info("Visualizing attention maps...")
-        attention_dir = os.path.join(args.output_dir, "attention_maps")
-        visualize_attention_maps(
-            outputs["attention_maps"],
-            batch["image"],
-            batch["raw_text"],
-            save_dir=attention_dir,
-            model=model,
-        )
-        logger.info(f"Attention maps saved to {attention_dir}")
-
-    # Create a unified visualization that shows both similarity matrix and example matches
-    try:
-        logger.info("Creating unified visualization...")
-        plt.figure(figsize=(16, 12))
-
-        # Load the individual visualizations
-        similarity_img = plt.imread(similarity_matrix_path)
-        examples_img = plt.imread(example_viz_path)
-
-        # Create a 2-panel figure
-        plt.subplot(2, 1, 1)
-        plt.imshow(similarity_img)
-        plt.title("Similarity Matrix")
-        plt.axis("off")
-
-        plt.subplot(2, 1, 2)
-        plt.imshow(examples_img)
-        plt.title("Example Image-Text Matches")
-        plt.axis("off")
-
-        plt.tight_layout()
-        unified_path = os.path.join(args.output_dir, "unified_visualization.png")
-        plt.savefig(unified_path, dpi=200)
-        plt.close()
-
-        logger.info(f"Unified visualization saved to {unified_path}")
-    except Exception as e:
-        logger.warning(f"Failed to create unified visualization: {e}")
-
-    logger.info("Inference demo completed")
-
-    return recalls
-
-
-def visualize_test_samples(model, test_dataset, device, save_path, num_samples=10):
-    """
-    Visualize specific test samples with their matched captions.
-    Images are matched against ALL captions in the test dataset, not just the displayed samples.
-
-    Args:
-        model: Trained multimodal model
-        test_dataset: Test dataset
-        device: Device to run inference on
-        save_path: Path to save the visualization
-        num_samples: Number of samples to visualize
-
-    Returns:
-        float: Accuracy of image-to-text matching for these samples
-    """
-    # Print model parameter information
-    print(
-        f"Model used for visualization has {count_parameters(model):,} trainable parameters"
-    )
-
-    # Ensure output directory exists
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-    # Limit the number of samples to visualize
-    num_samples = min(num_samples, len(test_dataset))
-
-    # Create DataLoader for the visualization samples
-    vis_loader = DataLoader(test_dataset, batch_size=num_samples, shuffle=False)
-
-    # Create DataLoader for all captions
-    full_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
-
-    # Get the visualization samples
-    vis_batch = next(iter(vis_loader))
-
-    # Move to device
-    vis_images = vis_batch["image"].to(device)
-
-    # Get all text embeddings from the dataset
-    all_text_embeddings = []
-    all_captions = []
-
-    model.eval()
-    with torch.no_grad():
-        # First, get embeddings for the visualization images
-        if "text" in vis_batch:
-            vis_text_data = {
-                "src": (
-                    vis_batch["text"]["src"].to(device)
-                    if vis_batch["text"]["src"].dim() == 2
-                    else vis_batch["text"]["src"].squeeze(1).to(device)
-                ),
-                "src_mask": vis_batch["text"]["src_mask"].to(device),
-            }
-        else:
-            raise ValueError("Text data not found in batch")
-
-        # Get raw text captions for visualization samples
-        vis_captions = vis_batch.get(
-            "raw_text", [f"Caption {i}" for i in range(num_samples)]
-        )
-
-        # Process all text in the dataset to get embeddings
-        print("Computing text embeddings for all captions in the dataset...")
-        for batch in tqdm(full_loader, desc="Processing captions"):
-            if "text" in batch:
-                text_data = {
-                    "src": (
-                        batch["text"]["src"].to(device)
-                        if batch["text"]["src"].dim() == 2
-                        else batch["text"]["src"].squeeze(1).to(device)
-                    ),
-                    "src_mask": batch["text"]["src_mask"].to(device),
-                }
-
-                # Get text embeddings
-                outputs = model(images=None, text_data=text_data)
-
-                # Get normalized text features
-                if "text_features_enhanced" in outputs:
-                    text_features = outputs["text_features_enhanced"]
-                else:
-                    text_features = outputs["text_features"]
-
-                # Pool if needed and normalize
-                if len(text_features.shape) == 3:
-                    text_features = text_features.mean(dim=1)
-                text_features = F.normalize(text_features, p=2, dim=1)
-
-                all_text_embeddings.append(text_features.cpu())
-
-                # Store captions
-                batch_captions = batch.get(
-                    "raw_text", [f"Caption {i}" for i in range(len(batch["image"]))]
-                )
-                all_captions.extend(batch_captions)
-
-        # Process visualization images
-        outputs = model(images=vis_images, text_data=None)
-
-        # Get vision features
-        if "vision_features_enhanced" in outputs:
-            vision_features = outputs["vision_features_enhanced"]
-        else:
-            vision_features = outputs["vision_features"]
-
-        # Pool if needed and normalize
-        if len(vision_features.shape) == 3:
-            vision_features = vision_features.mean(dim=1)
-        vision_features = F.normalize(vision_features, p=2, dim=1)
-
-        # Concatenate all text embeddings
-        all_text_embeddings = torch.cat(all_text_embeddings, dim=0)
-
-        # Check and fix dimension mismatch between vision and text features
-        vision_dim = vision_features.shape[1]
-        text_dim = all_text_embeddings.shape[1]
-
-        if vision_dim != text_dim:
-            print(
-                f"Dimension mismatch: vision={vision_dim}, text={text_dim}. Creating projection..."
-            )
-            # Create a simple projection to match dimensions
-            if vision_dim > text_dim:
-                # Project vision features to text dimension
-                projection = nn.Linear(vision_dim, text_dim).to(device)
-                vision_features = projection(vision_features)
-            else:
-                # Project text features to vision dimension
-                projection = nn.Linear(text_dim, vision_dim).to(device)
-                all_text_embeddings = projection(all_text_embeddings.to(device))
-                # Move back to CPU after projection
-                all_text_embeddings = all_text_embeddings.cpu()
-
-        # Compute similarity matrix between visualization images and ALL text captions
-        similarity_matrix = torch.matmul(
-            vision_features, all_text_embeddings.to(device).T
-        )
-
-    # Get the most similar caption for each image
-    most_similar_idxs = similarity_matrix.argmax(dim=1)
-
-    # Get the ground truth indices for the visualization samples
-    # These are the positions of our visualization samples in the full dataset
-    # Since we're using shuffle=False, these are just the first num_samples indices
-    ground_truth_idxs = list(range(num_samples))
-
-    # Check if we're using synthetic data for warning
-    dataset_info = test_dataset.get_split_proportions()
-    is_synthetic = (
-        dataset_info.get("dataset_name") == "synthetic"
-        or dataset_info.get("total_samples", 1000) < 100
-    )
-
-    # Get parameter count for title
-    param_count = count_parameters(model)
-
-    # Create figure with subplots
-    fig, axes = plt.subplots(num_samples, 2, figsize=(12, 3 * num_samples))
-
-    # Ensure axes is 2D even for single sample
-    if num_samples == 1:
-        axes = np.array([axes])
-
-    # Set a title for the figure
-    if is_synthetic:
-        fig.suptitle(
-            f"Multimodal Retrieval Results (SYNTHETIC DATA) | Model: {param_count:,} parameters",
-            fontsize=16,
-            color="red",
-        )
-    else:
-        fig.suptitle(
-            f"Multimodal Retrieval Results (Searching All Captions) | Model: {param_count:,} parameters",
-            fontsize=16,
-        )
-
-    # Draw images and captions
-    for i in range(num_samples):
-        # Get and process image
-        img = vis_images[i].cpu().numpy().transpose(1, 2, 0)
-
-        # Denormalize
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        img = img * std + mean
-        img = np.clip(img, 0, 1)
-
-        # Display image
-        axes[i, 0].imshow(img)
-        axes[i, 0].set_title(f"Image {i}")
-        axes[i, 0].axis("off")
-
-        # Get matched caption index
-        matched_idx = most_similar_idxs[i].item()
-        matched_caption = all_captions[matched_idx]
-        original_caption = vis_captions[i]
-
-        # Determine if the match is correct (matches ground truth index)
-        is_correct = matched_idx == ground_truth_idxs[i]
-
-        # Set text color based on match correctness
-        color = "green" if is_correct else "red"
-
-        # Display caption
-        axes[i, 1].text(
-            0.5,
-            0.5,
-            f"Original caption:\n{original_caption}\n\nBest match caption:\n{matched_caption}\n\n"
-            f"Matched from {len(all_captions)} possible captions",
-            ha="center",
-            va="center",
-            wrap=True,
-            fontsize=10,
-            color=color,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
-        axes[i, 1].axis("off")
-
-    # Save the figure
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.95)
-    plt.savefig(save_path, dpi=200, bbox_inches="tight")
-    plt.close()
-
-    # Create similarity matrix visualization - but only showing the first 100 captions for clarity
-    max_vis_captions = min(100, len(all_captions))
-    matrix_path = save_path.replace(".png", "_similarity_matrix.png")
-    plt.figure(figsize=(10, 8))
-    similarity_np = similarity_matrix.cpu().numpy()
-    plt.imshow(similarity_np[:, :max_vis_captions], cmap="viridis")
-    plt.colorbar(label="Similarity")
-
-    # Add warning for synthetic data
-    if is_synthetic:
-        plt.title(
-            f"Cross-Modal Similarity Matrix (SYNTHETIC DATA) | Model: {param_count:,} parameters",
-            color="red",
-        )
-    else:
-        plt.title(
-            f"Cross-Modal Similarity Matrix (first {max_vis_captions} captions) | Model: {param_count:,} parameters"
-        )
-
-    plt.xlabel("Text")
-    plt.ylabel("Image")
-
-    # Add labels (limited to make the plot readable)
-    plt.xticks(
-        range(max_vis_captions),
-        [f"Text {i}" for i in range(max_vis_captions)],
-        rotation=90,
-    )
-    plt.yticks(range(num_samples), [f"Image {i}" for i in range(num_samples)])
-
-    plt.tight_layout()
-    plt.savefig(matrix_path, dpi=200)
-    plt.close()
-
-    if is_synthetic:
-        print(
-            f"WARNING: Visualizations saved to {save_path} and {matrix_path} using SYNTHETIC data"
-        )
-    else:
-        print(f"Visualizations saved to {save_path} and {matrix_path}")
-
-    # Calculate accuracy - comparing against all possible captions
-    ground_truth_np = np.array(ground_truth_idxs)
-    most_similar_np = most_similar_idxs.cpu().numpy()
-    accuracy = np.mean((most_similar_np == ground_truth_np).astype(np.float32))
-    total_captions = len(all_captions)
-
-    print(
-        f"Test samples matching accuracy: {accuracy:.2f} (selecting from {total_captions} possible captions)"
-    )
-    return accuracy
+    random.seed(seed)
 
 
 def main():
     """Main function for multimodal training demo."""
     # Parse arguments
-    args = parse_args()
-
+    parser = get_multimodal_training_args()
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
     # Set random seed
     set_seed(args.seed)
 
@@ -2127,27 +770,102 @@ def main():
 
     # Create a tokenizer that's compatible with our model choices
     if args.use_pretrained_text:
-        # If using pretrained text models from HuggingFace, match the tokenizer to the text model
-        if args.text_model == "mobilebert":
+        # If using dimension-matched presets, use proper tokenizers
+        if args.model_size == "small":
+            # MiniLM for small preset
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="microsoft/MiniLM-L12-H384-uncased",
+                max_length=args.max_text_length,
+            )
+            print(f"Using MiniLM tokenizer with max length {args.max_text_length}")
+        elif args.model_size == "medium":
+            # FlauBERT for medium preset
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="flaubert-small-cased",
+                max_length=args.max_text_length,
+            )
+            print(f"Using FlauBERT tokenizer with max length {args.max_text_length}")
+        elif args.model_size == "large":
+            # Different tokenizers based on device for large preset
+            if (
+                torch.backends.mps.is_available()
+                and torch.device(args.device).type == "mps"
+            ):
+                # ALBERT for MPS with large preset
+                tokenizer = SimpleTokenizer(
+                    pretrained_model_name="albert-base-v2",
+                    max_length=args.max_text_length,
+                )
+                print(f"Using ALBERT tokenizer with max length {args.max_text_length}")
+            else:
+                # BERT for other devices with large preset
+                tokenizer = SimpleTokenizer(
+                    pretrained_model_name="bert-base-uncased",
+                    max_length=args.max_text_length,
+                )
+                print(f"Using BERT tokenizer with max length {args.max_text_length}")
+        # If using direct HuggingFace model names
+        elif (
+            "/" in args.text_model
+            or args.text_model.startswith("microsoft")
+            or args.text_model.startswith("google")
+        ):
+            # Use the exact model name for the tokenizer
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name=args.text_model,
+                max_length=args.max_text_length,
+            )
+            print(
+                f"Using tokenizer matched to {args.text_model} with max length {args.max_text_length}"
+            )
+        # Handle standard model names
+        elif args.text_model == "mobilebert":
             # Use MobileBERT tokenizer for MobileBERT model
-            tokenizer = SimpleTokenizer(pretrained_model_name="google/mobilebert-uncased", max_length=args.max_text_length)
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="google/mobilebert-uncased",
+                max_length=args.max_text_length,
+            )
             print(f"Using MobileBERT tokenizer with max length {args.max_text_length}")
         elif args.text_model == "albert-base":
             # Use ALBERT tokenizer for ALBERT model
-            tokenizer = SimpleTokenizer(pretrained_model_name="albert-base-v2", max_length=args.max_text_length)
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="albert-base-v2", max_length=args.max_text_length
+            )
             print(f"Using ALBERT tokenizer with max length {args.max_text_length}")
         elif args.text_model == "bert-base":
             # Use BERT tokenizer for BERT model
-            tokenizer = SimpleTokenizer(pretrained_model_name="bert-base-uncased", max_length=args.max_text_length)
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="bert-base-uncased",
+                max_length=args.max_text_length,
+            )
             print(f"Using BERT tokenizer with max length {args.max_text_length}")
         elif args.text_model == "roberta-base":
             # Use RoBERTa tokenizer for RoBERTa model
-            tokenizer = SimpleTokenizer(pretrained_model_name="roberta-base", max_length=args.max_text_length)
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="roberta-base", max_length=args.max_text_length
+            )
             print(f"Using RoBERTa tokenizer with max length {args.max_text_length}")
         elif args.text_model == "distilbert-base":
             # Use DistilBERT tokenizer for DistilBERT model
-            tokenizer = SimpleTokenizer(pretrained_model_name="distilbert-base-uncased", max_length=args.max_text_length)
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="distilbert-base-uncased",
+                max_length=args.max_text_length,
+            )
             print(f"Using DistilBERT tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "minilm-384":
+            # Use MiniLM tokenizer
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="microsoft/MiniLM-L12-H384-uncased",
+                max_length=args.max_text_length,
+            )
+            print(f"Using MiniLM tokenizer with max length {args.max_text_length}")
+        elif args.text_model == "flaubert-small-cased":
+            # Use FlauBERT tokenizer
+            tokenizer = SimpleTokenizer(
+                pretrained_model_name="flaubert-small-cased",
+                max_length=args.max_text_length,
+            )
+            print(f"Using FlauBERT tokenizer with max length {args.max_text_length}")
         else:
             # Default to basic SimpleTokenizer for non-HuggingFace text models
             tokenizer = SimpleTokenizer(max_length=args.max_text_length)
@@ -2157,8 +875,100 @@ def main():
         tokenizer = SimpleTokenizer(max_length=args.max_text_length)
         print(f"Using basic SimpleTokenizer with max length {args.max_text_length}")
 
-    # Create model
-    model = create_multimodal_model(args, device)
+    if args.use_simple_model:
+        logger.info("Using SimpleMultimodalModel for debugging")
+
+        # Use your existing model but wrap it in SimpleMultimodalModel
+        # First create the original model to get its components
+        original_model = create_multimodal_model(args, device=device)
+
+        # Extract the vision and text models
+        vision_model = original_model.vision_model
+        text_model = original_model.text_model
+
+        # Create simple model using these components
+        model = SimpleMultimodalModel(
+            vision_model=vision_model,
+            text_model=text_model,
+            projection_dim=args.fusion_dim,
+        )
+
+        # Create supervised alignment loss with the user-provided temperature
+        # Make sure to use a low temperature (0.07-0.1) for sharper contrast
+        temperature = args.temperature if args.temperature is not None else 0.07
+        print(f"Using temperature value: {temperature} (lower = sharper contrasts)")
+        loss_fn = SupervisedAlignmentLoss(temperature=temperature)
+
+        logger.info("Created simple model and supervised alignment loss")
+
+        # Enable gradient checkpointing for memory efficiency if available
+        if (
+            hasattr(model.vision_model, "gradient_checkpointing_enable")
+            and torch.cuda.is_available()
+        ):
+            model.vision_model.gradient_checkpointing_enable()
+            logger.info("Enabled gradient checkpointing for vision model")
+
+        if (
+            hasattr(model.text_model, "gradient_checkpointing_enable")
+            and torch.cuda.is_available()
+        ):
+            model.text_model.gradient_checkpointing_enable()
+            logger.info("Enabled gradient checkpointing for text model")
+
+        # Print detailed feature dimensions for debugging
+        logger.info(f"Model projection dimensions: {args.fusion_dim}")
+
+        # Initialize with stronger contrast between samples
+        # This helps break symmetry and prevent feature collapse
+        logger.info("Initializing models with stronger contrast:")
+        for module in model.vision_proj.modules():
+            if isinstance(module, nn.Linear):
+                std = math.sqrt(2.0 / module.weight.size(1))
+                nn.init.normal_(module.weight, mean=0.0, std=std * 1.2)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0.01)
+
+        for module in model.text_proj.modules():
+            if isinstance(module, nn.Linear):
+                std = math.sqrt(2.0 / module.weight.size(1))
+                nn.init.normal_(module.weight, mean=0.0, std=std * 1.2)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, -0.01)
+
+    else:
+        # Original model creation
+        model = create_multimodal_model(args, device=device)
+
+    # if hasattr(args, "use_simple_model") and args.use_simple_model:
+    #     logger.info("Using SimpleMultimodalModel architecture for debugging")
+
+    #     # Create vision model
+    #     logger.info(f"Creating vision model: {args.vision_model}")
+    #     if args.use_pretrained:
+    #         logger.info("Using pretrained weights for vision model")
+    #     vision_model = create_vision_model(args)
+
+    #     # Create text model
+    #     logger.info(f"Creating text model: {args.text_model}")
+    #     if args.use_pretrained_text:
+    #         logger.info("Using pretrained weights for text model")
+    #     text_model = create_text_model(args)
+
+    #     # Create simple model
+    #     model = SimpleMultimodalModel(
+    #         vision_model=vision_model,
+    #         text_model=text_model,
+    #         projection_dim=args.fusion_dim,
+    #     )
+
+    #     logger.info(
+    #         f"Created SimpleMultimodalModel with projection dim {args.fusion_dim}"
+    #     )
+    # else:
+    #     # Original model creation code
+    #     logger.info(f"Creating {args.fusion_type} fusion model")
+    #     model = create_multimodal_model(args, device=device)
 
     # Create data loaders
     train_loader, val_loader, test_loader = create_data_loaders(
@@ -2211,10 +1021,15 @@ def main():
         logger.warning(
             "Could not determine dataset size for contrastive sampling strategy"
         )
-
     # Create loss function with enhanced configuration
-    loss_fn = create_loss_function(args, dataset_size, train_loader)
-
+    if hasattr(args, "use_simple_model") and args.use_simple_model:
+        # Create supervised alignment loss with higher temperature
+        loss_fn = SupervisedAlignmentLoss(temperature=0.5)
+        logger.info("Created SupervisedAlignmentLoss with temperature=0.5")
+    else:
+        # Original loss function creation
+        # loss_fn = create_loss_function(args)
+        loss_fn = create_loss_function(args, dataset_size, train_loader)
     # CRITICAL CHANGE: Initialize the model with pre-trained weights if possible
     # This helps avoid the "cold start" problem in contrastive learning
     try:
@@ -2245,33 +1060,117 @@ def main():
         logger.warning(f"Error initializing from pretrained: {str(e)}")
 
     # Create trainer with improved settings for contrastive learning
-    trainer = MultimodalTrainer(
-        model=model,
-        train_dataloader=train_loader,
-        val_dataloader=val_loader,
-        test_dataloader=test_loader,
-        loss_fn=loss_fn,
-        num_epochs=args.num_epochs,
-        learning_rate=args.learning_rate,
-        weight_decay=args.weight_decay
-        * 2.0,  # Double weight decay to prevent overfitting
-        warmup_steps=args.warmup_steps,
-        checkpoint_dir=os.path.join(args.output_dir, args.checkpoint_dir),
-        log_dir=os.path.join(args.output_dir, args.log_dir),
-        device=device,
-        mixed_precision=args.use_mixed_precision,
-        evaluation_steps=0,  # Only evaluate at the end of each epoch
-        log_steps=100,  # Reduce logging frequency to avoid spam
-        early_stopping_patience=5,
-        clip_grad_norm=1.0,  # Add gradient clipping for stability
-        accumulation_steps=2,  # Use gradient accumulation for more stable updates
-    )
+    # For models with feature collapse, we need special training settings
+    if args.use_simple_model:
+        # For the simple model, use a very specific learning strategy to prevent feature collapse
+        trainer = MultimodalTrainer(
+            model=model,
+            train_dataloader=train_loader,
+            val_dataloader=val_loader,
+            test_dataloader=test_loader,
+            loss_fn=loss_fn,
+            num_epochs=args.num_epochs,
+            learning_rate=args.learning_rate
+            * 0.25,  # Reduced base LR, but projections have higher LR
+            weight_decay=args.weight_decay
+            * 2.0,  # Moderate weight decay for better generalization
+            warmup_steps=int(
+                max(500, args.warmup_steps * 1.5)
+            ),  # Longer warmup for stability
+            checkpoint_dir=os.path.join(args.output_dir, args.checkpoint_dir),
+            log_dir=os.path.join(args.output_dir, args.log_dir),
+            device=device,
+            mixed_precision=args.use_mixed_precision,
+            evaluation_steps=0,  # Only evaluate at the end of each epoch
+            log_steps=25,  # Very frequent logging to closely track the collapse issue
+            early_stopping_patience=10,  # More patience for slow learning process
+            clip_grad_norm=0.5,  # Moderate gradient clipping to allow learning while preventing extremes
+            accumulation_steps=2,  # Reduced accumulation steps for more frequent updates
+            balance_modality_gradients=True,
+        )
+        logger.info(
+            "Using special training settings for SimpleMultimodalModel to prevent feature collapse"
+        )
+
+        # Setup optimizer with layer-wise learning rates
+        # Different learning rates for different parts of the model
+        optimizer_grouped_parameters = [
+            # Vision model gets very low learning rate
+            {
+                "params": [
+                    p
+                    for n, p in model.vision_model.named_parameters()
+                    if p.requires_grad
+                ],
+                "lr": args.learning_rate * 0.005,  # Even lower LR for base vision model
+                "weight_decay": args.weight_decay * 2.0,
+                "name": "vision_model_params",
+            },
+            # Text model gets very low learning rate
+            {
+                "params": [
+                    p for n, p in model.text_model.named_parameters() if p.requires_grad
+                ],
+                "lr": args.learning_rate * 0.005,  # Even lower LR for base text model
+                "weight_decay": args.weight_decay * 2.0,
+                "name": "text_model_params",
+            },
+            # Projection layers get higher learning rate
+            {
+                "params": [
+                    p
+                    for n, p in model.vision_proj.named_parameters()
+                    if p.requires_grad
+                ],
+                "lr": args.learning_rate
+                * 0.5,  # Much higher LR for projection layers to combat collapse
+                "weight_decay": args.weight_decay * 2.0,
+                "name": "vision_proj_params",
+            },
+            {
+                "params": [
+                    p for n, p in model.text_proj.named_parameters() if p.requires_grad
+                ],
+                "lr": args.learning_rate
+                * 0.5,  # Much higher LR for projection layers to combat collapse
+                "weight_decay": args.weight_decay * 2.0,
+                "name": "text_proj_params",
+            },
+        ]
+
+        # Create optimizer with these parameter groups
+        optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
+        trainer.optimizer = optimizer
+        logger.info("Created custom optimizer with layer-wise learning rates")
+
+    else:
+        # Regular settings for the full model
+        trainer = MultimodalTrainer(
+            model=model,
+            train_dataloader=train_loader,
+            val_dataloader=val_loader,
+            test_dataloader=test_loader,
+            loss_fn=loss_fn,
+            num_epochs=args.num_epochs,
+            learning_rate=args.learning_rate,  # Original learning rate
+            weight_decay=args.weight_decay
+            * 2.0,  # Double weight decay to prevent overfitting
+            warmup_steps=args.warmup_steps,
+            checkpoint_dir=os.path.join(args.output_dir, args.checkpoint_dir),
+            log_dir=os.path.join(args.output_dir, args.log_dir),
+            device=device,
+            mixed_precision=args.use_mixed_precision,
+            evaluation_steps=0,  # Only evaluate at the end of each epoch
+            log_steps=100,  # Reduce logging frequency to avoid spam
+            early_stopping_patience=5,
+            clip_grad_norm=1.0,  # Enforce gradient clipping for stability
+            accumulation_steps=2,  # Use gradient accumulation for more stable updates
+            balance_modality_gradients=True,
+        )
 
     # Train model
     print("Starting training...")
     print_model_summary(model, "TRAINING MULTIMODAL MODEL")
-    # Print model summary before training
-    print_model_summary(model, "MULTIMODAL MODEL BEFORE TRAINING")
 
     # Use multi-stage training if enabled
     if args.use_multistage_training:
@@ -2356,28 +1255,29 @@ def main():
     # Add this code to visualize test samples
     print("Generating test sample visualizations...")
 
-    # Get the first X samples from the test dataset for consistent visualization
-    test_samples_accuracy = visualize_test_samples(
-        model=model,
-        test_dataset=test_loader.dataset,
-        device=device,
-        save_path=os.path.join(args.output_dir, "test_samples_visualization.png"),
-        num_samples=10,  # Always visualize 10 samples
+    # Run inference demo to get visualizations
+    inference_metrics = run_inference_demo(
+        model, image_preprocessor, tokenizer, device, args
     )
-
-    if is_synthetic:
-        print(
-            f"Test samples matching accuracy: {test_samples_accuracy:.2f} (SYNTHETIC DATA - not representative of real performance)"
-        )
-    else:
-        print(f"Test samples matching accuracy: {test_samples_accuracy:.2f}")
 
     # Convert PyTorch tensors to Python types for display and serialization
     python_test_metrics = convert_tensors_to_python_types(test_metrics)
+    python_inference_metrics = convert_tensors_to_python_types(inference_metrics)
 
-    # Create a new dictionary with both metrics and model info
+    # Create dictionaries with both metrics and model info
     complete_test_metrics = {
         "metrics": python_test_metrics,
+        "model_info": {
+            "total_parameters": count_parameters(model),
+            "vision_model": args.vision_model,
+            "text_model": args.text_model,
+            "fusion_type": args.fusion_type,
+            "fusion_dim": args.fusion_dim,
+        },
+    }
+
+    complete_inference_metrics = {
+        "metrics": python_inference_metrics,
         "model_info": {
             "total_parameters": count_parameters(model),
             "vision_model": args.vision_model,
@@ -2393,30 +1293,10 @@ def main():
         print(f"Test metrics: {python_test_metrics}")
 
     # Save final test metrics
+    import json
+
     with open(os.path.join(args.output_dir, "test_metrics.json"), "w") as f:
         json.dump(complete_test_metrics, f, indent=2)
-
-    # Run inference demo
-    print("Running inference demo...")
-    print_model_summary(model, "INFERENCE DEMO MODEL")
-    inference_metrics = run_inference_demo(
-        model, image_preprocessor, tokenizer, device, args
-    )
-
-    # Convert PyTorch tensors to Python types for serialization
-    python_inference_metrics = convert_tensors_to_python_types(inference_metrics)
-
-    # Create a new dictionary with both metrics and model info
-    complete_inference_metrics = {
-        "metrics": python_inference_metrics,
-        "model_info": {
-            "total_parameters": count_parameters(model),
-            "vision_model": args.vision_model,
-            "text_model": args.text_model,
-            "fusion_type": args.fusion_type,
-            "fusion_dim": args.fusion_dim,
-        },
-    }
 
     # Save demo results
     with open(os.path.join(args.output_dir, "demo_results.json"), "w") as f:

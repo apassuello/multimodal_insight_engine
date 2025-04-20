@@ -666,6 +666,7 @@ class EnhancedMultimodalDataset(Dataset):
         synthetic_samples: int = 100,
         cache_dir: Optional[str] = None,
         max_samples: Optional[int] = None,
+        captions_per_image: int = 1,  # New parameter: Number of captions to use per image (1-5)
     ):
         """
         Initialize the enhanced multimodal dataset.
@@ -679,6 +680,8 @@ class EnhancedMultimodalDataset(Dataset):
             synthetic_samples: Number of synthetic samples to generate if needed
             cache_dir: Directory to cache the dataset
             max_samples: Maximum number of samples to use (None uses all available data)
+            captions_per_image: Number of captions to use per image (1-5, default: 1)
+                                Use 1 for efficiency, 5 for maximum data utilization
         """
         self.split = split
         self.image_preprocessor = image_preprocessor
@@ -689,6 +692,15 @@ class EnhancedMultimodalDataset(Dataset):
         self.cache_dir = cache_dir
         self.max_samples = max_samples
         self.loaded_from_cache = False  # Flag to track if data was loaded from cache
+        
+        # Validate and store captions_per_image parameter
+        if captions_per_image < 1 or captions_per_image > 5:
+            logger.warning(f"Invalid captions_per_image value: {captions_per_image}. Using 1 as default.")
+            self.captions_per_image = 1
+        else:
+            self.captions_per_image = captions_per_image
+            
+        logger.info(f"Using {self.captions_per_image} captions per image")
 
         # Verify tokenizer
         if self.tokenizer is None:
@@ -1161,8 +1173,43 @@ class EnhancedMultimodalDataset(Dataset):
             logger.warning(f"Error saving synthetic data to cache: {str(e)}")
 
     def __len__(self):
-        """Return the number of examples in the dataset."""
-        return len(self.dataset)
+        """
+        Return the number of examples in the dataset.
+        
+        When captions_per_image > 1, this multiplies the base dataset length
+        to create multiple entries per image.
+        """
+        if not hasattr(self, 'dataset') or self.dataset is None:
+            return 0
+            
+        base_length = len(self.dataset)
+        
+        # If using only 1 caption per image, return the original length
+        if self.captions_per_image <= 1:
+            return base_length
+            
+        # For multi-caption mode, we need to estimate the effective length
+        # Check first few items to see how many captions they have on average
+        caption_counts = []
+        sample_size = min(100, base_length)  # Check up to 100 samples
+        
+        for i in range(sample_size):
+            item = self.dataset[i]
+            if "captions" in item and isinstance(item["captions"], list):
+                caption_counts.append(min(len(item["captions"]), self.captions_per_image))
+            else:
+                caption_counts.append(1)
+                
+        # Calculate average number of captions per item
+        if caption_counts:
+            avg_captions = sum(caption_counts) / len(caption_counts)
+            # Use the minimum of requested captions and average available
+            effective_captions = min(self.captions_per_image, avg_captions)
+        else:
+            effective_captions = 1
+            
+        # Return the expanded dataset length
+        return int(base_length * effective_captions)
 
     def __getitem__(self, idx):
         """
@@ -1195,16 +1242,35 @@ class EnhancedMultimodalDataset(Dataset):
             logger.warning(f"No image data found in item {idx}")
             image = Image.new("RGB", (224, 224), (0, 0, 0))
 
-        # FIX 3: Consistent caption selection for multiple captions
+        # Caption selection based on captions_per_image parameter
         if (
             "captions" in item
             and isinstance(item["captions"], list)
             and item["captions"]
         ):
-            # Use a deterministic selection based on image_id hash instead of random choice
+            # Get image_id for deterministic selection
             image_id = item.get("image_id", str(idx))
-            caption_idx = abs(hash(image_id)) % len(item["captions"])
-            caption = item["captions"][caption_idx]
+            
+            if self.captions_per_image == 1:
+                # Use a deterministic selection based on image_id hash for single caption
+                caption_idx = abs(hash(image_id)) % len(item["captions"])
+                caption = item["captions"][caption_idx]
+            else:
+                # For multiple captions, select a subset based on the index modulo
+                # This enables us to create multiple entries per image in the dataset expansion
+                available_captions = item["captions"]
+                num_captions = min(self.captions_per_image, len(available_captions))
+                
+                # Use modulo of idx to determine which caption to use for this specific entry
+                # This distributes different captions across different __getitem__ calls
+                effective_idx = idx % num_captions
+                
+                # For deterministic selection, hash the image_id with the effective_idx
+                caption_idx = (abs(hash(f"{image_id}_{effective_idx}")) % len(available_captions))
+                caption = available_captions[caption_idx]
+                
+                # Store the original caption index for tracking
+                item["caption_idx"] = caption_idx
         elif "caption" in item:
             caption = item["caption"]
         else:
