@@ -40,9 +40,55 @@
             "path": "src/training/metrics.py"
           },
           {
-            "name": "contrastive_learning.py",
-            "type": "file",
-            "path": "src/training/contrastive_learning.py"
+            "name": "loss",
+            "type": "directory",
+            "children": [
+              {
+                "name": "multimodal_mixed_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/multimodal_mixed_contrastive_loss.py"
+              },
+              {
+                "name": "loss_factory.py",
+                "type": "file",
+                "path": "src/training/loss/loss_factory.py"
+              },
+              {
+                "name": "contrastive_learning.py",
+                "type": "file",
+                "path": "src/training/loss/contrastive_learning.py"
+              },
+              {
+                "name": "memory_queue_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/memory_queue_contrastive_loss.py"
+              },
+              {
+                "name": "decoupled_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/decoupled_contrastive_loss.py"
+              },
+              {
+                "name": "hard_negative_mining_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/hard_negative_mining_contrastive_loss.py"
+              },
+              {
+                "name": "contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/contrastive_loss.py"
+              },
+              {
+                "name": "losses.py",
+                "type": "file",
+                "path": "src/training/loss/losses.py"
+              },
+              {
+                "name": "dynamic_temperature_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/loss/dynamic_temperature_contrastive_loss.py"
+              }
+            ]
           },
           {
             "name": "transformer_utils.py",
@@ -70,11 +116,6 @@
             "path": "src/training/transformer_trainer.py"
           },
           {
-            "name": "losses.py",
-            "type": "file",
-            "path": "src/training/losses.py"
-          },
-          {
             "name": "trainer.py",
             "type": "file",
             "path": "src/training/trainer.py"
@@ -96,9 +137,19 @@
         "type": "directory",
         "children": [
           {
+            "name": "model_utils.py",
+            "type": "file",
+            "path": "src/utils/model_utils.py"
+          },
+          {
             "name": "logging.py",
             "type": "file",
             "path": "src/utils/logging.py"
+          },
+          {
+            "name": "argument_configs.py",
+            "type": "file",
+            "path": "src/utils/argument_configs.py"
           },
           {
             "name": "config.py",
@@ -151,19 +202,9 @@
                 "path": "src/models/vision/image_preprocessing.py"
               },
               {
-                "name": "multimodal_integration.py",
-                "type": "file",
-                "path": "src/models/vision/multimodal_integration.py"
-              },
-              {
                 "name": "vision_transformer.py",
                 "type": "file",
                 "path": "src/models/vision/vision_transformer.py"
-              },
-              {
-                "name": "cross_modal_attention.py",
-                "type": "file",
-                "path": "src/models/vision/cross_modal_attention.py"
               },
               {
                 "name": "patch_embedding.py",
@@ -176,6 +217,42 @@
             "name": "base_model.py",
             "type": "file",
             "path": "src/models/base_model.py"
+          },
+          {
+            "name": "multimodal",
+            "type": "directory",
+            "children": [
+              {
+                "name": "multimodal_integration.py",
+                "type": "file",
+                "path": "src/models/multimodal/multimodal_integration.py"
+              },
+              {
+                "name": "bidirectional_cross_attention.py",
+                "type": "file",
+                "path": "src/models/multimodal/bidirectional_cross_attention.py"
+              },
+              {
+                "name": "co_attention_fusion.py",
+                "type": "file",
+                "path": "src/models/multimodal/co_attention_fusion.py"
+              },
+              {
+                "name": "gated_cross_modal_attention.py",
+                "type": "file",
+                "path": "src/models/multimodal/gated_cross_modal_attention.py"
+              },
+              {
+                "name": "dual_encoder.py",
+                "type": "file",
+                "path": "src/models/multimodal/dual_encoder.py"
+              },
+              {
+                "name": "cross_modal_attention_base.py",
+                "type": "file",
+                "path": "src/models/multimodal/cross_modal_attention_base.py"
+              }
+            ]
           },
           {
             "name": "embeddings.py",
@@ -198,6 +275,11 @@
             "path": "src/models/layers.py"
           },
           {
+            "name": "model_factory.py",
+            "type": "file",
+            "path": "src/models/model_factory.py"
+          },
+          {
             "name": "pretrained",
             "type": "directory",
             "children": [
@@ -205,6 +287,11 @@
                 "name": "vision_transformer.py",
                 "type": "file",
                 "path": "src/models/pretrained/vision_transformer.py"
+              },
+              {
+                "name": "huggingface_wrapper.py",
+                "type": "file",
+                "path": "src/models/pretrained/huggingface_wrapper.py"
               },
               {
                 "name": "clip_model.py",
@@ -310,6 +397,11 @@
             "name": "language_model_evaluation.py",
             "type": "file",
             "path": "src/evaluation/language_model_evaluation.py"
+          },
+          {
+            "name": "inference_demo.py",
+            "type": "file",
+            "path": "src/evaluation/inference_demo.py"
           }
         ]
       },
@@ -368,19 +460,14 @@
             "path": "src/data/combined_translation_dataset.py"
           },
           {
+            "name": "multimodal_data_utils.py",
+            "type": "file",
+            "path": "src/data/multimodal_data_utils.py"
+          },
+          {
             "name": "tokenization",
             "type": "directory",
             "children": [
-              {
-                "name": "wmt_bpe_tokenizer.py",
-                "type": "file",
-                "path": "src/data/tokenization/wmt_bpe_tokenizer.py"
-              },
-              {
-                "name": "work_tokenizer.py",
-                "type": "file",
-                "path": "src/data/tokenization/work_tokenizer.py"
-              },
               {
                 "name": "optimized_bpe_tokenizer.py",
                 "type": "file",
@@ -877,12 +964,6 @@
       "module_path": "src/training/metrics.py"
     },
     {
-      "filename": "contrastive_learning.py",
-      "module_path": "src/training/contrastive_learning.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
       "filename": "transformer_utils.py",
       "module_purpose": "Provides utility functions and classes for transformer model training, including attention masking and label smoothing",
       "key_classes": [
@@ -1185,50 +1266,6 @@
       "module_path": "src/training/transformer_trainer.py"
     },
     {
-      "filename": "losses.py",
-      "module_purpose": "Implements custom loss functions for model training with support for label smoothing and weighted samples",
-      "key_classes": [
-        {
-          "name": "CrossEntropyLoss",
-          "purpose": "Cross-entropy loss with label smoothing for classification tasks",
-          "key_methods": [
-            {
-              "name": "forward",
-              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-              "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights"
-            }
-          ],
-          "inheritance": "nn.Module",
-          "dependencies": [
-            "torch",
-            "torch.nn",
-            "torch.nn.functional"
-          ]
-        },
-        {
-          "name": "MeanSquaredError",
-          "purpose": "Mean squared error loss with support for weighted samples and gradient clipping",
-          "key_methods": [
-            {
-              "name": "forward",
-              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-              "brief_description": "Computes MSE loss with optional sample weights and gradient clipping"
-            }
-          ],
-          "inheritance": "nn.Module",
-          "dependencies": [
-            "torch",
-            "torch.nn"
-          ]
-        }
-      ],
-      "external_dependencies": [
-        "torch"
-      ],
-      "complexity_score": 4,
-      "module_path": "src/training/losses.py"
-    },
-    {
       "filename": "trainer.py",
       "module_purpose": "Provides a generic, flexible training loop for PyTorch models with support for callbacks and early stopping",
       "key_functions": [
@@ -1275,6 +1312,115 @@
       "module_path": "src/training/joint_bpe_training.py"
     },
     {
+      "filename": "multimodal_mixed_contrastive_loss.py",
+      "module_path": "src/training/loss/multimodal_mixed_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "loss_factory.py",
+      "module_purpose": "Factory functions for creating and configuring loss functions",
+      "key_functions": [
+        {
+          "name": "create_loss_function",
+          "signature": "create_loss_function(args: Any, dataset_size: Optional[int] = None, train_loader: Optional[Any] = None) -> nn.Module",
+          "brief_description": "Create the appropriate loss function based on arguments"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/loss/loss_factory.py"
+    },
+    {
+      "filename": "contrastive_learning.py",
+      "module_path": "src/training/loss/contrastive_learning.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "memory_queue_contrastive_loss.py",
+      "module_path": "src/training/loss/memory_queue_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "decoupled_contrastive_loss.py",
+      "module_path": "src/training/loss/decoupled_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "hard_negative_mining_contrastive_loss.py",
+      "module_path": "src/training/loss/hard_negative_mining_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "contrastive_loss.py",
+      "module_path": "src/training/loss/contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "losses.py",
+      "module_purpose": "Implements custom loss functions for model training with support for label smoothing and weighted samples",
+      "key_classes": [
+        {
+          "name": "CrossEntropyLoss",
+          "purpose": "Cross-entropy loss with label smoothing for classification tasks",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional"
+          ]
+        },
+        {
+          "name": "MeanSquaredError",
+          "purpose": "Mean squared error loss with support for weighted samples and gradient clipping",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Computes MSE loss with optional sample weights and gradient clipping"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 4,
+      "module_path": "src/training/loss/losses.py"
+    },
+    {
+      "filename": "dynamic_temperature_contrastive_loss.py",
+      "module_path": "src/training/loss/dynamic_temperature_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "model_utils.py",
+      "module_path": "src/utils/model_utils.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "logging.py",
       "module_purpose": "Provides custom logging functionality with configurable file and console output",
       "key_classes": [
@@ -1318,6 +1464,44 @@
       ],
       "complexity_score": 4,
       "module_path": "src/utils/logging.py"
+    },
+    {
+      "filename": "argument_configs.py",
+      "module_purpose": "Argument configuration utilities for multimodal training scripts",
+      "key_functions": [
+        {
+          "name": "get_multimodal_training_args",
+          "signature": "get_multimodal_training_args() -> argparse.ArgumentParser",
+          "brief_description": "Create argument parser for multimodal training scripts"
+        }
+      ],
+      "key_argument_groups": [
+        {
+          "name": "data_args",
+          "description": "Arguments for dataset configuration and processing"
+        },
+        {
+          "name": "semantic_batching_args",
+          "description": "Arguments for semantic grouping in batch creation for contrastive learning"
+        },
+        {
+          "name": "model_args",
+          "description": "Arguments for model architecture and configuration"
+        },
+        {
+          "name": "contrastive_learning_args",
+          "description": "Arguments for contrastive learning setup and optimization"
+        },
+        {
+          "name": "training_args",
+          "description": "Arguments for training process configuration"
+        }
+      ],
+      "external_dependencies": [
+        "argparse"
+      ],
+      "complexity_score": 4,
+      "module_path": "src/utils/argument_configs.py"
     },
     {
       "filename": "config.py",
@@ -1375,7 +1559,7 @@
     },
     {
       "filename": "visualization.py",
-      "module_purpose": "Provides visualization utilities for model performance, attention patterns, and embeddings",
+      "module_purpose": "Provides visualization utilities for model performance, attention patterns, embeddings, and multimodal outputs",
       "key_functions": [
         {
           "name": "plot_training_history",
@@ -1391,6 +1575,26 @@
           "name": "plot_embeddings_tsne",
           "signature": "plot_embeddings_tsne(embeddings: torch.Tensor, labels: Optional[List[Any]] = None, random_state: int = 42, figsize: Tuple[int, int] = (10, 10), save_path: Optional[str] = None) -> None",
           "brief_description": "Visualize embeddings using t-SNE dimensionality reduction"
+        },
+        {
+          "name": "visualize_similarity_matrix",
+          "signature": "visualize_similarity_matrix(similarity_matrix: torch.Tensor, captions: List[str], save_path: Optional[str] = None) -> None",
+          "brief_description": "Visualize the similarity matrix between images and texts"
+        },
+        {
+          "name": "visualize_attention_maps",
+          "signature": "visualize_attention_maps(attention_maps: Dict[str, torch.Tensor], images: torch.Tensor, captions: List[str], save_dir: Optional[str] = None, model: Optional[nn.Module] = None) -> None",
+          "brief_description": "Visualize attention maps between images and texts"
+        },
+        {
+          "name": "visualize_test_samples",
+          "signature": "visualize_test_samples(model: nn.Module, test_dataset: Any, device: torch.device, save_path: str, num_samples: int = 10) -> float",
+          "brief_description": "Visualize test samples with their matched captions"
+        },
+        {
+          "name": "count_parameters",
+          "signature": "count_parameters(model: nn.Module) -> int",
+          "brief_description": "Count trainable parameters in a model"
         }
       ],
       "external_dependencies": [
@@ -1398,9 +1602,10 @@
         "seaborn",
         "torch",
         "sklearn",
-        "numpy"
+        "numpy",
+        "tqdm"
       ],
-      "complexity_score": 5,
+      "complexity_score": 7,
       "module_path": "src/utils/visualization.py"
     },
     {
@@ -2059,6 +2264,24 @@
       "module_path": "src/models/layers.py"
     },
     {
+      "filename": "model_factory.py",
+      "module_purpose": "Factory functions for creating and configuring different types of models",
+      "key_functions": [
+        {
+          "name": "create_multimodal_model",
+          "signature": "create_multimodal_model(args: Any, device: torch.device) -> nn.Module",
+          "brief_description": "Create a multimodal model with vision and text components"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "timm",
+        "transformers"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/models/model_factory.py"
+    },
+    {
       "filename": "positional.py",
       "module_purpose": "Implements various positional encoding schemes for transformer models to handle sequence order information",
       "key_classes": [
@@ -2180,47 +2403,6 @@
       "module_path": "src/models/vision/image_preprocessing.py"
     },
     {
-      "filename": "multimodal_integration.py",
-      "module_purpose": "Implements models for combining vision and text modalities in a unified architecture",
-      "key_classes": [
-        {
-          "name": "MultiModalTransformer",
-          "purpose": "Combines vision and text transformer models with projection layers to a common embedding space",
-          "key_methods": [
-            {
-              "name": "encode_image",
-              "signature": "encode_image(self, image: torch.Tensor) -> torch.Tensor",
-              "brief_description": "Projects image features to multimodal embedding space"
-            },
-            {
-              "name": "encode_text",
-              "signature": "encode_text(self, text: Dict[str, torch.Tensor]) -> torch.Tensor",
-              "brief_description": "Projects text features to multimodal embedding space"
-            },
-            {
-              "name": "forward",
-              "signature": "forward(self, image: Optional[torch.Tensor] = None, text: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]",
-              "brief_description": "Processes image and/or text inputs and computes similarity if both are provided"
-            }
-          ],
-          "inheritance": "BaseModel",
-          "dependencies": [
-            "torch",
-            "torch.nn",
-            "torch.nn.functional",
-            "..base_model",
-            "..transformer",
-            ".vision_transformer"
-          ]
-        }
-      ],
-      "external_dependencies": [
-        "torch"
-      ],
-      "complexity_score": 7,
-      "module_path": "src/models/vision/multimodal_integration.py"
-    },
-    {
       "filename": "vision_transformer.py",
       "module_purpose": "Implements Vision Transformer (ViT) architecture for image classification tasks",
       "key_classes": [
@@ -2313,12 +2495,6 @@
       "module_path": "src/models/vision/vision_transformer.py"
     },
     {
-      "filename": "cross_modal_attention.py",
-      "module_path": "src/models/vision/cross_modal_attention.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
       "filename": "patch_embedding.py",
       "module_purpose": "Implements patch embedding for Vision Transformer (ViT) models",
       "key_classes": [
@@ -2351,6 +2527,109 @@
       ],
       "complexity_score": 5,
       "module_path": "src/models/vision/patch_embedding.py"
+    },
+    {
+      "filename": "multimodal_integration.py",
+      "module_purpose": "Implements models for combining vision and text modalities in a unified architecture",
+      "key_classes": [
+        {
+          "name": "MultiModalTransformer",
+          "purpose": "Combines vision and text transformer models with projection layers to a common embedding space",
+          "key_methods": [
+            {
+              "name": "encode_image",
+              "signature": "encode_image(self, image: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Projects image features to multimodal embedding space"
+            },
+            {
+              "name": "encode_text",
+              "signature": "encode_text(self, text: Dict[str, torch.Tensor]) -> torch.Tensor",
+              "brief_description": "Projects text features to multimodal embedding space"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, image: Optional[torch.Tensor] = None, text: Optional[Dict[str, torch.Tensor]] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Processes image and/or text inputs and computes similarity if both are provided"
+            }
+          ],
+          "inheritance": "BaseModel",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "..base_model",
+            "..transformer",
+            ".vision_transformer"
+          ]
+        },
+        {
+          "name": "CrossAttentionMultiModalTransformer",
+          "purpose": "Advanced multimodal transformer using cross-attention mechanisms for rich cross-modal interactions",
+          "key_methods": [
+            {
+              "name": "extract_vision_features",
+              "signature": "extract_vision_features(self, images: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Extracts features from images using the vision model"
+            },
+            {
+              "name": "extract_text_features",
+              "signature": "extract_text_features(self, text_data: Dict[str, torch.Tensor]) -> torch.Tensor",
+              "brief_description": "Extracts features from text using the text model with device-aware processing"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, images: Optional[torch.Tensor] = None, text_data: Optional[Dict[str, torch.Tensor]] = None, return_attention: bool = False) -> Dict[str, torch.Tensor]",
+              "brief_description": "Processes image and/or text inputs with cross-attention fusion and returns enhanced features"
+            }
+          ],
+          "inheritance": "BaseModel",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "src.models.base_model",
+            "src.models.transformer",
+            "src.models.vision.vision_transformer",
+            "src.models.multimodal.co_attention_fusion",
+            "src.models.multimodal.bidirectional_cross_attention"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/multimodal/multimodal_integration.py"
+    },
+    {
+      "filename": "bidirectional_cross_attention.py",
+      "module_path": "src/models/multimodal/bidirectional_cross_attention.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "co_attention_fusion.py",
+      "module_path": "src/models/multimodal/co_attention_fusion.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "gated_cross_modal_attention.py",
+      "module_path": "src/models/multimodal/gated_cross_modal_attention.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "dual_encoder.py",
+      "module_path": "src/models/multimodal/dual_encoder.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "cross_modal_attention_base.py",
+      "module_path": "src/models/multimodal/cross_modal_attention_base.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "vision_transformer.py",
@@ -2389,6 +2668,12 @@
       ],
       "complexity_score": 3,
       "module_path": "src/models/pretrained/vision_transformer.py"
+    },
+    {
+      "filename": "huggingface_wrapper.py",
+      "module_path": "src/models/pretrained/huggingface_wrapper.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "clip_model.py",
@@ -2996,6 +3281,24 @@
       "module_path": "src/evaluation/language_model_evaluation.py"
     },
     {
+      "filename": "inference_demo.py",
+      "module_purpose": "Inference demo utilities for multimodal models",
+      "key_functions": [
+        {
+          "name": "run_inference_demo",
+          "signature": "run_inference_demo(model: nn.Module, image_preprocessor: Any, tokenizer: Any, device: torch.device, args: Any) -> Dict[str, float]",
+          "brief_description": "Run inference demo with visualizations and metrics"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "matplotlib",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/evaluation/inference_demo.py"
+    },
+    {
       "filename": "wmt_dataset.py",
       "module_purpose": "Provides a dataset class for loading and preprocessing WMT dataset for machine translation",
       "key_classes": [
@@ -3306,6 +3609,37 @@
       "external_dependencies": [],
       "complexity_score": 2,
       "module_path": "src/data/combined_translation_dataset.py"
+    },
+    {
+      "filename": "multimodal_data_utils.py",
+      "module_purpose": "Utilities for multimodal data loading and processing",
+      "key_components": [
+        {
+          "name": "SemanticGroupBatchSampler",
+          "signature": "class SemanticGroupBatchSampler(BatchSampler)",
+          "brief_description": "Custom batch sampler that ensures semantic groups are maintained in each batch for contrastive learning"
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "randomize_dataset_positions",
+          "signature": "randomize_dataset_positions(dataset: Any) -> List[int]",
+          "brief_description": "Randomize dataset positions to prevent shortcut learning"
+        },
+        {
+          "name": "create_data_loaders",
+          "signature": "create_data_loaders(args: Any, image_preprocessor: Any, tokenizer: Any) -> Tuple[DataLoader, DataLoader, DataLoader]",
+          "brief_description": "Create data loaders for training, validation, and testing with semantic grouping capabilities"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "random",
+        "logging",
+        "numpy"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/data/multimodal_data_utils.py"
     },
     {
       "filename": "multimodal_dataset.py",
@@ -3630,18 +3964,6 @@
       ],
       "complexity_score": 5,
       "module_path": "src/data/wikipedia_dataset.py"
-    },
-    {
-      "filename": "wmt_bpe_tokenizer.py",
-      "module_path": "src/data/tokenization/wmt_bpe_tokenizer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "work_tokenizer.py",
-      "module_path": "src/data/tokenization/work_tokenizer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
     },
     {
       "filename": "optimized_bpe_tokenizer.py",
@@ -3987,12 +4309,12 @@
     }
   ],
   "summary": {
-    "total_modules": 78,
-    "modules_with_metadata": 65,
-    "modules_without_metadata": 13
+    "total_modules": 93,
+    "modules_with_metadata": 70,
+    "modules_without_metadata": 23
   },
   "complexity_summary": {
-    "average_complexity": 5.538461538461538,
+    "average_complexity": 5.642857142857143,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -4039,6 +4361,10 @@
         "score": 8
       },
       {
+        "module": "src/models/model_factory.py",
+        "score": 8
+      },
+      {
         "module": "src/models/vision/vision_transformer.py",
         "score": 8
       },
@@ -4067,6 +4393,14 @@
         "score": 7
       },
       {
+        "module": "src/training/loss/loss_factory.py",
+        "score": 7
+      },
+      {
+        "module": "src/utils/visualization.py",
+        "score": 7
+      },
+      {
         "module": "src/models/text_generation.py",
         "score": 7
       },
@@ -4075,7 +4409,7 @@
         "score": 7
       },
       {
-        "module": "src/models/vision/multimodal_integration.py",
+        "module": "src/models/multimodal/multimodal_integration.py",
         "score": 7
       },
       {
@@ -4091,7 +4425,15 @@
         "score": 7
       },
       {
+        "module": "src/evaluation/inference_demo.py",
+        "score": 7
+      },
+      {
         "module": "src/data/curriculum_dataset.py",
+        "score": 7
+      },
+      {
+        "module": "src/data/multimodal_data_utils.py",
         "score": 7
       },
       {
@@ -4131,10 +4473,6 @@
         "score": 5
       },
       {
-        "module": "src/utils/visualization.py",
-        "score": 5
-      },
-      {
         "module": "src/models/vision/patch_embedding.py",
         "score": 5
       },
@@ -4155,11 +4493,15 @@
         "score": 5
       },
       {
-        "module": "src/training/losses.py",
+        "module": "src/training/loss/losses.py",
         "score": 4
       },
       {
         "module": "src/utils/logging.py",
+        "score": 4
+      },
+      {
+        "module": "src/utils/argument_configs.py",
         "score": 4
       },
       {
@@ -4257,30 +4599,34 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 36,
+    "total_external_dependencies": 37,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 43
+        "usage_count": 47
       },
       {
         "name": "numpy",
-        "usage_count": 19
+        "usage_count": 20
+      },
+      {
+        "name": "matplotlib",
+        "usage_count": 9
+      },
+      {
+        "name": "tqdm",
+        "usage_count": 9
+      },
+      {
+        "name": "logging",
+        "usage_count": 8
       },
       {
         "name": "json",
         "usage_count": 8
       },
       {
-        "name": "matplotlib",
-        "usage_count": 8
-      },
-      {
-        "name": "tqdm",
-        "usage_count": 8
-      },
-      {
-        "name": "logging",
+        "name": "random",
         "usage_count": 5
       },
       {
@@ -4289,10 +4635,6 @@
       },
       {
         "name": "re",
-        "usage_count": 4
-      },
-      {
-        "name": "random",
         "usage_count": 4
       },
       {
@@ -4308,11 +4650,19 @@
         "usage_count": 2
       },
       {
+        "name": "argparse",
+        "usage_count": 2
+      },
+      {
         "name": "sklearn",
         "usage_count": 2
       },
       {
         "name": "psutil",
+        "usage_count": 2
+      },
+      {
+        "name": "transformers",
         "usage_count": 2
       },
       {
@@ -4336,10 +4686,6 @@
         "usage_count": 1
       },
       {
-        "name": "argparse",
-        "usage_count": 1
-      },
-      {
         "name": "huggingface_hub",
         "usage_count": 1
       },
@@ -4348,15 +4694,15 @@
         "usage_count": 1
       },
       {
+        "name": "timm",
+        "usage_count": 1
+      },
+      {
         "name": "torchvision",
         "usage_count": 1
       },
       {
         "name": "math",
-        "usage_count": 1
-      },
-      {
-        "name": "transformers",
         "usage_count": 1
       },
       {
