@@ -16,7 +16,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import logging
 
-from .contrastive_learning import ContrastiveLoss, MultiModalMixedContrastiveLoss
+from src.training.loss import ContrastiveLoss, MultiModalMixedContrastiveLoss
 
 logger = logging.getLogger(__name__)
 

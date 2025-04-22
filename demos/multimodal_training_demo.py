@@ -26,12 +26,22 @@ python multimodal_training_demo.py --loss_type hard_negative --mining_strategy s
 
 import os
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+# Fix the AdamW import - use a different approach
+import torch.optim.adamw
+
+AdamW = torch.optim.AdamW
 import numpy as np
 import logging
 import random
 import math
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional, Union, Any, Tuple, cast, Protocol
+from torch.utils.data import Dataset
 
 # Setup logging
 logging.basicConfig(
@@ -53,8 +63,22 @@ from src.utils.model_utils import (
 )
 from src.models.model_factory import create_multimodal_model
 from src.data.multimodal_data_utils import create_data_loaders
-from src.training.loss_factory import create_loss_function
+from src.training.loss.loss_factory import create_loss_function
 from src.evaluation.inference_demo import run_inference_demo
+
+
+# Define a protocol for datasets that have the get_split_proportions method
+class SplitProportionsDataset(Protocol):
+    def get_split_proportions(self) -> Dict[str, Any]:
+        """Get information about the dataset splits and proportions."""
+        ...
+
+
+# Define a custom dataset type that includes the get_split_proportions method
+class MultimodalDataset(Dataset, SplitProportionsDataset):
+    def get_split_proportions(self) -> Dict[str, Any]:
+        """Get information about the dataset splits and proportions."""
+        return {"dataset_name": "unknown", "total_samples": 0}
 
 
 # Add these classes after imports in multimodal_training_demo.py
@@ -108,14 +132,14 @@ class SimpleMultimodalModel(nn.Module):
         for m in self.vision_proj.modules():
             if isinstance(m, nn.Linear):
                 # Orthogonal initialization ensures diverse features from the start
-                nn.init.orthogonal_(m.weight, gain=1.4)
+                nn.init.orthogonal_(m.weight, gain=1)  # Changed from 1.4 to 1
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0.2)
 
         for m in self.text_proj.modules():
             if isinstance(m, nn.Linear):
                 # Different gain for text model to create asymmetry
-                nn.init.orthogonal_(m.weight, gain=1.2)
+                nn.init.orthogonal_(m.weight, gain=1)  # Changed from 1.2 to 1
                 if m.bias is not None:
                     nn.init.constant_(m.bias, -0.2)
 
@@ -149,7 +173,7 @@ class SimpleMultimodalModel(nn.Module):
         print(f"Feature scale: {self.feature_scale}")
 
     def forward(self, images=None, text_data=None, return_attention=False):
-        outputs = {}
+        outputs: Dict[str, Any] = {}
 
         # Vision forward
         if images is not None:
@@ -170,7 +194,10 @@ class SimpleMultimodalModel(nn.Module):
             outputs["vision_features_seq"] = vision_features
 
             # Get pooled representation if needed
-            if len(vision_features.shape) == 3:  # [batch, seq_len, dim]
+            if (
+                isinstance(vision_features, torch.Tensor)
+                and len(vision_features.shape) == 3
+            ):  # [batch, seq_len, dim]
                 # Use CLS token if available (typically first token)
                 pooled_vision = vision_features[:, 0]
             else:
@@ -218,7 +245,10 @@ class SimpleMultimodalModel(nn.Module):
             outputs["text_features_seq"] = text_features
 
             # Get pooled representation if needed
-            if len(text_features.shape) == 3:  # [batch, seq_len, dim]
+            if (
+                isinstance(text_features, torch.Tensor)
+                and len(text_features.shape) == 3
+            ):  # [batch, seq_len, dim]
                 # Use CLS token if available (typically first token)
                 pooled_text = text_features[:, 0]
             else:
@@ -454,7 +484,8 @@ class SupervisedAlignmentLoss(nn.Module):
 
                 if matches:
                     # Randomly select one match
-                    match_idx = matches[torch.randint(0, len(matches), (1,)).item()]
+                    rand_idx = int(torch.randint(0, len(matches), (1,)).item())
+                    match_idx = matches[rand_idx]
                     targets_v2t.append(match_idx)
                 else:
                     # If no matches, use itself as target
@@ -466,7 +497,8 @@ class SupervisedAlignmentLoss(nn.Module):
                 matches = [j for j in all_matches[mid_str] if j != i]
 
                 if matches:
-                    match_idx = matches[torch.randint(0, len(matches), (1,)).item()]
+                    rand_idx = int(torch.randint(0, len(matches), (1,)).item())
+                    match_idx = matches[rand_idx]
                     targets_t2v.append(match_idx)
                 else:
                     targets_t2v.append(i)
@@ -539,7 +571,8 @@ class SupervisedAlignmentLoss(nn.Module):
                 with torch.no_grad():
                     for i in range(batch_size):
                         for j in range(batch_size):
-                            similarity_val = F.cosine_similarity(
+                            # Use torch.nn.functional.cosine_similarity instead of F.cosine_similarity
+                            similarity_val = torch.nn.functional.cosine_similarity(
                                 vision_features[i].unsqueeze(0),
                                 text_features[j].unsqueeze(0),
                             ).item()
@@ -639,12 +672,12 @@ class SupervisedAlignmentLoss(nn.Module):
 
             # Positive pairs should have high similarity
             pos_loss = torch.sum(F.relu(pos_margin - sim) * pos_mask) / max(
-                1, pos_mask.sum()
+                1, int(pos_mask.sum().item())
             )
 
             # Negative pairs should have lower similarity
             neg_loss = torch.sum(F.relu(sim - neg_margin) * neg_mask) / max(
-                1, neg_mask.sum()
+                1, int(neg_mask.sum().item())
             )
 
             # Add margin loss with appropriate weighting
@@ -940,73 +973,67 @@ def main():
         # Original model creation
         model = create_multimodal_model(args, device=device)
 
-    # if hasattr(args, "use_simple_model") and args.use_simple_model:
-    #     logger.info("Using SimpleMultimodalModel architecture for debugging")
-
-    #     # Create vision model
-    #     logger.info(f"Creating vision model: {args.vision_model}")
-    #     if args.use_pretrained:
-    #         logger.info("Using pretrained weights for vision model")
-    #     vision_model = create_vision_model(args)
-
-    #     # Create text model
-    #     logger.info(f"Creating text model: {args.text_model}")
-    #     if args.use_pretrained_text:
-    #         logger.info("Using pretrained weights for text model")
-    #     text_model = create_text_model(args)
-
-    #     # Create simple model
-    #     model = SimpleMultimodalModel(
-    #         vision_model=vision_model,
-    #         text_model=text_model,
-    #         projection_dim=args.fusion_dim,
-    #     )
-
-    #     logger.info(
-    #         f"Created SimpleMultimodalModel with projection dim {args.fusion_dim}"
-    #     )
-    # else:
-    #     # Original model creation code
-    #     logger.info(f"Creating {args.fusion_type} fusion model")
-    #     model = create_multimodal_model(args, device=device)
-
     # Create data loaders
     train_loader, val_loader, test_loader = create_data_loaders(
         args, image_preprocessor, tokenizer
     )
 
-    # Check if we're using synthetic data
+    # Get dataset info from the training dataset
     is_synthetic = False
     if args.use_synthetic or args.dataset == "synthetic":
         is_synthetic = True
     else:
-        # Get dataset info from the training dataset
-        train_dataset_info = train_loader.dataset.get_split_proportions()
-        dataset_name = train_dataset_info.get("dataset_name", "unknown")
+        try:
+            # Try to get dataset info if the dataset has the method
+            dataset = train_loader.dataset
+            if hasattr(dataset, "get_split_proportions"):
+                # Cast to our protocol type to satisfy the type checker
+                split_dataset = cast(SplitProportionsDataset, dataset)
+                train_dataset_info = split_dataset.get_split_proportions()
+                dataset_name = train_dataset_info.get("dataset_name", "unknown")
 
-        # Check if we're using real Flickr30k data
-        if dataset_name == "flickr30k":
-            # The data source is Flickr30k, check if we're using cached files from disk
-            # or if we had to generate synthetic data
-            cache_status = getattr(train_loader.dataset, "loaded_from_cache", True)
-            is_synthetic = not cache_status  # If not loaded from cache, it's synthetic
-        else:
-            # For other dataset types or unknown sources, consider it synthetic
+                # Check if we're using real Flickr30k data
+                if dataset_name == "flickr30k":
+                    # The data source is Flickr30k, check if we're using cached files from disk
+                    # or if we had to generate synthetic data
+                    cache_status = getattr(dataset, "loaded_from_cache", True)
+                    is_synthetic = (
+                        not cache_status
+                    )  # If not loaded from cache, it's synthetic
+                else:
+                    # For other dataset types or unknown sources, consider it synthetic
+                    is_synthetic = True
+
+                # Add an extra warning if using a very small dataset
+                train_dataset_size = train_dataset_info.get("total_samples", 0)
+                if train_dataset_size < 100:
+                    print("\n" + "=" * 80)
+                    print("WARNING: Using a very small dataset (<100 samples).")
+                    print(
+                        "Small datasets may lead to overfitting and unrealistic metrics."
+                    )
+                    print("Consider using more data for better evaluation.")
+                    print("=" * 80 + "\n")
+            else:
+                # If the dataset doesn't have the method, assume it's synthetic
+                is_synthetic = True
+                print("\n" + "=" * 80)
+                print(
+                    "WARNING: Dataset does not provide split information. Assuming synthetic data."
+                )
+                print("Results will not be representative of real-world performance.")
+                print("=" * 80 + "\n")
+        except (AttributeError, TypeError):
+            # If we can't get dataset info, assume it's synthetic
             is_synthetic = True
-
-        # Add an extra warning if using a very small dataset
-        train_dataset_size = train_dataset_info.get("total_samples", 0)
-        if train_dataset_size < 100:
             print("\n" + "=" * 80)
-            print("WARNING: Using a very small dataset (<100 samples).")
-            print("Small datasets may lead to overfitting and unrealistic metrics.")
-            print("Consider using more data for better evaluation.")
+            print("WARNING: Could not determine dataset type. Assuming synthetic data.")
+            print("Results will not be representative of real-world performance.")
             print("=" * 80 + "\n")
 
     if is_synthetic:
         print("\n" + "=" * 80)
         print("WARNING: Using synthetic data for training and evaluation.")
-        print("Results will not be representative of real-world performance.")
         print(
             "For real evaluation, please ensure you have proper access to the real dataset."
         )
@@ -1015,12 +1042,17 @@ def main():
     # Get the dataset size for contrastive loss sampling strategy
     dataset_size = None
     try:
-        train_dataset_info = train_loader.dataset.get_split_proportions()
-        dataset_size = train_dataset_info.get("total_samples", None)
+        dataset = train_loader.dataset
+        if hasattr(dataset, "get_split_proportions"):
+            # Cast to our protocol type to satisfy the type checker
+            split_dataset = cast(SplitProportionsDataset, dataset)
+            train_dataset_info = split_dataset.get_split_proportions()
+            dataset_size = train_dataset_info.get("total_samples", None)
     except (AttributeError, TypeError):
         logger.warning(
             "Could not determine dataset size for contrastive sampling strategy"
         )
+
     # Create loss function with enhanced configuration
     if hasattr(args, "use_simple_model") and args.use_simple_model:
         # Create supervised alignment loss with higher temperature

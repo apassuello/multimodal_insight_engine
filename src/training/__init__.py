@@ -12,26 +12,29 @@ from .multimodal_trainer import MultimodalTrainer
 from .transformer_trainer import TransformerTrainer
 
 # Import loss functions
-from .losses import CrossEntropyLoss, MeanSquaredError
-from .contrastive_learning import (
+from .loss import (
     ContrastiveLoss,
     MemoryQueueContrastiveLoss,
     DynamicTemperatureContrastiveLoss,
     HardNegativeMiningContrastiveLoss,
     MultiModalMixedContrastiveLoss,
-    DecoupledContrastiveLoss
+    DecoupledContrastiveLoss,
 )
-from .loss_factory import create_loss_function
+from .loss.loss_factory import create_loss_function
 
 # Import optimizers
-from .optimizers import AdamW, OneCycleLR, CosineAnnealingLR, LinearWarmupLR, GradientClipper
+from .optimizers import (
+    AdamW,
+    OneCycleLR,
+    CosineAnnealingLR,
+    LinearWarmupLR,
+    GradientClipper,
+)
 
 __all__ = [
     "train_model",
     "MultimodalTrainer",
     "TransformerTrainer",
-    "CrossEntropyLoss",
-    "MeanSquaredError",
     "ContrastiveLoss",
     "MemoryQueueContrastiveLoss",
     "DynamicTemperatureContrastiveLoss",
@@ -40,8 +43,8 @@ __all__ = [
     "DecoupledContrastiveLoss",
     "create_loss_function",
     "AdamW",
-    "OneCycleLR", 
+    "OneCycleLR",
     "CosineAnnealingLR",
     "LinearWarmupLR",
-    "GradientClipper"
+    "GradientClipper",
 ]

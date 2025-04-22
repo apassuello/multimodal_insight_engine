@@ -14,9 +14,9 @@ from typing import Dict, Any, Optional, Union, Tuple
 
 from ..models.vision.vision_transformer import VisionTransformer
 from ..models.transformer import EncoderDecoderTransformer
-from ..models.vision.multimodal_integration import (
+from .multimodal.multimodal_integration import (
     MultiModalTransformer,
-    EnhancedMultiModalTransformer,
+    CrossAttentionMultiModalTransformer,
 )
 from ..models.pretrained.huggingface_wrapper import (
     HuggingFaceTextModelWrapper,
@@ -45,26 +45,35 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
     # Check for model size presets for dimension matching
     if hasattr(args, "model_size") and args.model_size is not None:
         system_device = torch.device(
-            "cuda" if torch.cuda.is_available() 
+            "cuda"
+            if torch.cuda.is_available()
             else "mps" if torch.backends.mps.is_available() else "cpu"
         )
-        
+
         is_mps = system_device.type == "mps"
-        
-        if args.model_size == "large" or args.model_size == "small" or args.model_size == "medium":  # Use 768 dimensions for all presets
+
+        if (
+            args.model_size == "large"
+            or args.model_size == "small"
+            or args.model_size == "medium"
+        ):  # Use 768 dimensions for all presets
             logger.info("Using 768-dimension models")
             args.use_pretrained_text = True
             args.vision_model = "vit-base"  # Native 768-dim
             args.fusion_dim = 768
-            
+
             if is_mps:
                 # MPS-compatible alternative for Apple Silicon
                 args.text_model = "albert-base-v2"
-                logger.info("Selected MPS-compatible models: vit-base (768) + albert-base-v2 (768)")
+                logger.info(
+                    "Selected MPS-compatible models: vit-base (768) + albert-base-v2 (768)"
+                )
             else:
                 args.text_model = "bert-base-uncased"
-                logger.info("Selected standard models: vit-base (768) + bert-base-uncased (768)")
-    
+                logger.info(
+                    "Selected standard models: vit-base (768) + bert-base-uncased (768)"
+                )
+
     logger.info("Creating multimodal model with pretrained components...")
 
     # Create vision transformer with pretrained weights
@@ -92,7 +101,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                 text_model_dim = 768
             elif args.text_model == "minilm-384":
                 text_model_dim = 384
-        
+
         # Keep things simple - use standard timm models
         # For 768 dimensions, use vit_base_patch16_224 which is standard and well-supported
         if "vit-base" in args.vision_model or args.fusion_dim == 768:
@@ -103,7 +112,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             )
             # Remove classification head
             vision_model.head = nn.Identity()
-            
+
             # Get actual dimension from the model
             if hasattr(vision_model, "num_features"):
                 vision_dim = vision_model.num_features
@@ -114,21 +123,23 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                 logger.info(f"Using standard ViT base dimension: {vision_dim}")
         else:
             # Generic fallback if a different model is specified
-            logger.warning(f"Using fallback vision model because {args.vision_model} was specified")
+            logger.warning(
+                f"Using fallback vision model because {args.vision_model} was specified"
+            )
             # Default to ViT-base for reliability
             model_name = "vit_base_patch16_224"
             expected_dim = 768
-            
+
             # Create model
             vision_model = timm.create_model(model_name, pretrained=args.use_pretrained)
             vision_model.head = nn.Identity()
-            
+
             # Get dimension
             if hasattr(vision_model, "num_features"):
                 vision_dim = vision_model.num_features
             else:
                 vision_dim = expected_dim
-                
+
             logger.info(f"Created fallback vision model with dimension: {vision_dim}")
 
     except ImportError:
@@ -161,42 +172,58 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             )
 
             # Use exact HuggingFace model name if provided directly
-            if "/" in args.text_model or args.text_model.startswith("microsoft") or args.text_model.startswith("google"):
+            if (
+                "/" in args.text_model
+                or args.text_model.startswith("microsoft")
+                or args.text_model.startswith("google")
+            ):
                 # Direct HuggingFace model reference
                 huggingface_model_name = args.text_model
                 logger.info(f"Using exact HuggingFace model: {huggingface_model_name}")
             else:
                 # Map model identifier to HuggingFace model name
                 system_device = torch.device(
-                    "cuda" if torch.cuda.is_available()
+                    "cuda"
+                    if torch.cuda.is_available()
                     else "mps" if torch.backends.mps.is_available() else "cpu"
                 )
                 is_mps = system_device.type == "mps"
-                
+
                 # Handle specific model size presets
                 if args.model_size == "small":  # 384 dimensions
                     huggingface_model_name = "microsoft/MiniLM-L12-H384-uncased"
                     logger.info(f"Using 384-dim text model: {huggingface_model_name}")
-                
+
                 elif args.model_size == "medium":  # 512 dimensions
                     huggingface_model_name = "flaubert-small-cased"
                     logger.info(f"Using 512-dim text model: {huggingface_model_name}")
-                
+
                 elif args.model_size == "large":  # 768 dimensions
                     if is_mps:
-                        huggingface_model_name = "albert-base-v2"  # MPS-friendly 768-dim model
+                        huggingface_model_name = (
+                            "albert-base-v2"  # MPS-friendly 768-dim model
+                        )
                     else:
                         huggingface_model_name = "bert-base-uncased"
                     logger.info(f"Using 768-dim text model: {huggingface_model_name}")
-                
+
                 # If no model_size preset, use MPS-friendly models if on MPS
                 elif is_mps:
-                    if args.text_model == "bert-base" or args.text_model == "bert-base-uncased":
-                        huggingface_model_name = "google/mobilebert-uncased"  # MPS-friendly alternative
-                        logger.warning("⚠️ Automatically switched from BERT-base to MobileBERT for MPS compatibility")
+                    if (
+                        args.text_model == "bert-base"
+                        or args.text_model == "bert-base-uncased"
+                    ):
+                        huggingface_model_name = (
+                            "google/mobilebert-uncased"  # MPS-friendly alternative
+                        )
+                        logger.warning(
+                            "⚠️ Automatically switched from BERT-base to MobileBERT for MPS compatibility"
+                        )
                     elif args.text_model == "roberta-base":
                         huggingface_model_name = "distilroberta-base"  # Smaller model for better MPS compatibility
-                        logger.warning("⚠️ Automatically switched from RoBERTa-base to DistilRoBERTa for MPS compatibility")
+                        logger.warning(
+                            "⚠️ Automatically switched from RoBERTa-base to DistilRoBERTa for MPS compatibility"
+                        )
                     elif args.text_model == "distilbert-base":
                         huggingface_model_name = "distilbert-base-uncased"
                     elif args.text_model == "mobilebert":
@@ -210,13 +237,18 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                     else:
                         # Default to MobileBERT for MPS as safe option
                         huggingface_model_name = "google/mobilebert-uncased"
-                        logger.info(f"Defaulting to MobileBERT for unknown model on MPS: {args.text_model}")
+                        logger.info(
+                            f"Defaulting to MobileBERT for unknown model on MPS: {args.text_model}"
+                        )
                 else:
                     # Standard model mapping for CPU/CUDA
-                    if args.text_model == "bert-base" or args.text_model == "bert-base-uncased":
+                    if (
+                        args.text_model == "bert-base"
+                        or args.text_model == "bert-base-uncased"
+                    ):
                         huggingface_model_name = "bert-base-uncased"
                     elif args.text_model == "roberta-base":
-                        huggingface_model_name = "roberta-base" 
+                        huggingface_model_name = "roberta-base"
                     elif args.text_model == "distilbert-base":
                         huggingface_model_name = "distilbert-base-uncased"
                     elif args.text_model == "mobilebert":
@@ -224,13 +256,15 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                     elif args.text_model == "albert-base":
                         huggingface_model_name = "albert-base-v2"
                     elif args.text_model == "minilm-384":
-                        huggingface_model_name = "microsoft/MiniLM-L12-H384-uncased" 
+                        huggingface_model_name = "microsoft/MiniLM-L12-H384-uncased"
                     elif args.text_model == "flaubert-small-cased":
                         huggingface_model_name = "flaubert-small-cased"
                     else:
                         # Default to BERT-base for other cases
                         huggingface_model_name = "bert-base-uncased"
-                        logger.info(f"Defaulting to BERT-base for unknown model: {args.text_model}")
+                        logger.info(
+                            f"Defaulting to BERT-base for unknown model: {args.text_model}"
+                        )
 
             # Create model
             text_model = HuggingFaceTextModelWrapper(huggingface_model_name)
@@ -348,28 +382,34 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
     # After alignment, dimensions should match
     # Now adjust fusion_dim to match the aligned model dimensions if needed
-    print(f"DIMENSION CHECK - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}")
-    
+    print(
+        f"DIMENSION CHECK - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
+    )
+
     # Get actual text model dimension from HuggingFace if available
-    if hasattr(text_model, 'encoder') and hasattr(text_model.encoder, 'config'):
-        hf_dim = getattr(text_model.encoder.config, 'hidden_size', None)
+    if hasattr(text_model, "encoder") and hasattr(text_model.encoder, "config"):
+        hf_dim = getattr(text_model.encoder.config, "hidden_size", None)
         if hf_dim is not None:
             print(f"HuggingFace model hidden size: {hf_dim}")
             # If there's a mismatch, update text_dim
             if hf_dim != text_dim:
-                print(f"WARNING: Text dimension mismatch - Detected: {text_dim}, Actual: {hf_dim}")
+                print(
+                    f"WARNING: Text dimension mismatch - Detected: {text_dim}, Actual: {hf_dim}"
+                )
                 text_dim = hf_dim
-    
+
     if fusion_dim != vision_dim or fusion_dim != text_dim:
         # Prioritize text model dim for HuggingFace models, vision otherwise
         target_dim = text_dim if args.use_pretrained_text else vision_dim
-        
+
         logger.warning(
             f"Dimension mismatch detected: Vision dim: {vision_dim}, Text dim: {text_dim}, Fusion dim: {fusion_dim}"
         )
-        logger.info(f"Adjusting fusion_dim to match model dimensions: {fusion_dim} → {target_dim}")
+        logger.info(
+            f"Adjusting fusion_dim to match model dimensions: {fusion_dim} → {target_dim}"
+        )
         fusion_dim = target_dim
-        
+
         # CRITICAL: Update the args object as well so other components can access the updated dimension
         args.fusion_dim = fusion_dim
         logger.info(f"Updated args.fusion_dim to {args.fusion_dim}")
@@ -378,7 +418,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         f"Aligned dimensions - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
     )
 
-    multimodal_model = EnhancedMultiModalTransformer(
+    multimodal_model = CrossAttentionMultiModalTransformer(
         vision_model=vision_model,
         text_model=text_model,
         fusion_dim=fusion_dim,
