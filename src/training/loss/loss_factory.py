@@ -16,6 +16,9 @@ from .memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
 from .dynamic_temperature_contrastive_loss import DynamicTemperatureContrastiveLoss
 from .hard_negative_mining_contrastive_loss import HardNegativeMiningContrastiveLoss
 from .multimodal_mixed_contrastive_loss import MultiModalMixedContrastiveLoss
+from .barlow_twins_loss import BarlowTwinsLoss
+from .decoupled_contrastive_loss import DecoupledContrastiveLoss
+from .vicreg_loss import VICRegLoss
 
 
 # Simple and effective InfoNCE-style contrastive loss for SimpleMultimodalModel
@@ -274,7 +277,124 @@ def create_loss_function(
         logger.warning(f"Invalid model dimension, using default: {model_dim}")
 
     # Switch based on the loss type
-    if loss_type == "memory_queue":
+    if loss_type == "barlow_twins":
+        # Barlow Twins Loss
+        logger.info("Using Barlow Twins Loss for redundancy reduction")
+        
+        # Determine lambda coefficient (controls off-diagonal strength)
+        lambda_coeff = getattr(args, "lambda_coeff", 0.005)
+        
+        # Determine whether to use batch norm in the last projection layer
+        batch_norm_last = getattr(args, "batch_norm_last", True)
+        
+        # Determine correlation mode (cross_modal or within_batch)
+        correlation_mode = getattr(args, "correlation_mode", "cross_modal")
+        
+        logger.info(f"Barlow Twins config - Lambda: {lambda_coeff}, BatchNorm: {batch_norm_last}")
+        logger.info(f"Correlation mode: {correlation_mode}")
+        
+        # Create and return the Barlow Twins loss
+        return BarlowTwinsLoss(
+            lambda_coeff=lambda_coeff,
+            batch_norm_last_layer=batch_norm_last,
+            correlation_mode=correlation_mode,
+            add_projection=True,  # Always use projection for Barlow Twins
+            projection_dim=model_dim * 2,  # Barlow Twins works better with larger projection dim
+            input_dim=model_dim,
+            normalize_embeddings=True,
+        )
+        
+    elif loss_type == "vicreg":
+        # VICReg Loss implementation with curriculum learning
+        logger.info("Using enhanced VICReg Loss with curriculum learning")
+        
+        # Get loss component weights from args or use defaults
+        sim_weight = getattr(args, "sim_weight", 50.0)  # Higher similarity coefficient (was 25.0)
+        var_weight = getattr(args, "var_weight", 5.0)   # Lower variance coefficient (was 25.0)
+        cov_weight = getattr(args, "cov_weight", 1.0)
+        
+        # Get curriculum and warmup parameters
+        warmup_epochs = getattr(args, "vicreg_warmup_epochs", 5)
+        use_curriculum = getattr(args, "use_curriculum", True)
+        num_epochs = getattr(args, "num_epochs", 30)  # Get total epochs for better warmup calculation
+        
+        logger.info(f"VICReg config - Sim weight: {sim_weight}, Var weight: {var_weight}, Cov weight: {cov_weight}")
+        logger.info(f"VICReg learning - Curriculum: {use_curriculum}, Warmup epochs: {warmup_epochs}, Total epochs: {num_epochs}")
+        
+        # Get contrastive pretraining parameter
+        use_contrastive_pretrain = getattr(args, "use_contrastive_pretrain", False)
+        contrastive_pretrain_steps = getattr(args, "contrastive_pretrain_steps", 200)
+        
+        if use_contrastive_pretrain:
+            adaptive_transition = getattr(args, "adaptive_transition", True)
+            min_alignment_threshold = getattr(args, "min_alignment_threshold", 0.3)
+            gradual_transition_steps = getattr(args, "gradual_transition_steps", 100)
+            
+            logger.info(f"Using contrastive pre-training for {contrastive_pretrain_steps} steps before VICReg")
+            logger.info(f"Adaptive transition: {adaptive_transition}, Alignment threshold: {min_alignment_threshold}")
+            logger.info(f"Gradual transition steps: {gradual_transition_steps}")
+            
+            # Create a hybrid loss that starts with contrastive loss then switches to VICReg
+            from src.training.loss.hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
+            # Get model dimension from args - the most reliable source
+            fusion_dim = model_dim
+            
+            # Warning about potential dimension mismatch
+            if hasattr(args, "vision_model") and "vit-base" in args.vision_model:
+                # ViT-base has 768 dimension
+                if fusion_dim != 768:
+                    print(f"WARNING: Potential dimension mismatch! fusion_dim={fusion_dim} but vision_model={args.vision_model} has dim=768")
+                    print(f"If you encounter dimension errors, manually adjust fusion_dim in the command to 768")
+            
+            # ViT-base has 768 dimension, make sure we explicitly handle this
+            if hasattr(args, "vision_model") and "vit-base" in args.vision_model:
+                # Just for this model, use the correct dimension directly
+                vision_dim = 768
+                print(f"Using vision_dim={vision_dim} for {args.vision_model}")
+            else:
+                # For other models, use fusion_dim
+                vision_dim = fusion_dim
+                
+            # Similarly for text models
+            if hasattr(args, "text_model") and ("bert-base" in args.text_model or "bert" in args.text_model):
+                # BERT-base has 768 dimension 
+                text_dim = 768
+                print(f"Using text_dim={text_dim} for {args.text_model}")
+            else:
+                # For other models, use fusion_dim
+                text_dim = fusion_dim
+            
+            # Create the loss with explicit vision and text dimensions
+            return HybridPretrainVICRegLoss(
+                sim_coeff=sim_weight,
+                var_coeff=var_weight,
+                cov_coeff=cov_weight,
+                epsilon=1e-4,
+                warmup_epochs=warmup_epochs,
+                curriculum=use_curriculum,
+                num_epochs=num_epochs,
+                contrastive_pretrain_steps=contrastive_pretrain_steps,
+                temperature=getattr(args, "temperature", 0.07),
+                adaptive_transition=adaptive_transition,
+                min_alignment_threshold=min_alignment_threshold,
+                gradual_transition_steps=gradual_transition_steps,
+                fusion_dim=fusion_dim,
+                vision_dim=vision_dim,
+                text_dim=text_dim,
+            )
+        else:
+            # Create and return the enhanced VICReg loss
+            return VICRegLoss(
+                sim_coeff=sim_weight,
+                var_coeff=var_weight,
+                cov_coeff=cov_weight,
+                epsilon=1e-4,
+                warmup_epochs=warmup_epochs,
+                curriculum=use_curriculum,
+                num_epochs=num_epochs
+            )
+        
+    elif loss_type == "memory_queue":
         # Memory Queue-Based Contrastive Loss
         logger.info("Using Memory Queue-Based Contrastive Loss")
 
@@ -464,24 +584,38 @@ def create_loss_function(
         )
 
         # Calculate appropriate projection dimension based on model dimension
-        # For large model dimensions, using a smaller projection can help generalization
-        projection_dim = min(256, model_dim // 2)  # Don't go below model_dim/2
+        # For VICReg, we should use the full model dimension to avoid dimension mismatches
+        projection_dim = model_dim  # Use full dimension
 
         logger.info(
             f"Creating ContrastiveLoss with input dimension {model_dim}, projection dimension {projection_dim}"
         )
 
         # CRITICAL FIX: Create a more advanced contrastive loss with better settings
+        # IMPORTANT: For VICReg model compatibility, we need to match dimensions EXACTLY
+        # When using ViT-base (dim=768) and proj_dim=768, we should DISABLE projection
+        # The projection to a smaller dimension (192) is causing the dimension mismatch error
+        
+        # Check args to see if we're using VICReg
+        is_vicreg = getattr(args, 'loss_type', '').lower() == 'vicreg'
+        
+        if is_vicreg:
+            # For VICReg, disable projection since dimensions already match
+            add_projection = False
+            print("CRITICAL: Disabling projection for VICReg compatibility (dimensions already match)")
+        else:
+            # For other losses, use projection as normal
+            add_projection = True
+        
         return ContrastiveLoss(
             temperature=adjusted_temp,
             loss_type="infonce",  # InfoNCE loss is standard for contrastive learning
             reduction="mean",
-            add_projection=True,  # ENABLED: Use projection heads for better representation
-            projection_dim=projection_dim,  # Smaller dimension for the projection space
+            add_projection=add_projection,  # Conditionally enable projection
+            projection_dim=projection_dim,  # Use full dimension if projection is enabled
             input_dim=model_dim,  # Use the detected model dimension
             sampling_strategy=sampling_strategy,
-            memory_bank_size=args.memory_bank_size
-            * 2,  # INCREASED: Use larger memory bank
+            memory_bank_size=args.memory_bank_size * 2,  # INCREASED: Use larger memory bank
             dataset_size=dataset_size,
         )
 

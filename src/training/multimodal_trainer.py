@@ -1,4 +1,15 @@
 # src/training/multimodal_trainer.py
+
+# Standard library imports
+import os
+import time
+import json
+import random
+import logging
+from collections import defaultdict
+from typing import Dict, List, Tuple, Optional, Callable, Union, Any
+
+# Third-party imports
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,23 +17,27 @@ import torch.optim as optim
 from torch.optim.adamw import AdamW
 from torch.utils.data import DataLoader
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
-import time
-import os
-import json
-import random
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from collections import defaultdict
-import logging
 
-from src.training.loss import ContrastiveLoss, MultiModalMixedContrastiveLoss
+# Local imports
+from src.training.loss import (
+    ContrastiveLoss,
+    MultiModalMixedContrastiveLoss,
+    VICRegLoss,
+    MemoryQueueContrastiveLoss,
+    HardNegativeMiningContrastiveLoss,
+)
+from src.training.loss.vicreg_loss import (
+    VICRegLoss,
+)  # Explicit import for type checking
+from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
 
 logger = logging.getLogger(__name__)
 
 
 class ModalityBalancingScheduler:
-    def __init__(self, optimizer, target_ratio=2.0, check_interval=10):
+    def __init__(self, optimizer, target_ratio=1.0, check_interval=10):
         self.optimizer = optimizer
         self.target_ratio = target_ratio  # Desired text/vision gradient ratio
         self.check_interval = check_interval
@@ -125,6 +140,7 @@ class MultimodalTrainer:
         early_stopping_patience: Optional[int] = None,
         clip_grad_norm: Optional[float] = None,
         balance_modality_gradients: bool = False,
+        args: Optional[Any] = None,  # Store args for additional configuration
     ):
         """
         Initialize the multimodal trainer.
@@ -150,6 +166,8 @@ class MultimodalTrainer:
             log_steps: Number of steps between logging during training
             early_stopping_patience: Number of evaluations with no improvement to trigger early stopping
             clip_grad_norm: Maximum norm for gradient clipping
+            balance_modality_gradients: Whether to balance gradients between modalities
+            args: Original argument namespace containing full training configuration
         """
         self.model = model
         self.train_dataloader = train_dataloader
@@ -171,6 +189,7 @@ class MultimodalTrainer:
         self.early_stopping_patience = early_stopping_patience
         self.clip_grad_norm = clip_grad_norm
         self.balance_modality_gradients = balance_modality_gradients
+        self.args = args  # Store args for later reference
 
         # Create directories
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -211,7 +230,7 @@ class MultimodalTrainer:
         self.grad_scheduler = None
         if self.balance_modality_gradients:
             self.grad_scheduler = ModalityBalancingScheduler(
-                self.optimizer, target_ratio=2.0
+                self.optimizer, target_ratio=1.0
             )
         # Initialize loss function if not provided
         if self.loss_fn is None:
@@ -543,6 +562,74 @@ class MultimodalTrainer:
                 diagnostic_report = self.diagnose_training_issues()
                 logger.info(f"\n{diagnostic_report}")
 
+                # Evaluate tokenizer quality (once per epoch)
+                self._evaluate_tokenizer_quality(epoch)
+
+                # Plot alignment progress after each epoch
+                if (
+                    hasattr(self, "_alignment_history")
+                    and self._alignment_history["step"]
+                ):
+                    # Create epochwise alignment plots directory
+                    alignment_plot_dir = os.path.join(self.log_dir, "alignment_plots")
+                    os.makedirs(alignment_plot_dir, exist_ok=True)
+
+                    # Generate alignment plot
+                    plt.figure(figsize=(12, 8))
+
+                    # Plot diagonal similarity vs. mean similarity
+                    plt.subplot(2, 1, 1)
+                    steps = self._alignment_history["step"]
+                    plt.plot(
+                        steps,
+                        self._alignment_history["diag_mean"],
+                        label="Diagonal Similarity",
+                        color="blue",
+                    )
+                    plt.plot(
+                        steps,
+                        self._alignment_history["sim_mean"],
+                        label="Mean Similarity",
+                        color="red",
+                        linestyle="--",
+                    )
+                    plt.title(f"Semantic Alignment Progress (Epoch {epoch+1})")
+                    plt.xlabel("Training Steps")
+                    plt.ylabel("Cosine Similarity")
+                    plt.legend()
+                    plt.grid(True)
+
+                    # Plot alignment gap and SNR
+                    plt.subplot(2, 1, 2)
+                    plt.plot(
+                        steps,
+                        self._alignment_history["alignment_gap"],
+                        label="Alignment Gap",
+                        color="green",
+                    )
+                    plt.plot(
+                        steps,
+                        self._alignment_history["alignment_snr"],
+                        label="Signal-to-Noise Ratio",
+                        color="purple",
+                        linestyle="--",
+                    )
+                    plt.title("Alignment Quality Metrics")
+                    plt.xlabel("Training Steps")
+                    plt.ylabel("Metric Value")
+                    plt.legend()
+                    plt.grid(True)
+
+                    plt.tight_layout()
+                    plt.savefig(
+                        os.path.join(
+                            alignment_plot_dir, f"alignment_epoch_{epoch+1}.png"
+                        )
+                    )
+                    plt.close()
+
+                    logger.info(f"Saved alignment progress plot for epoch {epoch+1}")
+
         # Training completed
         logger.info(
             f"Training completed in {time.time() - self.start_time:.2f} seconds"
@@ -631,8 +718,6 @@ class MultimodalTrainer:
         )
 
         # Use standard contrastive loss for Stage 1
-        from src.training.contrastive_learning import ContrastiveLoss
-
         # Get the actual model dimensions for proper projection setup
         # First try to get vision dimension directly
         vision_dim = None
@@ -686,12 +771,39 @@ class MultimodalTrainer:
             logger.info(f"Using default dimension {model_dim} for contrastive loss")
 
         # Create loss with proper dimension settings
-        stage1_loss = ContrastiveLoss(
-            temperature=0.5,
-            input_dim=model_dim,  # Use actual model dimension
-            add_projection=True,
-            projection_dim=model_dim // 4,  # Half the model dimension for projection
-        )
+        # Check if we should use VICReg loss based on original loss type
+        if isinstance(self.loss_fn, VICRegLoss):
+            # Use VICReg loss with higher variance coefficient for stage 1
+            logger.info(
+                "Using VICRegLoss for Stage 1 with higher variance regularization"
+            )
+            stage1_loss = VICRegLoss(
+                sim_coeff=25.0,
+                var_coeff=30.0,  # Higher variance coefficient for Stage 1
+                cov_coeff=1.0,
+                epsilon=1e-3,
+            )
+        else:
+            # Default to standard contrastive loss
+            # For ViT-base/BERT-base compatibility, don't reduce dimension
+            if model_dim == 768:  # ViT-base/BERT-base case
+                print(
+                    f"Found ViT-base/BERT-base model (dim={model_dim}) - using matching projection dimension"
+                )
+                stage1_loss = ContrastiveLoss(
+                    temperature=0.5,
+                    input_dim=model_dim,  # Use actual model dimension
+                    add_projection=False,  # IMPORTANT: Skip projection for 768 dimension models
+                )
+            else:
+                # For other models, use reasonable projection dimension
+                stage1_loss = ContrastiveLoss(
+                    temperature=0.5,
+                    input_dim=model_dim,  # Use actual model dimension
+                    add_projection=True,
+                    projection_dim=model_dim
+                    // 2,  # Half of the model dimension (not quarter)
+                )
 
         # Set up for Stage 1
         self.optimizer = stage1_optimizer  # Replace optimizer
@@ -736,8 +848,6 @@ class MultimodalTrainer:
         )
 
         # Use memory queue contrastive loss for Stage 2
-        from src.training.contrastive_learning import MemoryQueueContrastiveLoss
-
         # Re-detect model dimension for Stage 2 (in case it changed)
         if vision_dim is not None:
             model_dim = vision_dim
@@ -822,8 +932,6 @@ class MultimodalTrainer:
         )
 
         # Use hard negative mining loss for Stage 3
-        from src.training.contrastive_learning import HardNegativeMiningContrastiveLoss
-
         stage3_loss = HardNegativeMiningContrastiveLoss(
             temperature=0.07,
             hard_negative_factor=2.0,
@@ -863,6 +971,26 @@ class MultimodalTrainer:
         nested_metrics = {}  # For storing nested dictionary metrics
         num_batches = 0
         total_loss = 0.0
+
+        # Update VICReg or HybridPretrainVICReg loss epoch counter if applicable
+        if hasattr(self.loss_fn, "update_epoch"):
+            self.loss_fn.update_epoch(self.current_epoch)
+            # Also set total steps for better warm-up calculation
+            total_steps_estimate = len(self.train_dataloader) * self.num_epochs
+
+            if hasattr(self.loss_fn, "update_step"):
+                self.loss_fn.update_step(self.global_step, total_steps_estimate)
+
+                # Log phase information
+                if hasattr(self.loss_fn, "current_phase"):
+                    phase = getattr(self.loss_fn, "current_phase", "unknown")
+                    logger.info(
+                        f"Training curriculum: phase={phase}, epoch={self.current_epoch}, global_step={self.global_step}"
+                    )
+                else:
+                    logger.info(
+                        f"VICReg curriculum: epoch={self.current_epoch}, global_step={self.global_step}"
+                    )
 
         # Use tqdm for progress bar
         pbar = tqdm(
@@ -1047,6 +1175,17 @@ class MultimodalTrainer:
                                 if has_nan or has_inf:
                                     model_component_grads[prefix]["has_nan"] = True
 
+                        # Check if parameter is from a frozen model component
+                        is_frozen_model_param = False
+                        if hasattr(self, "args") and getattr(
+                            self.args, "freeze_base_models", False
+                        ):
+                            if any(
+                                frozen_prefix in name
+                                for frozen_prefix in ["vision_model", "text_model"]
+                            ):
+                                is_frozen_model_param = True
+
                         # Log critical gradient issues immediately
                         if has_nan or has_inf:
                             logger.error(
@@ -1056,16 +1195,38 @@ class MultimodalTrainer:
                             logger.warning(
                                 f"Unusually LARGE gradient norm for {name}: {param_norm:.4f}"
                             )
-                        elif param_norm < 1e-6 and param_norm > 0:
-                            logger.warning(
-                                f"Unusually SMALL gradient norm for {name}: {param_norm:.8f}"
-                            )
-                        elif is_zero and not name.endswith(
-                            "bias"
-                        ):  # Ignore bias terms which might be frozen
-                            logger.warning(
-                                f"ZERO gradient detected for {name} - check if properly connected in backward graph"
-                            )
+                        elif (
+                            param_norm < 1e-6
+                            and param_norm > 0
+                            and not is_frozen_model_param
+                        ):
+                            # Only warn about small gradients for non-frozen parameters
+                            if (
+                                self.current_epoch > 1
+                            ):  # Skip warnings in early training
+                                logger.warning(
+                                    f"Unusually SMALL gradient norm for {name}: {param_norm:.8f}"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Small gradient norm for {name}: {param_norm:.8f} (expected in early training)"
+                                )
+                        elif (
+                            is_zero
+                            and not name.endswith("bias")
+                            and not is_frozen_model_param
+                        ):
+                            # Only warn about zero gradients for non-frozen parameters
+                            if (
+                                self.current_epoch > 1
+                            ):  # Skip warnings in early training
+                                logger.warning(
+                                    f"ZERO gradient detected for {name} - check if properly connected in backward graph"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Zero gradient for {name} (expected in early training)"
+                                )
 
                 # Calculate and log overall gradient statistics
                 if param_count > 0:
@@ -1149,13 +1310,47 @@ class MultimodalTrainer:
                         # Handle simple metrics
                         epoch_metrics[k] += v / len(pbar)
 
-            # Update progress bar
-            pbar.set_postfix(
-                {
-                    "loss": loss_dict["loss"].item(),
-                    "acc": loss_dict.get("accuracy", 0.0),
-                }
-            )
+            # Update progress bar with appropriate metrics based on the loss type
+            if isinstance(self.loss_fn, VICRegLoss) and "warmup_factor" in loss_dict:
+                # For VICReg, show invariance loss and warmup factor
+                pbar.set_postfix(
+                    {
+                        "loss": loss_dict["loss"].item(),
+                        "invariance": loss_dict.get("invariance_loss", 0.0),
+                        "warmup": loss_dict.get("warmup_factor", 0.0),
+                    }
+                )
+            elif (
+                hasattr(self.loss_fn, "current_phase") and "current_phase" in loss_dict
+            ):
+                # For hybrid loss, show phase and appropriate metrics
+                phase = loss_dict["current_phase"]
+                if phase == "contrastive_pretrain":
+                    pbar.set_postfix(
+                        {
+                            "loss": loss_dict["loss"].item(),
+                            "acc": loss_dict.get("accuracy", 0.0),
+                            "phase": "contrastive",
+                            "progress": f"{loss_dict.get('pretrain_progress', 0.0):.2f}",
+                        }
+                    )
+                else:  # vicreg phase
+                    pbar.set_postfix(
+                        {
+                            "loss": loss_dict["loss"].item(),
+                            "invariance": loss_dict.get("invariance_loss", 0.0),
+                            "var_weight": loss_dict.get("var_weight", 0.0),
+                            "phase": "vicreg",
+                        }
+                    )
+            else:
+                # For other losses, show accuracy
+                pbar.set_postfix(
+                    {
+                        "loss": loss_dict["loss"].item(),
+                        "acc": loss_dict.get("accuracy", 0.0),
+                    }
+                )
 
             # Step optimizer after accumulation or at the end of epoch
             if (batch_idx + 1) % self.accumulation_steps == 0 or batch_idx == len(
@@ -1179,6 +1374,12 @@ class MultimodalTrainer:
                 # Step scheduler if available
                 if self.scheduler is not None:
                     self.scheduler.step()
+
+                # Update VICReg or HybridPretrainVICReg loss step counter if applicable
+                if hasattr(self.loss_fn, "update_step"):
+                    self.loss_fn.update_step(
+                        self.global_step, len(self.train_dataloader) * self.num_epochs
+                    )
 
                 # Reset gradients
                 self.optimizer.zero_grad()
@@ -1572,14 +1773,29 @@ class MultimodalTrainer:
     def _prepare_loss_inputs(self, batch, outputs):
         loss_inputs = {}
 
-        # COMPREHENSIVE DEBUG: Log detailed information about model outputs and batch
-        logger.info(f"Model output keys: {sorted(outputs.keys())}")
-        logger.info(f"Batch keys: {sorted(batch.keys())}")
+        # Initialize a flag for controlling logging frequency
+        if not hasattr(self, "_log_once_per_epoch"):
+            self._log_once_per_epoch = True
+            self._last_logged_epoch = -1
 
-        # Check model architecture and loss function configuration
-        if hasattr(self.loss_fn, "dim"):
-            loss_dim = self.loss_fn.dim
-            logger.info(f"Loss function dimension: {loss_dim}")
+        # Check if we need to log for this epoch
+        should_log = (
+            self.current_epoch != self._last_logged_epoch
+        ) and self._log_once_per_epoch
+
+        # Log only once per epoch or if requested
+        if should_log:
+            # COMPREHENSIVE DEBUG: Log detailed information about model outputs and batch
+            logger.info(f"Model output keys: {sorted(outputs.keys())}")
+            logger.info(f"Batch keys: {sorted(batch.keys())}")
+
+            # Check model architecture and loss function configuration
+            if hasattr(self.loss_fn, "dim"):
+                loss_dim = self.loss_fn.dim
+                logger.info(f"Loss function dimension: {loss_dim}")
+
+            # Mark that we've logged for this epoch
+            self._last_logged_epoch = self.current_epoch
 
         # CRITICAL FIX: Make sure features are properly extracted and normalized
         # No matter which feature type is used, always normalize them for cosine similarity
@@ -1687,14 +1903,16 @@ class MultimodalTrainer:
             text_min = text_features.min().item()
             text_max = text_features.max().item()
 
-            logger.info(
-                f"Vision features stats: mean={vision_mean:.6f}, std={vision_std:.6f}, "
-                f"min={vision_min:.6f}, max={vision_max:.6f}, range={vision_max-vision_min:.6f}"
-            )
-            logger.info(
-                f"Text features stats: mean={text_mean:.6f}, std={text_std:.6f}, "
-                f"min={text_min:.6f}, max={text_max:.6f}, range={text_max-text_min:.6f}"
-            )
+            # Only log feature stats once per epoch
+            if should_log:
+                logger.info(
+                    f"Vision features stats: mean={vision_mean:.6f}, std={vision_std:.6f}, "
+                    f"min={vision_min:.6f}, max={vision_max:.6f}, range={vision_max-vision_min:.6f}"
+                )
+                logger.info(
+                    f"Text features stats: mean={text_mean:.6f}, std={text_std:.6f}, "
+                    f"min={text_min:.6f}, max={text_max:.6f}, range={text_max-text_min:.6f}"
+                )
 
             # Check for feature collapse (extremely low variance)
             if vision_std < 1e-4:
@@ -1732,9 +1950,11 @@ class MultimodalTrainer:
             vision_norm_mean = vision_norms.mean().item()
             text_norm_mean = text_norms.mean().item()
 
-            logger.info(
-                f"After normalization - Vision norm: {vision_norm_mean:.6f}, Text norm: {text_norm_mean:.6f}"
-            )
+            # Only log normalization stats once per epoch
+            if should_log:
+                logger.info(
+                    f"After normalization - Vision norm: {vision_norm_mean:.6f}, Text norm: {text_norm_mean:.6f}"
+                )
 
             # Check if normalization worked well
             norm_threshold = 0.01
@@ -1754,130 +1974,211 @@ class MultimodalTrainer:
             sim_min = similarity.min().item()
             sim_max = similarity.max().item()
             diag_mean = sim_diag.mean().item()
+            diag_std = sim_diag.std().item()
 
-            logger.info(
-                f"Similarity stats: mean={sim_mean:.4f}, std={sim_std:.4f}, min={sim_min:.4f}, max={sim_max:.4f}"
-            )
-            logger.info(
-                f"Diagonal similarity (should be high for matched pairs): mean={diag_mean:.4f}"
-            )
+            # Calculate alignment metrics
+            alignment_gap = diag_mean - sim_mean
+            alignment_snr = abs(alignment_gap) / (
+                sim_std + 1e-6
+            )  # Signal-to-noise ratio
 
-            # Check for potential training issues based on similarity distribution
-            if diag_mean < sim_mean + 0.1:
-                logger.warning(
-                    f"POTENTIAL ISSUE: Diagonal similarity ({diag_mean:.4f}) is not significantly higher than mean ({sim_mean:.4f})"
+            # Track alignment metrics history
+            if not hasattr(self, "_alignment_history"):
+                self._alignment_history = {
+                    "epoch": [],
+                    "step": [],
+                    "diag_mean": [],
+                    "sim_mean": [],
+                    "alignment_gap": [],
+                    "alignment_snr": [],
+                }
+
+            # Store current values
+            self._alignment_history["epoch"].append(self.current_epoch)
+            self._alignment_history["step"].append(self.global_step)
+            self._alignment_history["diag_mean"].append(diag_mean)
+            self._alignment_history["sim_mean"].append(sim_mean)
+            self._alignment_history["alignment_gap"].append(alignment_gap)
+            self._alignment_history["alignment_snr"].append(alignment_snr)
+
+            # Keep history manageable
+            max_history = 100
+            if len(self._alignment_history["step"]) > max_history:
+                for key in self._alignment_history:
+                    self._alignment_history[key] = self._alignment_history[key][
+                        -max_history:
+                    ]
+
+            # Only log similarity stats once per epoch
+            if should_log:
+                logger.info(
+                    f"Similarity stats: mean={sim_mean:.4f}, std={sim_std:.4f}, min={sim_min:.4f}, max={sim_max:.4f}"
+                )
+                logger.info(
+                    f"Diagonal similarity (should be high for matched pairs): mean={diag_mean:.4f}, gap={alignment_gap:.4f}, SNR={alignment_snr:.2f}"
                 )
 
-            # Check similarity histogram to detect distribution issues
-            sim_hist = torch.histc(similarity.flatten(), bins=10, min=-1.0, max=1.0)
-            logger.info(f"Similarity histogram: {sim_hist.tolist()}")
+            # Adaptive warning threshold based on training stage
+            # Early in training, diag_mean can be close to or even below sim_mean
+            base_threshold = 0.1
+            early_training_factor = max(
+                0.05, min(1.0, (self.current_epoch + 1) / 5.0)
+            )  # Adjust threshold for first 5 epochs
 
-            # Add features to loss inputs - only include what the loss function expects
-            loss_inputs["vision_features"] = vision_features
-            loss_inputs["text_features"] = text_features
+            # For VICReg specifically, be more lenient in early training
+            if isinstance(self.loss_fn, VICRegLoss) and self.current_epoch < 3:
+                threshold = base_threshold * 0.5 * early_training_factor
+            else:
+                threshold = base_threshold * early_training_factor
+
+            if diag_mean < sim_mean + threshold:
+                # In early training, use INFO level instead of WARNING for expected behavior
+                if self.current_epoch < 2 and isinstance(self.loss_fn, VICRegLoss):
+                    logger.info(
+                        f"Early training alignment: Diagonal similarity ({diag_mean:.4f}) gap from mean ({sim_mean:.4f}) is {alignment_gap:.4f}"
+                    )
+                else:
+                    logger.warning(
+                        f"POTENTIAL ISSUE: Diagonal similarity ({diag_mean:.4f}) is not significantly higher than mean ({sim_mean:.4f})"
+                    )
+
+            # Check similarity histogram to detect distribution issues (only once per epoch)
+            if should_log:
+                sim_hist = torch.histc(similarity.flatten(), bins=10, min=-1.0, max=1.0)
+                logger.info(f"Similarity histogram: {sim_hist.tolist()}")
+
             # Store feature_source in a class variable for debugging but don't pass to loss function
             self._debug_feature_source = feature_source
 
-            # ENHANCEMENT: Add noise to features during training to discourage shortcut learning
-            # This makes the task harder and forces the model to learn more robust representations
-            if self.model.training:
-                # Small amount of noise to prevent trivial solutions and shortcut learning
-                # Scale noise based on global_step - start higher, then gradually reduce
-                noise_scale = max(0.05 * (1.0 - self.global_step / 10000), 0.01)
+            # HANDLE DIFFERENT LOSS TYPES APPROPRIATELY
+            if isinstance(self.loss_fn, VICRegLoss):
+                # For VICReg, completely reset loss_inputs to avoid any unexpected arguments
+                # Create a new dictionary with only the needed inputs
+                loss_inputs = {"z_a": vision_features, "z_b": text_features}
+                logger.info("Prepared inputs for VICRegLoss (z_a and z_b only)")
 
-                # Only apply noise with 70% probability for variability
-                if random.random() < 0.7:
-                    # Apply the noise to both vision and text features
-                    vision_noise = torch.randn_like(vision_features) * noise_scale
-                    text_noise = torch.randn_like(text_features) * noise_scale
-
-                    # Apply noise and renormalize
-                    loss_inputs["vision_features"] = F.normalize(
-                        vision_features + vision_noise, p=2, dim=1
-                    )
-                    loss_inputs["text_features"] = F.normalize(
-                        text_features + text_noise, p=2, dim=1
+                # Log VICReg batch statistics if match_id is available, but don't use them in loss
+                if "match_id" in batch:
+                    match_ids = batch["match_id"]
+                    unique_ids = len(set(match_ids))
+                    batch_size = len(match_ids)
+                    logger.info(
+                        f"VICReg batch: {unique_ids} unique IDs in batch of {batch_size} (not used in loss)"
                     )
 
-                    # Log noise level occasionally
-                    if self.global_step % 500 == 0:
-                        logger.info(
-                            f"Applied feature noise with scale {noise_scale:.4f} at step {self.global_step}"
+                # Set match_id_source for debugging but don't include in loss inputs
+                self._debug_match_id_source = "not_used_in_vicreg"
+
+            else:
+                # OTHER LOSS TYPES (ContrastiveLoss, MultiModalMixedContrastiveLoss, etc.)
+                # Standard inputs for other loss types
+                loss_inputs["vision_features"] = vision_features
+                loss_inputs["text_features"] = text_features
+
+                # ENHANCEMENT: Add noise to features during training to discourage shortcut learning
+                # This makes the task harder and forces the model to learn more robust representations
+                if self.model.training:
+                    # Small amount of noise to prevent trivial solutions and shortcut learning
+                    # Scale noise based on global_step - start higher, then gradually reduce
+                    noise_scale = max(0.05 * (1.0 - self.global_step / 10000), 0.01)
+
+                    # Only apply noise with 70% probability for variability
+                    if random.random() < 0.7:
+                        # Apply the noise to both vision and text features
+                        vision_noise = torch.randn_like(vision_features) * noise_scale
+                        text_noise = torch.randn_like(text_features) * noise_scale
+
+                        # Apply noise and renormalize
+                        loss_inputs["vision_features"] = F.normalize(
+                            vision_features + vision_noise, p=2, dim=1
+                        )
+                        loss_inputs["text_features"] = F.normalize(
+                            text_features + text_noise, p=2, dim=1
                         )
 
-        # FIX: Ensure match IDs are properly passed for training and evaluation
-        match_id_source = None
-        if "match_id" in batch:
-            # This is critical - the match_id determines the semantic relationships
-            loss_inputs["match_ids"] = batch["match_id"]
-            match_id_source = "match_id"
+                        # Log noise level occasionally
+                        if self.global_step % 500 == 0:
+                            logger.info(
+                                f"Applied feature noise with scale {noise_scale:.4f} at step {self.global_step}"
+                            )
 
-            # Detailed diagnostics on match_ids
-            match_ids = batch["match_id"]
-            unique_ids = len(set(match_ids))
-            batch_size = len(match_ids)
+                # Add match_ids for contrastive losses
+                match_id_source = None
+                if "match_id" in batch:
+                    # This is critical - the match_id determines the semantic relationships
+                    loss_inputs["match_ids"] = batch["match_id"]
+                    match_id_source = "match_id"
 
-            # Count frequency of each match_id
-            match_id_counts = {}
-            for mid in match_ids:
-                match_id_counts[mid] = match_id_counts.get(mid, 0) + 1
+                    # Detailed diagnostics on match_ids (only once per epoch)
+                    match_ids = batch["match_id"]
+                    unique_ids = len(set(match_ids))
+                    batch_size = len(match_ids)
 
-            # Find the most common match_id and its frequency
-            most_common_id = (
-                max(match_id_counts.items(), key=lambda x: x[1])
-                if match_id_counts
-                else None
-            )
+                    # Only log detailed match ID info once per epoch
+                    if should_log:
+                        # Count frequency of each match_id
+                        match_id_counts = {}
+                        for mid in match_ids:
+                            match_id_counts[mid] = match_id_counts.get(mid, 0) + 1
 
-            logger.info(f"Match IDs: {unique_ids} unique IDs in batch of {batch_size}")
-            if most_common_id:
-                logger.info(
-                    f"Most common match_id appears {most_common_id[1]} times ({most_common_id[1]/batch_size:.1%} of batch)"
-                )
+                        # Find the most common match_id and its frequency
+                        most_common_id = (
+                            max(match_id_counts.items(), key=lambda x: x[1])
+                            if match_id_counts
+                            else None
+                        )
 
-            # Check if we have proper semantic grouping
-            if unique_ids == batch_size:
-                logger.error(
-                    "CRITICAL ERROR: All match_ids are unique - no semantic grouping possible!"
-                )
-            elif unique_ids == 1:
-                logger.error(
-                    "CRITICAL ERROR: All match_ids are identical - treating all pairs as matches!"
-                )
+                        logger.info(
+                            f"Match IDs: {unique_ids} unique IDs in batch of {batch_size}"
+                        )
+                        if most_common_id:
+                            logger.info(
+                                f"Most common match_id appears {most_common_id[1]} times ({most_common_id[1]/batch_size:.1%} of batch)"
+                            )
 
-        elif "idx" in batch:
-            # Fallback to indices - not ideal but better than nothing
-            loss_inputs["match_ids"] = batch["idx"]
-            match_id_source = "idx_fallback"
-            logger.warning(
-                "Using idx as fallback for match_ids - this may lead to poor performance!"
-            )
-        else:
-            # Last resort - use position-based matching
-            # This is highly problematic and will cause shortcut learning!
-            match_id_source = "position_fallback"
-            logger.error(
-                "No match_id or idx found in batch - using position-based matching!"
-            )
-            logger.error(
-                "THIS WILL LIKELY CAUSE SHORTCUT LEARNING AND POOR EVALUATION RESULTS!"
-            )
+                    # Check if we have proper semantic grouping
+                    if unique_ids == batch_size:
+                        logger.error(
+                            "CRITICAL ERROR: All match_ids are unique - no semantic grouping possible!"
+                        )
+                    elif unique_ids == 1:
+                        logger.error(
+                            "CRITICAL ERROR: All match_ids are identical - treating all pairs as matches!"
+                        )
 
-        # Store match_id_source in a class variable for debugging but don't pass to loss function
-        self._debug_match_id_source = match_id_source
+                elif "idx" in batch:
+                    # Fallback to indices - not ideal but better than nothing
+                    loss_inputs["match_ids"] = batch["idx"]
+                    match_id_source = "idx_fallback"
+                    logger.warning(
+                        "Using idx as fallback for match_ids - this may lead to poor performance!"
+                    )
+                else:
+                    # Last resort - use position-based matching
+                    # This is highly problematic and will cause shortcut learning!
+                    match_id_source = "position_fallback"
+                    logger.error(
+                        "No match_id or idx found in batch - using position-based matching!"
+                    )
+                    logger.error(
+                        "THIS WILL LIKELY CAUSE SHORTCUT LEARNING AND POOR EVALUATION RESULTS!"
+                    )
 
-        # Add classification logits if available
-        if "classification" in outputs and "label" in batch:
-            loss_inputs["class_logits"] = outputs["classification"]
-            loss_inputs["class_labels"] = batch["label"]
+                # Store match_id_source in a class variable for debugging but don't pass to loss function
+                self._debug_match_id_source = match_id_source
 
-        # Add multimodal matching logits if available
-        if "matching_logits" in outputs:
-            loss_inputs["matching_logits"] = outputs["matching_logits"]
-            # For matching, diagonal elements are positives (matching pairs)
-            batch_size = outputs["matching_logits"].shape[0]
-            matching_labels = torch.eye(batch_size, device=self.device)
-            loss_inputs["matching_labels"] = matching_labels
+                # Add classification logits if available
+                if "classification" in outputs and "label" in batch:
+                    loss_inputs["class_logits"] = outputs["classification"]
+                    loss_inputs["class_labels"] = batch["label"]
+
+                # Add multimodal matching logits if available
+                if "matching_logits" in outputs:
+                    loss_inputs["matching_logits"] = outputs["matching_logits"]
+                    # For matching, diagonal elements are positives (matching pairs)
+                    batch_size = outputs["matching_logits"].shape[0]
+                    matching_labels = torch.eye(batch_size, device=self.device)
+                    loss_inputs["matching_labels"] = matching_labels
 
         return loss_inputs
 
@@ -2097,6 +2398,96 @@ class MultimodalTrainer:
         torch.save(checkpoint, path)
         logger.info(f"Checkpoint saved to {path}")
 
+    def _evaluate_tokenizer_quality(self, epoch: int) -> Dict[str, float]:
+        """
+        Evaluate tokenizer quality metrics and log results once per epoch.
+
+        Args:
+            epoch: Current epoch number
+
+        Returns:
+            Dictionary with tokenizer quality metrics
+        """
+        # Find the tokenizer from the dataset
+        tokenizer = None
+        text_samples = []
+        match_ids = []
+
+        # Try to extract tokenizer and text samples from dataloader's dataset
+        if hasattr(self.train_dataloader, "dataset"):
+            dataset = self.train_dataloader.dataset
+
+            # Common multimodal dataset attribute names
+            if hasattr(dataset, "tokenizer"):
+                tokenizer = dataset.tokenizer
+            elif hasattr(dataset, "text_tokenizer"):
+                tokenizer = dataset.text_tokenizer
+
+            # Try to extract text samples from a recent batch
+            # The goal is to get a sample of real training data
+            sample_size = min(100, len(dataset))
+            indices = np.random.randint(0, len(dataset), size=sample_size)
+
+            # Collect text samples and match IDs (if available)
+            for idx in indices:
+                try:
+                    sample = dataset[idx]
+
+                    # Handle different dataset formats
+                    if isinstance(sample, dict):
+                        if "text" in sample:
+                            if isinstance(sample["text"], str):
+                                text_samples.append(sample["text"])
+                            elif (
+                                isinstance(sample["text"], dict)
+                                and "raw_text" in sample["text"]
+                            ):
+                                text_samples.append(sample["text"]["raw_text"])
+                        elif "raw_text" in sample:
+                            text_samples.append(sample["raw_text"])
+                        elif "caption" in sample:
+                            text_samples.append(sample["caption"])
+
+                        # Collect match_ids if available
+                        if "match_id" in sample:
+                            match_ids.append(sample["match_id"])
+                except Exception as e:
+                    logger.warning(f"Error sampling dataset item: {str(e)}")
+                    continue
+
+        # If we couldn't find the tokenizer or text samples, return empty metrics
+        if tokenizer is None:
+            logger.warning("Could not find tokenizer for quality evaluation")
+            return {}
+
+        if not text_samples:
+            logger.warning("Could not find text samples for tokenizer evaluation")
+            return {}
+
+        # Check if we have match_ids
+        if not match_ids or len(match_ids) != len(text_samples):
+            match_ids = None
+            logger.info("Match IDs not available for semantic tokenizer evaluation")
+
+        # Evaluate tokenizer quality and log results
+        try:
+            metrics = log_tokenizer_evaluation(
+                tokenizer=tokenizer,
+                text_data=text_samples,
+                match_ids=match_ids,
+                epoch=epoch,
+            )
+
+            # Save metrics to history
+            for k, v in metrics.items():
+                if not isinstance(v, dict) and not isinstance(v, list):
+                    self.history[f"tokenizer_{k}"].append(v)
+
+            return metrics
+        except Exception as e:
+            logger.error(f"Error evaluating tokenizer quality: {str(e)}")
+            return {}
+
     def load_checkpoint(self, path: str) -> None:
         """
         Load a checkpoint.
@@ -2195,4 +2586,176 @@ class MultimodalTrainer:
 
             if save_dir:
                 plt.savefig(os.path.join(save_dir, f"{metric}.png"))
+            plt.close()
+
+        # Plot alignment metrics if available
+        if hasattr(self, "_alignment_history") and self._alignment_history["step"]:
+            plt.figure(figsize=(12, 8))
+
+            # Plot diagonal similarity vs. mean similarity
+            plt.subplot(2, 1, 1)
+            steps = self._alignment_history["step"]
+            plt.plot(
+                steps,
+                self._alignment_history["diag_mean"],
+                label="Diagonal Similarity",
+                color="blue",
+            )
+            plt.plot(
+                steps,
+                self._alignment_history["sim_mean"],
+                label="Mean Similarity",
+                color="red",
+                linestyle="--",
+            )
+            plt.title("Semantic Alignment Progress")
+            plt.xlabel("Training Steps")
+            plt.ylabel("Cosine Similarity")
+            plt.legend()
+            plt.grid(True)
+
+            # Plot alignment gap and SNR
+            plt.subplot(2, 1, 2)
+            plt.plot(
+                steps,
+                self._alignment_history["alignment_gap"],
+                label="Alignment Gap",
+                color="green",
+            )
+            plt.plot(
+                steps,
+                self._alignment_history["alignment_snr"],
+                label="Signal-to-Noise Ratio",
+                color="purple",
+                linestyle="--",
+            )
+            plt.title("Alignment Quality Metrics")
+            plt.xlabel("Training Steps")
+            plt.ylabel("Metric Value")
+            plt.legend()
+            plt.grid(True)
+
+            plt.tight_layout()
+
+            if save_dir:
+                plt.savefig(os.path.join(save_dir, "alignment_progress.png"))
+            plt.close()
+
+        # Plot tokenizer quality metrics if available
+        tokenizer_metrics = [
+            k for k in self.history.keys() if k.startswith("tokenizer_")
+        ]
+        if tokenizer_metrics:
+            plt.figure(figsize=(12, 8))
+
+            # Plot overall quality score
+            if "tokenizer_overall_quality_score" in self.history:
+                epochs = range(
+                    1, len(self.history["tokenizer_overall_quality_score"]) + 1
+                )
+                plt.subplot(2, 2, 1)
+                plt.plot(
+                    epochs,
+                    self.history["tokenizer_overall_quality_score"],
+                    color="blue",
+                    marker="o",
+                )
+                plt.title("Tokenizer Quality Score")
+                plt.xlabel("Epoch")
+                plt.ylabel("Score (0-100)")
+                plt.grid(True)
+
+            # Plot unknown token percentage
+            if "tokenizer_unknown_token_percentage" in self.history:
+                epochs = range(
+                    1, len(self.history["tokenizer_unknown_token_percentage"]) + 1
+                )
+                plt.subplot(2, 2, 2)
+                plt.plot(
+                    epochs,
+                    self.history["tokenizer_unknown_token_percentage"],
+                    color="red",
+                    marker="o",
+                )
+                plt.title("Unknown Token Percentage")
+                plt.xlabel("Epoch")
+                plt.ylabel("Percentage")
+                plt.grid(True)
+
+            # Plot semantic metrics if available
+            semantic_plots = 0
+            if "tokenizer_semantic_token_overlap" in self.history:
+                epochs = range(
+                    1, len(self.history["tokenizer_semantic_token_overlap"]) + 1
+                )
+                plt.subplot(2, 2, 3)
+                plt.plot(
+                    epochs,
+                    self.history["tokenizer_semantic_token_overlap"],
+                    color="green",
+                    marker="o",
+                )
+                plt.title("Semantic Token Overlap")
+                plt.xlabel("Epoch")
+                plt.ylabel("Overlap Score")
+                plt.grid(True)
+                semantic_plots += 1
+
+            if "tokenizer_semantic_length_consistency" in self.history:
+                epochs = range(
+                    1, len(self.history["tokenizer_semantic_length_consistency"]) + 1
+                )
+                plt.subplot(2, 2, 4)
+                plt.plot(
+                    epochs,
+                    self.history["tokenizer_semantic_length_consistency"],
+                    color="purple",
+                    marker="o",
+                )
+                plt.title("Length Consistency")
+                plt.xlabel("Epoch")
+                plt.ylabel("Consistency Score")
+                plt.grid(True)
+                semantic_plots += 1
+
+            # If we don't have semantic metrics, plot other available metrics
+            if semantic_plots == 0:
+                # Plot token distribution entropy
+                if "tokenizer_token_distribution_entropy" in self.history:
+                    epochs = range(
+                        1, len(self.history["tokenizer_token_distribution_entropy"]) + 1
+                    )
+                    plt.subplot(2, 2, 3)
+                    plt.plot(
+                        epochs,
+                        self.history["tokenizer_token_distribution_entropy"],
+                        color="green",
+                        marker="o",
+                    )
+                    plt.title("Token Distribution Entropy")
+                    plt.xlabel("Epoch")
+                    plt.ylabel("Entropy")
+                    plt.grid(True)
+
+                # Plot tokens per word ratio
+                if "tokenizer_tokens_per_word_ratio" in self.history:
+                    epochs = range(
+                        1, len(self.history["tokenizer_tokens_per_word_ratio"]) + 1
+                    )
+                    plt.subplot(2, 2, 4)
+                    plt.plot(
+                        epochs,
+                        self.history["tokenizer_tokens_per_word_ratio"],
+                        color="orange",
+                        marker="o",
+                    )
+                    plt.title("Tokens per Word Ratio")
+                    plt.xlabel("Epoch")
+                    plt.ylabel("Ratio")
+                    plt.grid(True)
+
+            plt.tight_layout()
+
+            if save_dir:
+                plt.savefig(os.path.join(save_dir, "tokenizer_quality.png"))
             plt.close()

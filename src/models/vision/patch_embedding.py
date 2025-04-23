@@ -25,7 +25,7 @@ class PatchEmbedding(nn.Module):
         image_size: int = 224,
         patch_size: int = 16,
         in_channels: int = 3,
-        embed_dim: int = 768,
+        embed_dim: int = 512,
         dropout: float = 0.0,
         use_cls_token: bool = True,
         positional_encoding: str = "learned",

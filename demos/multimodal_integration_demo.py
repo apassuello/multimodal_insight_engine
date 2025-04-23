@@ -42,18 +42,18 @@ logger = logging.getLogger(__name__)
 # Import our modules (adjust paths as needed)
 from src.models.vision.vision_transformer import VisionTransformer
 from src.models.transformer import EncoderDecoderTransformer
-from src.models.vision.multimodal_integration import (
+from src.models.multimodal.multimodal_integration import (
     MultiModalTransformer,
-    EnhancedMultiModalTransformer,
+    CrossAttentionMultiModalTransformer,
 )
-from src.models.vision.cross_modal_attention import (
-    CoAttentionFusion,
+from src.models.multimodal.bidirectional_cross_attention import (
     BidirectionalCrossAttention,
 )
+from src.models.multimodal.co_attention_fusion import CoAttentionFusion
 from src.models.vision.image_preprocessing import ImagePreprocessor
 from src.data.tokenization.optimized_bpe_tokenizer import OptimizedBPETokenizer
-from src.training.contrastive_learning import (
-    ContrastiveLoss,
+from src.training.loss.contrastive_loss import ContrastiveLoss
+from src.training.loss.multimodal_mixed_contrastive_loss import (
     MultiModalMixedContrastiveLoss,
 )
 from src.training.multimodal_trainer import MultimodalTrainer
@@ -236,9 +236,9 @@ class FlickrMultiModalDataset(Dataset):
             img = Image.fromarray(img)
 
             # Create descriptive caption
-            shape_name = shapes[shape_type]
-            color_name = colors[primary_color]
-            secondary_color_name = colors[secondary_color]
+            shape_name = shapes[shape_type % len(shapes)]
+            color_name = colors[primary_color % len(colors)]
+            secondary_color_name = colors[secondary_color % len(colors)]
 
             caption_templates = [
                 f"A {color_name} {shape_name} with a {secondary_color_name} circle",
@@ -461,7 +461,7 @@ def create_models(device, fusion_type="bidirectional"):
         )
         logger.info("Using simple projection-based multimodal integration")
     else:
-        multimodal_model = EnhancedMultiModalTransformer(
+        multimodal_model = CrossAttentionMultiModalTransformer(
             vision_model=vision_model,
             text_model=text_model,
             fusion_dim=512,
@@ -508,17 +508,19 @@ class TokenizerWithSpecials:
         }
 
     def encode(self, text):
-        if hasattr(self.base_tokenizer, "encode"):
-            return self.base_tokenizer.encode(text)
-        # Fallback encoding method
-        return (
-            [self._special_tokens["bos_token_idx"]]
-            + [hash(token) % 50000 for token in text.split()]
-            + [self._special_tokens["eos_token_idx"]]
-        )
+        """Encode text to token IDs."""
+        if self.base_tokenizer is None:
+            # Fallback encoding method
+            return (
+                [self._special_tokens["bos_token_idx"]]
+                + [hash(token) % 50000 for token in text.split()]
+                + [self._special_tokens["eos_token_idx"]]
+            )
+        return self.base_tokenizer.encode(text)
 
     @property
     def special_tokens(self):
+        """Get special token indices."""
         return self._special_tokens
 
 

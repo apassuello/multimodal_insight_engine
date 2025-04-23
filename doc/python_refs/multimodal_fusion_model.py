@@ -9,7 +9,7 @@ class MultimodalFusionModel(nn.Module):
     """
     def __init__(self, 
                  vocab_size, 
-                 embed_dim=768, 
+                 embed_dim=512, 
                  text_encoder_layers=6,
                  text_encoder_heads=8,
                  image_size=224,

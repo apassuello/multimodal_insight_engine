@@ -1,7 +1,7 @@
 # MultiModal Insight Engine Architecture
 ## Project Overview
 This document provides an overview of the project structure, key components, and architecture.
-Generated from 78 source files.
+Generated from 84 source files.
 
 ## Directory Structure
 ```
@@ -12,6 +12,7 @@ Generated from 78 source files.
         📄 pruning.py
         📄 benchmarking.py
     📁 training/
+        📄 loss_factory.py
         📄 metrics.py
         📄 contrastive_learning.py
         📄 transformer_utils.py
@@ -24,7 +25,9 @@ Generated from 78 source files.
         📄 multimodal_trainer.py
         📄 joint_bpe_training.py
     📁 utils/
+        📄 model_utils.py
         📄 logging.py
+        📄 argument_configs.py
         📄 config.py
         📄 visualization.py
         📄 list_models.py
@@ -40,12 +43,16 @@ Generated from 78 source files.
             📄 cross_modal_attention.py
             📄 patch_embedding.py
         📄 base_model.py
+        📁 multimodal/
+            📄 fusion.py
         📄 embeddings.py
         📄 transformer.py
         📄 text_generation.py
         📄 layers.py
+        📄 model_factory.py
         📁 pretrained/
             📄 vision_transformer.py
+            📄 huggingface_wrapper.py
             📄 clip_model.py
             📄 base_wrapper.py
             📄 model_registry.py
@@ -66,6 +73,7 @@ Generated from 78 source files.
     📁 evaluation/
         📄 translation_metrics.py
         📄 language_model_evaluation.py
+        📄 inference_demo.py
     📁 data/
         📄 wmt_dataset.py
         📄 curriculum_dataset.py
@@ -77,9 +85,8 @@ Generated from 78 source files.
         📄 europarl_dataset.py
         📄 combined_wmt_translation_dataset.py
         📄 combined_translation_dataset.py
+        📄 multimodal_data_utils.py
         📁 tokenization/
-            📄 wmt_bpe_tokenizer.py
-            📄 work_tokenizer.py
             📄 optimized_bpe_tokenizer.py
             📄 base_tokenizer.py
             📄 utils.py
@@ -110,6 +117,7 @@ Generated from 78 source files.
 | `src/data/image_dataset.py` | Provides dataset functionality for loading and preprocessing image data for vision transformer mo... | 4 |
 | `src/data/iwslt_dataset.py` | Provides a dataset class for loading and preprocessing IWSLT dataset for machine translation | 5 |
 | `src/data/language_modeling.py` | Implements dataset and dataloaders for language modeling tasks with efficient tokenization and ba... | 5 |
+| `src/data/multimodal_data_utils.py` | Utilities for multimodal data loading and processing | 7 |
 | `src/data/multimodal_dataset.py` | No metadata function available | N/A |
 | `src/data/opensubtitles_dataset.py` | Provides a dataset class for loading and preprocessing OpenSubtitles parallel corpus data for mac... | 4 |
 | `src/data/preprocessing.py` | Provides data preprocessing utilities for time series data and machine learning datasets | 4 |
@@ -122,11 +130,10 @@ Generated from 78 source files.
 | `src/data/tokenization/turbo_bpe_preprocessor.py` | No metadata function available | N/A |
 | `src/data/tokenization/utils.py` | No metadata function available | N/A |
 | `src/data/tokenization/vocabulary.py` | Implements a flexible vocabulary system for mapping between tokens and indices with special token... | 6 |
-| `src/data/tokenization/wmt_bpe_tokenizer.py` | No metadata function available | N/A |
-| `src/data/tokenization/work_tokenizer.py` | No metadata function available | N/A |
 | `src/data/wikipedia_dataset.py` | Provides a dataset class for loading and preprocessing Wikipedia Web2M data from TFRecord format | 5 |
 | `src/data/wmt_dataloader.py` | Provides a data loader for WMT (Workshop on Machine Translation) parallel corpus | 3 |
 | `src/data/wmt_dataset.py` | Provides a dataset class for loading and preprocessing WMT dataset for machine translation | 4 |
+| `src/evaluation/inference_demo.py` | Inference demo utilities for multimodal models | 7 |
 | `src/evaluation/language_model_evaluation.py` | Provides comprehensive evaluation utilities for language models, including perplexity calculation... | 7 |
 | `src/evaluation/translation_metrics.py` | Implements standard evaluation metrics for machine translation tasks including BLEU and TER scoring | 3 |
 | `src/models/activations.py` | Implements various activation functions used in the transformer architecture | 1 |
@@ -135,10 +142,13 @@ Generated from 78 source files.
 | `src/models/embeddings.py` | Implements token embedding layers for transformer models with proper initialization and scaling | 2 |
 | `src/models/feed_forward.py` | Implements various feed-forward neural network architectures with modern features for flexible mo... | 6 |
 | `src/models/layers.py` | Implements fundamental neural network layers with advanced features for transformer architectures | 4 |
+| `src/models/model_factory.py` | Factory functions for creating and configuring different types of models | 8 |
+| `src/models/multimodal/fusion.py` | No metadata function available | N/A |
 | `src/models/positional.py` | Implements various positional encoding schemes for transformer models to handle sequence order in... | 7 |
 | `src/models/pretrained/adapters.py` | Implements adapter layers for fine-tuning frozen pretrained models efficiently | 3 |
 | `src/models/pretrained/base_wrapper.py` | Provides a base wrapper class for pretrained models with consistent interface | 4 |
 | `src/models/pretrained/clip_model.py` | Provides a wrapper for OpenAI CLIP multimodal models with standardized interface | 5 |
+| `src/models/pretrained/huggingface_wrapper.py` | No metadata function available | N/A |
 | `src/models/pretrained/model_registry.py` | Implements a registry pattern for accessing and instantiating pretrained models | 3 |
 | `src/models/pretrained/vision_transformer.py` | Provides a wrapper for Hugging Face Vision Transformer models with standardized interface | 3 |
 | `src/models/text_generation.py` | Provides utilities for text generation using language models | 7 |
@@ -165,6 +175,7 @@ Generated from 78 source files.
 | `src/training/contrastive_learning.py` | No metadata function available | N/A |
 | `src/training/joint_bpe_training.py` | Implements joint BPE tokenizer training for multilingual text processing in machine translation t... | 3 |
 | `src/training/language_model_trainer.py` | Implements a specialized trainer for language modeling tasks with support for causal language mod... | 8 |
+| `src/training/loss_factory.py` | Factory functions for creating and configuring loss functions | 7 |
 | `src/training/losses.py` | Implements custom loss functions for model training with support for label smoothing and weighted... | 4 |
 | `src/training/metrics.py` | Implements common training metrics for model evaluation with support for various tasks | 7 |
 | `src/training/multimodal_trainer.py` | No metadata function available | N/A |
@@ -173,11 +184,13 @@ Generated from 78 source files.
 | `src/training/transformer_trainer.py` | Implements a specialized trainer for transformer models with support for encoder-decoder architec... | 8 |
 | `src/training/transformer_utils.py` | Provides utility functions and classes for transformer model training, including attention maskin... | 6 |
 | `src/training/vision_transformer_trainer.py` | Provides a specialized trainer for Vision Transformer models with advanced training techniques | 8 |
+| `src/utils/argument_configs.py` | Argument configuration utilities for multimodal training scripts | 4 |
 | `src/utils/config.py` | Provides configuration management utilities with file loading and environment support | 3 |
 | `src/utils/list_models.py` | Provides utilities for listing and retrieving information about available models | 4 |
 | `src/utils/logging.py` | Provides custom logging functionality with configurable file and console output | 4 |
+| `src/utils/model_utils.py` | No metadata function available | N/A |
 | `src/utils/profiling.py` | Provides utilities for profiling and benchmarking PyTorch models with comprehensive performance a... | 9 |
-| `src/utils/visualization.py` | Provides visualization utilities for model performance, attention patterns, and embeddings | 5 |
+| `src/utils/visualization.py` | Provides visualization utilities for model performance, attention patterns, embeddings, and multi... | 7 |
 
 
 ## Complexity Analysis
@@ -196,7 +209,7 @@ src/training/language_model_trainer.py           | █████████�
 src/training/transformer_trainer.py              | ██████████████████████████ (8)
 ```
 
-**Average Module Complexity:** 5.54
+**Average Module Complexity:** 5.64
 
 ## Dependencies
 **External Dependencies:**
@@ -205,31 +218,32 @@ src/training/transformer_trainer.py              | █████████�
 
 |---------|-------------|
 
-| torch | 43 |
-| numpy | 19 |
+| torch | 47 |
+| numpy | 20 |
+| matplotlib | 9 |
+| tqdm | 9 |
+| logging | 8 |
 | json | 8 |
-| matplotlib | 8 |
-| tqdm | 8 |
-| logging | 5 |
+| random | 5 |
 | typing | 4 |
 | re | 4 |
-| random | 4 |
 | os | 3 |
 | seaborn | 3 |
 | nltk | 2 |
+| argparse | 2 |
 | sklearn | 2 |
 | psutil | 2 |
+| transformers | 2 |
 | PIL | 2 |
 | datasets | 2 |
 | collections.Counter | 2 |
 | time | 1 |
 | src.data.tokenization | 1 |
-| argparse | 1 |
 | huggingface_hub | 1 |
 | pandas | 1 |
+| timm | 1 |
 | torchvision | 1 |
 | math | 1 |
-| transformers | 1 |
 | open_clip | 1 |
 | datetime | 1 |
 | collections | 1 |
@@ -1615,10 +1629,10 @@ Manages token-to-index and index-to-token mappings with special token handling
 
 
 ## Statistics
-- Total Python modules: 78
-- Modules with metadata: 65
-- Modules without metadata: 13
-- External dependencies: 36
+- Total Python modules: 84
+- Modules with metadata: 70
+- Modules without metadata: 14
+- External dependencies: 37
 
 ---
 Generated automatically from source code metadata

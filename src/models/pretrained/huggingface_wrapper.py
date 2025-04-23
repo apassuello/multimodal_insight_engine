@@ -27,6 +27,22 @@ class HuggingFaceTextModelWrapper(nn.Module):
         """
         super().__init__()
 
+        # Map common model shorthand names to full Hugging Face identifiers
+        model_mapping = {
+            "bert-base": "bert-base-uncased",
+            "bert-base-uncased": "bert-base-uncased",
+            "bert-large": "bert-large-uncased",
+            "bert-large-uncased": "bert-large-uncased",
+            "roberta-base": "roberta-base",
+            "roberta-large": "roberta-large",
+            "distilbert-base": "distilbert-base-uncased",
+            "mobilebert": "google/mobilebert-uncased",
+            "albert-base": "albert-base-v2",
+        }
+
+        # Use the mapping if available, otherwise use the original name
+        model_name = model_mapping.get(model_name, model_name)
+
         # Get system device
         system_device = torch.device(
             "cuda"
@@ -53,7 +69,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "mobilebert"
             print(f"MobileBERT hidden size: {self.d_model}")  # Diagnostic logging
-            
+
         elif "albert" in model_name.lower():
             from transformers import AlbertModel, AlbertTokenizer
 
@@ -61,7 +77,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder = AlbertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "albert"
-            
+
         elif "minilm" in model_name.lower():
             from transformers import AutoModel
 
@@ -70,7 +86,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "minilm"
             print(f"MiniLM hidden size: {self.d_model}")  # Diagnostic logging
-            
+
         elif "flaubert" in model_name.lower():
             from transformers import FlaubertModel
 
@@ -79,7 +95,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "flaubert"
             print(f"FlauBERT hidden size: {self.d_model}")  # Diagnostic logging
-            
+
         elif "bert" in model_name.lower() and "distil" not in model_name.lower():
             from transformers import BertModel, BertTokenizer
 
@@ -87,7 +103,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder = BertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "bert"
-            
+
         elif "roberta" in model_name.lower():
             from transformers import RobertaModel, RobertaTokenizer
 
@@ -95,7 +111,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder = RobertaModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "roberta"
-            
+
         elif "distilbert" in model_name.lower():
             from transformers import DistilBertModel, DistilBertTokenizer
 
@@ -103,11 +119,12 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder = DistilBertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "distilbert"
-            
+
         else:
             # Attempt to load model using AutoModel for any other HuggingFace model
             try:
                 from transformers import AutoModel
+
                 print(f"Attempting to load model with AutoModel: {model_name}")
                 self.encoder = AutoModel.from_pretrained(model_name)
                 self.d_model = self.encoder.config.hidden_size
@@ -134,14 +151,56 @@ class HuggingFaceTextModelWrapper(nn.Module):
         Encode text using the HuggingFace model.
 
         Args:
-            src: Input token indices
-            src_mask: Attention mask for padding
+            src: Input token indices or dictionary containing 'input_ids' and 'attention_mask'
+            src_mask: Attention mask for padding (used if src is a tensor)
 
         Returns:
             Encoded text features
         """
-        # Get original device
-        input_device = src.device
+        # Handle dictionary input format from datasets
+        if isinstance(src, dict):
+            # Extract input_ids and attention_mask from the dictionary
+            # Handle different naming conventions from different datasets
+
+            # Map common key names to expected HuggingFace inputs
+            key_mapping = {
+                "input_ids": ["input_ids", "src", "token_ids", "ids"],
+                "attention_mask": ["attention_mask", "src_mask", "mask", "attn_mask"],
+            }
+
+            # Try to find input_ids from various possible keys
+            input_ids = None
+            for possible_key in key_mapping["input_ids"]:
+                if possible_key in src:
+                    input_ids = src[possible_key]
+                    # print(f"Found input_ids as '{possible_key}'")
+                    break
+
+            # Try to find attention_mask from various possible keys
+            attention_mask = None
+            for possible_key in key_mapping["attention_mask"]:
+                if possible_key in src:
+                    attention_mask = src[possible_key]
+                    # print(f"Found attention_mask as '{possible_key}'")
+                    break
+
+            # Make sure we have valid input_ids
+            if input_ids is None:
+                # Show available keys to help with debugging
+                avail_keys = list(src.keys())
+                raise ValueError(
+                    f"Dictionary input must contain 'input_ids' or equivalent. Available keys: {avail_keys}"
+                )
+
+            # Get device from input_ids
+            input_device = input_ids.device
+
+            # Use the extracted values instead of the original src and src_mask
+            src = input_ids
+            src_mask = attention_mask
+        else:
+            # For tensor input, get the device directly
+            input_device = src.device
 
         # MPS compatibility mode - check if we're on MPS and handle specially
         is_mps = input_device.type == "mps" or torch.backends.mps.is_available()

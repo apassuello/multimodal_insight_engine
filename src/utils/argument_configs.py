@@ -112,6 +112,19 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         default=4,
         help="Minimum number of samples per semantic group in each batch",
     )
+    parser.add_argument(
+        "--max_samples_per_group",
+        type=int,
+        default=None,
+        help="Maximum number of samples per semantic group (caps large groups)",
+    )
+    parser.add_argument(
+        "--cap_strategy",
+        type=str,
+        default="random",
+        choices=["random", "split"],
+        help="Strategy for capping large semantic groups: 'random' (subsample) or 'split' (create new groups)",
+    )
 
     # Model arguments
     parser.add_argument(
@@ -198,6 +211,8 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
             "dynamic_temp",
             "hard_negative",
             "mixed",
+            "barlow_twins",
+            "vicreg",
         ],
         help="Type of contrastive loss to use",
     )
@@ -238,6 +253,74 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         default=None,
         help="Weight factor for hard negatives (higher = more emphasis)",
     )
+    
+    # VICReg specific arguments
+    parser.add_argument(
+        "--sim_weight",
+        type=float,
+        default=50.0,  # Increased from 25.0
+        help="Weight for VICReg invariance (similarity) term",
+    )
+    parser.add_argument(
+        "--var_weight",
+        type=float,
+        default=5.0,   # Decreased from 25.0
+        help="Weight for VICReg variance term",
+    )
+    parser.add_argument(
+        "--cov_weight",
+        type=float,
+        default=1.0,
+        help="Weight for VICReg covariance term",
+    )
+    parser.add_argument(
+        "--vicreg_warmup_epochs",
+        type=int,
+        default=5,
+        help="Number of epochs for VICReg coefficient warm-up",
+    )
+    parser.add_argument(
+        "--use_curriculum",
+        action="store_true",
+        default=True,
+        help="Use curriculum learning for VICReg (focusing on invariance first)",
+    )
+    parser.add_argument(
+        "--use_contrastive_pretrain",
+        action="store_true",
+        default=False,
+        help="Start with contrastive pre-training before switching to VICReg",
+    )
+    parser.add_argument(
+        "--contrastive_pretrain_steps",
+        type=int,
+        default=300,
+        help="Number of steps to use contrastive pre-training before switching to VICReg",
+    )
+    parser.add_argument(
+        "--adaptive_transition",
+        action="store_true",
+        default=True,
+        help="Adaptively transition from contrastive to VICReg based on alignment metrics",
+    )
+    parser.add_argument(
+        "--min_alignment_threshold",
+        type=float,
+        default=0.3,
+        help="Minimum alignment gap threshold to trigger transition from contrastive to VICReg",
+    )
+    parser.add_argument(
+        "--gradual_transition_steps",
+        type=int,
+        default=100,
+        help="Number of steps for gradual transition from contrastive to VICReg",
+    )
+    parser.add_argument(
+        "--verbose_logging",
+        action="store_true",
+        default=False,
+        help="Enable more detailed logging of training metrics and alignment progress",
+    )
 
     # Training arguments
     parser.add_argument(
@@ -263,9 +346,39 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         "--use_mixed_loss", action="store_true", help="Use mixed contrastive loss"
     )
     parser.add_argument(
+        "--contrastive_weight",
+        type=float,
+        default=0.4,
+        help="Weight for InfoNCE contrastive loss component",
+    )
+    parser.add_argument(
+        "--classification_weight",
+        type=float,
+        default=0.3,
+        help="Weight for NT-Xent classification loss component",
+    )
+    parser.add_argument(
+        "--multimodal_matching_weight",
+        type=float,
+        default=0.3,
+        help="Weight for supervised multimodal matching loss component",
+    )
+    parser.add_argument(
+        "--use_hard_negatives",
+        action="store_true",
+        default=False,
+        help="Use hard negative mining in contrastive loss",
+    )
+    parser.add_argument(
         "--use_mixed_precision",
         action="store_true",
         help="Use mixed precision training",
+    )
+    parser.add_argument(
+        "--clip_grad_norm",
+        type=float,
+        default=None,
+        help="Maximum norm for gradient clipping (None means no clipping)",
     )
 
     # Output arguments

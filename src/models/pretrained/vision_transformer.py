@@ -13,7 +13,20 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
         
     def load_model(self, model_name: str) -> None:
         """Load a pretrained Vision Transformer."""
-        self.pretrained_model = ViTModel.from_pretrained(model_name)
+        # Map shortened model names to full Hugging Face identifiers
+        model_mapping = {
+            "vit-base": "google/vit-base-patch16-224",
+            "vit-large": "google/vit-large-patch16-224",
+            "vit-base-384": "google/vit-base-patch16-384",
+            "vit-large-384": "google/vit-large-patch16-384",
+            "vit-huge": "google/vit-huge-patch14-224-in21k",
+        }
+        
+        # Use the mapping if available, otherwise use the original name
+        full_model_name = model_mapping.get(model_name, model_name)
+        print(f"Loading vision model: {full_model_name} (from '{model_name}')")
+        
+        self.pretrained_model = ViTModel.from_pretrained(full_model_name)
         self.config = self.pretrained_model.config.to_dict()
         
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
