@@ -669,12 +669,20 @@ class MultimodalTrainer:
             f"=== Stage 1: Training modality-specific projections ({stage1_epochs} epochs) ==="
         )
 
-        # Freeze cross-attention and fusion layers
+        # Stage 1: Freeze base models entirely, only train projection layers
+        # This is the typical first stage in progressive unfreezing
         for name, param in self.model.named_parameters():
-            if any(x in name for x in ["cross", "fusion", "gate"]):
+            # Freeze base vision and text models
+            if any(x in name for x in ["vision_model", "text_model"]):
                 param.requires_grad = False
+            # Freeze cross-attention and fusion layers
+            elif any(x in name for x in ["cross", "fusion", "gate"]): 
+                param.requires_grad = False
+            # Only train projection layers and other non-base components
             else:
                 param.requires_grad = True
+                
+        logger.info("Stage 1: Base models frozen, training only projection layers")
 
         # Create optimizer for Stage 1
         stage1_optimizer = torch.optim.AdamW(
@@ -778,8 +786,8 @@ class MultimodalTrainer:
                 "Using VICRegLoss for Stage 1 with higher variance regularization"
             )
             stage1_loss = VICRegLoss(
-                sim_coeff=25.0,
-                var_coeff=30.0,  # Higher variance coefficient for Stage 1
+                sim_coeff=5.0,
+                var_coeff=5.0,  # Higher variance coefficient for Stage 1
                 cov_coeff=1.0,
                 epsilon=1e-3,
             )
@@ -819,21 +827,57 @@ class MultimodalTrainer:
         )
         self.save_checkpoint(stage1_checkpoint_path)
 
-        # === Stage 2: Train cross-modal fusion ===
+        # === Stage 2: Unfreeze top layers of base models + fusion ===
         logger.info(
-            f"=== Stage 2: Training cross-modal fusion ({stage2_epochs} epochs) ==="
+            f"=== Stage 2: Training top layers of base models + fusion ({stage2_epochs} epochs) ==="
         )
 
-        # Freeze base models, unfreeze fusion components
+        # Stage 2: Unfreeze last few layers of base models + fusion components
+        # This is the typical second stage in progressive unfreezing
         for name, param in self.model.named_parameters():
-            if any(x in name for x in ["vision_model", "text_model"]):
-                param.requires_grad = False
+            # Selectively unfreeze top layers of vision model
+            if "vision_model" in name:
+                if any(f"layer.{i}" in name for i in range(9, 12)) or "pooler" in name:
+                    # Unfreeze only layers 9-11 and pooler (last 3 layers)
+                    param.requires_grad = True
+                else:
+                    # Keep earlier layers frozen
+                    param.requires_grad = False
+            # Selectively unfreeze top layers of text model
+            elif "text_model" in name:
+                if any(f"layer.{i}" in name for i in range(9, 12)) or "pooler" in name:
+                    # Unfreeze only layers 9-11 and pooler (last 3 layers)
+                    param.requires_grad = True
+                else:
+                    # Keep earlier layers frozen
+                    param.requires_grad = False
+            # Unfreeze all fusion components
             else:
                 param.requires_grad = True
+                
+        logger.info("Stage 2: Unfrozen top 3 layers of base models + all fusion components")
 
-        # Create optimizer for Stage 2
+        # Create optimizer for Stage 2 with separate learning rates
         stage2_optimizer = torch.optim.AdamW(
             [
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "vision_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.01,  # Very small learning rate for vision model layers
+                    "name": "vision_model"  # Add name for gradient scheduler
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if "text_model" in n and p.requires_grad
+                    ],
+                    "lr": self.learning_rate * 0.01,  # Very small learning rate for text model layers
+                    "name": "text_model"  # Add name for gradient scheduler
+                },
                 {
                     "params": [
                         p
@@ -841,7 +885,18 @@ class MultimodalTrainer:
                         if any(x in n for x in ["cross", "fusion", "gate"])
                         and p.requires_grad
                     ],
-                    "lr": self.learning_rate,
+                    "lr": self.learning_rate * 0.1,  # 10% of base learning rate for fusion
+                    "name": "fusion_components"  # Add name for gradient scheduler
+                },
+                {
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if not any(x in n for x in ["vision_model", "text_model", "cross", "fusion", "gate"])
+                        and p.requires_grad
+                    ],
+                    "lr": self.learning_rate,  # Full learning rate for projection layers
+                    "name": "projection_layers"  # Add name for gradient scheduler
                 }
             ],
             weight_decay=self.weight_decay,
@@ -872,14 +927,17 @@ class MultimodalTrainer:
         )
         self.save_checkpoint(stage2_checkpoint_path)
 
-        # === Stage 3: Fine-tune everything with hard negative mining ===
+        # === Stage 3: Full fine-tuning with all layers unfrozen ===
         logger.info(
-            f"=== Stage 3: Fine-tuning with hard negative mining ({stage3_epochs} epochs) ==="
+            f"=== Stage 3: Full fine-tuning with all layers unfrozen ({stage3_epochs} epochs) ==="
         )
 
         # Unfreeze everything for full fine-tuning
+        # This is the typical final stage in progressive unfreezing
         for param in self.model.parameters():
             param.requires_grad = True
+            
+        logger.info("Stage 3: All layers unfrozen for final fine-tuning with differential learning rates")
 
         # Create optimizer for Stage 3 with layer-wise learning rates
         stage3_optimizer = torch.optim.AdamW(

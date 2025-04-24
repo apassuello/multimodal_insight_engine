@@ -36,45 +36,26 @@ class VICRegMultimodalModel(nn.Module):
 
         print(f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}")
 
-        # Only create projection networks if dimensions don't match
-        if vision_dim != projection_dim:
-            print(
-                f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}"
-            )
-            self.vision_proj = nn.Sequential(
-                nn.Linear(vision_dim, vision_dim),
-                nn.BatchNorm1d(vision_dim, affine=True),
-                nn.ReLU(),
-                nn.Linear(vision_dim, projection_dim),
-                nn.BatchNorm1d(projection_dim, affine=True),  # Affine=False for VICReg
-            )
-        else:
-            print(
-                f"Skipping vision projection - dimensions already match: {vision_dim}"
-            )
-            # Just use batch normalization without changing dimensions
-            self.vision_proj = nn.Sequential(
-                nn.BatchNorm1d(vision_dim, affine=True),  # Normalization only
-            )
+        # Always create proper projection networks, even when dimensions match
+        # This ensures we have trainable parameters in stage 1
+        print(f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}")
+        self.vision_proj = nn.Sequential(
+            nn.Linear(vision_dim, vision_dim),  # First linear layer maintains dimension
+            nn.BatchNorm1d(vision_dim, affine=True),  # Affine=True for trainable parameters
+            nn.ReLU(),
+            nn.Linear(vision_dim, projection_dim),  # Second linear adapts to projection_dim if needed
+            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
+        )
 
-        # For text projection, only create if dimensions don't match
-        if text_dim != projection_dim:
-            print(
-                f"Creating text projection with dimensions: {text_dim} -> {projection_dim}"
-            )
-            self.text_proj = nn.Sequential(
-                nn.Linear(text_dim, text_dim),
-                nn.BatchNorm1d(text_dim, affine=True),
-                nn.GELU(),  # Different activation
-                nn.Linear(text_dim, projection_dim),
-                nn.BatchNorm1d(projection_dim, affine=True),  # Affine=False for VICReg
-            )
-        else:
-            print(f"Skipping text projection - dimensions already match: {text_dim}")
-            # Just use batch normalization without changing dimensions
-            self.text_proj = nn.Sequential(
-                nn.BatchNorm1d(text_dim, affine=True),  # Normalization only
-            )
+        # Always create proper text projection too, even when dimensions match
+        print(f"Creating text projection with dimensions: {text_dim} -> {projection_dim}")
+        self.text_proj = nn.Sequential(
+            nn.Linear(text_dim, text_dim),  # First linear layer maintains dimension
+            nn.BatchNorm1d(text_dim, affine=True),  # Affine=True for trainable parameters
+            nn.GELU(),  # Different activation
+            nn.Linear(text_dim, projection_dim),  # Second linear adapts to projection_dim if needed
+            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
+        )
 
         # For explicit variance regularization
         self.vision_var_predictor = nn.Sequential(
@@ -233,60 +214,28 @@ class VICRegMultimodalModel(nn.Module):
 
     def _init_parameters(self):
         """
-        Initialize weights using enhanced orthogonal initialization on CPU
-        with stronger diversity promotion.
+        Initialize weights using standardized orthogonal initialization on CPU
+        with consistent gain values.
         """
         # We should be on CPU at this point so orthogonal initialization is supported
         for name, module in self.named_modules():
             if isinstance(module, nn.Linear):
-                # Use specific gain values for vision and text pathways with increased gains
-                # to promote stronger feature diversity from the start
-                if "vision" in name:
-                    if "proj" in name:
-                        # Higher gain for projection layers to encourage diversity
-                        nn.init.orthogonal_(
-                            module.weight, gain=1.6
-                        )  # Increased from 1.6
-                        print(
-                            f"Applied enhanced orthogonal initialization (gain=1.8) to {name}"
-                        )
-                    else:
-                        nn.init.orthogonal_(module.weight, gain=1.6)
-                        print(f"Applied orthogonal initialization (gain=1.6) to {name}")
-
-                elif "text" in name:
-                    if "proj" in name:
-                        # Higher gain for projection layers to encourage diversity
-                        nn.init.orthogonal_(
-                            module.weight, gain=1.6
-                        )  # Increased from 1.4
-                        print(
-                            f"Applied enhanced orthogonal initialization (gain=1.6) to {name}"
-                        )
-                    else:
-                        nn.init.orthogonal_(module.weight, gain=1.6)
-                        print(f"Applied orthogonal initialization (gain=1.4) to {name}")
-
-                elif "var_predictor" in name:
-                    # Special high-gain initialization for variance predictors
-                    nn.init.orthogonal_(module.weight, gain=2.0)
+                # Use consistent gain value of 1.5 for all components
+                if "var_predictor" in name:
+                    # Still use higher gain for variance predictors, but reduced
+                    nn.init.orthogonal_(module.weight, gain=1.7)
                     print(
-                        f"Applied high-gain orthogonal initialization (gain=2.0) to {name}"
+                        f"Applied variance predictor orthogonal initialization (gain=1.7) to {name}"
                     )
-
                 else:
-                    # Default gain for other linear layers
-                    nn.init.orthogonal_(module.weight, gain=1.6)
-                    print(f"Applied orthogonal initialization (gain=1.0) to {name}")
+                    # Standardized gain for all other layers
+                    nn.init.orthogonal_(module.weight, gain=1.5)
+                    print(f"Applied standardized orthogonal initialization (gain=1.5) to {name}")
 
-                # Initialize bias to small non-zero values for better optimization flow
+                # Initialize all biases to zero for better stability
                 if module.bias is not None:
-                    if "proj" in name or "var_predictor" in name:
-                        # Small positive bias for projection layers to encourage initial diversity
-                        nn.init.uniform_(module.bias, -0.02, 0.02)
-                        print(f"Applied small uniform bias initialization to {name}")
-                    else:
-                        nn.init.zeros_(module.bias)
+                    nn.init.zeros_(module.bias)
+                    print(f"Applied zero bias initialization to {name}")
 
     def forward(self, images=None, text_data=None):
         outputs = {}
@@ -389,8 +338,7 @@ class VICRegMultimodalModel(nn.Module):
                 text_features = self._extract_features(self.text_model, text_data)
             except Exception as e:
                 print(f"Error extracting text features: {str(e)}")
-                # Create semantically meaningful features instead of zeros
-                # This maintains variance while still being a fallback
+                # Create zeros instead of random features for better stability
                 batch_size = (
                     text_data["input_ids"].shape[0]
                     if isinstance(text_data, dict) and "input_ids" in text_data
@@ -398,15 +346,13 @@ class VICRegMultimodalModel(nn.Module):
                 )
                 text_dim = self._get_model_dimension(self.text_model)
                 print(
-                    f"Creating randomized text features of size {batch_size}x{text_dim}"
+                    f"Creating zero text features of size {batch_size}x{text_dim}"
                 )
 
-                # Use random normal features to avoid collapse, scaled to be similar to vision features
-                text_features = (
-                    torch.randn(batch_size, text_dim, device=model_device) * 0.02
-                )
+                # Use zeros instead of random features to avoid introducing noise
+                text_features = torch.zeros(batch_size, text_dim, device=model_device)
                 print(
-                    "Using random features with non-zero variance to avoid feature collapse"
+                    "Using zero features for error recovery (more stable than random)"
                 )
             text_proj = self.text_proj(text_features)
 

@@ -21,10 +21,10 @@ class VICRegLoss(nn.Module):
 
     def __init__(
         self,
-        sim_coeff: float = 50.0,  # Higher similarity weight (was 25.0)
-        var_coeff: float = 5.0,  # Lower variance weight (was 25.0)
+        sim_coeff: float = 10.0,  # Reduced from 50.0 to prevent instability
+        var_coeff: float = 5.0,  # Keep variance coefficient
         cov_coeff: float = 1.0,
-        epsilon: float = 1e-4,
+        epsilon: float = 1e-3,  # Increased from 1e-4 for better numerical stability
         warmup_epochs: int = 5,  # Epochs for warm-up
         curriculum: bool = True,  # Enable curriculum learning
         num_epochs: int = 30,  # Total epochs for training calculation
@@ -88,18 +88,33 @@ class VICRegLoss(nn.Module):
             Warm-up factor between 0 and 1
         """
         # Always have a minimum factor to avoid complete exclusion of regularization
-        min_factor = 0.2
-
+        min_factor = 0.3  # Increased from 0.2 for better initial regularization
+        
+        # Fixed factor for early epochs
+        if self.current_epoch == 0:
+            # Use a very small factor in first epoch
+            return 0.1
+        elif self.current_epoch == 1:
+            # Use a modest factor in second epoch
+            return 0.3
+            
+        # Limit maximum factor to 0.5 for curriculum learning
+        max_factor = 0.5
+        
         # Attempt step-based warmup first
         if self.total_steps > 0 and self.current_step > 0:
             # Fine-grained warm-up based on steps if available
             steps_per_epoch = max(1, self.total_steps / max(self.num_epochs, 1))
             warmup_steps = self.warmup_epochs * steps_per_epoch
-            raw_factor = min(1.0, self.current_step / max(1, warmup_steps))
+            
+            # Use smoother growth curve (cubic) instead of square root
+            progress = self.current_step / max(1, warmup_steps)
+            raw_factor = min(max_factor, progress**0.33)  # Cubic root for even smoother growth
             return max(min_factor, raw_factor)
 
-        # Fallback to epoch-based warmup
-        raw_factor = min(1.0, self.current_epoch / max(1, self.warmup_epochs))
+        # Fallback to epoch-based warmup with same smoothing
+        progress = self.current_epoch / max(1, self.warmup_epochs)
+        raw_factor = min(max_factor, progress**0.33)  # Cubic root for smoother growth
         return max(min_factor, raw_factor)
 
     def forward(

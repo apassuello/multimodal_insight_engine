@@ -28,14 +28,16 @@ class ContrastiveLoss(nn.Module):
         temperature: float = 0.07,
         loss_type: str = "infonce",
         reduction: str = "mean",
-        add_projection: bool = False,
+        add_projection: bool = True,
         projection_dim: int = 256,
         input_dim: Optional[int] = None,
         sampling_strategy: str = "auto",  # "in-batch", "memory-bank", "global", or "auto"
         memory_bank_size: int = 4096,
         dataset_size: Optional[int] = None,
     ):
-        print(f"ContrastiveLoss.__init__ - add_projection={add_projection}, projection_dim={projection_dim}, input_dim={input_dim}")
+        print(
+            f"ContrastiveLoss.__init__ - add_projection={add_projection}, projection_dim={projection_dim}, input_dim={input_dim}"
+        )
         """
         Initialize the contrastive loss module.
 
@@ -70,16 +72,18 @@ class ContrastiveLoss(nn.Module):
 
         # Initialize memory banks if needed
         if self.sampling_strategy == "memory-bank":
-            # CRITICAL PATCH: If input_dim == 768 (ViT-base, BERT-base), 
+            # CRITICAL PATCH: If input_dim == 768 (ViT-base, BERT-base),
             # force projection dimension to match to avoid dimension mismatch errors
             if input_dim == 768:
                 projection_dim = 768
-                print(f"CRITICAL PATCH: Detected ViT/BERT input dimension (768) for memory bank, forcing projection_dim to match: {projection_dim}")
-                
+                print(
+                    f"CRITICAL PATCH: Detected ViT/BERT input dimension (768) for memory bank, forcing projection_dim to match: {projection_dim}"
+                )
+
             # Calculate the right dimension for the memory bank
             bank_dim = projection_dim if add_projection else (input_dim or 768)
             print(f"Creating memory banks with dimension: {bank_dim}")
-                
+
             # Register memory banks as buffers so they're saved in state_dict
             self.register_buffer(
                 "vision_bank",
@@ -97,16 +101,18 @@ class ContrastiveLoss(nn.Module):
         # Register global embeddings buffer if using global strategy
         if self.sampling_strategy == "global":
             self.dataset_size = dataset_size or 1000  # Default to reasonable size
-            # CRITICAL PATCH: If input_dim == 768 (ViT-base, BERT-base), 
+            # CRITICAL PATCH: If input_dim == 768 (ViT-base, BERT-base),
             # force projection dimension to match to avoid dimension mismatch errors
             if input_dim == 768:
                 projection_dim = 768
-                print(f"CRITICAL PATCH: Detected ViT/BERT input dimension (768) for global embeddings, forcing projection_dim to match: {projection_dim}")
-                
+                print(
+                    f"CRITICAL PATCH: Detected ViT/BERT input dimension (768) for global embeddings, forcing projection_dim to match: {projection_dim}"
+                )
+
             # Calculate the right dimension for global embeddings
             embedding_dim = projection_dim if add_projection else (input_dim or 768)
             print(f"Creating global embeddings with dimension: {embedding_dim}")
-            
+
             self.register_buffer(
                 "global_vision_embeddings",
                 torch.zeros(self.dataset_size, embedding_dim),
@@ -131,15 +137,17 @@ class ContrastiveLoss(nn.Module):
             assert (
                 input_dim is not None
             ), "input_dim must be specified when add_projection=True"
-            # CRITICALLY IMPORTANT PATCH: If input_dim matches projection_dim, skip projection
-            if input_dim == projection_dim:
-                print(f"OPTIMIZATION: Input dimension ({input_dim}) already matches projection dimension - disabling projection")
-                self.add_projection = False
-                return
-                
+            # ALWAYS USE PROJECTION LAYERS, even if dimensions match
+            # This ensures we have trainable parameters in stage 1
+            print(
+                f"Creating projection heads with input_dim={input_dim}, projection_dim={projection_dim} (even when dimensions match)"
+            )
+
             # If dimensions don't match, create projection layers as normal
-            print(f"Creating projection heads with input_dim={input_dim}, projection_dim={projection_dim}")
-            
+            print(
+                f"Creating projection heads with input_dim={input_dim}, projection_dim={projection_dim}"
+            )
+
             # Create projection heads and explicitly move to same device as buffers
             self.vision_projection = nn.Sequential(
                 nn.Linear(input_dim, input_dim),
@@ -180,46 +188,45 @@ class ContrastiveLoss(nn.Module):
                 self.text_projection = self.text_projection.to(device)
 
             # Initialize a counter to reduce printing frequency
-            if not hasattr(self, '_project_print_counter'):
+            if not hasattr(self, "_project_print_counter"):
                 self._project_print_counter = 0
-            
+
             # Print debugging info once every 20 batches
-            should_print = (self._project_print_counter % 20 == 0)
+            should_print = self._project_print_counter % 20 == 0
             self._project_print_counter += 1
-            
+
             # Print dimensions for debugging (less frequently)
             vision_dim = vision_features.shape[-1]
             text_dim = text_features.shape[-1]
             if should_print:
-                print(f"DEBUG - Input dimensions: Vision: {vision_dim}, Text: {text_dim}")
-            
+                print(
+                    f"DEBUG - Input dimensions: Vision: {vision_dim}, Text: {text_dim}"
+                )
+
             # CRITICAL HOT PATCH: if dimensions match but projection is still enabled
             # For ViT-base and BERT-base (dimension 768)
-            if vision_dim == 768 and text_dim == 768:
-                if should_print:
-                    print("HOT PATCH ACTIVATED: 768 dimensions detected - skipping projection entirely")
-                # Skip projection and just normalize
-                vision_features = F.normalize(vision_features, p=2, dim=1)
-                text_features = F.normalize(text_features, p=2, dim=1)
-                return vision_features, text_features
-            
+
             # Get projection input and output dimensions
-            if hasattr(self.vision_projection, "0") and isinstance(self.vision_projection[0], nn.Linear):
+            if hasattr(self.vision_projection, "0") and isinstance(
+                self.vision_projection[0], nn.Linear
+            ):
                 in_dim = self.vision_projection[0].in_features
-                
+
                 # Find the last Linear layer for output dimension
                 out_dim = None
                 for module in reversed(list(self.vision_projection.modules())):
                     if isinstance(module, nn.Linear):
                         out_dim = module.out_features
                         break
-                
+
                 if out_dim is None:
                     out_dim = "unknown"
-                
+
                 # Another safeguard: if projecting from 768 to something else, force to 768
                 if in_dim == 768 and out_dim != 768 and out_dim != "unknown":
-                    print(f"DIMENSION MISMATCH DETECTED: Trying to project 768 -> {out_dim}")
+                    print(
+                        f"DIMENSION MISMATCH DETECTED: Trying to project 768 -> {out_dim}"
+                    )
                     print(f"Creating emergency projection to maintain 768 dimension")
                     # Create emergency identity projection
                     self.vision_projection = nn.Sequential(
@@ -230,35 +237,57 @@ class ContrastiveLoss(nn.Module):
                     ).to(device)
                     # Use proper output dimension in debug message
                     out_dim = 768
-                    
+
                 if should_print:
-                    print(f"DEBUG - Projection dimensions: Vision: {in_dim} -> {out_dim}")
-                
+                    print(
+                        f"DEBUG - Projection dimensions: Vision: {in_dim} -> {out_dim}"
+                    )
+
             # Check for dimension mismatch before applying projection
-            if hasattr(self.vision_projection, "0") and isinstance(self.vision_projection[0], nn.Linear):
+            if hasattr(self.vision_projection, "0") and isinstance(
+                self.vision_projection[0], nn.Linear
+            ):
                 expected_dim = self.vision_projection[0].in_features
                 if vision_features.shape[-1] != expected_dim:
-                    print(f"WARNING: Vision feature dimension mismatch! Got {vision_features.shape[-1]}, expected {expected_dim}")
+                    print(
+                        f"WARNING: Vision feature dimension mismatch! Got {vision_features.shape[-1]}, expected {expected_dim}"
+                    )
                     # Create new projection layer with correct input dimension
-                    projection_dim = self.vision_projection[-1].out_features if isinstance(self.vision_projection[-1], nn.Linear) else 512
-                    print(f"Creating new vision projection: {vision_features.shape[-1]} -> {projection_dim}")
+                    projection_dim = (
+                        self.vision_projection[-1].out_features
+                        if isinstance(self.vision_projection[-1], nn.Linear)
+                        else 512
+                    )
+                    print(
+                        f"Creating new vision projection: {vision_features.shape[-1]} -> {projection_dim}"
+                    )
                     self.vision_projection = nn.Sequential(
                         nn.Linear(vision_features.shape[-1], vision_features.shape[-1]),
                         nn.ReLU(),
-                        nn.Linear(vision_features.shape[-1], projection_dim)
+                        nn.Linear(vision_features.shape[-1], projection_dim),
                     ).to(device)
 
-            if hasattr(self.text_projection, "0") and isinstance(self.text_projection[0], nn.Linear):
+            if hasattr(self.text_projection, "0") and isinstance(
+                self.text_projection[0], nn.Linear
+            ):
                 expected_dim = self.text_projection[0].in_features
                 if text_features.shape[-1] != expected_dim:
-                    print(f"WARNING: Text feature dimension mismatch! Got {text_features.shape[-1]}, expected {expected_dim}")
+                    print(
+                        f"WARNING: Text feature dimension mismatch! Got {text_features.shape[-1]}, expected {expected_dim}"
+                    )
                     # Create new projection layer with correct input dimension
-                    projection_dim = self.text_projection[-1].out_features if isinstance(self.text_projection[-1], nn.Linear) else 512
-                    print(f"Creating new text projection: {text_features.shape[-1]} -> {projection_dim}")
+                    projection_dim = (
+                        self.text_projection[-1].out_features
+                        if isinstance(self.text_projection[-1], nn.Linear)
+                        else 512
+                    )
+                    print(
+                        f"Creating new text projection: {text_features.shape[-1]} -> {projection_dim}"
+                    )
                     self.text_projection = nn.Sequential(
                         nn.Linear(text_features.shape[-1], text_features.shape[-1]),
                         nn.ReLU(),
-                        nn.Linear(text_features.shape[-1], projection_dim)
+                        nn.Linear(text_features.shape[-1], projection_dim),
                     ).to(device)
 
             # Apply projections
@@ -387,35 +416,45 @@ class ContrastiveLoss(nn.Module):
                 f"Text features shape: {text_features.shape}, device: {text_features.device}"
             )
             logger.debug(f"Projection input_dim: {getattr(self, 'input_dim', None)}")
-        
+
         # Initialize a counter to reduce printing frequency
-        if not hasattr(self, '_print_counter'):
+        if not hasattr(self, "_print_counter"):
             self._print_counter = 0
-        
+
         # Print feature shapes debugging info once every 20 batches
-        should_print = (self._print_counter % 20 == 0)
+        should_print = self._print_counter % 20 == 0
         self._print_counter += 1
-        
+
         if should_print:
-            print(f"Contrastive loss input shapes - Vision: {vision_features.shape}, Text: {text_features.shape}")
+            print(
+                f"Contrastive loss input shapes - Vision: {vision_features.shape}, Text: {text_features.shape}"
+            )
 
         # GLOBAL HOT PATCH FOR VICREG: detect and handle 768-dimension case
         if vision_features.shape[-1] == 768 and text_features.shape[-1] == 768:
             if should_print:
-                print("GLOBAL HOT PATCH: Detected ViT/BERT dimensions (768) - skipping all projection")
+                print(
+                    "GLOBAL HOT PATCH: Detected ViT/BERT dimensions (768) - skipping all projection"
+                )
             # Force disable projection for ViT-base/BERT-base
             self.add_projection = False
             # Just normalize the features directly
             vision_features = F.normalize(vision_features, p=2, dim=1)
             text_features = F.normalize(text_features, p=2, dim=1)
             if should_print:
-                print(f"Using normalized features without projection: {vision_features.shape}, {text_features.shape}")
+                print(
+                    f"Using normalized features without projection: {vision_features.shape}, {text_features.shape}"
+                )
         else:
             # Apply projection and normalization
             try:
-                vision_features, text_features = self.project(vision_features, text_features)
+                vision_features, text_features = self.project(
+                    vision_features, text_features
+                )
                 if should_print:
-                    print(f"Projected feature shapes - Vision: {vision_features.shape}, Text: {text_features.shape}")
+                    print(
+                        f"Projected feature shapes - Vision: {vision_features.shape}, Text: {text_features.shape}"
+                    )
             except RuntimeError as e:
                 print(f"ERROR during projection: {str(e)}")
                 # Emergency fallback: create basic features with proper dimensions
@@ -424,7 +463,7 @@ class ContrastiveLoss(nn.Module):
                 # Use matched dimension instead of hardcoded 512
                 project_dim = max(vision_features.shape[-1], text_features.shape[-1])
                 print(f"Using emergency fallback with dimension {project_dim}")
-                
+
                 # Just normalize the features as is
                 vision_features = F.normalize(vision_features, p=2, dim=1)
                 text_features = F.normalize(text_features, p=2, dim=1)
@@ -537,7 +576,7 @@ class ContrastiveLoss(nn.Module):
             similarity = (
                 torch.matmul(vision_features, text_features.T) / self.temperature
             )
-            
+
             # Calculate diagonal similarity for alignment tracking
             diagonal_sim = torch.diagonal(similarity).mean().item()
             sim_mean = similarity.mean().item()

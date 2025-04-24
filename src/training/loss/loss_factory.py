@@ -309,9 +309,13 @@ def create_loss_function(
         logger.info("Using enhanced VICReg Loss with curriculum learning")
         
         # Get loss component weights from args or use defaults
-        sim_weight = getattr(args, "sim_weight", 50.0)  # Higher similarity coefficient (was 25.0)
-        var_weight = getattr(args, "var_weight", 5.0)   # Lower variance coefficient (was 25.0)
+        # Force to use args values to ensure configs are respected
+        sim_weight = getattr(args, "sim_weight", 5.0)  # Default to 5.0 for stability
+        var_weight = getattr(args, "var_weight", 5.0)  # Default to 5.0 for stability
         cov_weight = getattr(args, "cov_weight", 1.0)
+        
+        # Print values to confirm they're being applied
+        print(f"ACTUAL VICREG WEIGHTS: sim={sim_weight}, var={var_weight}, cov={cov_weight}")
         
         # Get curriculum and warmup parameters
         warmup_epochs = getattr(args, "vicreg_warmup_epochs", 5)
@@ -596,16 +600,10 @@ def create_loss_function(
         # When using ViT-base (dim=768) and proj_dim=768, we should DISABLE projection
         # The projection to a smaller dimension (192) is causing the dimension mismatch error
         
-        # Check args to see if we're using VICReg
-        is_vicreg = getattr(args, 'loss_type', '').lower() == 'vicreg'
-        
-        if is_vicreg:
-            # For VICReg, disable projection since dimensions already match
-            add_projection = False
-            print("CRITICAL: Disabling projection for VICReg compatibility (dimensions already match)")
-        else:
-            # For other losses, use projection as normal
-            add_projection = True
+        # ALWAYS USE PROJECTION FOR ALL LOSSES
+        # This ensures we have trainable parameters in stage 1
+        add_projection = True
+        print("CRITICAL: Always using projection to ensure trainable parameters in early stages")
         
         return ContrastiveLoss(
             temperature=adjusted_temp,

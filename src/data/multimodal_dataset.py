@@ -667,6 +667,9 @@ class EnhancedMultimodalDataset(Dataset):
         cache_dir: Optional[str] = None,
         max_samples: Optional[int] = None,
         captions_per_image: int = 1,  # New parameter: Number of captions to use per image (1-5)
+        min_samples_per_group: int = 2,  # Pass through semantic grouping parameters
+        max_samples_per_group: Optional[int] = None,
+        cap_strategy: str = "random",
     ):
         """
         Initialize the enhanced multimodal dataset.
@@ -692,6 +695,17 @@ class EnhancedMultimodalDataset(Dataset):
         self.cache_dir = cache_dir
         self.max_samples = max_samples
         self.loaded_from_cache = False  # Flag to track if data was loaded from cache
+        
+        # Store semantic grouping parameters
+        self.min_samples_per_group = min_samples_per_group
+        self.max_samples_per_group = max_samples_per_group
+        self.cap_strategy = cap_strategy
+        
+        # Log semantic grouping parameters
+        if self.max_samples_per_group is not None:
+            logger.info(f"Using group size limits: min={self.min_samples_per_group}, max={self.max_samples_per_group}, strategy={self.cap_strategy}")
+        else:
+            logger.info(f"Using min_samples_per_group={self.min_samples_per_group} without upper limit")
         
         # Validate and store captions_per_image parameter
         if captions_per_image < 1 or captions_per_image > 5:
@@ -849,10 +863,18 @@ class EnhancedMultimodalDataset(Dataset):
                 # Convert to numpy array
                 features = np.array(features)
 
-                # Determine optimal number of clusters - we want average ~5 items per cluster
+                # Use max_samples_per_group if set in command line args
+                # This ensures coordination between initial group creation and batch sampling
+                if hasattr(self, 'max_samples_per_group') and self.max_samples_per_group is not None:
+                    target_group_size = self.max_samples_per_group
+                    logger.info(f"Using max_samples_per_group={target_group_size} for clustering")
+                else:
+                    target_group_size = 5  # Default target group size
+                
+                # Calculate optimal number of clusters to achieve target group size
                 n_clusters = max(
-                    10, len(self.dataset) // 5
-                )  # At least 10 clusters, aim for 5 items per cluster
+                    10, len(self.dataset) // target_group_size
+                )  # At least 10 clusters
                 n_clusters = min(
                     n_clusters, len(self.dataset) // 2
                 )  # But no more than half the dataset size
@@ -862,9 +884,32 @@ class EnhancedMultimodalDataset(Dataset):
                 kmeans = KMeans(n_clusters=n_clusters, random_state=42)
                 clusters = kmeans.fit_predict(features)
 
-                # Assign match_ids based on clusters
+                # Group indices by cluster_id
+                cluster_groups = defaultdict(list)
                 for idx, cluster_id in enumerate(clusters):
-                    self.dataset[idx]["match_id"] = f"semantic_group_{cluster_id}"
+                    cluster_groups[cluster_id].append(idx)
+                
+                # Apply capping to clusters if needed
+                if hasattr(self, 'max_samples_per_group') and self.max_samples_per_group is not None:
+                    for cluster_id, indices in list(cluster_groups.items()):
+                        if len(indices) > self.max_samples_per_group:
+                            logger.info(f"Capping cluster {cluster_id} from {len(indices)} to {self.max_samples_per_group} samples")
+                            # Randomly sample indices
+                            np.random.shuffle(indices)
+                            cluster_groups[cluster_id] = indices[:self.max_samples_per_group]
+                
+                # Assign match_ids based on clusters
+                # Make sure all items in dataset are updated
+                for idx in range(len(self.dataset)):
+                    # Default match_id for any item not in a cluster
+                    if isinstance(self.dataset[idx], dict):
+                        self.dataset[idx]["match_id"] = f"unassigned_{idx}"
+                        
+                # Now assign proper cluster-based match_ids
+                for cluster_id, indices in cluster_groups.items():
+                    for idx in indices:
+                        if isinstance(self.dataset[idx], dict):
+                            self.dataset[idx]["match_id"] = f"semantic_group_{cluster_id}"
 
                 logger.info(
                     f"Successfully created {n_clusters} embedding-based semantic groups"
@@ -896,8 +941,26 @@ class EnhancedMultimodalDataset(Dataset):
                 for idx in range(start_idx, end_idx):
                     self.dataset[idx]["match_id"] = match_id
 
-        # Store all match_ids for convenience
-        self.match_ids = [item["match_id"] for item in self.dataset]
+        # Store all match_ids for convenience, with error handling
+        self.match_ids = []
+        for i, item in enumerate(self.dataset):
+            try:
+                if isinstance(item, dict) and "match_id" in item:
+                    self.match_ids.append(item["match_id"])
+                else:
+                    # For items without match_id, create a unique fallback ID
+                    fallback_id = f"fallback_id_{i}"
+                    if isinstance(item, dict):
+                        item["match_id"] = fallback_id
+                    self.match_ids.append(fallback_id)
+                    logger.warning(f"Item {i} missing match_id, using fallback: {fallback_id}")
+            except Exception as e:
+                # Create a unique fallback ID
+                fallback_id = f"error_id_{i}"
+                if isinstance(item, dict):
+                    item["match_id"] = fallback_id
+                self.match_ids.append(fallback_id)
+                logger.warning(f"Error with item {i}: {e}, using fallback: {fallback_id}")
 
         # Diagnostics: check how many unique match_ids we created
         unique_match_ids = len(set(self.match_ids))
@@ -911,6 +974,12 @@ class EnhancedMultimodalDataset(Dataset):
         for match_id in self.match_ids:
             id_counts[match_id] += 1
 
+        # Apply min_samples_per_group and max_samples_per_group filtering to log accurate stats
+        if hasattr(self, 'min_samples_per_group') and self.min_samples_per_group > 1:
+            # Remove groups that are too small
+            id_counts = {k: v for k, v in id_counts.items() if v >= self.min_samples_per_group}
+            logger.info(f"After applying min_samples_per_group={self.min_samples_per_group}: {len(id_counts)} valid groups remain")
+            
         group_sizes = list(id_counts.values())
         avg_group_size = sum(group_sizes) / len(group_sizes) if group_sizes else 0
         logger.info(

@@ -54,6 +54,11 @@
                 "path": "src/training/loss/loss_factory.py"
               },
               {
+                "name": "vicreg_loss.py",
+                "type": "file",
+                "path": "src/training/loss/vicreg_loss.py"
+              },
+              {
                 "name": "contrastive_learning.py",
                 "type": "file",
                 "path": "src/training/loss/contrastive_learning.py"
@@ -69,6 +74,11 @@
                 "path": "src/training/loss/decoupled_contrastive_loss.py"
               },
               {
+                "name": "barlow_twins_loss.py",
+                "type": "file",
+                "path": "src/training/loss/barlow_twins_loss.py"
+              },
+              {
                 "name": "hard_negative_mining_contrastive_loss.py",
                 "type": "file",
                 "path": "src/training/loss/hard_negative_mining_contrastive_loss.py"
@@ -77,6 +87,11 @@
                 "name": "contrastive_loss.py",
                 "type": "file",
                 "path": "src/training/loss/contrastive_loss.py"
+              },
+              {
+                "name": "hybrid_pretrain_vicreg_loss.py",
+                "type": "file",
+                "path": "src/training/loss/hybrid_pretrain_vicreg_loss.py"
               },
               {
                 "name": "losses.py",
@@ -157,6 +172,11 @@
             "path": "src/utils/config.py"
           },
           {
+            "name": "feature_attribution.py",
+            "type": "file",
+            "path": "src/utils/feature_attribution.py"
+          },
+          {
             "name": "visualization.py",
             "type": "file",
             "path": "src/utils/visualization.py"
@@ -223,9 +243,19 @@
             "type": "directory",
             "children": [
               {
+                "name": "multimodal_decoder_generation.py",
+                "type": "file",
+                "path": "src/models/multimodal/multimodal_decoder_generation.py"
+              },
+              {
                 "name": "multimodal_integration.py",
                 "type": "file",
                 "path": "src/models/multimodal/multimodal_integration.py"
+              },
+              {
+                "name": "vicreg_multimodal_model.py",
+                "type": "file",
+                "path": "src/models/multimodal/vicreg_multimodal_model.py"
               },
               {
                 "name": "bidirectional_cross_attention.py",
@@ -241,6 +271,11 @@
                 "name": "gated_cross_modal_attention.py",
                 "type": "file",
                 "path": "src/models/multimodal/gated_cross_modal_attention.py"
+              },
+              {
+                "name": "clip_style_direct_projection.py",
+                "type": "file",
+                "path": "src/models/multimodal/clip_style_direct_projection.py"
               },
               {
                 "name": "dual_encoder.py",
@@ -425,6 +460,11 @@
             "path": "src/data/image_dataset.py"
           },
           {
+            "name": "augmentation_pipeline.py",
+            "type": "file",
+            "path": "src/data/augmentation_pipeline.py"
+          },
+          {
             "name": "wmt_dataloader.py",
             "type": "file",
             "path": "src/data/wmt_dataloader.py"
@@ -433,6 +473,11 @@
             "name": "combined_dataset.py",
             "type": "file",
             "path": "src/data/combined_dataset.py"
+          },
+          {
+            "name": "augmentation.py",
+            "type": "file",
+            "path": "src/data/augmentation.py"
           },
           {
             "name": "iwslt_dataset.py",
@@ -489,9 +534,19 @@
                 "path": "src/data/tokenization/preprocessing.py"
               },
               {
+                "name": "bert_tokenizer_adapter.py",
+                "type": "file",
+                "path": "src/data/tokenization/bert_tokenizer_adapter.py"
+              },
+              {
                 "name": "bpe_tokenizer.py",
                 "type": "file",
                 "path": "src/data/tokenization/bpe_tokenizer.py"
+              },
+              {
+                "name": "tokenizer_metrics.py",
+                "type": "file",
+                "path": "src/data/tokenization/tokenizer_metrics.py"
               },
               {
                 "name": "vocabulary.py",
@@ -509,6 +564,11 @@
                 "path": "src/data/tokenization/simple_tokenizer.py"
               }
             ]
+          },
+          {
+            "name": "fixed_semantic_sampler.py",
+            "type": "file",
+            "path": "src/data/fixed_semantic_sampler.py"
           },
           {
             "name": "multimodal_dataset.py",
@@ -1335,6 +1395,12 @@
       "module_path": "src/training/loss/loss_factory.py"
     },
     {
+      "filename": "vicreg_loss.py",
+      "module_path": "src/training/loss/vicreg_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "contrastive_learning.py",
       "module_path": "src/training/loss/contrastive_learning.py",
       "module_purpose": "No metadata function available",
@@ -1353,6 +1419,44 @@
       "has_metadata_function": false
     },
     {
+      "filename": "barlow_twins_loss.py",
+      "module_purpose": "Implements Barlow Twins loss for multimodal learning through redundancy reduction",
+      "key_classes": [
+        {
+          "name": "BarlowTwinsLoss",
+          "purpose": "Loss function that creates embeddings with minimal redundancy between their components",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', add_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
+              "brief_description": "Initialize the Barlow Twins loss module with configurable parameters"
+            },
+            {
+              "name": "project",
+              "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Apply projection heads to features if enabled"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]",
+              "brief_description": "Compute Barlow Twins loss between vision and text features"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "typing"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/training/loss/barlow_twins_loss.py"
+    },
+    {
       "filename": "hard_negative_mining_contrastive_loss.py",
       "module_path": "src/training/loss/hard_negative_mining_contrastive_loss.py",
       "module_purpose": "No metadata function available",
@@ -1361,6 +1465,12 @@
     {
       "filename": "contrastive_loss.py",
       "module_path": "src/training/loss/contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "hybrid_pretrain_vicreg_loss.py",
+      "module_path": "src/training/loss/hybrid_pretrain_vicreg_loss.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
     },
@@ -1556,6 +1666,12 @@
       ],
       "complexity_score": 3,
       "module_path": "src/utils/config.py"
+    },
+    {
+      "filename": "feature_attribution.py",
+      "module_path": "src/utils/feature_attribution.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "visualization.py",
@@ -2529,6 +2645,61 @@
       "module_path": "src/models/vision/patch_embedding.py"
     },
     {
+      "filename": "multimodal_decoder_generation.py",
+      "module_purpose": "Implements a multimodal decoder generation model for text generation conditioned on multiple modalities",
+      "key_classes": [
+        {
+          "name": "MultimodalDecoderGeneration",
+          "purpose": "Generative model that combines vision and text inputs to generate text outputs",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_model: nn.Module, text_encoder: nn.Module, text_decoder: nn.Module, fusion_dim: int = 768, num_fusion_layers: int = 2, use_cross_attention: bool = True, max_sequence_length: int = 128, fusion_dropout: float = 0.1, tie_embeddings: bool = True, vocab_size: Optional[int] = None, use_gated_fusion: bool = True, generation_config: Optional[Dict[str, Any]] = None)",
+              "brief_description": "Initialize the multimodal decoder generation model"
+            },
+            {
+              "name": "prepare_inputs_for_decoder",
+              "signature": "prepare_inputs_for_decoder(self, vision_features: Optional[torch.Tensor] = None, encoder_features: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]",
+              "brief_description": "Prepare fused representation for the decoder"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, images: Optional[torch.Tensor] = None, encoder_input_ids: Optional[torch.Tensor] = None, encoder_attention_mask: Optional[torch.Tensor] = None, decoder_input_ids: Optional[torch.Tensor] = None, decoder_attention_mask: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Process inputs through the model to compute logits and loss"
+            },
+            {
+              "name": "generate",
+              "signature": "generate(self, images: Optional[torch.Tensor] = None, encoder_input_ids: Optional[torch.Tensor] = None, encoder_attention_mask: Optional[torch.Tensor] = None, generation_config: Optional[Dict[str, Any]] = None, **kwargs) -> torch.Tensor",
+              "brief_description": "Generate text based on visual and/or textual inputs"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "typing"
+          ]
+        },
+        {
+          "name": "CrossModalFusionTransformer",
+          "purpose": "Transformer-based fusion mechanism for combining vision and text representations",
+          "inheritance": "nn.Module"
+        },
+        {
+          "name": "GatedMultimodalFusion",
+          "purpose": "Gated fusion module that controls information flow between modalities",
+          "inheritance": "nn.Module"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "math",
+        "logging"
+      ],
+      "complexity_score": 9,
+      "module_path": "src/models/multimodal/multimodal_decoder_generation.py"
+    },
+    {
       "filename": "multimodal_integration.py",
       "module_purpose": "Implements models for combining vision and text modalities in a unified architecture",
       "key_classes": [
@@ -2602,6 +2773,12 @@
       "module_path": "src/models/multimodal/multimodal_integration.py"
     },
     {
+      "filename": "vicreg_multimodal_model.py",
+      "module_path": "src/models/multimodal/vicreg_multimodal_model.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "bidirectional_cross_attention.py",
       "module_path": "src/models/multimodal/bidirectional_cross_attention.py",
       "module_purpose": "No metadata function available",
@@ -2618,6 +2795,67 @@
       "module_path": "src/models/multimodal/gated_cross_modal_attention.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
+    },
+    {
+      "filename": "clip_style_direct_projection.py",
+      "module_purpose": "Implements a CLIP-style model with direct projection between modalities",
+      "key_classes": [
+        {
+          "name": "CLIPStyleDirectProjection",
+          "purpose": "CLIP-style model that directly projects vision and text to a shared space",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_model: nn.Module, text_model: nn.Module, projection_dim: int = 512, dropout: float = 0.1, use_multi_head: bool = False, num_projection_heads: int = 4, use_layernorm: bool = True, prompt_pooling: str = 'mean', initial_temperature: float = 0.07, feature_dropout: float = 0.0)",
+              "brief_description": "Initialize CLIP-style model with projection options"
+            },
+            {
+              "name": "extract_text_features",
+              "signature": "extract_text_features(self, text_data: Union[Dict[str, torch.Tensor], torch.Tensor]) -> torch.Tensor",
+              "brief_description": "Extract features from text model with pooling"
+            },
+            {
+              "name": "extract_vision_features",
+              "signature": "extract_vision_features(self, images: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Extract features from vision model with pooling"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, images: Optional[torch.Tensor] = None, text_data: Optional[Union[Dict[str, torch.Tensor], torch.Tensor]] = None) -> Dict[str, Any]",
+              "brief_description": "Process images and text, compute similarity"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "numpy"
+          ]
+        },
+        {
+          "name": "MultiHeadProjection",
+          "purpose": "Multi-head projection module for more expressive projections",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Project features through multiple heads and concatenate"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/multimodal/clip_style_direct_projection.py"
     },
     {
       "filename": "dual_encoder.py",
@@ -3415,6 +3653,83 @@
       "module_path": "src/data/image_dataset.py"
     },
     {
+      "filename": "augmentation_pipeline.py",
+      "module_purpose": "Provides comprehensive augmentation capabilities for multimodal datasets",
+      "key_classes": [
+        {
+          "name": "MultimodalAugmentationPipeline",
+          "purpose": "Configurable pipeline for applying augmentations to both image and text data",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, image_augs: Optional[List[Callable]] = None, text_augs: Optional[List[Callable]] = None, image_aug_prob: float = 0.5, text_aug_prob: float = 0.3, consistency_mode: str = 'matched', image_size: int = 224, severity: str = 'medium', random_erasing_prob: float = 0.0, random_erasing_scale: Tuple[float, float] = (0.02, 0.33), color_jitter_prob: float = 0.0, random_resized_crop: bool = True, debug_mode: bool = False)",
+              "brief_description": "Initialize the augmentation pipeline with configurable parameters"
+            },
+            {
+              "name": "augment_image",
+              "signature": "augment_image(self, image: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Apply image augmentations with probability"
+            },
+            {
+              "name": "augment_text",
+              "signature": "augment_text(self, text_data: Union[str, Dict]) -> Union[str, Dict]",
+              "brief_description": "Apply text augmentations with probability"
+            },
+            {
+              "name": "__call__",
+              "signature": "__call__(self, batch: Dict[str, Union[torch.Tensor, Dict]]) -> Dict[str, Union[torch.Tensor, Dict]]",
+              "brief_description": "Apply augmentations to a batch of multimodal data"
+            }
+          ],
+          "inheritance": "object"
+        },
+        {
+          "name": "TextAugmentation",
+          "purpose": "Base class for text augmentation transforms",
+          "inheritance": "object"
+        },
+        {
+          "name": "DropWords",
+          "purpose": "Randomly drop words from text",
+          "inheritance": "TextAugmentation"
+        },
+        {
+          "name": "ShuffleWords",
+          "purpose": "Shuffle some words within a window",
+          "inheritance": "TextAugmentation"
+        },
+        {
+          "name": "ReplaceWithSynonym",
+          "purpose": "Replace words with simple synonyms",
+          "inheritance": "TextAugmentation"
+        },
+        {
+          "name": "ChangeWordOrder",
+          "purpose": "Change the order of phrases in text",
+          "inheritance": "TextAugmentation"
+        },
+        {
+          "name": "AddMisspelling",
+          "purpose": "Add simple misspellings to text",
+          "inheritance": "TextAugmentation"
+        },
+        {
+          "name": "RandomPosterize",
+          "purpose": "Apply posterization to images",
+          "inheritance": "nn.Module"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torchvision",
+        "PIL",
+        "random",
+        "numpy"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/data/augmentation_pipeline.py"
+    },
+    {
       "filename": "wmt_dataloader.py",
       "module_purpose": "Provides a data loader for WMT (Workshop on Machine Translation) parallel corpus",
       "key_classes": [
@@ -3455,6 +3770,12 @@
     {
       "filename": "combined_dataset.py",
       "module_path": "src/data/combined_dataset.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "augmentation.py",
+      "module_path": "src/data/augmentation.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
     },
@@ -3612,34 +3933,15 @@
     },
     {
       "filename": "multimodal_data_utils.py",
-      "module_purpose": "Utilities for multimodal data loading and processing",
-      "key_components": [
-        {
-          "name": "SemanticGroupBatchSampler",
-          "signature": "class SemanticGroupBatchSampler(BatchSampler)",
-          "brief_description": "Custom batch sampler that ensures semantic groups are maintained in each batch for contrastive learning"
-        }
-      ],
-      "key_functions": [
-        {
-          "name": "randomize_dataset_positions",
-          "signature": "randomize_dataset_positions(dataset: Any) -> List[int]",
-          "brief_description": "Randomize dataset positions to prevent shortcut learning"
-        },
-        {
-          "name": "create_data_loaders",
-          "signature": "create_data_loaders(args: Any, image_preprocessor: Any, tokenizer: Any) -> Tuple[DataLoader, DataLoader, DataLoader]",
-          "brief_description": "Create data loaders for training, validation, and testing with semantic grouping capabilities"
-        }
-      ],
-      "external_dependencies": [
-        "torch",
-        "random",
-        "logging",
-        "numpy"
-      ],
-      "complexity_score": 7,
-      "module_path": "src/data/multimodal_data_utils.py"
+      "module_path": "src/data/multimodal_data_utils.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "fixed_semantic_sampler.py",
+      "module_path": "src/data/fixed_semantic_sampler.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "multimodal_dataset.py",
@@ -4133,6 +4435,12 @@
       "module_path": "src/data/tokenization/preprocessing.py"
     },
     {
+      "filename": "bert_tokenizer_adapter.py",
+      "module_path": "src/data/tokenization/bert_tokenizer_adapter.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "bpe_tokenizer.py",
       "module_purpose": "Implements Byte Pair Encoding tokenizer for subword tokenization with merge operations",
       "key_classes": [
@@ -4231,6 +4539,12 @@
       "module_path": "src/data/tokenization/bpe_tokenizer.py"
     },
     {
+      "filename": "tokenizer_metrics.py",
+      "module_path": "src/data/tokenization/tokenizer_metrics.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "vocabulary.py",
       "module_purpose": "Implements a flexible vocabulary system for mapping between tokens and indices with special token support",
       "key_classes": [
@@ -4309,12 +4623,12 @@
     }
   ],
   "summary": {
-    "total_modules": 93,
-    "modules_with_metadata": 70,
-    "modules_without_metadata": 23
+    "total_modules": 105,
+    "modules_with_metadata": 73,
+    "modules_without_metadata": 32
   },
   "complexity_summary": {
-    "average_complexity": 5.642857142857143,
+    "average_complexity": 5.726027397260274,
     "modules_by_complexity": [
       {
         "module": "src/utils/profiling.py",
@@ -4322,6 +4636,10 @@
       },
       {
         "module": "src/models/transformer.py",
+        "score": 9
+      },
+      {
+        "module": "src/models/multimodal/multimodal_decoder_generation.py",
         "score": 9
       },
       {
@@ -4385,6 +4703,10 @@
         "score": 8
       },
       {
+        "module": "src/data/augmentation_pipeline.py",
+        "score": 8
+      },
+      {
         "module": "src/optimization/pruning.py",
         "score": 7
       },
@@ -4413,6 +4735,10 @@
         "score": 7
       },
       {
+        "module": "src/models/multimodal/clip_style_direct_projection.py",
+        "score": 7
+      },
+      {
         "module": "src/safety/red_teaming/framework.py",
         "score": 7
       },
@@ -4433,10 +4759,6 @@
         "score": 7
       },
       {
-        "module": "src/data/multimodal_data_utils.py",
-        "score": 7
-      },
-      {
         "module": "src/data/tokenization/bpe_tokenizer.py",
         "score": 7
       },
@@ -4450,6 +4772,10 @@
       },
       {
         "module": "src/training/trainer.py",
+        "score": 6
+      },
+      {
+        "module": "src/training/loss/barlow_twins_loss.py",
         "score": 6
       },
       {
@@ -4603,11 +4929,15 @@
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 47
+        "usage_count": 50
       },
       {
         "name": "numpy",
-        "usage_count": 20
+        "usage_count": 21
+      },
+      {
+        "name": "logging",
+        "usage_count": 9
       },
       {
         "name": "matplotlib",
@@ -4616,10 +4946,6 @@
       {
         "name": "tqdm",
         "usage_count": 9
-      },
-      {
-        "name": "logging",
-        "usage_count": 8
       },
       {
         "name": "json",
@@ -4646,6 +4972,10 @@
         "usage_count": 3
       },
       {
+        "name": "PIL",
+        "usage_count": 3
+      },
+      {
         "name": "nltk",
         "usage_count": 2
       },
@@ -4666,7 +4996,11 @@
         "usage_count": 2
       },
       {
-        "name": "PIL",
+        "name": "torchvision",
+        "usage_count": 2
+      },
+      {
+        "name": "math",
         "usage_count": 2
       },
       {
@@ -4695,14 +5029,6 @@
       },
       {
         "name": "timm",
-        "usage_count": 1
-      },
-      {
-        "name": "torchvision",
-        "usage_count": 1
-      },
-      {
-        "name": "math",
         "usage_count": 1
       },
       {

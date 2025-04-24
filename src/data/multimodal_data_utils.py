@@ -151,6 +151,13 @@ class SemanticGroupBatchSampler(BatchSampler):
                 f"Original max={max_original}, avg={avg_original:.2f} → "
                 f"Capped max={max_capped}, avg={avg_capped:.2f}"
             )
+            
+            # Validate that capping worked - check there are no groups exceeding max_samples_per_group
+            oversized_groups = sum(1 for size in capped_group_sizes if size > self.max_samples_per_group)
+            if oversized_groups > 0:
+                logger.warning(f"WARNING: {oversized_groups} groups still exceed max_samples_per_group limit!")
+            else:
+                logger.info(f"All groups successfully capped to max_samples_per_group={self.max_samples_per_group}")
 
         # Filter groups to ensure they have at least min_samples_per_group
         self.valid_groups = {
@@ -529,6 +536,11 @@ def create_data_loaders(
             # Get captions_per_image from args if available, otherwise default to 1
             captions_per_image = getattr(args, "captions_per_image", 1)
 
+            # Pass through the semantic grouping parameters
+            min_samples_per_group = getattr(args, "min_samples_per_group", 2)
+            max_samples_per_group = getattr(args, "max_samples_per_group", None)
+            cap_strategy = getattr(args, "cap_strategy", "random")
+            
             train_dataset = EnhancedMultimodalDataset(
                 dataset_name="flickr30k",
                 split="train",
@@ -539,6 +551,9 @@ def create_data_loaders(
                 cache_dir=os.path.join(args.data_dir, "flickr30k"),
                 max_samples=args.max_train_examples,
                 captions_per_image=captions_per_image,
+                min_samples_per_group=min_samples_per_group,
+                max_samples_per_group=max_samples_per_group,
+                cap_strategy=cap_strategy,
             )
 
             # Check if we actually got real data or synthetic fallback
@@ -567,6 +582,9 @@ def create_data_loaders(
                 cache_dir=os.path.join(args.data_dir, "flickr30k"),
                 max_samples=args.max_val_examples,
                 captions_per_image=captions_per_image,
+                min_samples_per_group=min_samples_per_group,
+                max_samples_per_group=max_samples_per_group,
+                cap_strategy=cap_strategy,
             )
 
             print("Loading Flickr30k test split...")
