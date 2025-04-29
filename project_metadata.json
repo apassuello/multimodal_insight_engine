@@ -35,73 +35,139 @@
         "type": "directory",
         "children": [
           {
-            "name": "metrics.py",
-            "type": "file",
-            "path": "src/training/metrics.py"
-          },
-          {
-            "name": "loss",
+            "name": "losses",
             "type": "directory",
             "children": [
               {
                 "name": "multimodal_mixed_contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/multimodal_mixed_contrastive_loss.py"
+                "path": "src/training/losses/multimodal_mixed_contrastive_loss.py"
               },
               {
                 "name": "loss_factory.py",
                 "type": "file",
-                "path": "src/training/loss/loss_factory.py"
+                "path": "src/training/losses/loss_factory.py"
               },
               {
                 "name": "vicreg_loss.py",
                 "type": "file",
-                "path": "src/training/loss/vicreg_loss.py"
+                "path": "src/training/losses/vicreg_loss.py"
+              },
+              {
+                "name": "multitask_loss.py",
+                "type": "file",
+                "path": "src/training/losses/multitask_loss.py"
               },
               {
                 "name": "contrastive_learning.py",
                 "type": "file",
-                "path": "src/training/loss/contrastive_learning.py"
+                "path": "src/training/losses/contrastive_learning.py"
               },
               {
                 "name": "memory_queue_contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/memory_queue_contrastive_loss.py"
+                "path": "src/training/losses/memory_queue_contrastive_loss.py"
+              },
+              {
+                "name": "supervised_contrastive_loss.py",
+                "type": "file",
+                "path": "src/training/losses/supervised_contrastive_loss.py"
               },
               {
                 "name": "decoupled_contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/decoupled_contrastive_loss.py"
+                "path": "src/training/losses/decoupled_contrastive_loss.py"
               },
               {
                 "name": "barlow_twins_loss.py",
                 "type": "file",
-                "path": "src/training/loss/barlow_twins_loss.py"
+                "path": "src/training/losses/barlow_twins_loss.py"
+              },
+              {
+                "name": "combined_loss.py",
+                "type": "file",
+                "path": "src/training/losses/combined_loss.py"
               },
               {
                 "name": "hard_negative_mining_contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/hard_negative_mining_contrastive_loss.py"
+                "path": "src/training/losses/hard_negative_mining_contrastive_loss.py"
+              },
+              {
+                "name": "ema_moco_loss.py",
+                "type": "file",
+                "path": "src/training/losses/ema_moco_loss.py"
               },
               {
                 "name": "contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/contrastive_loss.py"
+                "path": "src/training/losses/contrastive_loss.py"
               },
               {
                 "name": "hybrid_pretrain_vicreg_loss.py",
                 "type": "file",
-                "path": "src/training/loss/hybrid_pretrain_vicreg_loss.py"
+                "path": "src/training/losses/hybrid_pretrain_vicreg_loss.py"
+              },
+              {
+                "name": "clip_style_loss.py",
+                "type": "file",
+                "path": "src/training/losses/clip_style_loss.py"
+              },
+              {
+                "name": "feature_consistency_loss.py",
+                "type": "file",
+                "path": "src/training/losses/feature_consistency_loss.py"
               },
               {
                 "name": "losses.py",
                 "type": "file",
-                "path": "src/training/loss/losses.py"
+                "path": "src/training/losses/losses.py"
+              },
+              {
+                "name": "decorrelation_loss.py",
+                "type": "file",
+                "path": "src/training/losses/decorrelation_loss.py"
               },
               {
                 "name": "dynamic_temperature_contrastive_loss.py",
                 "type": "file",
-                "path": "src/training/loss/dynamic_temperature_contrastive_loss.py"
+                "path": "src/training/losses/dynamic_temperature_contrastive_loss.py"
+              }
+            ]
+          },
+          {
+            "name": "metrics.py",
+            "type": "file",
+            "path": "src/training/metrics.py"
+          },
+          {
+            "name": "flickr_multistage_training.py",
+            "type": "file",
+            "path": "src/training/flickr_multistage_training.py"
+          },
+          {
+            "name": "strategies",
+            "type": "directory",
+            "children": [
+              {
+                "name": "single_modality_strategy.py",
+                "type": "file",
+                "path": "src/training/strategies/single_modality_strategy.py"
+              },
+              {
+                "name": "training_strategy.py",
+                "type": "file",
+                "path": "src/training/strategies/training_strategy.py"
+              },
+              {
+                "name": "end_to_end_strategy.py",
+                "type": "file",
+                "path": "src/training/strategies/end_to_end_strategy.py"
+              },
+              {
+                "name": "cross_modal_strategy.py",
+                "type": "file",
+                "path": "src/training/strategies/cross_modal_strategy.py"
               }
             ]
           },
@@ -111,34 +177,50 @@
             "path": "src/training/transformer_utils.py"
           },
           {
-            "name": "vision_transformer_trainer.py",
-            "type": "file",
-            "path": "src/training/vision_transformer_trainer.py"
+            "name": "trainers",
+            "type": "directory",
+            "children": [
+              {
+                "name": "multistage_trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/multistage_trainer.py"
+              },
+              {
+                "name": "vision_transformer_trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/vision_transformer_trainer.py"
+              },
+              {
+                "name": "language_model_trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/language_model_trainer.py"
+              },
+              {
+                "name": "trainer_factory.py",
+                "type": "file",
+                "path": "src/training/trainers/trainer_factory.py"
+              },
+              {
+                "name": "transformer_trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/transformer_trainer.py"
+              },
+              {
+                "name": "trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/trainer.py"
+              },
+              {
+                "name": "multimodal_trainer.py",
+                "type": "file",
+                "path": "src/training/trainers/multimodal_trainer.py"
+              }
+            ]
           },
           {
             "name": "optimizers.py",
             "type": "file",
             "path": "src/training/optimizers.py"
-          },
-          {
-            "name": "language_model_trainer.py",
-            "type": "file",
-            "path": "src/training/language_model_trainer.py"
-          },
-          {
-            "name": "transformer_trainer.py",
-            "type": "file",
-            "path": "src/training/transformer_trainer.py"
-          },
-          {
-            "name": "trainer.py",
-            "type": "file",
-            "path": "src/training/trainer.py"
-          },
-          {
-            "name": "multimodal_trainer.py",
-            "type": "file",
-            "path": "src/training/multimodal_trainer.py"
           },
           {
             "name": "joint_bpe_training.py",
@@ -167,6 +249,11 @@
             "path": "src/utils/argument_configs.py"
           },
           {
+            "name": "learningrate_scheduler.py",
+            "type": "file",
+            "path": "src/utils/learningrate_scheduler.py"
+          },
+          {
             "name": "config.py",
             "type": "file",
             "path": "src/utils/config.py"
@@ -177,6 +264,11 @@
             "path": "src/utils/feature_attribution.py"
           },
           {
+            "name": "metrics_tracker.py",
+            "type": "file",
+            "path": "src/utils/metrics_tracker.py"
+          },
+          {
             "name": "visualization.py",
             "type": "file",
             "path": "src/utils/visualization.py"
@@ -185,6 +277,11 @@
             "name": "list_models.py",
             "type": "file",
             "path": "src/utils/list_models.py"
+          },
+          {
+            "name": "gradient_handler.py",
+            "type": "file",
+            "path": "src/utils/gradient_handler.py"
           },
           {
             "name": "profiling.py",
@@ -420,6 +517,22 @@
         ]
       },
       {
+        "name": "configs",
+        "type": "directory",
+        "children": [
+          {
+            "name": "training_config.py",
+            "type": "file",
+            "path": "src/configs/training_config.py"
+          },
+          {
+            "name": "stage_config.py",
+            "type": "file",
+            "path": "src/configs/stage_config.py"
+          }
+        ]
+      },
+      {
         "name": "evaluation",
         "type": "directory",
         "children": [
@@ -594,6 +707,11 @@
             "name": "dataloader.py",
             "type": "file",
             "path": "src/data/dataloader.py"
+          },
+          {
+            "name": "data_augmentation.py",
+            "type": "file",
+            "path": "src/data/data_augmentation.py"
           },
           {
             "name": "dataset_wrapper.py",
@@ -1024,6 +1142,12 @@
       "module_path": "src/training/metrics.py"
     },
     {
+      "filename": "flickr_multistage_training.py",
+      "module_path": "src/training/flickr_multistage_training.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "transformer_utils.py",
       "module_purpose": "Provides utility functions and classes for transformer model training, including attention masking and label smoothing",
       "key_classes": [
@@ -1067,71 +1191,6 @@
       ],
       "complexity_score": 6,
       "module_path": "src/training/transformer_utils.py"
-    },
-    {
-      "filename": "vision_transformer_trainer.py",
-      "module_purpose": "Provides a specialized trainer for Vision Transformer models with advanced training techniques",
-      "key_classes": [
-        {
-          "name": "VisionTransformerTrainer",
-          "purpose": "Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support",
-          "key_methods": [
-            {
-              "name": "train_epoch",
-              "signature": "train_epoch(self)",
-              "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support"
-            },
-            {
-              "name": "validate",
-              "signature": "validate(self)",
-              "brief_description": "Validate the model on validation dataset"
-            },
-            {
-              "name": "train",
-              "signature": "train(self) -> Dict[str, List[float]]",
-              "brief_description": "Train the model for specified number of epochs with early stopping"
-            },
-            {
-              "name": "save_checkpoint",
-              "signature": "save_checkpoint(self, filename: str) -> None",
-              "brief_description": "Save a checkpoint of the model and training state"
-            },
-            {
-              "name": "load_checkpoint",
-              "signature": "load_checkpoint(self, filename: str) -> None",
-              "brief_description": "Load a checkpoint of the model and training state"
-            },
-            {
-              "name": "_mixup_data",
-              "signature": "_mixup_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
-              "brief_description": "Perform mixup data augmentation"
-            },
-            {
-              "name": "_cutmix_data",
-              "signature": "_cutmix_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
-              "brief_description": "Perform cutmix data augmentation"
-            }
-          ],
-          "inheritance": "object",
-          "dependencies": [
-            "torch",
-            "torch.nn",
-            "VisionTransformer",
-            "matplotlib",
-            "numpy",
-            "tqdm"
-          ]
-        }
-      ],
-      "key_functions": [],
-      "external_dependencies": [
-        "torch",
-        "matplotlib",
-        "numpy",
-        "tqdm"
-      ],
-      "complexity_score": 8,
-      "module_path": "src/training/vision_transformer_trainer.py"
     },
     {
       "filename": "optimizers.py",
@@ -1198,6 +1257,318 @@
       "module_path": "src/training/optimizers.py"
     },
     {
+      "filename": "joint_bpe_training.py",
+      "module_purpose": "Implements joint BPE tokenizer training for multilingual text processing in machine translation tasks",
+      "key_classes": [],
+      "key_functions": [
+        {
+          "name": "train_joint_bpe_tokenizer",
+          "signature": "train_joint_bpe_tokenizer(src_texts: List[str], tgt_texts: List[str], vocab_size: int = 8000, min_frequency: int = 2, save_dir: str = 'models/tokenizers') -> BPETokenizer",
+          "brief_description": "Trains a shared BPE tokenizer on combined source and target language texts"
+        },
+        {
+          "name": "main",
+          "signature": "main()",
+          "brief_description": "Demonstrates the usage of joint BPE tokenizer training with example texts"
+        }
+      ],
+      "external_dependencies": [
+        "src.data.tokenization"
+      ],
+      "complexity_score": 3,
+      "module_path": "src/training/joint_bpe_training.py"
+    },
+    {
+      "filename": "multimodal_mixed_contrastive_loss.py",
+      "module_path": "src/training/losses/multimodal_mixed_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "loss_factory.py",
+      "module_purpose": "Factory functions for creating and configuring loss functions",
+      "key_functions": [
+        {
+          "name": "create_loss_function",
+          "signature": "create_loss_function(args: Any, dataset_size: Optional[int] = None, train_loader: Optional[Any] = None) -> nn.Module",
+          "brief_description": "Create the appropriate loss function based on arguments"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/loss_factory.py"
+    },
+    {
+      "filename": "vicreg_loss.py",
+      "module_path": "src/training/losses/vicreg_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "multitask_loss.py",
+      "module_path": "src/training/losses/multitask_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "contrastive_learning.py",
+      "module_path": "src/training/losses/contrastive_learning.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "memory_queue_contrastive_loss.py",
+      "module_path": "src/training/losses/memory_queue_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "supervised_contrastive_loss.py",
+      "module_path": "src/training/losses/supervised_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "decoupled_contrastive_loss.py",
+      "module_path": "src/training/losses/decoupled_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "barlow_twins_loss.py",
+      "module_purpose": "Implements Barlow Twins loss for multimodal learning through redundancy reduction",
+      "key_classes": [
+        {
+          "name": "BarlowTwinsLoss",
+          "purpose": "Loss function that creates embeddings with minimal redundancy between their components",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', add_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
+              "brief_description": "Initialize the Barlow Twins loss module with configurable parameters"
+            },
+            {
+              "name": "project",
+              "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Apply projection heads to features if enabled"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]",
+              "brief_description": "Compute Barlow Twins loss between vision and text features"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "typing"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/training/losses/barlow_twins_loss.py"
+    },
+    {
+      "filename": "combined_loss.py",
+      "module_path": "src/training/losses/combined_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "hard_negative_mining_contrastive_loss.py",
+      "module_path": "src/training/losses/hard_negative_mining_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "ema_moco_loss.py",
+      "module_path": "src/training/losses/ema_moco_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "contrastive_loss.py",
+      "module_path": "src/training/losses/contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "hybrid_pretrain_vicreg_loss.py",
+      "module_path": "src/training/losses/hybrid_pretrain_vicreg_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "clip_style_loss.py",
+      "module_path": "src/training/losses/clip_style_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "feature_consistency_loss.py",
+      "module_path": "src/training/losses/feature_consistency_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "losses.py",
+      "module_purpose": "Implements custom loss functions for model training with support for label smoothing and weighted samples",
+      "key_classes": [
+        {
+          "name": "CrossEntropyLoss",
+          "purpose": "Cross-entropy loss with label smoothing for classification tasks",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional"
+          ]
+        },
+        {
+          "name": "MeanSquaredError",
+          "purpose": "Mean squared error loss with support for weighted samples and gradient clipping",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Computes MSE loss with optional sample weights and gradient clipping"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch"
+      ],
+      "complexity_score": 4,
+      "module_path": "src/training/losses/losses.py"
+    },
+    {
+      "filename": "decorrelation_loss.py",
+      "module_path": "src/training/losses/decorrelation_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "dynamic_temperature_contrastive_loss.py",
+      "module_path": "src/training/losses/dynamic_temperature_contrastive_loss.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "single_modality_strategy.py",
+      "module_path": "src/training/strategies/single_modality_strategy.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "training_strategy.py",
+      "module_path": "src/training/strategies/training_strategy.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "end_to_end_strategy.py",
+      "module_path": "src/training/strategies/end_to_end_strategy.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "cross_modal_strategy.py",
+      "module_path": "src/training/strategies/cross_modal_strategy.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "multistage_trainer.py",
+      "module_path": "src/training/trainers/multistage_trainer.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "vision_transformer_trainer.py",
+      "module_purpose": "Provides a specialized trainer for Vision Transformer models with advanced training techniques",
+      "key_classes": [
+        {
+          "name": "VisionTransformerTrainer",
+          "purpose": "Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support",
+          "key_methods": [
+            {
+              "name": "train_epoch",
+              "signature": "train_epoch(self)",
+              "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support"
+            },
+            {
+              "name": "validate",
+              "signature": "validate(self)",
+              "brief_description": "Validate the model on validation dataset"
+            },
+            {
+              "name": "train",
+              "signature": "train(self) -> Dict[str, List[float]]",
+              "brief_description": "Train the model for specified number of epochs with early stopping"
+            },
+            {
+              "name": "save_checkpoint",
+              "signature": "save_checkpoint(self, filename: str) -> None",
+              "brief_description": "Save a checkpoint of the model and training state"
+            },
+            {
+              "name": "load_checkpoint",
+              "signature": "load_checkpoint(self, filename: str) -> None",
+              "brief_description": "Load a checkpoint of the model and training state"
+            },
+            {
+              "name": "_mixup_data",
+              "signature": "_mixup_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+              "brief_description": "Perform mixup data augmentation"
+            },
+            {
+              "name": "_cutmix_data",
+              "signature": "_cutmix_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
+              "brief_description": "Perform cutmix data augmentation"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "VisionTransformer",
+            "matplotlib",
+            "numpy",
+            "tqdm"
+          ]
+        }
+      ],
+      "key_functions": [],
+      "external_dependencies": [
+        "torch",
+        "matplotlib",
+        "numpy",
+        "tqdm"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/trainers/vision_transformer_trainer.py"
+    },
+    {
       "filename": "language_model_trainer.py",
       "module_purpose": "Implements a specialized trainer for language modeling tasks with support for causal language modeling, evaluation, and generation",
       "key_classes": [
@@ -1249,7 +1620,13 @@
         "tqdm"
       ],
       "complexity_score": 8,
-      "module_path": "src/training/language_model_trainer.py"
+      "module_path": "src/training/trainers/language_model_trainer.py"
+    },
+    {
+      "filename": "trainer_factory.py",
+      "module_path": "src/training/trainers/trainer_factory.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "transformer_trainer.py",
@@ -1323,7 +1700,7 @@
         "tqdm"
       ],
       "complexity_score": 8,
-      "module_path": "src/training/transformer_trainer.py"
+      "module_path": "src/training/trainers/transformer_trainer.py"
     },
     {
       "filename": "trainer.py",
@@ -1341,186 +1718,11 @@
         "time"
       ],
       "complexity_score": 6,
-      "module_path": "src/training/trainer.py"
+      "module_path": "src/training/trainers/trainer.py"
     },
     {
       "filename": "multimodal_trainer.py",
-      "module_path": "src/training/multimodal_trainer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "joint_bpe_training.py",
-      "module_purpose": "Implements joint BPE tokenizer training for multilingual text processing in machine translation tasks",
-      "key_classes": [],
-      "key_functions": [
-        {
-          "name": "train_joint_bpe_tokenizer",
-          "signature": "train_joint_bpe_tokenizer(src_texts: List[str], tgt_texts: List[str], vocab_size: int = 8000, min_frequency: int = 2, save_dir: str = 'models/tokenizers') -> BPETokenizer",
-          "brief_description": "Trains a shared BPE tokenizer on combined source and target language texts"
-        },
-        {
-          "name": "main",
-          "signature": "main()",
-          "brief_description": "Demonstrates the usage of joint BPE tokenizer training with example texts"
-        }
-      ],
-      "external_dependencies": [
-        "src.data.tokenization"
-      ],
-      "complexity_score": 3,
-      "module_path": "src/training/joint_bpe_training.py"
-    },
-    {
-      "filename": "multimodal_mixed_contrastive_loss.py",
-      "module_path": "src/training/loss/multimodal_mixed_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "loss_factory.py",
-      "module_purpose": "Factory functions for creating and configuring loss functions",
-      "key_functions": [
-        {
-          "name": "create_loss_function",
-          "signature": "create_loss_function(args: Any, dataset_size: Optional[int] = None, train_loader: Optional[Any] = None) -> nn.Module",
-          "brief_description": "Create the appropriate loss function based on arguments"
-        }
-      ],
-      "external_dependencies": [
-        "torch",
-        "logging"
-      ],
-      "complexity_score": 7,
-      "module_path": "src/training/loss/loss_factory.py"
-    },
-    {
-      "filename": "vicreg_loss.py",
-      "module_path": "src/training/loss/vicreg_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "contrastive_learning.py",
-      "module_path": "src/training/loss/contrastive_learning.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "memory_queue_contrastive_loss.py",
-      "module_path": "src/training/loss/memory_queue_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "decoupled_contrastive_loss.py",
-      "module_path": "src/training/loss/decoupled_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "barlow_twins_loss.py",
-      "module_purpose": "Implements Barlow Twins loss for multimodal learning through redundancy reduction",
-      "key_classes": [
-        {
-          "name": "BarlowTwinsLoss",
-          "purpose": "Loss function that creates embeddings with minimal redundancy between their components",
-          "key_methods": [
-            {
-              "name": "__init__",
-              "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', add_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
-              "brief_description": "Initialize the Barlow Twins loss module with configurable parameters"
-            },
-            {
-              "name": "project",
-              "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
-              "brief_description": "Apply projection heads to features if enabled"
-            },
-            {
-              "name": "forward",
-              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]",
-              "brief_description": "Compute Barlow Twins loss between vision and text features"
-            }
-          ],
-          "inheritance": "nn.Module",
-          "dependencies": [
-            "torch",
-            "torch.nn",
-            "typing"
-          ]
-        }
-      ],
-      "external_dependencies": [
-        "torch"
-      ],
-      "complexity_score": 6,
-      "module_path": "src/training/loss/barlow_twins_loss.py"
-    },
-    {
-      "filename": "hard_negative_mining_contrastive_loss.py",
-      "module_path": "src/training/loss/hard_negative_mining_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "contrastive_loss.py",
-      "module_path": "src/training/loss/contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "hybrid_pretrain_vicreg_loss.py",
-      "module_path": "src/training/loss/hybrid_pretrain_vicreg_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
-    },
-    {
-      "filename": "losses.py",
-      "module_purpose": "Implements custom loss functions for model training with support for label smoothing and weighted samples",
-      "key_classes": [
-        {
-          "name": "CrossEntropyLoss",
-          "purpose": "Cross-entropy loss with label smoothing for classification tasks",
-          "key_methods": [
-            {
-              "name": "forward",
-              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-              "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights"
-            }
-          ],
-          "inheritance": "nn.Module",
-          "dependencies": [
-            "torch",
-            "torch.nn",
-            "torch.nn.functional"
-          ]
-        },
-        {
-          "name": "MeanSquaredError",
-          "purpose": "Mean squared error loss with support for weighted samples and gradient clipping",
-          "key_methods": [
-            {
-              "name": "forward",
-              "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-              "brief_description": "Computes MSE loss with optional sample weights and gradient clipping"
-            }
-          ],
-          "inheritance": "nn.Module",
-          "dependencies": [
-            "torch",
-            "torch.nn"
-          ]
-        }
-      ],
-      "external_dependencies": [
-        "torch"
-      ],
-      "complexity_score": 4,
-      "module_path": "src/training/loss/losses.py"
-    },
-    {
-      "filename": "dynamic_temperature_contrastive_loss.py",
-      "module_path": "src/training/loss/dynamic_temperature_contrastive_loss.py",
+      "module_path": "src/training/trainers/multimodal_trainer.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
     },
@@ -1614,6 +1816,12 @@
       "module_path": "src/utils/argument_configs.py"
     },
     {
+      "filename": "learningrate_scheduler.py",
+      "module_path": "src/utils/learningrate_scheduler.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "config.py",
       "module_purpose": "Provides configuration management utilities with file loading and environment support",
       "key_classes": [
@@ -1670,6 +1878,12 @@
     {
       "filename": "feature_attribution.py",
       "module_path": "src/utils/feature_attribution.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "metrics_tracker.py",
+      "module_path": "src/utils/metrics_tracker.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
     },
@@ -1740,6 +1954,12 @@
       ],
       "complexity_score": 4,
       "module_path": "src/utils/list_models.py"
+    },
+    {
+      "filename": "gradient_handler.py",
+      "module_path": "src/utils/gradient_handler.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "profiling.py",
@@ -3424,6 +3644,18 @@
       "module_path": "src/safety/red_teaming/evaluator.py"
     },
     {
+      "filename": "training_config.py",
+      "module_path": "src/configs/training_config.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "stage_config.py",
+      "module_path": "src/configs/stage_config.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "translation_metrics.py",
       "module_purpose": "Implements standard evaluation metrics for machine translation tasks including BLEU and TER scoring",
       "key_functions": [
@@ -4180,6 +4412,12 @@
       "module_path": "src/data/dataloader.py"
     },
     {
+      "filename": "data_augmentation.py",
+      "module_path": "src/data/data_augmentation.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
       "filename": "dataset_wrapper.py",
       "module_purpose": "Provides dataset wrappers to standardize interfaces for different dataset types",
       "key_classes": [
@@ -4623,9 +4861,9 @@
     }
   ],
   "summary": {
-    "total_modules": 105,
+    "total_modules": 125,
     "modules_with_metadata": 73,
-    "modules_without_metadata": 32
+    "modules_without_metadata": 52
   },
   "complexity_summary": {
     "average_complexity": 5.726027397260274,
@@ -4659,19 +4897,19 @@
         "score": 8
       },
       {
-        "module": "src/training/vision_transformer_trainer.py",
-        "score": 8
-      },
-      {
         "module": "src/training/optimizers.py",
         "score": 8
       },
       {
-        "module": "src/training/language_model_trainer.py",
+        "module": "src/training/trainers/vision_transformer_trainer.py",
         "score": 8
       },
       {
-        "module": "src/training/transformer_trainer.py",
+        "module": "src/training/trainers/language_model_trainer.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/trainers/transformer_trainer.py",
         "score": 8
       },
       {
@@ -4715,7 +4953,7 @@
         "score": 7
       },
       {
-        "module": "src/training/loss/loss_factory.py",
+        "module": "src/training/losses/loss_factory.py",
         "score": 7
       },
       {
@@ -4771,11 +5009,11 @@
         "score": 6
       },
       {
-        "module": "src/training/trainer.py",
+        "module": "src/training/losses/barlow_twins_loss.py",
         "score": 6
       },
       {
-        "module": "src/training/loss/barlow_twins_loss.py",
+        "module": "src/training/trainers/trainer.py",
         "score": 6
       },
       {
@@ -4819,7 +5057,7 @@
         "score": 5
       },
       {
-        "module": "src/training/loss/losses.py",
+        "module": "src/training/losses/losses.py",
         "score": 4
       },
       {
@@ -5012,11 +5250,11 @@
         "usage_count": 2
       },
       {
-        "name": "time",
+        "name": "src.data.tokenization",
         "usage_count": 1
       },
       {
-        "name": "src.data.tokenization",
+        "name": "time",
         "usage_count": 1
       },
       {
