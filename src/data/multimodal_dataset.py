@@ -1505,7 +1505,7 @@ def extract_file_metadata(file_path=__file__):
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, data_root: str, split: str = 'train', transforms: Optional[Dict] = None)",
+                        "signature": "__init__(self, data_root: str, image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None, text_tokenizer=None, max_text_length: int = 77, split: str = 'train', transform_image: Optional[Callable] = None, transform_text: Optional[Callable] = None, metadata_file: str = 'metadata.json', image_key: str = 'image_path', caption_key: str = 'caption', label_key: Optional[str] = 'label', image_dir: str = 'images', limit_samples: Optional[int] = None, return_metadata: bool = False)",
                         "brief_description": "Initialize dataset with data path and preprocessing options",
                     },
                     {
@@ -1513,11 +1513,67 @@ def extract_file_metadata(file_path=__file__):
                         "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
                         "brief_description": "Get a processed image-text pair with optional transformations",
                     },
+                    {
+                        "name": "_load_metadata",
+                        "signature": "_load_metadata(self, metadata_path: str, split: str) -> List[Dict]",
+                        "brief_description": "Load and validate dataset metadata from file",
+                    },
+                    {
+                        "name": "get_hard_negative",
+                        "signature": "get_hard_negative(self, idx: int, neg_type: str = 'same_class') -> int",
+                        "brief_description": "Get index of hard negative sample for contrastive learning",
+                    },
                 ],
                 "inheritance": "Dataset",
-                "dependencies": ["torch.utils.data", "PIL", "numpy"],
-            }
+                "dependencies": ["torch.utils.data", "PIL", "torchvision"],
+            },
+            {
+                "name": "Flickr30kDataset",
+                "purpose": "Specialized dataset for Flickr30k with 5 captions per image support",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, data_root: str = '', image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None, text_tokenizer=None, max_text_length: int = 77, split: str = 'train', transform_image: Optional[Callable] = None, transform_text: Optional[Callable] = None, limit_samples: Optional[int] = None, return_metadata: bool = False)",
+                        "brief_description": "Initialize Flickr30k dataset with specialized configuration",
+                    },
+                    {
+                        "name": "_load_from_cache",
+                        "signature": "_load_from_cache(self) -> bool",
+                        "brief_description": "Load preprocessed dataset from cache if available",
+                    },
+                    {
+                        "name": "_generate_synthetic_data",
+                        "signature": "_generate_synthetic_data(self)",
+                        "brief_description": "Create synthetic data for testing when real data unavailable",
+                    },
+                ],
+                "inheritance": "MultimodalDataset",
+                "dependencies": ["torch.utils.data", "PIL", "torchvision"],
+            },
+            {
+                "name": "EnhancedMultimodalDataset",
+                "purpose": "Advanced dataset with semantic grouping, caching, and multiple caption support",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, split: str = 'train', image_preprocessor=None, tokenizer=None, max_text_length: int = 77, dataset_name: str = 'flickr30k', synthetic_samples: int = 100, cache_dir: Optional[str] = None, max_samples: Optional[int] = None, captions_per_image: int = 1, min_samples_per_group: int = 2, max_samples_per_group: Optional[int] = None, cap_strategy: str = 'random')",
+                        "brief_description": "Initialize enhanced dataset with advanced configuration options",
+                    },
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx)",
+                        "brief_description": "Get sample with proper format for MultimodalTrainer including match_id",
+                    },
+                    {
+                        "name": "_load_flickr30k",
+                        "signature": "_load_flickr30k(self)",
+                        "brief_description": "Load and process Flickr30k dataset with semantic grouping",
+                    },
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data", "PIL", "Image"],
+            },
         ],
         "external_dependencies": ["torch", "PIL", "numpy", "torchvision"],
-        "complexity_score": 7,
+        "complexity_score": 8,
     }

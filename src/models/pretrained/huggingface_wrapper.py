@@ -452,24 +452,52 @@ def extract_file_metadata(file_path=__file__):
         "module_purpose": "Provides wrapper classes for HuggingFace models to make them compatible with the project's architecture",
         "key_classes": [
             {
-                "name": "HuggingFaceWrapper",
-                "purpose": "Base wrapper class for adapting HuggingFace models to project interface",
+                "name": "HuggingFaceTextModelWrapper",
+                "purpose": "Wrapper for HuggingFace text models (BERT, RoBERTa, etc.) with standardized interface",
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, model_name_or_path: str, output_dim: Optional[int] = None)",
-                        "brief_description": "Initialize wrapper with a HuggingFace model",
+                        "signature": "__init__(self, model_name: str)",
+                        "brief_description": "Initialize wrapper with a HuggingFace model by name",
+                    },
+                    {
+                        "name": "encode",
+                        "signature": "encode(self, src, src_mask=None)",
+                        "brief_description": "Encode text using the HuggingFace model with fallback handling",
                     },
                     {
                         "name": "forward",
-                        "signature": "forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
-                        "brief_description": "Process inputs through the model and return features",
+                        "signature": "forward(self, src, tgt=None, src_mask=None, tgt_mask=None)",
+                        "brief_description": "Forward pass that calls encode for encoder-only models",
                     },
                 ],
                 "inheritance": "nn.Module",
                 "dependencies": ["torch", "transformers"],
-            }
+            },
+            {
+                "name": "DimensionMatchingWrapper",
+                "purpose": "Wrapper that adds projection layer to match dimensions between models",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, base_model: nn.Module, input_dim: int, output_dim: int)",
+                        "brief_description": "Initialize wrapper with base model and projection dimensions",
+                    },
+                    {
+                        "name": "encode",
+                        "signature": "encode(self, *args, **kwargs)",
+                        "brief_description": "Encode inputs using base model and project to target dimension",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, *args, **kwargs)",
+                        "brief_description": "Forward pass that calls encode",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            },
         ],
         "external_dependencies": ["torch", "transformers", "typing"],
-        "complexity_score": 5,
+        "complexity_score": 7,
     }

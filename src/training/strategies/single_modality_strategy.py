@@ -16,6 +16,15 @@ from src.training.losses.vicreg_loss import VICRegLoss
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: single_modality_strategy.py
+PURPOSE: Implements the first stage training strategy for multimodal models, focusing on modality-specific learning
+KEY COMPONENTS:
+- SingleModalityStrategy: Strategy for training modality-specific components while freezing cross-modal integration
+DEPENDENCIES: torch, torch.nn, typing, logging, tqdm
+SPECIAL NOTES: Freezes cross-modal components and focuses on unimodal representation learning
+"""
+
 
 class SingleModalityStrategy(TrainingStrategy):
     """
@@ -574,3 +583,70 @@ class SingleModalityStrategy(TrainingStrategy):
 
                 # Log updated parameter status
                 self.log_parameter_status()
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements the first stage training strategy for multimodal models, focusing on modality-specific learning",
+        "key_classes": [
+            {
+                "name": "SingleModalityStrategy",
+                "purpose": "Training strategy for the first stage of multimodal training: modality-specific learning",
+                "key_methods": [
+                    {
+                        "name": "initialize_strategy",
+                        "signature": "initialize_strategy(self) -> None",
+                        "brief_description": "Initialize the strategy by freezing cross-modal components and configuring modality-specific training",
+                    },
+                    {
+                        "name": "_configure_loss_function",
+                        "signature": "_configure_loss_function(self) -> None",
+                        "brief_description": "Configure appropriate loss function for single modality training",
+                    },
+                    {
+                        "name": "prepare_batch",
+                        "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Prepare a batch with focus on separate modality processing",
+                    },
+                    {
+                        "name": "training_step",
+                        "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Perform a training step with modality-specific focus",
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self) -> tuple",
+                        "brief_description": "Configure optimizers with layer-wise learning rates for modality components",
+                    },
+                    {
+                        "name": "on_epoch_end",
+                        "signature": "on_epoch_end(self, epoch: int) -> None",
+                        "brief_description": "Perform end-of-epoch actions including progressive unfreezing",
+                    },
+                ],
+                "inheritance": "TrainingStrategy",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "tqdm",
+                    "TrainingStrategy",
+                    "WarmupCosineScheduler",
+                    "GradientHandler",
+                    "ContrastiveLoss",
+                    "VICRegLoss",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "tqdm"],
+        "complexity_score": 8,  # Complex implementation with parameter freezing, gradient handling, and progressive unfreezing
+    }

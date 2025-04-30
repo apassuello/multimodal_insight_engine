@@ -1043,23 +1043,55 @@ def extract_file_metadata(file_path=__file__):
         "key_classes": [
             {
                 "name": "ContrastiveLoss",
-                "purpose": "Implements InfoNCE contrastive loss with various configurations",
+                "purpose": "Implements InfoNCE contrastive loss with various configurations and memory bank support",
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, temperature: float = 0.07, similarity: str = 'cosine')",
-                        "brief_description": "Initialize contrastive loss with temperature and similarity metric",
+                        "signature": "__init__(self, temperature: float = 0.07, loss_type: str = 'infonce', reduction: str = 'mean', add_projection: bool = True, projection_dim: int = 256, input_dim: Optional[int] = None, sampling_strategy: str = 'auto', memory_bank_size: int = 4096, dataset_size: Optional[int] = None)",
+                        "brief_description": "Initialize contrastive loss with temperature, loss type, and memory options",
+                    },
+                    {
+                        "name": "project",
+                        "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Apply projection heads to features and normalize them",
                     },
                     {
                         "name": "forward",
-                        "signature": "forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
-                        "brief_description": "Compute contrastive loss between anchor and positive/negative samples",
+                        "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: Optional[List[str]] = None, indices: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute contrastive loss between vision and text features with various configurations",
+                    },
+                    {
+                        "name": "update_memory_bank",
+                        "signature": "update_memory_bank(self, vision_features: torch.Tensor, text_features: torch.Tensor)",
+                        "brief_description": "Update memory bank with new vision and text features for additional negatives",
+                    },
+                    {
+                        "name": "update_global_embeddings",
+                        "signature": "update_global_embeddings(self, vision_features: torch.Tensor, text_features: torch.Tensor, indices: torch.Tensor)",
+                        "brief_description": "Update global embedding store for improved contrastive learning with more negatives",
                     },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"],
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
             }
         ],
-        "external_dependencies": ["torch", "typing"],
-        "complexity_score": 6,
+        "key_functions": [
+            {
+                "name": "nt_xent_loss",
+                "signature": "nt_xent_loss(vision_features: torch.Tensor, text_features: torch.Tensor, temperature: float = 0.07, reduction: str = 'mean') -> torch.Tensor",
+                "brief_description": "Compute NT-Xent (Normalized Temperature-scaled Cross Entropy) contrastive loss",
+            },
+            {
+                "name": "supervised_contrastive_loss",
+                "signature": "supervised_contrastive_loss(vision_features: torch.Tensor, text_features: torch.Tensor, labels: torch.Tensor, temperature: float = 0.07, reduction: str = 'mean') -> torch.Tensor",
+                "brief_description": "Compute supervised contrastive loss using class labels to form positive pairs",
+            },
+            {
+                "name": "compute_recall_at_k",
+                "signature": "compute_recall_at_k(similarity: torch.Tensor, K: List[int] = [1, 5, 10], v2t_targets: Optional[torch.Tensor] = None, t2i_targets: Optional[torch.Tensor] = None) -> Dict[str, float]",
+                "brief_description": "Compute recall@K metrics for image-text retrieval evaluation",
+            },
+        ],
+        "external_dependencies": ["torch", "typing", "numpy", "logging"],
+        "complexity_score": 8,
     }

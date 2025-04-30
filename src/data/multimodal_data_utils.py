@@ -1034,18 +1034,109 @@ def extract_file_metadata(file_path=__file__):
     return {
         "filename": os.path.basename(file_path),
         "module_purpose": "Provides utility functions for handling multimodal data including image-text pairs and feature processing",
-        "key_functions": [
+        "key_classes": [
             {
-                "name": "process_image_text_pair",
-                "signature": "process_image_text_pair(image: torch.Tensor, text: str, transforms: Optional[Dict] = None) -> Tuple[torch.Tensor, str]",
-                "brief_description": "Process an image-text pair with optional transformations",
+                "name": "SemanticBatchSampler",
+                "purpose": "Sample batch items to ensure related semantic content is grouped together",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, match_ids, batch_size, min_samples_per_group=4)",
+                        "brief_description": "Create semantically meaningful batches for contrastive learning",
+                    },
+                    {
+                        "name": "_create_semantic_groups",
+                        "signature": "_create_semantic_groups(self)",
+                        "brief_description": "Group samples by match_id for semantic batching",
+                    },
+                ],
+                "inheritance": "Sampler",
+                "dependencies": ["torch.utils.data", "collections.defaultdict"],
             },
             {
-                "name": "normalize_features",
-                "signature": "normalize_features(features: torch.Tensor, norm_type: str = 'l2') -> torch.Tensor",
-                "brief_description": "Normalize feature vectors using specified normalization",
+                "name": "SemanticGroupBatchSampler",
+                "purpose": "Advanced batch sampler ensuring each batch contains multiple examples from the same semantic groups",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, dataset: Any, batch_size: int, drop_last: bool = True, min_samples_per_group: int = 2, max_samples_per_group: Optional[int] = None, cap_strategy: str = 'random', groups_per_batch: Optional[int] = None)",
+                        "brief_description": "Initialize sampler with semantic grouping parameters",
+                    },
+                    {
+                        "name": "_get_match_ids",
+                        "signature": "_get_match_ids(self) -> List[str]",
+                        "brief_description": "Extract match_ids from the dataset",
+                    },
+                    {
+                        "name": "_apply_random_capping",
+                        "signature": "_apply_random_capping(self) -> Dict[str, List[int]]",
+                        "brief_description": "Cap group sizes by randomly selecting samples",
+                    },
+                    {
+                        "name": "_apply_split_capping",
+                        "signature": "_apply_split_capping(self) -> Dict[str, List[int]]",
+                        "brief_description": "Cap group sizes by creating new smaller groups",
+                    },
+                    {
+                        "name": "__iter__",
+                        "signature": "__iter__(self) -> Iterator[List[int]]",
+                        "brief_description": "Generate batches with proper semantic grouping",
+                    },
+                ],
+                "inheritance": "BatchSampler",
+                "dependencies": [
+                    "torch.utils.data",
+                    "collections.defaultdict",
+                    "random",
+                ],
+            },
+            {
+                "name": "MultimodalDataset",
+                "purpose": "Enhanced dataset for feature statistics and semantic grouping",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vision_data: Dict[str, torch.Tensor], text_data: Dict[str, torch.Tensor], match_ids: List[str], feature_dim: int = 512, diversity_weight: float = 0.1, min_group_size: int = 2, max_group_size: int = 10)",
+                        "brief_description": "Initialize dataset with feature diversity and semantic grouping",
+                    },
+                    {
+                        "name": "_compute_feature_diversity",
+                        "signature": "_compute_feature_diversity(self, features: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Compute diversity score for a set of features",
+                    },
+                    {
+                        "name": "get_diverse_features",
+                        "signature": "get_diverse_features(self, num_features: int) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Get diverse features by selecting from different semantic groups",
+                    },
+                ],
+                "inheritance": None,
+                "dependencies": ["torch", "collections.defaultdict"],
+            },
+            {
+                "name": "FeatureStats",
+                "purpose": "Store and track statistics about feature vectors",
+                "key_fields": [
+                    "mean: torch.Tensor",
+                    "std: torch.Tensor",
+                    "count: int",
+                ],
+                "inheritance": "dataclass",
+                "dependencies": ["torch", "dataclasses"],
+            },
+        ],
+        "key_functions": [
+            {
+                "name": "randomize_dataset_positions",
+                "signature": "randomize_dataset_positions(dataset: Any) -> List[int]",
+                "brief_description": "Create randomized batch indices for a dataset to break position correlations",
+            },
+            {
+                "name": "create_data_loaders",
+                "signature": "create_data_loaders(args: Any, image_preprocessor: Any, tokenizer: Any) -> Tuple[DataLoader, DataLoader, DataLoader]",
+                "brief_description": "Create train, validation, and test data loaders with appropriate configurations",
             },
         ],
         "external_dependencies": ["torch", "PIL", "numpy", "torchvision"],
-        "complexity_score": 6,
+        "complexity_score": 8,
     }
