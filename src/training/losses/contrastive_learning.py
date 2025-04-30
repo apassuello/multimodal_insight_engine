@@ -1,4 +1,20 @@
-# src/training/contrastive_learning.py
+"""MODULE: contrastive_learning.py
+PURPOSE: Implements contrastive learning losses and utilities for self-supervised and supervised learning.
+
+KEY COMPONENTS:
+- ContrastiveLearning: Base class for contrastive learning losses
+- Support for various contrastive objectives (InfoNCE, triplet, etc.)
+- Temperature scaling and normalization
+- Efficient negative sampling strategies
+- Batch processing optimizations
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -613,3 +629,41 @@ class DecoupledContrastiveLoss(nn.Module):
             "t2v_accuracy": t2v_accuracy,
             "accuracy": (v2t_accuracy + t2v_accuracy) / 2,
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements contrastive learning losses and utilities for self-supervised and supervised learning",
+        "key_classes": [
+            {
+                "name": "ContrastiveLearning",
+                "purpose": "Base class for implementing various contrastive learning objectives",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, temperature: float = 0.07, normalize: bool = True)",
+                        "brief_description": "Initialize contrastive learning with temperature scaling",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute contrastive loss with optional supervision",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

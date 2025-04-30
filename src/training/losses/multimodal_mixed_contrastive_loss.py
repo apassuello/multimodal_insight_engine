@@ -1,7 +1,24 @@
+"""MODULE: multimodal_mixed_contrastive_loss.py
+PURPOSE: Implements a mixed contrastive loss combining multiple contrastive learning objectives for multimodal data.
+
+KEY COMPONENTS:
+- MultiModalMixedContrastiveLoss: Main class implementing mixed contrastive loss
+- Support for NT-Xent and supervised contrastive losses
+- Optional projection layers for feature transformation
+- Configurable loss weights for different components
+- Performance metrics tracking (recall@K)
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np
 import logging
 
@@ -498,3 +515,46 @@ class MultiModalMixedContrastiveLoss(nn.Module):
             self
         """
         return self.train(False)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a mixed contrastive loss combining multiple contrastive learning objectives for multimodal data",
+        "key_classes": [
+            {
+                "name": "MultiModalMixedContrastiveLoss",
+                "purpose": "Combines multiple contrastive learning objectives with configurable weights",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, temperature: float = 0.07, loss_weights: Optional[Dict[str, float]] = None)",
+                        "brief_description": "Initialize mixed contrastive loss with temperature and weights",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: Optional[List[str]] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute mixed contrastive loss components",
+                    },
+                    {
+                        "name": "_nt_xent_loss",
+                        "signature": "_nt_xent_loss(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Compute NT-Xent contrastive loss",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 8,
+    }

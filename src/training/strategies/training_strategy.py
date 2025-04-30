@@ -9,6 +9,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: training_strategy.py
+PURPOSE: Provides an abstract base class for training strategies used in the multistage training framework
+KEY COMPONENTS:
+- TrainingStrategy: Abstract base class defining the interface for all training strategies
+DEPENDENCIES: torch, torch.nn, torch.optim, typing, logging, abc
+SPECIAL NOTES: Implements the Strategy pattern for swappable training behaviors across different stages
+"""
+
 
 class TrainingStrategy(ABC):
     """
@@ -242,3 +251,56 @@ class TrainingStrategy(ABC):
         """
         # Default implementation does nothing
         pass
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides an abstract base class for training strategies used in the multistage training framework",
+        "key_classes": [
+            {
+                "name": "TrainingStrategy",
+                "purpose": "Abstract base class defining the interface for all training strategies in multimodal learning",
+                "key_methods": [
+                    {
+                        "name": "initialize_strategy",
+                        "signature": "initialize_strategy(self) -> None",
+                        "brief_description": "Initialize the strategy with appropriate parameter freezing and configuration",
+                    },
+                    {
+                        "name": "prepare_batch",
+                        "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Prepare a batch of data for the model with strategy-specific processing",
+                    },
+                    {
+                        "name": "training_step",
+                        "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Perform a single training step with forward/backward passes",
+                    },
+                    {
+                        "name": "validation_step",
+                        "signature": "validation_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Perform a single validation step with metrics calculation",
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self) -> tuple",
+                        "brief_description": "Configure optimizers and schedulers for current strategy",
+                    },
+                ],
+                "inheritance": "ABC",
+                "dependencies": ["torch", "torch.nn", "typing", "logging", "abc"],
+            }
+        ],
+        "external_dependencies": ["torch", "abc"],
+        "complexity_score": 6,  # Abstract base class with multiple abstract methods and utility functions
+    }

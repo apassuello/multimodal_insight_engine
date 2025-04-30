@@ -10,6 +10,15 @@ import os
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: gradient_handler.py
+PURPOSE: Handles gradient operations including clipping, monitoring, balancing, and analysis for multimodal training
+KEY COMPONENTS:
+- GradientHandler: Comprehensive handler for gradient operations in multimodal models
+DEPENDENCIES: torch, torch.nn, typing, logging, matplotlib, numpy, os
+SPECIAL NOTES: Provides visualization and analysis tools to diagnose gradient flow issues in multimodal training
+"""
+
 
 class GradientHandler:
     """
@@ -404,3 +413,64 @@ class GradientHandler:
             )
         )
         plt.close(fig)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Handles gradient operations including clipping, monitoring, balancing, and analysis for multimodal training",
+        "key_classes": [
+            {
+                "name": "GradientHandler",
+                "purpose": "Handles gradient operations including clipping, monitoring, balancing, and analysis",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model: nn.Module, clip_value: Optional[float] = None, component_ratios: Optional[Dict[str, float]] = None, balance_modalities: bool = False, log_frequency: int = 100, visualization_dir: Optional[str] = None)",
+                        "brief_description": "Initialize gradient handler with configuration for balance and monitoring",
+                    },
+                    {
+                        "name": "clip_gradients",
+                        "signature": "clip_gradients(self) -> float",
+                        "brief_description": "Clip gradients if clip_value is set and return total gradient norm",
+                    },
+                    {
+                        "name": "analyze_gradients",
+                        "signature": "analyze_gradients(self) -> Dict[str, float]",
+                        "brief_description": "Analyze gradient norms across different model components",
+                    },
+                    {
+                        "name": "balance_component_gradients",
+                        "signature": "balance_component_gradients(self, optimizer: torch.optim.Optimizer) -> None",
+                        "brief_description": "Balance gradients between components according to target ratios",
+                    },
+                    {
+                        "name": "_visualize_gradients",
+                        "signature": "_visualize_gradients(self) -> None",
+                        "brief_description": "Create visualizations of gradient flow across components",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "typing",
+                    "logging",
+                    "matplotlib",
+                    "numpy",
+                    "os",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "matplotlib", "numpy"],
+        "complexity_score": 8,  # Complex component with gradient analysis, balancing, and visualization
+    }

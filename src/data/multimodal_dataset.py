@@ -1,4 +1,21 @@
-# src/data/multimodal_dataset.py
+"""MODULE: multimodal_dataset.py
+PURPOSE: Implements dataset classes for handling multimodal data pairs (image-text) with support for various data formats and preprocessing.
+
+KEY COMPONENTS:
+- MultimodalDataset: Base dataset class for handling image-text pairs
+- Support for multiple data formats (raw files, preprocessed features)
+- Configurable data loading and preprocessing pipelines
+- Memory-efficient data handling with lazy loading
+- Semantic grouping capabilities for contrastive learning
+
+DEPENDENCIES:
+- torch
+- PIL
+- numpy
+- torchvision
+- multimodal_data_utils
+"""
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
@@ -7,7 +24,7 @@ import os
 import json
 import time
 import random
-from typing import Dict, List, Tuple, Optional, Callable, Union
+from typing import Dict, List, Tuple, Optional, Callable, Union, Any
 import numpy as np
 from collections import defaultdict
 
@@ -695,25 +712,31 @@ class EnhancedMultimodalDataset(Dataset):
         self.cache_dir = cache_dir
         self.max_samples = max_samples
         self.loaded_from_cache = False  # Flag to track if data was loaded from cache
-        
+
         # Store semantic grouping parameters
         self.min_samples_per_group = min_samples_per_group
         self.max_samples_per_group = max_samples_per_group
         self.cap_strategy = cap_strategy
-        
+
         # Log semantic grouping parameters
         if self.max_samples_per_group is not None:
-            logger.info(f"Using group size limits: min={self.min_samples_per_group}, max={self.max_samples_per_group}, strategy={self.cap_strategy}")
+            logger.info(
+                f"Using group size limits: min={self.min_samples_per_group}, max={self.max_samples_per_group}, strategy={self.cap_strategy}"
+            )
         else:
-            logger.info(f"Using min_samples_per_group={self.min_samples_per_group} without upper limit")
-        
+            logger.info(
+                f"Using min_samples_per_group={self.min_samples_per_group} without upper limit"
+            )
+
         # Validate and store captions_per_image parameter
         if captions_per_image < 1 or captions_per_image > 5:
-            logger.warning(f"Invalid captions_per_image value: {captions_per_image}. Using 1 as default.")
+            logger.warning(
+                f"Invalid captions_per_image value: {captions_per_image}. Using 1 as default."
+            )
             self.captions_per_image = 1
         else:
             self.captions_per_image = captions_per_image
-            
+
         logger.info(f"Using {self.captions_per_image} captions per image")
 
         # Verify tokenizer
@@ -865,12 +888,17 @@ class EnhancedMultimodalDataset(Dataset):
 
                 # Use max_samples_per_group if set in command line args
                 # This ensures coordination between initial group creation and batch sampling
-                if hasattr(self, 'max_samples_per_group') and self.max_samples_per_group is not None:
+                if (
+                    hasattr(self, "max_samples_per_group")
+                    and self.max_samples_per_group is not None
+                ):
                     target_group_size = self.max_samples_per_group
-                    logger.info(f"Using max_samples_per_group={target_group_size} for clustering")
+                    logger.info(
+                        f"Using max_samples_per_group={target_group_size} for clustering"
+                    )
                 else:
                     target_group_size = 5  # Default target group size
-                
+
                 # Calculate optimal number of clusters to achieve target group size
                 n_clusters = max(
                     10, len(self.dataset) // target_group_size
@@ -888,28 +916,37 @@ class EnhancedMultimodalDataset(Dataset):
                 cluster_groups = defaultdict(list)
                 for idx, cluster_id in enumerate(clusters):
                     cluster_groups[cluster_id].append(idx)
-                
+
                 # Apply capping to clusters if needed
-                if hasattr(self, 'max_samples_per_group') and self.max_samples_per_group is not None:
+                if (
+                    hasattr(self, "max_samples_per_group")
+                    and self.max_samples_per_group is not None
+                ):
                     for cluster_id, indices in list(cluster_groups.items()):
                         if len(indices) > self.max_samples_per_group:
-                            logger.info(f"Capping cluster {cluster_id} from {len(indices)} to {self.max_samples_per_group} samples")
+                            logger.info(
+                                f"Capping cluster {cluster_id} from {len(indices)} to {self.max_samples_per_group} samples"
+                            )
                             # Randomly sample indices
                             np.random.shuffle(indices)
-                            cluster_groups[cluster_id] = indices[:self.max_samples_per_group]
-                
+                            cluster_groups[cluster_id] = indices[
+                                : self.max_samples_per_group
+                            ]
+
                 # Assign match_ids based on clusters
                 # Make sure all items in dataset are updated
                 for idx in range(len(self.dataset)):
                     # Default match_id for any item not in a cluster
                     if isinstance(self.dataset[idx], dict):
                         self.dataset[idx]["match_id"] = f"unassigned_{idx}"
-                        
+
                 # Now assign proper cluster-based match_ids
                 for cluster_id, indices in cluster_groups.items():
                     for idx in indices:
                         if isinstance(self.dataset[idx], dict):
-                            self.dataset[idx]["match_id"] = f"semantic_group_{cluster_id}"
+                            self.dataset[idx][
+                                "match_id"
+                            ] = f"semantic_group_{cluster_id}"
 
                 logger.info(
                     f"Successfully created {n_clusters} embedding-based semantic groups"
@@ -953,14 +990,18 @@ class EnhancedMultimodalDataset(Dataset):
                     if isinstance(item, dict):
                         item["match_id"] = fallback_id
                     self.match_ids.append(fallback_id)
-                    logger.warning(f"Item {i} missing match_id, using fallback: {fallback_id}")
+                    logger.warning(
+                        f"Item {i} missing match_id, using fallback: {fallback_id}"
+                    )
             except Exception as e:
                 # Create a unique fallback ID
                 fallback_id = f"error_id_{i}"
                 if isinstance(item, dict):
                     item["match_id"] = fallback_id
                 self.match_ids.append(fallback_id)
-                logger.warning(f"Error with item {i}: {e}, using fallback: {fallback_id}")
+                logger.warning(
+                    f"Error with item {i}: {e}, using fallback: {fallback_id}"
+                )
 
         # Diagnostics: check how many unique match_ids we created
         unique_match_ids = len(set(self.match_ids))
@@ -975,11 +1016,15 @@ class EnhancedMultimodalDataset(Dataset):
             id_counts[match_id] += 1
 
         # Apply min_samples_per_group and max_samples_per_group filtering to log accurate stats
-        if hasattr(self, 'min_samples_per_group') and self.min_samples_per_group > 1:
+        if hasattr(self, "min_samples_per_group") and self.min_samples_per_group > 1:
             # Remove groups that are too small
-            id_counts = {k: v for k, v in id_counts.items() if v >= self.min_samples_per_group}
-            logger.info(f"After applying min_samples_per_group={self.min_samples_per_group}: {len(id_counts)} valid groups remain")
-            
+            id_counts = {
+                k: v for k, v in id_counts.items() if v >= self.min_samples_per_group
+            }
+            logger.info(
+                f"After applying min_samples_per_group={self.min_samples_per_group}: {len(id_counts)} valid groups remain"
+            )
+
         group_sizes = list(id_counts.values())
         avg_group_size = sum(group_sizes) / len(group_sizes) if group_sizes else 0
         logger.info(
@@ -1244,31 +1289,33 @@ class EnhancedMultimodalDataset(Dataset):
     def __len__(self):
         """
         Return the number of examples in the dataset.
-        
+
         When captions_per_image > 1, this multiplies the base dataset length
         to create multiple entries per image.
         """
-        if not hasattr(self, 'dataset') or self.dataset is None:
+        if not hasattr(self, "dataset") or self.dataset is None:
             return 0
-            
+
         base_length = len(self.dataset)
-        
+
         # If using only 1 caption per image, return the original length
         if self.captions_per_image <= 1:
             return base_length
-            
+
         # For multi-caption mode, we need to estimate the effective length
         # Check first few items to see how many captions they have on average
         caption_counts = []
         sample_size = min(100, base_length)  # Check up to 100 samples
-        
+
         for i in range(sample_size):
             item = self.dataset[i]
             if "captions" in item and isinstance(item["captions"], list):
-                caption_counts.append(min(len(item["captions"]), self.captions_per_image))
+                caption_counts.append(
+                    min(len(item["captions"]), self.captions_per_image)
+                )
             else:
                 caption_counts.append(1)
-                
+
         # Calculate average number of captions per item
         if caption_counts:
             avg_captions = sum(caption_counts) / len(caption_counts)
@@ -1276,7 +1323,7 @@ class EnhancedMultimodalDataset(Dataset):
             effective_captions = min(self.captions_per_image, avg_captions)
         else:
             effective_captions = 1
-            
+
         # Return the expanded dataset length
         return int(base_length * effective_captions)
 
@@ -1319,7 +1366,7 @@ class EnhancedMultimodalDataset(Dataset):
         ):
             # Get image_id for deterministic selection
             image_id = item.get("image_id", str(idx))
-            
+
             if self.captions_per_image == 1:
                 # Use a deterministic selection based on image_id hash for single caption
                 caption_idx = abs(hash(image_id)) % len(item["captions"])
@@ -1329,15 +1376,17 @@ class EnhancedMultimodalDataset(Dataset):
                 # This enables us to create multiple entries per image in the dataset expansion
                 available_captions = item["captions"]
                 num_captions = min(self.captions_per_image, len(available_captions))
-                
+
                 # Use modulo of idx to determine which caption to use for this specific entry
                 # This distributes different captions across different __getitem__ calls
                 effective_idx = idx % num_captions
-                
+
                 # For deterministic selection, hash the image_id with the effective_idx
-                caption_idx = (abs(hash(f"{image_id}_{effective_idx}")) % len(available_captions))
+                caption_idx = abs(hash(f"{image_id}_{effective_idx}")) % len(
+                    available_captions
+                )
                 caption = available_captions[caption_idx]
-                
+
                 # Store the original caption index for tracking
                 item["caption_idx"] = caption_idx
         elif "caption" in item:
@@ -1434,3 +1483,41 @@ class EnhancedMultimodalDataset(Dataset):
             "split": self.split,
             "dataset_name": self.dataset_name,
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements dataset classes for handling multimodal data pairs with support for various data formats and preprocessing",
+        "key_classes": [
+            {
+                "name": "MultimodalDataset",
+                "purpose": "Base dataset class for handling image-text pairs with configurable preprocessing",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, data_root: str, split: str = 'train', transforms: Optional[Dict] = None)",
+                        "brief_description": "Initialize dataset with data path and preprocessing options",
+                    },
+                    {
+                        "name": "__getitem__",
+                        "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
+                        "brief_description": "Get a processed image-text pair with optional transformations",
+                    },
+                ],
+                "inheritance": "Dataset",
+                "dependencies": ["torch.utils.data", "PIL", "numpy"],
+            }
+        ],
+        "external_dependencies": ["torch", "PIL", "numpy", "torchvision"],
+        "complexity_score": 7,
+    }

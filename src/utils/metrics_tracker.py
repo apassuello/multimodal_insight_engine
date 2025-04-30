@@ -12,6 +12,15 @@ import time
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: metrics_tracker.py
+PURPOSE: Tracks and visualizes training metrics across epochs and steps with issue detection
+KEY COMPONENTS:
+- MetricsTracker: Comprehensive metrics tracking and visualization class
+DEPENDENCIES: torch, numpy, matplotlib, typing, os, json, logging, collections, time
+SPECIAL NOTES: Includes specialized functionality for tracking multimodal alignment quality
+"""
+
 
 class MetricsTracker:
     """
@@ -592,3 +601,76 @@ class MetricsTracker:
                     )
 
         return issues
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Tracks and visualizes training metrics across epochs and steps with issue detection",
+        "key_classes": [
+            {
+                "name": "MetricsTracker",
+                "purpose": "Tracks and visualizes training metrics with early stopping and issue detection",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, log_dir: str, early_stopping: bool = False, patience: int = 5, monitor: str = 'val_loss', mode: str = 'min', visualization_frequency: int = 1, issue_detection: bool = True)",
+                        "brief_description": "Initialize metrics tracker with configuration for monitoring and visualization",
+                    },
+                    {
+                        "name": "update_step_metrics",
+                        "signature": "update_step_metrics(self, metrics: Dict[str, Any], group: str = 'train') -> None",
+                        "brief_description": "Update metrics for the current step",
+                    },
+                    {
+                        "name": "update_epoch_metrics",
+                        "signature": "update_epoch_metrics(self, metrics: Dict[str, Any], group: str = 'train') -> None",
+                        "brief_description": "Update metrics for the current epoch",
+                    },
+                    {
+                        "name": "check_early_stopping",
+                        "signature": "check_early_stopping(self) -> bool",
+                        "brief_description": "Check if early stopping criteria are met",
+                    },
+                    {
+                        "name": "create_visualizations",
+                        "signature": "create_visualizations(self) -> None",
+                        "brief_description": "Create visualizations of tracked metrics",
+                    },
+                    {
+                        "name": "update_alignment_metrics",
+                        "signature": "update_alignment_metrics(self, diag_similarity: float, mean_similarity: float, std_similarity: float, step: Optional[int] = None) -> None",
+                        "brief_description": "Update metrics related to multimodal alignment quality",
+                    },
+                    {
+                        "name": "check_for_issues",
+                        "signature": "check_for_issues(self) -> List[str]",
+                        "brief_description": "Check for potential training issues based on metric patterns",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": [
+                    "torch",
+                    "numpy",
+                    "matplotlib",
+                    "typing",
+                    "os",
+                    "json",
+                    "logging",
+                    "collections",
+                    "time",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "json"],
+        "complexity_score": 7,  # Complex component with visualization, early stopping, and issue detection
+    }

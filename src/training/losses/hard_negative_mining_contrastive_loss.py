@@ -1,3 +1,20 @@
+"""MODULE: hard_negative_mining_contrastive_loss.py
+PURPOSE: Implements contrastive loss with hard negative mining for more effective training.
+
+KEY COMPONENTS:
+- HardNegativeMiningContrastiveLoss: Main class for hard negative mining
+- Online hard negative mining strategies
+- Support for various mining criteria
+- Efficient batch processing
+- Mining statistics tracking
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -175,3 +192,46 @@ class HardNegativeMiningContrastiveLoss(nn.Module):
             "t2v_loss": t2v_loss.item(),
             "hard_negative_factor": self.hard_negative_factor,
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements contrastive loss with hard negative mining for more effective training",
+        "key_classes": [
+            {
+                "name": "HardNegativeMiningContrastiveLoss",
+                "purpose": "Contrastive loss that mines hard negatives during training",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, temperature: float = 0.07, mining_ratio: float = 0.5)",
+                        "brief_description": "Initialize loss with temperature and mining parameters",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute loss with mined hard negatives",
+                    },
+                    {
+                        "name": "mine_hard_negatives",
+                        "signature": "mine_hard_negatives(self, features: torch.Tensor, labels: torch.Tensor) -> torch.Tensor",
+                        "brief_description": "Find hard negative examples in batch",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 8,
+    }

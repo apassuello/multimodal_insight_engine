@@ -1,16 +1,26 @@
 # src/models/pretrained/huggingface_wrapper.py
-"""
-HuggingFace model wrapper for compatibility with multimodal models.
+"""MODULE: huggingface_wrapper.py
+PURPOSE: Provides wrapper classes for HuggingFace models to make them compatible with the project's architecture.
 
-This module provides wrappers and adapters for using HuggingFace models
-within the multimodal architecture, ensuring compatibility with the expected
-interfaces and device handling.
+KEY COMPONENTS:
+- HuggingFaceWrapper: Base wrapper class for HuggingFace models
+- Support for various model architectures (BERT, RoBERTa, etc.)
+- Standardized interface for model usage
+- Efficient feature extraction
+- Memory-optimized inference
+
+DEPENDENCIES:
+- torch
+- transformers
+- typing
 """
 
+import os
 import torch
 import torch.nn as nn
 import logging
 from typing import Dict, Optional, Union, Tuple, Any, List
+from transformers import PreTrainedModel, AutoModel, AutoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -425,3 +435,41 @@ class DimensionMatchingWrapper(nn.Module):
     def forward(self, *args, **kwargs):
         """Forward pass that calls encode."""
         return self.encode(*args, **kwargs)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides wrapper classes for HuggingFace models to make them compatible with the project's architecture",
+        "key_classes": [
+            {
+                "name": "HuggingFaceWrapper",
+                "purpose": "Base wrapper class for adapting HuggingFace models to project interface",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model_name_or_path: str, output_dim: Optional[int] = None)",
+                        "brief_description": "Initialize wrapper with a HuggingFace model",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Process inputs through the model and return features",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "transformers"],
+            }
+        ],
+        "external_dependencies": ["torch", "transformers", "typing"],
+        "complexity_score": 5,
+    }

@@ -1,6 +1,23 @@
+"""MODULE: bidirectional_cross_attention.py
+PURPOSE: Implements bidirectional cross-attention mechanism for multimodal fusion between vision and text features.
+
+KEY COMPONENTS:
+- BidirectionalCrossAttention: Main class implementing bidirectional attention
+- Support for both vision-to-text and text-to-vision attention flows
+- Configurable attention heads and feature dimensions
+- Optional residual connections and layer normalization
+- Memory-efficient implementation for large feature maps
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from .gated_cross_modal_attention import GatedCrossModalAttention
 
@@ -175,3 +192,41 @@ class BidirectionalCrossAttention(nn.Module):
         results["text_to_vision_attn"] = text_to_vision_attn
 
         return results
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements bidirectional cross-attention mechanism for multimodal fusion between vision and text features",
+        "key_classes": [
+            {
+                "name": "BidirectionalCrossAttention",
+                "purpose": "Implements bidirectional attention flow between vision and text modalities",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vision_dim: int, text_dim: int, num_heads: int = 8, dropout: float = 0.1)",
+                        "brief_description": "Initialize bidirectional cross-attention module",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Compute bidirectional attention and fuse features",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 8,
+    }

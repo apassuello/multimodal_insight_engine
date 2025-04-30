@@ -1,18 +1,28 @@
-"""
-Hybrid Contrastive-VICReg Loss
+"""MODULE: hybrid_pretrain_vicreg_loss.py
+PURPOSE: Implements a hybrid pretraining loss that combines VICReg with contrastive learning for improved representation learning.
 
-Implements a hybrid loss that starts with contrastive pre-training to establish
-initial semantic alignment, then transitions to VICReg for robust representation learning.
+KEY COMPONENTS:
+- HybridPretrainVICRegLoss: Main class implementing hybrid pretraining loss
+- Adaptive transition between contrastive and VICReg losses
+- Curriculum learning support
+- Training progress tracking
+- Performance monitoring and metrics
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
 """
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import logging
-from typing import Dict, Tuple, Optional, Union, List, Any
+from typing import Dict, Tuple, Optional, Union, List, Any, Literal
 
-from src.training.loss.vicreg_loss import VICRegLoss
-from src.training.loss.contrastive_loss import ContrastiveLoss
+from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.losses.contrastive_loss import ContrastiveLoss
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +318,7 @@ class HybridPretrainVICRegLoss(nn.Module):
 
     def forward(
         self, z_a: torch.Tensor, z_b: torch.Tensor, **kwargs
-    ) -> Dict[str, Union[torch.Tensor, float]]:
+    ) -> Dict[str, Union[torch.Tensor, float, Literal["contrastive_pretrain"]]]:
         """
         Forward pass that uses either contrastive or VICReg loss based on current step.
 
@@ -483,3 +493,46 @@ class HybridPretrainVICRegLoss(nn.Module):
             vicreg_results["alignment_snr"] = alignment_metrics["alignment_snr"]
 
             return vicreg_results
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a hybrid pretraining loss that combines VICReg with contrastive learning for improved representation learning",
+        "key_classes": [
+            {
+                "name": "HybridPretrainVICRegLoss",
+                "purpose": "Combines VICReg and contrastive losses with adaptive transition",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, sim_coeff: float = 5.0, var_coeff: float = 5.0, cov_coeff: float = 1.0, warmup_epochs: int = 5)",
+                        "brief_description": "Initialize hybrid loss with coefficients and warmup",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, z_a: torch.Tensor, z_b: torch.Tensor) -> Dict[str, Union[torch.Tensor, float, Literal['contrastive_pretrain']]]",
+                        "brief_description": "Compute hybrid loss with current transition state",
+                    },
+                    {
+                        "name": "update_step",
+                        "signature": "update_step(self, step: int, total_steps: int) -> None",
+                        "brief_description": "Update training progress for adaptive transition",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 9,
+    }

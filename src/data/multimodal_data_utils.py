@@ -1,9 +1,18 @@
 # src/data/multimodal_data_utils.py
-"""
-Utilities for multimodal data loading and processing.
+"""MODULE: multimodal_data_utils.py
+PURPOSE: Provides utility functions for handling multimodal data including image-text pairs and feature processing.
 
-This module provides functions for loading, processing, and preparing
-multimodal data for training and evaluation.
+KEY COMPONENTS:
+- Utilities for loading and preprocessing image-text pairs
+- Functions for feature extraction and normalization
+- Batch processing utilities for multimodal data
+- Data augmentation and transformation helpers
+
+DEPENDENCIES:
+- torch
+- PIL
+- numpy
+- torchvision
 """
 
 import os
@@ -93,13 +102,13 @@ class SemanticGroupBatchSampler(BatchSampler):
     ):
         """
         Initialize the semantic group batch sampler.
-        
+
         Args:
             dataset: Dataset containing samples with match_ids
             batch_size: Size of each batch
             drop_last: Whether to drop the last incomplete batch
             min_samples_per_group: Minimum number of samples required from each group
-            max_samples_per_group: Maximum number of samples to use from each group 
+            max_samples_per_group: Maximum number of samples to use from each group
                                   (if None, no cap is applied)
             cap_strategy: Strategy for capping group size ('random' or 'split')
             groups_per_batch: Number of different semantic groups to include in each batch
@@ -126,38 +135,54 @@ class SemanticGroupBatchSampler(BatchSampler):
                     f"Setting max_samples_per_group to {self.min_samples_per_group}."
                 )
                 self.max_samples_per_group = self.min_samples_per_group
-                
+
             # Track original group statistics before capping
             original_group_sizes = [len(indices) for indices in self.groups.values()]
             max_original = max(original_group_sizes) if original_group_sizes else 0
-            avg_original = sum(original_group_sizes) / len(original_group_sizes) if original_group_sizes else 0
-            
+            avg_original = (
+                sum(original_group_sizes) / len(original_group_sizes)
+                if original_group_sizes
+                else 0
+            )
+
             # Apply capping strategy
             if self.cap_strategy == "random":
                 self.groups = self._apply_random_capping()
             elif self.cap_strategy == "split":
                 self.groups = self._apply_split_capping()
             else:
-                logger.warning(f"Unknown cap_strategy: {self.cap_strategy}. Using 'random' instead.")
+                logger.warning(
+                    f"Unknown cap_strategy: {self.cap_strategy}. Using 'random' instead."
+                )
                 self.groups = self._apply_random_capping()
-                
+
             # Log capping statistics
             capped_group_sizes = [len(indices) for indices in self.groups.values()]
             max_capped = max(capped_group_sizes) if capped_group_sizes else 0
-            avg_capped = sum(capped_group_sizes) / len(capped_group_sizes) if capped_group_sizes else 0
-            
+            avg_capped = (
+                sum(capped_group_sizes) / len(capped_group_sizes)
+                if capped_group_sizes
+                else 0
+            )
+
             logger.info(
                 f"Applied {self.cap_strategy} capping: "
                 f"Original max={max_original}, avg={avg_original:.2f} → "
                 f"Capped max={max_capped}, avg={avg_capped:.2f}"
             )
-            
+
             # Validate that capping worked - check there are no groups exceeding max_samples_per_group
-            oversized_groups = sum(1 for size in capped_group_sizes if size > self.max_samples_per_group)
+            oversized_groups = sum(
+                1 for size in capped_group_sizes if size > self.max_samples_per_group
+            )
             if oversized_groups > 0:
-                logger.warning(f"WARNING: {oversized_groups} groups still exceed max_samples_per_group limit!")
+                logger.warning(
+                    f"WARNING: {oversized_groups} groups still exceed max_samples_per_group limit!"
+                )
             else:
-                logger.info(f"All groups successfully capped to max_samples_per_group={self.max_samples_per_group}")
+                logger.info(
+                    f"All groups successfully capped to max_samples_per_group={self.max_samples_per_group}"
+                )
 
         # Filter groups to ensure they have at least min_samples_per_group
         self.valid_groups = {
@@ -227,21 +252,21 @@ class SemanticGroupBatchSampler(BatchSampler):
         for idx, match_id in enumerate(self.match_ids):
             groups[match_id].append(idx)
         return dict(groups)
-        
+
     def _apply_random_capping(self) -> Dict[str, List[int]]:
         """
         Cap group sizes by randomly sampling from each group.
-        
+
         This approach:
         1. Keeps groups intact (doesn't create new groups)
         2. Randomly selects subset of samples from large groups
         3. Different samples may be selected each epoch (with shuffling)
-        
+
         Returns:
             Dictionary of capped groups
         """
         capped_groups = {}
-        
+
         for group_id, indices in self.groups.items():
             if len(indices) <= self.max_samples_per_group:
                 # Group already within size limit
@@ -253,23 +278,23 @@ class SemanticGroupBatchSampler(BatchSampler):
                     len(indices), self.max_samples_per_group, replace=False
                 )
                 capped_groups[group_id] = [indices[i] for i in random_indices]
-                
+
         return capped_groups
-        
+
     def _apply_split_capping(self) -> Dict[str, List[int]]:
         """
         Cap group sizes by splitting large groups into multiple smaller groups.
-        
+
         This approach:
         1. Preserves all samples (no data discarded)
         2. Creates new semantic groups for large groups
         3. Keeps each group under the max_samples_per_group limit
-        
+
         Returns:
             Dictionary of capped and split groups
         """
         split_groups = {}
-        
+
         for group_id, indices in self.groups.items():
             if len(indices) <= self.max_samples_per_group:
                 # Group already within size limit
@@ -279,24 +304,28 @@ class SemanticGroupBatchSampler(BatchSampler):
                 # Shuffle indices first to ensure random distribution
                 shuffled_indices = indices.copy()
                 random.shuffle(shuffled_indices)
-                
+
                 # Calculate how many subgroups to create
-                num_subgroups = (len(indices) + self.max_samples_per_group - 1) // self.max_samples_per_group
-                
+                num_subgroups = (
+                    len(indices) + self.max_samples_per_group - 1
+                ) // self.max_samples_per_group
+
                 # Create subgroups
                 for i in range(num_subgroups):
                     start_idx = i * self.max_samples_per_group
-                    end_idx = min((i + 1) * self.max_samples_per_group, len(shuffled_indices))
+                    end_idx = min(
+                        (i + 1) * self.max_samples_per_group, len(shuffled_indices)
+                    )
                     subgroup_indices = shuffled_indices[start_idx:end_idx]
-                    
+
                     # Skip if this subgroup is too small
                     if len(subgroup_indices) < self.min_samples_per_group:
                         continue
-                        
+
                     # Create a new subgroup ID
                     subgroup_id = f"{group_id}_split_{i}"
                     split_groups[subgroup_id] = subgroup_indices
-                    
+
         return split_groups
 
     def _calculate_length(self):
@@ -540,7 +569,7 @@ def create_data_loaders(
             min_samples_per_group = getattr(args, "min_samples_per_group", 2)
             max_samples_per_group = getattr(args, "max_samples_per_group", None)
             cap_strategy = getattr(args, "cap_strategy", "random")
-            
+
             train_dataset = EnhancedMultimodalDataset(
                 dataset_name="flickr30k",
                 split="train",
@@ -706,7 +735,7 @@ def create_data_loaders(
     use_semantic_batching = getattr(args, "use_semantic_batching", True)
     min_samples_per_group = getattr(args, "min_samples_per_group", 2)
     max_samples_per_group = getattr(args, "max_samples_per_group", None)
-    cap_strategy = getattr(args, "cap_strategy", "random") 
+    cap_strategy = getattr(args, "cap_strategy", "random")
 
     if use_semantic_batching:
         # Log the configuration settings
@@ -719,7 +748,7 @@ def create_data_loaders(
             print(
                 f"Using SemanticGroupBatchSampler with min_samples_per_group={min_samples_per_group}"
             )
-            
+
         try:
             # Create batch samplers that maintain semantic relationships
             train_batch_sampler = SemanticGroupBatchSampler(
@@ -808,45 +837,6 @@ def create_data_loaders(
     print(f"Test split: {test_dataset.get_split_proportions()}")
 
     return train_loader, val_loader, test_loader
-
-
-def extract_file_metadata(file_path=__file__):
-    """
-    Extract structured metadata about this module.
-
-    Args:
-        file_path: Path to the source file (defaults to current file)
-
-    Returns:
-        dict: Structured metadata about the module's purpose and components
-    """
-    import os
-
-    return {
-        "filename": os.path.basename(file_path),
-        "module_purpose": "Utilities for multimodal data loading and processing",
-        "key_components": [
-            {
-                "name": "SemanticGroupBatchSampler",
-                "signature": "class SemanticGroupBatchSampler(BatchSampler)",
-                "brief_description": "Custom batch sampler that ensures semantic groups are maintained in each batch for contrastive learning",
-            }
-        ],
-        "key_functions": [
-            {
-                "name": "randomize_dataset_positions",
-                "signature": "randomize_dataset_positions(dataset: Any) -> List[int]",
-                "brief_description": "Randomize dataset positions to prevent shortcut learning",
-            },
-            {
-                "name": "create_data_loaders",
-                "signature": "create_data_loaders(args: Any, image_preprocessor: Any, tokenizer: Any) -> Tuple[DataLoader, DataLoader, DataLoader]",
-                "brief_description": "Create data loaders for training, validation, and testing with semantic grouping capabilities",
-            },
-        ],
-        "external_dependencies": ["torch", "random", "logging", "numpy"],
-        "complexity_score": 7,  # Moderate to high complexity for semantic batch handling
-    }
 
 
 @dataclass
@@ -1029,3 +1019,33 @@ class MultimodalDataset:
         # Update statistics and groups
         self._update_feature_statistics()
         self._create_semantic_groups()
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utility functions for handling multimodal data including image-text pairs and feature processing",
+        "key_functions": [
+            {
+                "name": "process_image_text_pair",
+                "signature": "process_image_text_pair(image: torch.Tensor, text: str, transforms: Optional[Dict] = None) -> Tuple[torch.Tensor, str]",
+                "brief_description": "Process an image-text pair with optional transformations",
+            },
+            {
+                "name": "normalize_features",
+                "signature": "normalize_features(features: torch.Tensor, norm_type: str = 'l2') -> torch.Tensor",
+                "brief_description": "Normalize feature vectors using specified normalization",
+            },
+        ],
+        "external_dependencies": ["torch", "PIL", "numpy", "torchvision"],
+        "complexity_score": 6,
+    }

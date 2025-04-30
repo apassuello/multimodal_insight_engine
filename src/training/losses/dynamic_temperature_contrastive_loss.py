@@ -1,3 +1,20 @@
+"""MODULE: dynamic_temperature_contrastive_loss.py
+PURPOSE: Implements contrastive loss with dynamic temperature scaling based on training progress.
+
+KEY COMPONENTS:
+- DynamicTemperatureContrastiveLoss: Main class for dynamic temperature contrastive loss
+- Adaptive temperature scheduling
+- Training progress tracking
+- Performance monitoring
+- Configurable temperature bounds
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -110,3 +127,46 @@ class DynamicTemperatureContrastiveLoss(nn.Module):
             "v2t_loss": v2t_loss.item(),
             "t2v_loss": t2v_loss.item(),
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements contrastive loss with dynamic temperature scaling based on training progress",
+        "key_classes": [
+            {
+                "name": "DynamicTemperatureContrastiveLoss",
+                "purpose": "Contrastive loss with temperature that adapts during training",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, initial_temp: float = 0.07, min_temp: float = 0.01, max_temp: float = 0.2)",
+                        "brief_description": "Initialize loss with temperature bounds",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute loss with current temperature",
+                    },
+                    {
+                        "name": "update_temperature",
+                        "signature": "update_temperature(self, metrics: Dict[str, float]) -> None",
+                        "brief_description": "Update temperature based on training metrics",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

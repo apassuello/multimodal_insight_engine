@@ -1,7 +1,26 @@
+"""MODULE: vicreg_multimodal_model.py
+PURPOSE: Implements VICReg (Variance-Invariance-Covariance Regularization) for multimodal representation learning.
+
+KEY COMPONENTS:
+- VICRegMultimodalModel: Main class implementing VICReg for multimodal data
+- Support for vision and text modalities
+- Configurable feature projectors and regularization
+- Efficient batch processing for large datasets
+- Modality-specific feature extraction
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+- transformers
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from typing import Dict, List, Optional, Tuple, Any
 
 
 class VICRegMultimodalModel(nn.Module):
@@ -38,23 +57,39 @@ class VICRegMultimodalModel(nn.Module):
 
         # Always create proper projection networks, even when dimensions match
         # This ensures we have trainable parameters in stage 1
-        print(f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}")
+        print(
+            f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}"
+        )
         self.vision_proj = nn.Sequential(
             nn.Linear(vision_dim, vision_dim),  # First linear layer maintains dimension
-            nn.BatchNorm1d(vision_dim, affine=True),  # Affine=True for trainable parameters
+            nn.BatchNorm1d(
+                vision_dim, affine=True
+            ),  # Affine=True for trainable parameters
             nn.ReLU(),
-            nn.Linear(vision_dim, projection_dim),  # Second linear adapts to projection_dim if needed
-            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
+            nn.Linear(
+                vision_dim, projection_dim
+            ),  # Second linear adapts to projection_dim if needed
+            nn.BatchNorm1d(
+                projection_dim, affine=False
+            ),  # Affine=False for VICReg (fixed)
         )
 
         # Always create proper text projection too, even when dimensions match
-        print(f"Creating text projection with dimensions: {text_dim} -> {projection_dim}")
+        print(
+            f"Creating text projection with dimensions: {text_dim} -> {projection_dim}"
+        )
         self.text_proj = nn.Sequential(
             nn.Linear(text_dim, text_dim),  # First linear layer maintains dimension
-            nn.BatchNorm1d(text_dim, affine=True),  # Affine=True for trainable parameters
+            nn.BatchNorm1d(
+                text_dim, affine=True
+            ),  # Affine=True for trainable parameters
             nn.GELU(),  # Different activation
-            nn.Linear(text_dim, projection_dim),  # Second linear adapts to projection_dim if needed
-            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
+            nn.Linear(
+                text_dim, projection_dim
+            ),  # Second linear adapts to projection_dim if needed
+            nn.BatchNorm1d(
+                projection_dim, affine=False
+            ),  # Affine=False for VICReg (fixed)
         )
 
         # For explicit variance regularization
@@ -230,7 +265,9 @@ class VICRegMultimodalModel(nn.Module):
                 else:
                     # Standardized gain for all other layers
                     nn.init.orthogonal_(module.weight, gain=1.5)
-                    print(f"Applied standardized orthogonal initialization (gain=1.5) to {name}")
+                    print(
+                        f"Applied standardized orthogonal initialization (gain=1.5) to {name}"
+                    )
 
                 # Initialize all biases to zero for better stability
                 if module.bias is not None:
@@ -345,9 +382,7 @@ class VICRegMultimodalModel(nn.Module):
                     else (images.shape[0] if images is not None else 1)
                 )
                 text_dim = self._get_model_dimension(self.text_model)
-                print(
-                    f"Creating zero text features of size {batch_size}x{text_dim}"
-                )
+                print(f"Creating zero text features of size {batch_size}x{text_dim}")
 
                 # Use zeros instead of random features to avoid introducing noise
                 text_features = torch.zeros(batch_size, text_dim, device=model_device)
@@ -408,3 +443,41 @@ class VICRegMultimodalModel(nn.Module):
                 outputs["text_centered"] = text_centered
 
         return outputs
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements VICReg (Variance-Invariance-Covariance Regularization) for multimodal representation learning",
+        "key_classes": [
+            {
+                "name": "VICRegMultimodalModel",
+                "purpose": "Implements VICReg approach for learning aligned multimodal representations",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vision_encoder: nn.Module, text_encoder: nn.Module, projection_dim: int = 8192, hidden_dim: int = 8192)",
+                        "brief_description": "Initialize VICReg multimodal model with encoders and projectors",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, vision_input: torch.Tensor, text_input: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute VICReg representations and regularization terms",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "transformers"],
+            }
+        ],
+        "external_dependencies": ["torch", "transformers", "typing"],
+        "complexity_score": 8,
+    }

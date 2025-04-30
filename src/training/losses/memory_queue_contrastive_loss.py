@@ -1,3 +1,20 @@
+"""MODULE: memory_queue_contrastive_loss.py
+PURPOSE: Implements contrastive loss with memory queue for maintaining large sets of negative examples.
+
+KEY COMPONENTS:
+- MemoryQueueContrastiveLoss: Main class for memory-based contrastive loss
+- Efficient memory queue management
+- Support for momentum encoders
+- Dynamic queue updates
+- Configurable queue size and momentum
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -343,3 +360,46 @@ class MemoryQueueContrastiveLoss(nn.Module):
             "queue_fill_level",
             torch.tensor([new_fill], dtype=torch.long, device=device),
         )
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements contrastive loss with memory queue for maintaining large sets of negative examples",
+        "key_classes": [
+            {
+                "name": "MemoryQueueContrastiveLoss",
+                "purpose": "Contrastive loss with memory queue for enhanced negative sampling",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, dim: int, K: int = 65536, m: float = 0.999, T: float = 0.07)",
+                        "brief_description": "Initialize loss with queue parameters",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, q: torch.Tensor, k: torch.Tensor) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute loss using memory queue",
+                    },
+                    {
+                        "name": "_dequeue_and_enqueue",
+                        "signature": "_dequeue_and_enqueue(self, keys: torch.Tensor) -> None",
+                        "brief_description": "Update memory queue with new keys",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

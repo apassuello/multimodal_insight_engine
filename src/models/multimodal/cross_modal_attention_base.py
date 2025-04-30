@@ -1,7 +1,26 @@
+"""MODULE: cross_modal_attention_base.py
+PURPOSE: Provides base class and utilities for implementing cross-modal attention mechanisms between different modalities.
+
+KEY COMPONENTS:
+- CrossModalAttentionBase: Abstract base class for cross-modal attention
+- Common utilities for attention computation
+- Standardized interface for attention mechanisms
+- Support for various attention patterns
+- Memory-efficient attention implementation
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+- abc
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
+from abc import ABC, abstractmethod
 
 
 class CrossModalAttention(nn.Module):
@@ -140,3 +159,41 @@ class CrossModalAttention(nn.Module):
         output = self.proj_dropout(output)
 
         return output, attention_weights
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides base class and utilities for implementing cross-modal attention mechanisms between different modalities",
+        "key_classes": [
+            {
+                "name": "CrossModalAttentionBase",
+                "purpose": "Abstract base class defining interface for cross-modal attention mechanisms",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, source_dim: int, target_dim: int, num_heads: int = 8)",
+                        "brief_description": "Initialize base cross-modal attention module",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, source_features: torch.Tensor, target_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Abstract method for computing cross-modal attention",
+                    },
+                ],
+                "inheritance": "nn.Module, ABC",
+                "dependencies": ["torch", "torch.nn", "abc"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing", "abc"],
+        "complexity_score": 6,
+    }

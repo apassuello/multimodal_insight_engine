@@ -1,3 +1,20 @@
+"""MODULE: contrastive_loss.py
+PURPOSE: Implements core contrastive loss functions for self-supervised learning with InfoNCE and variants.
+
+KEY COMPONENTS:
+- ContrastiveLoss: Main class implementing InfoNCE contrastive loss
+- Support for various similarity metrics
+- Temperature scaling and normalization
+- Memory bank integration
+- Efficient negative sampling
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -1008,3 +1025,41 @@ def compute_recall_at_k(
         results[f"avg_recall@{k}"] = recall_avg
 
     return results
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements core contrastive loss functions for self-supervised learning with InfoNCE and variants",
+        "key_classes": [
+            {
+                "name": "ContrastiveLoss",
+                "purpose": "Implements InfoNCE contrastive loss with various configurations",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, temperature: float = 0.07, similarity: str = 'cosine')",
+                        "brief_description": "Initialize contrastive loss with temperature and similarity metric",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute contrastive loss between anchor and positive/negative samples",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 6,
+    }

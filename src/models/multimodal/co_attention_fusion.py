@@ -1,3 +1,20 @@
+"""MODULE: co_attention_fusion.py
+PURPOSE: Implements co-attention fusion mechanism for combining vision and text features through mutual attention.
+
+KEY COMPONENTS:
+- CoAttentionFusion: Main class implementing co-attention fusion
+- Parallel attention computation between modalities
+- Feature refinement through mutual attention
+- Support for multiple attention heads
+- Efficient parallel computation of attention maps
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 from typing import Dict, Optional, Tuple, Any
@@ -208,3 +225,41 @@ class CoAttentionFusion(nn.Module):
             "pooled_fusion": fusion_token_output,  # Alternative fusion representation
             "attention_maps": attention_maps,
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements co-attention fusion mechanism for combining vision and text features through mutual attention",
+        "key_classes": [
+            {
+                "name": "CoAttentionFusion",
+                "purpose": "Implements parallel co-attention mechanism for multimodal feature fusion",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vision_dim: int, text_dim: int, fusion_dim: int, num_heads: int = 8)",
+                        "brief_description": "Initialize co-attention fusion module",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+                        "brief_description": "Compute co-attention and fuse features",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

@@ -1,4 +1,20 @@
-# src/training/loss/vicreg_loss.py
+"""MODULE: vicreg_loss.py
+PURPOSE: Implements VICReg (Variance-Invariance-Covariance Regularization) loss for representation learning.
+
+KEY COMPONENTS:
+- VICRegLoss: Main class implementing VICReg loss
+- Variance regularization component
+- Invariance regularization component
+- Covariance regularization component
+- Configurable component weights
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -89,7 +105,7 @@ class VICRegLoss(nn.Module):
         """
         # Always have a minimum factor to avoid complete exclusion of regularization
         min_factor = 0.3  # Increased from 0.2 for better initial regularization
-        
+
         # Fixed factor for early epochs
         if self.current_epoch == 0:
             # Use a very small factor in first epoch
@@ -97,19 +113,21 @@ class VICRegLoss(nn.Module):
         elif self.current_epoch == 1:
             # Use a modest factor in second epoch
             return 0.3
-            
+
         # Limit maximum factor to 0.5 for curriculum learning
         max_factor = 0.5
-        
+
         # Attempt step-based warmup first
         if self.total_steps > 0 and self.current_step > 0:
             # Fine-grained warm-up based on steps if available
             steps_per_epoch = max(1, self.total_steps / max(self.num_epochs, 1))
             warmup_steps = self.warmup_epochs * steps_per_epoch
-            
+
             # Use smoother growth curve (cubic) instead of square root
             progress = self.current_step / max(1, warmup_steps)
-            raw_factor = min(max_factor, progress**0.33)  # Cubic root for even smoother growth
+            raw_factor = min(
+                max_factor, progress**0.33
+            )  # Cubic root for even smoother growth
             return max(min_factor, raw_factor)
 
         # Fallback to epoch-based warmup with same smoothing
@@ -214,3 +232,41 @@ class VICRegLoss(nn.Module):
             "cov_weight": effective_cov_coeff,
             "warmup_factor": warmup_factor if self.curriculum else 1.0,
         }
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements VICReg (Variance-Invariance-Covariance Regularization) loss for representation learning",
+        "key_classes": [
+            {
+                "name": "VICRegLoss",
+                "purpose": "Implements VICReg loss with variance, invariance, and covariance terms",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, sim_weight: float = 25.0, var_weight: float = 25.0, cov_weight: float = 1.0)",
+                        "brief_description": "Initialize VICReg loss with component weights",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, x: torch.Tensor, y: torch.Tensor) -> Dict[str, torch.Tensor]",
+                        "brief_description": "Compute VICReg loss components",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

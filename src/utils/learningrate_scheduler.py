@@ -10,6 +10,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: learningrate_scheduler.py
+PURPOSE: Implements custom learning rate schedulers for transformer and multimodal training
+KEY COMPONENTS:
+- WarmupCosineScheduler: Scheduler with linear warmup and cosine annealing
+- LinearWarmupScheduler: Scheduler with linear warmup and linear decay 
+- LayerwiseLRScheduler: Utility for managing different schedulers for different model components
+DEPENDENCIES: torch, torch.optim.lr_scheduler, math, typing, logging
+SPECIAL NOTES: Provides specialized schedulers for staged training with different warmup behaviors
+"""
+
 
 class WarmupCosineScheduler(_LRScheduler):
     """
@@ -261,3 +272,82 @@ class LayerwiseLRScheduler:
                 lrs[name] = group["lr"]
 
         return lrs
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements custom learning rate schedulers for transformer and multimodal training",
+        "key_classes": [
+            {
+                "name": "WarmupCosineScheduler",
+                "purpose": "Scheduler that combines a warmup phase with cosine annealing decay",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int, min_lr: float = 0.0, warmup_start_factor: float = 0.1, last_epoch: int = -1, verbose: bool = False)",
+                        "brief_description": "Initialize scheduler with warmup and cosine decay parameters",
+                    },
+                    {
+                        "name": "get_lr",
+                        "signature": "get_lr(self) -> List[float]",
+                        "brief_description": "Calculate learning rates based on current step and schedule parameters",
+                    },
+                ],
+                "inheritance": "_LRScheduler",
+                "dependencies": ["torch", "torch.optim.lr_scheduler", "math"],
+            },
+            {
+                "name": "LinearWarmupScheduler",
+                "purpose": "Scheduler with linear warmup followed by linear decay",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, optimizer: torch.optim.Optimizer, warmup_epochs: int, total_epochs: int, init_lr: float = 0.0, final_lr: float = 0.0, last_epoch: int = -1, verbose: bool = False)",
+                        "brief_description": "Initialize scheduler with linear warmup and decay parameters",
+                    },
+                    {
+                        "name": "get_lr",
+                        "signature": "get_lr(self) -> List[float]",
+                        "brief_description": "Calculate learning rates using linear scheduling",
+                    },
+                ],
+                "inheritance": "_LRScheduler",
+                "dependencies": ["torch", "torch.optim.lr_scheduler"],
+            },
+            {
+                "name": "LayerwiseLRScheduler",
+                "purpose": "A utility for creating layer-wise learning rates with different schedules",
+                "key_methods": [
+                    {
+                        "name": "add_scheduler",
+                        "signature": "add_scheduler(self, group_name: str, scheduler_type: str = 'warmup_cosine', **scheduler_kwargs)",
+                        "brief_description": "Add a scheduler for a specific parameter group",
+                    },
+                    {
+                        "name": "step",
+                        "signature": "step(self) -> None",
+                        "brief_description": "Update learning rates for all parameter groups with schedulers",
+                    },
+                    {
+                        "name": "get_last_lrs",
+                        "signature": "get_last_lrs(self) -> Dict[str, float]",
+                        "brief_description": "Get the last computed learning rate for each parameter group",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch", "typing"],
+            },
+        ],
+        "external_dependencies": ["torch", "math"],
+        "complexity_score": 7,  # Multiple scheduler implementations with mathematically involved calculations
+    }

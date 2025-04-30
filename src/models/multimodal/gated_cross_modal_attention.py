@@ -1,6 +1,23 @@
+"""MODULE: gated_cross_modal_attention.py
+PURPOSE: Implements gated cross-modal attention mechanism for controlled information flow between modalities.
+
+KEY COMPONENTS:
+- GatedCrossModalAttention: Main class implementing gated attention
+- Learnable gating mechanism for attention control
+- Support for selective feature fusion
+- Configurable attention heads and dimensions
+- Efficient parallel computation
+
+DEPENDENCIES:
+- torch
+- torch.nn
+- typing
+"""
+
+import os
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from .cross_modal_attention_base import CrossModalAttention
 
@@ -99,3 +116,41 @@ class GatedCrossModalAttention(nn.Module):
         output = query_features_projected + gate_values * attended_features
 
         return output, attention_weights  # , gate_values
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements gated cross-modal attention mechanism for controlled information flow between modalities",
+        "key_classes": [
+            {
+                "name": "GatedCrossModalAttention",
+                "purpose": "Implements gated attention mechanism for controlled cross-modal feature fusion",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, source_dim: int, target_dim: int, num_heads: int = 8, dropout: float = 0.1)",
+                        "brief_description": "Initialize gated cross-modal attention module",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, source_features: torch.Tensor, target_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+                        "brief_description": "Compute gated cross-modal attention and fuse features",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn"],
+            }
+        ],
+        "external_dependencies": ["torch", "typing"],
+        "complexity_score": 7,
+    }

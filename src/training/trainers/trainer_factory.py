@@ -24,6 +24,15 @@ from src.utils.learningrate_scheduler import (
 
 logger = logging.getLogger(__name__)
 
+"""
+MODULE: trainer_factory.py
+PURPOSE: Factory for creating trainers based on configuration with appropriate strategies
+KEY COMPONENTS:
+- TrainerFactory: Static factory class for creating trainer instances with appropriate configuration
+DEPENDENCIES: torch, torch.nn, typing, logging, os, MultimodalTrainer, MultistageTrainer, training strategies
+SPECIAL NOTES: Creates trainers with appropriate configuration for different training approaches
+"""
+
 
 class TrainerFactory:
     """
@@ -407,3 +416,62 @@ class TrainerFactory:
         param_groups = [g for g in param_groups if len(g["params"]) > 0]
 
         return param_groups
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Factory for creating trainers based on configuration with appropriate strategies",
+        "key_classes": [
+            {
+                "name": "TrainerFactory",
+                "purpose": "Factory for creating trainers based on configuration",
+                "key_methods": [
+                    {
+                        "name": "create_trainer",
+                        "signature": "create_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader] = None, test_dataloader: Optional[torch.utils.data.DataLoader] = None, config: Optional[Dict[str, Any]] = None, device: Optional[torch.device] = None, **kwargs) -> Union[MultimodalTrainer, MultistageTrainer]",
+                        "brief_description": "Create a trainer based on configuration",
+                    },
+                    {
+                        "name": "_create_multimodal_trainer",
+                        "signature": "_create_multimodal_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader], test_dataloader: Optional[torch.utils.data.DataLoader], config: Dict[str, Any], device: Optional[torch.device]) -> MultimodalTrainer",
+                        "brief_description": "Create a standard multimodal trainer with configuration",
+                    },
+                    {
+                        "name": "_create_multistage_trainer",
+                        "signature": "_create_multistage_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader], test_dataloader: Optional[torch.utils.data.DataLoader], config: Dict[str, Any], device: Optional[torch.device]) -> MultistageTrainer",
+                        "brief_description": "Create a multistage trainer with appropriate strategies",
+                    },
+                    {
+                        "name": "_create_parameter_groups",
+                        "signature": "_create_parameter_groups(model: nn.Module, config: Dict[str, Any]) -> List[Dict[str, Any]]",
+                        "brief_description": "Create parameter groups with different learning rates",
+                    },
+                ],
+                "inheritance": "",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "MultimodalTrainer",
+                    "MultistageTrainer",
+                    "TrainingStrategy",
+                    "SingleModalityStrategy",
+                    "CrossModalStrategy",
+                    "EndToEndStrategy",
+                    "WarmupCosineScheduler",
+                    "LinearWarmupScheduler",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "os"],
+        "complexity_score": 7,  # Complex factory pattern with multiple trainer creation methods and configuration
+    }
