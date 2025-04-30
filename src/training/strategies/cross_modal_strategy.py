@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.optim.adamw import AdamW
 from typing import Dict, List, Optional, Any, Callable, Union
 import logging
+import os
 from tqdm import tqdm
 
 from src.training.strategies.training_strategy import TrainingStrategy
@@ -14,6 +15,15 @@ from src.utils.metrics_tracker import MetricsTracker
 from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
 
 logger = logging.getLogger(__name__)
+
+"""
+MODULE: cross_modal_strategy.py
+PURPOSE: Implements the second stage training strategy for multimodal models, focusing on cross-modal integration
+KEY COMPONENTS:
+- CrossModalStrategy: Strategy for training cross-modal components while freezing base encoder models
+DEPENDENCIES: torch, torch.nn, typing, logging, tqdm
+SPECIAL NOTES: Uses memory queue contrastive loss for efficient cross-modal alignment
+"""
 
 
 class CrossModalStrategy(TrainingStrategy):
@@ -607,3 +617,69 @@ class CrossModalStrategy(TrainingStrategy):
                     [f"{k}: {v:.4f}" for k, v in queue_stats.items()]
                 )
                 logger.info(f"Memory queue stats: {stats_info}")
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements the second stage training strategy for multimodal models, focusing on cross-modal integration",
+        "key_classes": [
+            {
+                "name": "CrossModalStrategy",
+                "purpose": "Training strategy for the second stage of multimodal training: cross-modal integration",
+                "key_methods": [
+                    {
+                        "name": "initialize_strategy",
+                        "signature": "initialize_strategy(self) -> None",
+                        "brief_description": "Initialize the strategy by freezing base encoders and configuring cross-modal training",
+                    },
+                    {
+                        "name": "_configure_loss_function",
+                        "signature": "_configure_loss_function(self) -> None",
+                        "brief_description": "Configure memory queue contrastive loss for cross-modal training",
+                    },
+                    {
+                        "name": "prepare_batch",
+                        "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Prepare a batch with focus on cross-modal interactions",
+                    },
+                    {
+                        "name": "training_step",
+                        "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Perform a training step focusing on cross-modal integration",
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self) -> tuple",
+                        "brief_description": "Configure optimizers with focus on cross-modal components",
+                    },
+                    {
+                        "name": "_calculate_recall_at_k",
+                        "signature": "_calculate_recall_at_k(self, similarity: torch.Tensor, match_ids: torch.Tensor, k: int = 5) -> float",
+                        "brief_description": "Calculate recall@K metrics for cross-modal retrieval evaluation",
+                    },
+                ],
+                "inheritance": "TrainingStrategy",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "tqdm",
+                    "TrainingStrategy",
+                    "WarmupCosineScheduler",
+                    "GradientHandler",
+                    "MemoryQueueContrastiveLoss",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "tqdm"],
+        "complexity_score": 7,  # Complex implementation with memory queue, gradient handling, and cross-modal focus
+    }

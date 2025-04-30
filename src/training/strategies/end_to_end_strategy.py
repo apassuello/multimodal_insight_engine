@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.optim.adamw import AdamW
 from typing import Dict, List, Optional, Any, Callable, Union
 import logging
+import os
 from tqdm import tqdm
 
 from src.training.strategies.training_strategy import TrainingStrategy
@@ -17,6 +18,15 @@ from src.training.losses.hard_negative_mining_contrastive_loss import (
 from src.training.losses.feature_consistency_loss import FeatureConsistencyLoss
 
 logger = logging.getLogger(__name__)
+
+"""
+MODULE: end_to_end_strategy.py
+PURPOSE: Implements the final stage training strategy for multimodal models, focusing on end-to-end fine-tuning
+KEY COMPONENTS:
+- EndToEndStrategy: Strategy for carefully fine-tuning all model components with feature consistency
+DEPENDENCIES: torch, torch.nn, typing, logging, tqdm
+SPECIAL NOTES: Uses feature consistency to prevent catastrophic forgetting during full fine-tuning
+"""
 
 
 class EndToEndStrategy(TrainingStrategy):
@@ -713,3 +723,75 @@ class EndToEndStrategy(TrainingStrategy):
                 logger.warning(
                     "Significant feature drift detected - possible catastrophic forgetting"
                 )
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements the final stage training strategy for multimodal models, focusing on end-to-end fine-tuning",
+        "key_classes": [
+            {
+                "name": "EndToEndStrategy",
+                "purpose": "Training strategy for the final stage of multimodal training: end-to-end fine-tuning",
+                "key_methods": [
+                    {
+                        "name": "initialize_strategy",
+                        "signature": "initialize_strategy(self) -> None",
+                        "brief_description": "Initialize the strategy by unfreezing all components with careful learning rates",
+                    },
+                    {
+                        "name": "_store_initial_model_state",
+                        "signature": "_store_initial_model_state(self) -> None",
+                        "brief_description": "Store model state for feature consistency to prevent catastrophic forgetting",
+                    },
+                    {
+                        "name": "_configure_loss_function",
+                        "signature": "_configure_loss_function(self) -> None",
+                        "brief_description": "Configure hard negative mining loss with feature consistency",
+                    },
+                    {
+                        "name": "training_step",
+                        "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+                        "brief_description": "Perform a training step with reference model for consistency",
+                    },
+                    {
+                        "name": "configure_optimizers",
+                        "signature": "configure_optimizers(self) -> tuple",
+                        "brief_description": "Configure optimizers with very low learning rates for base models",
+                    },
+                    {
+                        "name": "_calculate_topk_accuracy",
+                        "signature": "_calculate_topk_accuracy(self, similarity: torch.Tensor, match_ids: torch.Tensor, k: int = 1) -> float",
+                        "brief_description": "Calculate top-k accuracy metrics for comprehensive evaluation",
+                    },
+                    {
+                        "name": "_check_feature_drift",
+                        "signature": "_check_feature_drift(self) -> None",
+                        "brief_description": "Monitor feature drift to detect catastrophic forgetting",
+                    },
+                ],
+                "inheritance": "TrainingStrategy",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "tqdm",
+                    "TrainingStrategy",
+                    "WarmupCosineScheduler",
+                    "GradientHandler",
+                    "HardNegativeMiningContrastiveLoss",
+                    "FeatureConsistencyLoss",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "tqdm"],
+        "complexity_score": 9,  # Highly complex implementation with feature consistency, reference model, and drift monitoring
+    }
