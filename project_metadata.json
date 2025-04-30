@@ -714,11 +714,6 @@
             "path": "src/data/dataloader.py"
           },
           {
-            "name": "data_augmentation.py",
-            "type": "file",
-            "path": "src/data/data_augmentation.py"
-          },
-          {
             "name": "dataset_wrapper.py",
             "type": "file",
             "path": "src/data/dataset_wrapper.py"
@@ -1285,9 +1280,41 @@
     },
     {
       "filename": "multimodal_mixed_contrastive_loss.py",
-      "module_path": "src/training/losses/multimodal_mixed_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a mixed contrastive loss combining multiple contrastive learning objectives for multimodal data",
+      "key_classes": [
+        {
+          "name": "MultiModalMixedContrastiveLoss",
+          "purpose": "Combines multiple contrastive learning objectives with configurable weights",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, temperature: float = 0.07, loss_weights: Optional[Dict[str, float]] = None)",
+              "brief_description": "Initialize mixed contrastive loss with temperature and weights"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: Optional[List[str]] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute mixed contrastive loss components"
+            },
+            {
+              "name": "_nt_xent_loss",
+              "signature": "_nt_xent_loss(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Compute NT-Xent contrastive loss"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/losses/multimodal_mixed_contrastive_loss.py"
     },
     {
       "filename": "loss_factory.py",
@@ -1308,9 +1335,36 @@
     },
     {
       "filename": "vicreg_loss.py",
-      "module_path": "src/training/losses/vicreg_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements VICReg (Variance-Invariance-Covariance Regularization) loss for representation learning",
+      "key_classes": [
+        {
+          "name": "VICRegLoss",
+          "purpose": "Implements VICReg loss with variance, invariance, and covariance terms",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, sim_weight: float = 25.0, var_weight: float = 25.0, cov_weight: float = 1.0)",
+              "brief_description": "Initialize VICReg loss with component weights"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, x: torch.Tensor, y: torch.Tensor) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute VICReg loss components"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/vicreg_loss.py"
     },
     {
       "filename": "multitask_loss.py",
@@ -1320,21 +1374,104 @@
     },
     {
       "filename": "contrastive_learning.py",
-      "module_path": "src/training/losses/contrastive_learning.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements contrastive learning losses and utilities for self-supervised and supervised learning",
+      "key_classes": [
+        {
+          "name": "ContrastiveLearning",
+          "purpose": "Base class for implementing various contrastive learning objectives",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, temperature: float = 0.07, normalize: bool = True)",
+              "brief_description": "Initialize contrastive learning with temperature scaling"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute contrastive loss with optional supervision"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/contrastive_learning.py"
     },
     {
       "filename": "memory_queue_contrastive_loss.py",
-      "module_path": "src/training/losses/memory_queue_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements contrastive loss with memory queue for maintaining large sets of negative examples",
+      "key_classes": [
+        {
+          "name": "MemoryQueueContrastiveLoss",
+          "purpose": "Contrastive loss with memory queue for enhanced negative sampling",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, dim: int, K: int = 65536, m: float = 0.999, T: float = 0.07)",
+              "brief_description": "Initialize loss with queue parameters"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, q: torch.Tensor, k: torch.Tensor) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute loss using memory queue"
+            },
+            {
+              "name": "_dequeue_and_enqueue",
+              "signature": "_dequeue_and_enqueue(self, keys: torch.Tensor) -> None",
+              "brief_description": "Update memory queue with new keys"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/memory_queue_contrastive_loss.py"
     },
     {
       "filename": "supervised_contrastive_loss.py",
-      "module_path": "src/training/losses/supervised_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements supervised contrastive learning for multimodal models using explicit labels",
+      "key_classes": [
+        {
+          "name": "SupervisedContrastiveLoss",
+          "purpose": "Improves contrastive learning by leveraging class labels to identify semantically related samples",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, labels: Optional[torch.Tensor] = None, similarity_scores: Optional[torch.Tensor] = None, class_weights: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Computes supervised contrastive loss with support for class labels or similarity scores"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "logging"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/supervised_contrastive_loss.py"
     },
     {
       "filename": "decoupled_contrastive_loss.py",
@@ -1382,45 +1519,304 @@
     },
     {
       "filename": "combined_loss.py",
-      "module_path": "src/training/losses/combined_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a flexible combined loss function that can aggregate multiple loss components with weights",
+      "key_classes": [
+        {
+          "name": "CombinedLoss",
+          "purpose": "Combines multiple loss functions with configurable weights",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, loss_functions: Dict[str, Callable], loss_weights: Optional[Dict[str, float]] = None)",
+              "brief_description": "Initialize combined loss with component functions and weights"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, **kwargs) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute weighted combination of loss components"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 5,
+      "module_path": "src/training/losses/combined_loss.py"
     },
     {
       "filename": "hard_negative_mining_contrastive_loss.py",
-      "module_path": "src/training/losses/hard_negative_mining_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements contrastive loss with hard negative mining for more effective training",
+      "key_classes": [
+        {
+          "name": "HardNegativeMiningContrastiveLoss",
+          "purpose": "Contrastive loss that mines hard negatives during training",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, temperature: float = 0.07, mining_ratio: float = 0.5)",
+              "brief_description": "Initialize loss with temperature and mining parameters"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute loss with mined hard negatives"
+            },
+            {
+              "name": "mine_hard_negatives",
+              "signature": "mine_hard_negatives(self, features: torch.Tensor, labels: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Find hard negative examples in batch"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/losses/hard_negative_mining_contrastive_loss.py"
     },
     {
       "filename": "ema_moco_loss.py",
-      "module_path": "src/training/losses/ema_moco_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements MoCo (Momentum Contrast) with EMA updates for large-batch contrastive learning",
+      "key_classes": [
+        {
+          "name": "EMAMoCoLoss",
+          "purpose": "Enables efficient contrastive learning with memory queue and momentum-updated encoders",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_queries: torch.Tensor, text_queries: torch.Tensor, vision_features: Optional[torch.Tensor] = None, text_features: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Computes MoCo loss with EMA-updated encoders and memory queue"
+            },
+            {
+              "name": "_momentum_update_key_encoder",
+              "signature": "_momentum_update_key_encoder(self, q_encoder: nn.Module, k_encoder: nn.Module)",
+              "brief_description": "Updates key encoder using momentum for stable feature space"
+            },
+            {
+              "name": "_dequeue_and_enqueue",
+              "signature": "_dequeue_and_enqueue(self, keys: torch.Tensor, queue: torch.Tensor, queue_ptr: torch.Tensor)",
+              "brief_description": "Updates queue by dequeuing old keys and enqueuing new ones"
+            },
+            {
+              "name": "_copy_and_detach",
+              "signature": "_copy_and_detach(self, model: nn.Module) -> nn.Module",
+              "brief_description": "Creates a deep copy of a model detached from computation graph"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "logging",
+            "math",
+            "copy"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging",
+        "math",
+        "copy"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/losses/ema_moco_loss.py"
     },
     {
       "filename": "contrastive_loss.py",
-      "module_path": "src/training/losses/contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements core contrastive loss functions for self-supervised learning with InfoNCE and variants",
+      "key_classes": [
+        {
+          "name": "ContrastiveLoss",
+          "purpose": "Implements InfoNCE contrastive loss with various configurations and memory bank support",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, temperature: float = 0.07, loss_type: str = 'infonce', reduction: str = 'mean', add_projection: bool = True, projection_dim: int = 256, input_dim: Optional[int] = None, sampling_strategy: str = 'auto', memory_bank_size: int = 4096, dataset_size: Optional[int] = None)",
+              "brief_description": "Initialize contrastive loss with temperature, loss type, and memory options"
+            },
+            {
+              "name": "project",
+              "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Apply projection heads to features and normalize them"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: Optional[List[str]] = None, indices: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute contrastive loss between vision and text features with various configurations"
+            },
+            {
+              "name": "update_memory_bank",
+              "signature": "update_memory_bank(self, vision_features: torch.Tensor, text_features: torch.Tensor)",
+              "brief_description": "Update memory bank with new vision and text features for additional negatives"
+            },
+            {
+              "name": "update_global_embeddings",
+              "signature": "update_global_embeddings(self, vision_features: torch.Tensor, text_features: torch.Tensor, indices: torch.Tensor)",
+              "brief_description": "Update global embedding store for improved contrastive learning with more negatives"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "nt_xent_loss",
+          "signature": "nt_xent_loss(vision_features: torch.Tensor, text_features: torch.Tensor, temperature: float = 0.07, reduction: str = 'mean') -> torch.Tensor",
+          "brief_description": "Compute NT-Xent (Normalized Temperature-scaled Cross Entropy) contrastive loss"
+        },
+        {
+          "name": "supervised_contrastive_loss",
+          "signature": "supervised_contrastive_loss(vision_features: torch.Tensor, text_features: torch.Tensor, labels: torch.Tensor, temperature: float = 0.07, reduction: str = 'mean') -> torch.Tensor",
+          "brief_description": "Compute supervised contrastive loss using class labels to form positive pairs"
+        },
+        {
+          "name": "compute_recall_at_k",
+          "signature": "compute_recall_at_k(similarity: torch.Tensor, K: List[int] = [1, 5, 10], v2t_targets: Optional[torch.Tensor] = None, t2i_targets: Optional[torch.Tensor] = None) -> Dict[str, float]",
+          "brief_description": "Compute recall@K metrics for image-text retrieval evaluation"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing",
+        "numpy",
+        "logging"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/losses/contrastive_loss.py"
     },
     {
       "filename": "hybrid_pretrain_vicreg_loss.py",
-      "module_path": "src/training/losses/hybrid_pretrain_vicreg_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a hybrid pretraining loss that combines VICReg with contrastive learning for improved representation learning",
+      "key_classes": [
+        {
+          "name": "HybridPretrainVICRegLoss",
+          "purpose": "Combines VICReg and contrastive losses with adaptive transition",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, sim_coeff: float = 5.0, var_coeff: float = 5.0, cov_coeff: float = 1.0, warmup_epochs: int = 5)",
+              "brief_description": "Initialize hybrid loss with coefficients and warmup"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, z_a: torch.Tensor, z_b: torch.Tensor) -> Dict[str, Union[torch.Tensor, float, Literal['contrastive_pretrain']]]",
+              "brief_description": "Compute hybrid loss with current transition state"
+            },
+            {
+              "name": "update_step",
+              "signature": "update_step(self, step: int, total_steps: int) -> None",
+              "brief_description": "Update training progress for adaptive transition"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 9,
+      "module_path": "src/training/losses/hybrid_pretrain_vicreg_loss.py"
     },
     {
       "filename": "clip_style_loss.py",
-      "module_path": "src/training/losses/clip_style_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a CLIP-style contrastive loss for multimodal learning with bidirectional alignment",
+      "key_classes": [
+        {
+          "name": "CLIPStyleLoss",
+          "purpose": "Aligns visual and textual representations in a shared embedding space using bidirectional contrastive learning",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: Optional[List[str]] = None, similarity_matrix: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Computes bidirectional contrastive loss with comprehensive metrics"
+            },
+            {
+              "name": "_create_smooth_labels",
+              "signature": "_create_smooth_labels(self, batch_size: int, targets: torch.Tensor, label_smoothing: float) -> torch.Tensor",
+              "brief_description": "Creates smoothed label distributions for more stable training"
+            },
+            {
+              "name": "_compute_recall_at_k",
+              "signature": "_compute_recall_at_k(self, similarity: torch.Tensor, K: List[int] = [1, 5, 10], v2t_targets: Optional[torch.Tensor] = None, t2v_targets: Optional[torch.Tensor] = None) -> Dict[str, float]",
+              "brief_description": "Calculates recall@K metrics for retrieval evaluation"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "logging"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/clip_style_loss.py"
     },
     {
       "filename": "feature_consistency_loss.py",
-      "module_path": "src/training/losses/feature_consistency_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements feature consistency loss to prevent catastrophic forgetting during fine-tuning",
+      "key_classes": [
+        {
+          "name": "FeatureConsistencyLoss",
+          "purpose": "Maintains consistency between current and reference model features to prevent forgetting",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: Optional[torch.Tensor] = None, text_features: Optional[torch.Tensor] = None, vision_inputs: Optional[torch.Tensor] = None, text_inputs: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Computes consistency loss between current and reference features"
+            },
+            {
+              "name": "_compute_distance",
+              "signature": "_compute_distance(self, current_features: torch.Tensor, reference_features: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Calculates distance between feature representations using selected metric"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "logging"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/feature_consistency_loss.py"
     },
     {
       "filename": "losses.py",
@@ -1468,39 +1864,315 @@
     },
     {
       "filename": "decorrelation_loss.py",
-      "module_path": "src/training/losses/decorrelation_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements decorrelation regularization to prevent feature collapse in multimodal models",
+      "key_classes": [
+        {
+          "name": "DecorrelationLoss",
+          "purpose": "Prevents feature collapse by penalizing correlation between feature dimensions",
+          "key_methods": [
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: Optional[torch.Tensor] = None, text_features: Optional[torch.Tensor] = None, features: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
+              "brief_description": "Computes decorrelation loss for vision, text, or generic features"
+            },
+            {
+              "name": "_compute_covariance",
+              "signature": "_compute_covariance(self, features: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Computes feature covariance matrix for regularization"
+            },
+            {
+              "name": "_compute_off_diagonal_loss",
+              "signature": "_compute_off_diagonal_loss(self, cov: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Calculates loss from off-diagonal covariance elements"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional",
+            "logging",
+            "math"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging",
+        "math"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/training/losses/decorrelation_loss.py"
     },
     {
       "filename": "dynamic_temperature_contrastive_loss.py",
-      "module_path": "src/training/losses/dynamic_temperature_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements contrastive loss with dynamic temperature scaling based on training progress",
+      "key_classes": [
+        {
+          "name": "DynamicTemperatureContrastiveLoss",
+          "purpose": "Contrastive loss with temperature that adapts during training",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, initial_temp: float = 0.07, min_temp: float = 0.01, max_temp: float = 0.2)",
+              "brief_description": "Initialize loss with temperature bounds"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, features: torch.Tensor, labels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute loss with current temperature"
+            },
+            {
+              "name": "update_temperature",
+              "signature": "update_temperature(self, metrics: Dict[str, float]) -> None",
+              "brief_description": "Update temperature based on training metrics"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/dynamic_temperature_contrastive_loss.py"
     },
     {
       "filename": "single_modality_strategy.py",
-      "module_path": "src/training/strategies/single_modality_strategy.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements the first stage training strategy for multimodal models, focusing on modality-specific learning",
+      "key_classes": [
+        {
+          "name": "SingleModalityStrategy",
+          "purpose": "Training strategy for the first stage of multimodal training: modality-specific learning",
+          "key_methods": [
+            {
+              "name": "initialize_strategy",
+              "signature": "initialize_strategy(self) -> None",
+              "brief_description": "Initialize the strategy by freezing cross-modal components and configuring modality-specific training"
+            },
+            {
+              "name": "_configure_loss_function",
+              "signature": "_configure_loss_function(self) -> None",
+              "brief_description": "Configure appropriate loss function for single modality training"
+            },
+            {
+              "name": "prepare_batch",
+              "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Prepare a batch with focus on separate modality processing"
+            },
+            {
+              "name": "training_step",
+              "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Perform a training step with modality-specific focus"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self) -> tuple",
+              "brief_description": "Configure optimizers with layer-wise learning rates for modality components"
+            },
+            {
+              "name": "on_epoch_end",
+              "signature": "on_epoch_end(self, epoch: int) -> None",
+              "brief_description": "Perform end-of-epoch actions including progressive unfreezing"
+            }
+          ],
+          "inheritance": "TrainingStrategy",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "tqdm",
+            "TrainingStrategy",
+            "WarmupCosineScheduler",
+            "GradientHandler",
+            "ContrastiveLoss",
+            "VICRegLoss"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "tqdm"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/strategies/single_modality_strategy.py"
     },
     {
       "filename": "training_strategy.py",
-      "module_path": "src/training/strategies/training_strategy.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides an abstract base class for training strategies used in the multistage training framework",
+      "key_classes": [
+        {
+          "name": "TrainingStrategy",
+          "purpose": "Abstract base class defining the interface for all training strategies in multimodal learning",
+          "key_methods": [
+            {
+              "name": "initialize_strategy",
+              "signature": "initialize_strategy(self) -> None",
+              "brief_description": "Initialize the strategy with appropriate parameter freezing and configuration"
+            },
+            {
+              "name": "prepare_batch",
+              "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Prepare a batch of data for the model with strategy-specific processing"
+            },
+            {
+              "name": "training_step",
+              "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Perform a single training step with forward/backward passes"
+            },
+            {
+              "name": "validation_step",
+              "signature": "validation_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Perform a single validation step with metrics calculation"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self) -> tuple",
+              "brief_description": "Configure optimizers and schedulers for current strategy"
+            }
+          ],
+          "inheritance": "ABC",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "typing",
+            "logging",
+            "abc"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "abc"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/training/strategies/training_strategy.py"
     },
     {
       "filename": "end_to_end_strategy.py",
-      "module_path": "src/training/strategies/end_to_end_strategy.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements the final stage training strategy for multimodal models, focusing on end-to-end fine-tuning",
+      "key_classes": [
+        {
+          "name": "EndToEndStrategy",
+          "purpose": "Training strategy for the final stage of multimodal training: end-to-end fine-tuning",
+          "key_methods": [
+            {
+              "name": "initialize_strategy",
+              "signature": "initialize_strategy(self) -> None",
+              "brief_description": "Initialize the strategy by unfreezing all components with careful learning rates"
+            },
+            {
+              "name": "_store_initial_model_state",
+              "signature": "_store_initial_model_state(self) -> None",
+              "brief_description": "Store model state for feature consistency to prevent catastrophic forgetting"
+            },
+            {
+              "name": "_configure_loss_function",
+              "signature": "_configure_loss_function(self) -> None",
+              "brief_description": "Configure hard negative mining loss with feature consistency"
+            },
+            {
+              "name": "training_step",
+              "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Perform a training step with reference model for consistency"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self) -> tuple",
+              "brief_description": "Configure optimizers with very low learning rates for base models"
+            },
+            {
+              "name": "_calculate_topk_accuracy",
+              "signature": "_calculate_topk_accuracy(self, similarity: torch.Tensor, match_ids: torch.Tensor, k: int = 1) -> float",
+              "brief_description": "Calculate top-k accuracy metrics for comprehensive evaluation"
+            },
+            {
+              "name": "_check_feature_drift",
+              "signature": "_check_feature_drift(self) -> None",
+              "brief_description": "Monitor feature drift to detect catastrophic forgetting"
+            }
+          ],
+          "inheritance": "TrainingStrategy",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "tqdm",
+            "TrainingStrategy",
+            "WarmupCosineScheduler",
+            "GradientHandler",
+            "HardNegativeMiningContrastiveLoss",
+            "FeatureConsistencyLoss"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "tqdm"
+      ],
+      "complexity_score": 9,
+      "module_path": "src/training/strategies/end_to_end_strategy.py"
     },
     {
       "filename": "cross_modal_strategy.py",
-      "module_path": "src/training/strategies/cross_modal_strategy.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements the second stage training strategy for multimodal models, focusing on cross-modal integration",
+      "key_classes": [
+        {
+          "name": "CrossModalStrategy",
+          "purpose": "Training strategy for the second stage of multimodal training: cross-modal integration",
+          "key_methods": [
+            {
+              "name": "initialize_strategy",
+              "signature": "initialize_strategy(self) -> None",
+              "brief_description": "Initialize the strategy by freezing base encoders and configuring cross-modal training"
+            },
+            {
+              "name": "_configure_loss_function",
+              "signature": "_configure_loss_function(self) -> None",
+              "brief_description": "Configure memory queue contrastive loss for cross-modal training"
+            },
+            {
+              "name": "prepare_batch",
+              "signature": "prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Prepare a batch with focus on cross-modal interactions"
+            },
+            {
+              "name": "training_step",
+              "signature": "training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]",
+              "brief_description": "Perform a training step focusing on cross-modal integration"
+            },
+            {
+              "name": "configure_optimizers",
+              "signature": "configure_optimizers(self) -> tuple",
+              "brief_description": "Configure optimizers with focus on cross-modal components"
+            },
+            {
+              "name": "_calculate_recall_at_k",
+              "signature": "_calculate_recall_at_k(self, similarity: torch.Tensor, match_ids: torch.Tensor, k: int = 5) -> float",
+              "brief_description": "Calculate recall@K metrics for cross-modal retrieval evaluation"
+            }
+          ],
+          "inheritance": "TrainingStrategy",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "tqdm",
+            "TrainingStrategy",
+            "WarmupCosineScheduler",
+            "GradientHandler",
+            "MemoryQueueContrastiveLoss"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "tqdm"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/strategies/cross_modal_strategy.py"
     },
     {
       "filename": "multistage_trainer.py",
@@ -1629,9 +2301,54 @@
     },
     {
       "filename": "trainer_factory.py",
-      "module_path": "src/training/trainers/trainer_factory.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Factory for creating trainers based on configuration with appropriate strategies",
+      "key_classes": [
+        {
+          "name": "TrainerFactory",
+          "purpose": "Factory for creating trainers based on configuration",
+          "key_methods": [
+            {
+              "name": "create_trainer",
+              "signature": "create_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader] = None, test_dataloader: Optional[torch.utils.data.DataLoader] = None, config: Optional[Dict[str, Any]] = None, device: Optional[torch.device] = None, **kwargs) -> Union[MultimodalTrainer, MultistageTrainer]",
+              "brief_description": "Create a trainer based on configuration"
+            },
+            {
+              "name": "_create_multimodal_trainer",
+              "signature": "_create_multimodal_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader], test_dataloader: Optional[torch.utils.data.DataLoader], config: Dict[str, Any], device: Optional[torch.device]) -> MultimodalTrainer",
+              "brief_description": "Create a standard multimodal trainer with configuration"
+            },
+            {
+              "name": "_create_multistage_trainer",
+              "signature": "_create_multistage_trainer(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader], test_dataloader: Optional[torch.utils.data.DataLoader], config: Dict[str, Any], device: Optional[torch.device]) -> MultistageTrainer",
+              "brief_description": "Create a multistage trainer with appropriate strategies"
+            },
+            {
+              "name": "_create_parameter_groups",
+              "signature": "_create_parameter_groups(model: nn.Module, config: Dict[str, Any]) -> List[Dict[str, Any]]",
+              "brief_description": "Create parameter groups with different learning rates"
+            }
+          ],
+          "inheritance": "",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "MultimodalTrainer",
+            "MultistageTrainer",
+            "TrainingStrategy",
+            "SingleModalityStrategy",
+            "CrossModalStrategy",
+            "EndToEndStrategy",
+            "WarmupCosineScheduler",
+            "LinearWarmupScheduler"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "os"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/trainers/trainer_factory.py"
     },
     {
       "filename": "transformer_trainer.py",
@@ -1822,9 +2539,84 @@
     },
     {
       "filename": "learningrate_scheduler.py",
-      "module_path": "src/utils/learningrate_scheduler.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements custom learning rate schedulers for transformer and multimodal training",
+      "key_classes": [
+        {
+          "name": "WarmupCosineScheduler",
+          "purpose": "Scheduler that combines a warmup phase with cosine annealing decay",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int, min_lr: float = 0.0, warmup_start_factor: float = 0.1, last_epoch: int = -1, verbose: bool = False)",
+              "brief_description": "Initialize scheduler with warmup and cosine decay parameters"
+            },
+            {
+              "name": "get_lr",
+              "signature": "get_lr(self) -> List[float]",
+              "brief_description": "Calculate learning rates based on current step and schedule parameters"
+            }
+          ],
+          "inheritance": "_LRScheduler",
+          "dependencies": [
+            "torch",
+            "torch.optim.lr_scheduler",
+            "math"
+          ]
+        },
+        {
+          "name": "LinearWarmupScheduler",
+          "purpose": "Scheduler with linear warmup followed by linear decay",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, optimizer: torch.optim.Optimizer, warmup_epochs: int, total_epochs: int, init_lr: float = 0.0, final_lr: float = 0.0, last_epoch: int = -1, verbose: bool = False)",
+              "brief_description": "Initialize scheduler with linear warmup and decay parameters"
+            },
+            {
+              "name": "get_lr",
+              "signature": "get_lr(self) -> List[float]",
+              "brief_description": "Calculate learning rates using linear scheduling"
+            }
+          ],
+          "inheritance": "_LRScheduler",
+          "dependencies": [
+            "torch",
+            "torch.optim.lr_scheduler"
+          ]
+        },
+        {
+          "name": "LayerwiseLRScheduler",
+          "purpose": "A utility for creating layer-wise learning rates with different schedules",
+          "key_methods": [
+            {
+              "name": "add_scheduler",
+              "signature": "add_scheduler(self, group_name: str, scheduler_type: str = 'warmup_cosine', **scheduler_kwargs)",
+              "brief_description": "Add a scheduler for a specific parameter group"
+            },
+            {
+              "name": "step",
+              "signature": "step(self) -> None",
+              "brief_description": "Update learning rates for all parameter groups with schedulers"
+            },
+            {
+              "name": "get_last_lrs",
+              "signature": "get_last_lrs(self) -> Dict[str, float]",
+              "brief_description": "Get the last computed learning rate for each parameter group"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "typing"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "math"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/utils/learningrate_scheduler.py"
     },
     {
       "filename": "config.py",
@@ -1888,9 +2680,70 @@
     },
     {
       "filename": "metrics_tracker.py",
-      "module_path": "src/utils/metrics_tracker.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Tracks and visualizes training metrics across epochs and steps with issue detection",
+      "key_classes": [
+        {
+          "name": "MetricsTracker",
+          "purpose": "Tracks and visualizes training metrics with early stopping and issue detection",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, log_dir: str, early_stopping: bool = False, patience: int = 5, monitor: str = 'val_loss', mode: str = 'min', visualization_frequency: int = 1, issue_detection: bool = True)",
+              "brief_description": "Initialize metrics tracker with configuration for monitoring and visualization"
+            },
+            {
+              "name": "update_step_metrics",
+              "signature": "update_step_metrics(self, metrics: Dict[str, Any], group: str = 'train') -> None",
+              "brief_description": "Update metrics for the current step"
+            },
+            {
+              "name": "update_epoch_metrics",
+              "signature": "update_epoch_metrics(self, metrics: Dict[str, Any], group: str = 'train') -> None",
+              "brief_description": "Update metrics for the current epoch"
+            },
+            {
+              "name": "check_early_stopping",
+              "signature": "check_early_stopping(self) -> bool",
+              "brief_description": "Check if early stopping criteria are met"
+            },
+            {
+              "name": "create_visualizations",
+              "signature": "create_visualizations(self) -> None",
+              "brief_description": "Create visualizations of tracked metrics"
+            },
+            {
+              "name": "update_alignment_metrics",
+              "signature": "update_alignment_metrics(self, diag_similarity: float, mean_similarity: float, std_similarity: float, step: Optional[int] = None) -> None",
+              "brief_description": "Update metrics related to multimodal alignment quality"
+            },
+            {
+              "name": "check_for_issues",
+              "signature": "check_for_issues(self) -> List[str]",
+              "brief_description": "Check for potential training issues based on metric patterns"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "numpy",
+            "matplotlib",
+            "typing",
+            "os",
+            "json",
+            "logging",
+            "collections",
+            "time"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "matplotlib",
+        "json"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/utils/metrics_tracker.py"
     },
     {
       "filename": "gradient_manager.py",
@@ -1968,9 +2821,57 @@
     },
     {
       "filename": "gradient_handler.py",
-      "module_path": "src/utils/gradient_handler.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Handles gradient operations including clipping, monitoring, balancing, and analysis for multimodal training",
+      "key_classes": [
+        {
+          "name": "GradientHandler",
+          "purpose": "Handles gradient operations including clipping, monitoring, balancing, and analysis",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, clip_value: Optional[float] = None, component_ratios: Optional[Dict[str, float]] = None, balance_modalities: bool = False, log_frequency: int = 100, visualization_dir: Optional[str] = None)",
+              "brief_description": "Initialize gradient handler with configuration for balance and monitoring"
+            },
+            {
+              "name": "clip_gradients",
+              "signature": "clip_gradients(self) -> float",
+              "brief_description": "Clip gradients if clip_value is set and return total gradient norm"
+            },
+            {
+              "name": "analyze_gradients",
+              "signature": "analyze_gradients(self) -> Dict[str, float]",
+              "brief_description": "Analyze gradient norms across different model components"
+            },
+            {
+              "name": "balance_component_gradients",
+              "signature": "balance_component_gradients(self, optimizer: torch.optim.Optimizer) -> None",
+              "brief_description": "Balance gradients between components according to target ratios"
+            },
+            {
+              "name": "_visualize_gradients",
+              "signature": "_visualize_gradients(self) -> None",
+              "brief_description": "Create visualizations of gradient flow across components"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "typing",
+            "logging",
+            "matplotlib",
+            "numpy",
+            "os"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "matplotlib",
+        "numpy"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/utils/gradient_handler.py"
     },
     {
       "filename": "profiling.py",
@@ -3005,27 +3906,137 @@
     },
     {
       "filename": "vicreg_multimodal_model.py",
-      "module_path": "src/models/multimodal/vicreg_multimodal_model.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements VICReg (Variance-Invariance-Covariance Regularization) for multimodal representation learning",
+      "key_classes": [
+        {
+          "name": "VICRegMultimodalModel",
+          "purpose": "Implements VICReg approach for learning aligned multimodal representations",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_encoder: nn.Module, text_encoder: nn.Module, projection_dim: int = 8192, hidden_dim: int = 8192)",
+              "brief_description": "Initialize VICReg multimodal model with encoders and projectors"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_input: torch.Tensor, text_input: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute VICReg representations and regularization terms"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "transformers"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "transformers",
+        "typing"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/models/multimodal/vicreg_multimodal_model.py"
     },
     {
       "filename": "bidirectional_cross_attention.py",
-      "module_path": "src/models/multimodal/bidirectional_cross_attention.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements bidirectional cross-attention mechanism for multimodal fusion between vision and text features",
+      "key_classes": [
+        {
+          "name": "BidirectionalCrossAttention",
+          "purpose": "Implements bidirectional attention flow between vision and text modalities",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_dim: int, text_dim: int, num_heads: int = 8, dropout: float = 0.1)",
+              "brief_description": "Initialize bidirectional cross-attention module"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Compute bidirectional attention and fuse features"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/models/multimodal/bidirectional_cross_attention.py"
     },
     {
       "filename": "co_attention_fusion.py",
-      "module_path": "src/models/multimodal/co_attention_fusion.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements co-attention fusion mechanism for combining vision and text features through mutual attention",
+      "key_classes": [
+        {
+          "name": "CoAttentionFusion",
+          "purpose": "Implements parallel co-attention mechanism for multimodal feature fusion",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_dim: int, text_dim: int, fusion_dim: int, num_heads: int = 8)",
+              "brief_description": "Initialize co-attention fusion module"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor",
+              "brief_description": "Compute co-attention and fuse features"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/multimodal/co_attention_fusion.py"
     },
     {
       "filename": "gated_cross_modal_attention.py",
-      "module_path": "src/models/multimodal/gated_cross_modal_attention.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements gated cross-modal attention mechanism for controlled information flow between modalities",
+      "key_classes": [
+        {
+          "name": "GatedCrossModalAttention",
+          "purpose": "Implements gated attention mechanism for controlled cross-modal feature fusion",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, source_dim: int, target_dim: int, num_heads: int = 8, dropout: float = 0.1)",
+              "brief_description": "Initialize gated cross-modal attention module"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, source_features: torch.Tensor, target_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Compute gated cross-modal attention and fuse features"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/multimodal/gated_cross_modal_attention.py"
     },
     {
       "filename": "clip_style_direct_projection.py",
@@ -3096,9 +4107,38 @@
     },
     {
       "filename": "cross_modal_attention_base.py",
-      "module_path": "src/models/multimodal/cross_modal_attention_base.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides base class and utilities for implementing cross-modal attention mechanisms between different modalities",
+      "key_classes": [
+        {
+          "name": "CrossModalAttentionBase",
+          "purpose": "Abstract base class defining interface for cross-modal attention mechanisms",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, source_dim: int, target_dim: int, num_heads: int = 8)",
+              "brief_description": "Initialize base cross-modal attention module"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, source_features: torch.Tensor, target_features: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Abstract method for computing cross-modal attention"
+            }
+          ],
+          "inheritance": "nn.Module, ABC",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "abc"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "typing",
+        "abc"
+      ],
+      "complexity_score": 6,
+      "module_path": "src/models/multimodal/cross_modal_attention_base.py"
     },
     {
       "filename": "vision_transformer.py",
@@ -3140,9 +4180,68 @@
     },
     {
       "filename": "huggingface_wrapper.py",
-      "module_path": "src/models/pretrained/huggingface_wrapper.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides wrapper classes for HuggingFace models to make them compatible with the project's architecture",
+      "key_classes": [
+        {
+          "name": "HuggingFaceTextModelWrapper",
+          "purpose": "Wrapper for HuggingFace text models (BERT, RoBERTa, etc.) with standardized interface",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model_name: str)",
+              "brief_description": "Initialize wrapper with a HuggingFace model by name"
+            },
+            {
+              "name": "encode",
+              "signature": "encode(self, src, src_mask=None)",
+              "brief_description": "Encode text using the HuggingFace model with fallback handling"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, src, tgt=None, src_mask=None, tgt_mask=None)",
+              "brief_description": "Forward pass that calls encode for encoder-only models"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "transformers"
+          ]
+        },
+        {
+          "name": "DimensionMatchingWrapper",
+          "purpose": "Wrapper that adds projection layer to match dimensions between models",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, base_model: nn.Module, input_dim: int, output_dim: int)",
+              "brief_description": "Initialize wrapper with base model and projection dimensions"
+            },
+            {
+              "name": "encode",
+              "signature": "encode(self, *args, **kwargs)",
+              "brief_description": "Encode inputs using base model and project to target dimension"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, *args, **kwargs)",
+              "brief_description": "Forward pass that calls encode"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "transformers",
+        "typing"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/pretrained/huggingface_wrapper.py"
     },
     {
       "filename": "clip_model.py",
@@ -4176,9 +5275,127 @@
     },
     {
       "filename": "multimodal_data_utils.py",
-      "module_path": "src/data/multimodal_data_utils.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides utility functions for handling multimodal data including image-text pairs and feature processing",
+      "key_classes": [
+        {
+          "name": "SemanticBatchSampler",
+          "purpose": "Sample batch items to ensure related semantic content is grouped together",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, match_ids, batch_size, min_samples_per_group=4)",
+              "brief_description": "Create semantically meaningful batches for contrastive learning"
+            },
+            {
+              "name": "_create_semantic_groups",
+              "signature": "_create_semantic_groups(self)",
+              "brief_description": "Group samples by match_id for semantic batching"
+            }
+          ],
+          "inheritance": "Sampler",
+          "dependencies": [
+            "torch.utils.data",
+            "collections.defaultdict"
+          ]
+        },
+        {
+          "name": "SemanticGroupBatchSampler",
+          "purpose": "Advanced batch sampler ensuring each batch contains multiple examples from the same semantic groups",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, dataset: Any, batch_size: int, drop_last: bool = True, min_samples_per_group: int = 2, max_samples_per_group: Optional[int] = None, cap_strategy: str = 'random', groups_per_batch: Optional[int] = None)",
+              "brief_description": "Initialize sampler with semantic grouping parameters"
+            },
+            {
+              "name": "_get_match_ids",
+              "signature": "_get_match_ids(self) -> List[str]",
+              "brief_description": "Extract match_ids from the dataset"
+            },
+            {
+              "name": "_apply_random_capping",
+              "signature": "_apply_random_capping(self) -> Dict[str, List[int]]",
+              "brief_description": "Cap group sizes by randomly selecting samples"
+            },
+            {
+              "name": "_apply_split_capping",
+              "signature": "_apply_split_capping(self) -> Dict[str, List[int]]",
+              "brief_description": "Cap group sizes by creating new smaller groups"
+            },
+            {
+              "name": "__iter__",
+              "signature": "__iter__(self) -> Iterator[List[int]]",
+              "brief_description": "Generate batches with proper semantic grouping"
+            }
+          ],
+          "inheritance": "BatchSampler",
+          "dependencies": [
+            "torch.utils.data",
+            "collections.defaultdict",
+            "random"
+          ]
+        },
+        {
+          "name": "MultimodalDataset",
+          "purpose": "Enhanced dataset for feature statistics and semantic grouping",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_data: Dict[str, torch.Tensor], text_data: Dict[str, torch.Tensor], match_ids: List[str], feature_dim: int = 512, diversity_weight: float = 0.1, min_group_size: int = 2, max_group_size: int = 10)",
+              "brief_description": "Initialize dataset with feature diversity and semantic grouping"
+            },
+            {
+              "name": "_compute_feature_diversity",
+              "signature": "_compute_feature_diversity(self, features: torch.Tensor) -> torch.Tensor",
+              "brief_description": "Compute diversity score for a set of features"
+            },
+            {
+              "name": "get_diverse_features",
+              "signature": "get_diverse_features(self, num_features: int) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Get diverse features by selecting from different semantic groups"
+            }
+          ],
+          "inheritance": null,
+          "dependencies": [
+            "torch",
+            "collections.defaultdict"
+          ]
+        },
+        {
+          "name": "FeatureStats",
+          "purpose": "Store and track statistics about feature vectors",
+          "key_fields": [
+            "mean: torch.Tensor",
+            "std: torch.Tensor",
+            "count: int"
+          ],
+          "inheritance": "dataclass",
+          "dependencies": [
+            "torch",
+            "dataclasses"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "randomize_dataset_positions",
+          "signature": "randomize_dataset_positions(dataset: Any) -> List[int]",
+          "brief_description": "Create randomized batch indices for a dataset to break position correlations"
+        },
+        {
+          "name": "create_data_loaders",
+          "signature": "create_data_loaders(args: Any, image_preprocessor: Any, tokenizer: Any) -> Tuple[DataLoader, DataLoader, DataLoader]",
+          "brief_description": "Create train, validation, and test data loaders with appropriate configurations"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "PIL",
+        "numpy",
+        "torchvision"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/data/multimodal_data_utils.py"
     },
     {
       "filename": "fixed_semantic_sampler.py",
@@ -4188,9 +5405,103 @@
     },
     {
       "filename": "multimodal_dataset.py",
-      "module_path": "src/data/multimodal_dataset.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements dataset classes for handling multimodal data pairs with support for various data formats and preprocessing",
+      "key_classes": [
+        {
+          "name": "MultimodalDataset",
+          "purpose": "Base dataset class for handling image-text pairs with configurable preprocessing",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, data_root: str, image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None, text_tokenizer=None, max_text_length: int = 77, split: str = 'train', transform_image: Optional[Callable] = None, transform_text: Optional[Callable] = None, metadata_file: str = 'metadata.json', image_key: str = 'image_path', caption_key: str = 'caption', label_key: Optional[str] = 'label', image_dir: str = 'images', limit_samples: Optional[int] = None, return_metadata: bool = False)",
+              "brief_description": "Initialize dataset with data path and preprocessing options"
+            },
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
+              "brief_description": "Get a processed image-text pair with optional transformations"
+            },
+            {
+              "name": "_load_metadata",
+              "signature": "_load_metadata(self, metadata_path: str, split: str) -> List[Dict]",
+              "brief_description": "Load and validate dataset metadata from file"
+            },
+            {
+              "name": "get_hard_negative",
+              "signature": "get_hard_negative(self, idx: int, neg_type: str = 'same_class') -> int",
+              "brief_description": "Get index of hard negative sample for contrastive learning"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data",
+            "PIL",
+            "torchvision"
+          ]
+        },
+        {
+          "name": "Flickr30kDataset",
+          "purpose": "Specialized dataset for Flickr30k with 5 captions per image support",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, data_root: str = '', image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None, text_tokenizer=None, max_text_length: int = 77, split: str = 'train', transform_image: Optional[Callable] = None, transform_text: Optional[Callable] = None, limit_samples: Optional[int] = None, return_metadata: bool = False)",
+              "brief_description": "Initialize Flickr30k dataset with specialized configuration"
+            },
+            {
+              "name": "_load_from_cache",
+              "signature": "_load_from_cache(self) -> bool",
+              "brief_description": "Load preprocessed dataset from cache if available"
+            },
+            {
+              "name": "_generate_synthetic_data",
+              "signature": "_generate_synthetic_data(self)",
+              "brief_description": "Create synthetic data for testing when real data unavailable"
+            }
+          ],
+          "inheritance": "MultimodalDataset",
+          "dependencies": [
+            "torch.utils.data",
+            "PIL",
+            "torchvision"
+          ]
+        },
+        {
+          "name": "EnhancedMultimodalDataset",
+          "purpose": "Advanced dataset with semantic grouping, caching, and multiple caption support",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, split: str = 'train', image_preprocessor=None, tokenizer=None, max_text_length: int = 77, dataset_name: str = 'flickr30k', synthetic_samples: int = 100, cache_dir: Optional[str] = None, max_samples: Optional[int] = None, captions_per_image: int = 1, min_samples_per_group: int = 2, max_samples_per_group: Optional[int] = None, cap_strategy: str = 'random')",
+              "brief_description": "Initialize enhanced dataset with advanced configuration options"
+            },
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx)",
+              "brief_description": "Get sample with proper format for MultimodalTrainer including match_id"
+            },
+            {
+              "name": "_load_flickr30k",
+              "signature": "_load_flickr30k(self)",
+              "brief_description": "Load and process Flickr30k dataset with semantic grouping"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data",
+            "PIL",
+            "Image"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "PIL",
+        "numpy",
+        "torchvision"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/data/multimodal_dataset.py"
     },
     {
       "filename": "preprocessing.py",
@@ -4421,12 +5732,6 @@
       ],
       "complexity_score": 3,
       "module_path": "src/data/dataloader.py"
-    },
-    {
-      "filename": "data_augmentation.py",
-      "module_path": "src/data/data_augmentation.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
     },
     {
       "filename": "dataset_wrapper.py",
@@ -4685,9 +5990,41 @@
     },
     {
       "filename": "bert_tokenizer_adapter.py",
-      "module_path": "src/data/tokenization/bert_tokenizer_adapter.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides an adapter class to make HuggingFace BERT tokenizers compatible with the project's tokenizer interface",
+      "key_classes": [
+        {
+          "name": "BertTokenizerAdapter",
+          "purpose": "Adapter class that wraps HuggingFace BERT tokenizers to match project interface",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, pretrained_model_name_or_path: str)",
+              "brief_description": "Initialize adapter with a pretrained BERT tokenizer"
+            },
+            {
+              "name": "tokenize",
+              "signature": "tokenize(self, text: str) -> List[str]",
+              "brief_description": "Convert text into BERT tokens"
+            },
+            {
+              "name": "encode",
+              "signature": "encode(self, text: str) -> List[int]",
+              "brief_description": "Convert text to BERT token indices"
+            }
+          ],
+          "inheritance": "BaseTokenizer",
+          "dependencies": [
+            "transformers.BertTokenizer"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "transformers",
+        "torch",
+        "typing"
+      ],
+      "complexity_score": 4,
+      "module_path": "src/data/tokenization/bert_tokenizer_adapter.py"
     },
     {
       "filename": "bpe_tokenizer.py",
@@ -4872,13 +6209,21 @@
     }
   ],
   "summary": {
-    "total_modules": 126,
-    "modules_with_metadata": 73,
-    "modules_without_metadata": 53
+    "total_modules": 125,
+    "modules_with_metadata": 104,
+    "modules_without_metadata": 21
   },
   "complexity_summary": {
-    "average_complexity": 5.726027397260274,
+    "average_complexity": 6.163461538461538,
     "modules_by_complexity": [
+      {
+        "module": "src/training/losses/hybrid_pretrain_vicreg_loss.py",
+        "score": 9
+      },
+      {
+        "module": "src/training/strategies/end_to_end_strategy.py",
+        "score": 9
+      },
       {
         "module": "src/utils/profiling.py",
         "score": 9
@@ -4912,6 +6257,26 @@
         "score": 8
       },
       {
+        "module": "src/training/losses/multimodal_mixed_contrastive_loss.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/losses/hard_negative_mining_contrastive_loss.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/losses/ema_moco_loss.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/losses/contrastive_loss.py",
+        "score": 8
+      },
+      {
+        "module": "src/training/strategies/single_modality_strategy.py",
+        "score": 8
+      },
+      {
         "module": "src/training/trainers/vision_transformer_trainer.py",
         "score": 8
       },
@@ -4924,6 +6289,10 @@
         "score": 8
       },
       {
+        "module": "src/utils/gradient_handler.py",
+        "score": 8
+      },
+      {
         "module": "src/models/attention.py",
         "score": 8
       },
@@ -4933,6 +6302,14 @@
       },
       {
         "module": "src/models/vision/vision_transformer.py",
+        "score": 8
+      },
+      {
+        "module": "src/models/multimodal/vicreg_multimodal_model.py",
+        "score": 8
+      },
+      {
+        "module": "src/models/multimodal/bidirectional_cross_attention.py",
         "score": 8
       },
       {
@@ -4956,6 +6333,14 @@
         "score": 8
       },
       {
+        "module": "src/data/multimodal_data_utils.py",
+        "score": 8
+      },
+      {
+        "module": "src/data/multimodal_dataset.py",
+        "score": 8
+      },
+      {
         "module": "src/optimization/pruning.py",
         "score": 7
       },
@@ -4965,6 +6350,50 @@
       },
       {
         "module": "src/training/losses/loss_factory.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/vicreg_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/contrastive_learning.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/memory_queue_contrastive_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/supervised_contrastive_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/clip_style_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/feature_consistency_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/losses/dynamic_temperature_contrastive_loss.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/strategies/cross_modal_strategy.py",
+        "score": 7
+      },
+      {
+        "module": "src/training/trainers/trainer_factory.py",
+        "score": 7
+      },
+      {
+        "module": "src/utils/learningrate_scheduler.py",
+        "score": 7
+      },
+      {
+        "module": "src/utils/metrics_tracker.py",
         "score": 7
       },
       {
@@ -4984,7 +6413,19 @@
         "score": 7
       },
       {
+        "module": "src/models/multimodal/co_attention_fusion.py",
+        "score": 7
+      },
+      {
+        "module": "src/models/multimodal/gated_cross_modal_attention.py",
+        "score": 7
+      },
+      {
         "module": "src/models/multimodal/clip_style_direct_projection.py",
+        "score": 7
+      },
+      {
+        "module": "src/models/pretrained/huggingface_wrapper.py",
         "score": 7
       },
       {
@@ -5024,6 +6465,14 @@
         "score": 6
       },
       {
+        "module": "src/training/losses/decorrelation_loss.py",
+        "score": 6
+      },
+      {
+        "module": "src/training/strategies/training_strategy.py",
+        "score": 6
+      },
+      {
         "module": "src/training/trainers/trainer.py",
         "score": 6
       },
@@ -5036,6 +6485,10 @@
         "score": 6
       },
       {
+        "module": "src/models/multimodal/cross_modal_attention_base.py",
+        "score": 6
+      },
+      {
         "module": "src/data/sequence_data.py",
         "score": 6
       },
@@ -5045,6 +6498,10 @@
       },
       {
         "module": "src/optimization/mixed_precision.py",
+        "score": 5
+      },
+      {
+        "module": "src/training/losses/combined_loss.py",
         "score": 5
       },
       {
@@ -5112,6 +6569,10 @@
         "score": 4
       },
       {
+        "module": "src/data/tokenization/bert_tokenizer_adapter.py",
+        "score": 4
+      },
+      {
         "module": "src/training/joint_bpe_training.py",
         "score": 3
       },
@@ -5174,38 +6635,58 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 37,
+    "total_external_dependencies": 38,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 50
+        "usage_count": 81
       },
       {
         "name": "numpy",
-        "usage_count": 21
+        "usage_count": 26
+      },
+      {
+        "name": "typing",
+        "usage_count": 20
       },
       {
         "name": "logging",
-        "usage_count": 9
-      },
-      {
-        "name": "matplotlib",
-        "usage_count": 9
+        "usage_count": 15
       },
       {
         "name": "tqdm",
-        "usage_count": 9
+        "usage_count": 12
+      },
+      {
+        "name": "matplotlib",
+        "usage_count": 11
       },
       {
         "name": "json",
-        "usage_count": 8
+        "usage_count": 9
+      },
+      {
+        "name": "math",
+        "usage_count": 5
+      },
+      {
+        "name": "transformers",
+        "usage_count": 5
+      },
+      {
+        "name": "PIL",
+        "usage_count": 5
       },
       {
         "name": "random",
         "usage_count": 5
       },
       {
-        "name": "typing",
+        "name": "os",
+        "usage_count": 4
+      },
+      {
+        "name": "torchvision",
         "usage_count": 4
       },
       {
@@ -5213,15 +6694,11 @@
         "usage_count": 4
       },
       {
-        "name": "os",
+        "name": "abc",
         "usage_count": 3
       },
       {
         "name": "seaborn",
-        "usage_count": 3
-      },
-      {
-        "name": "PIL",
         "usage_count": 3
       },
       {
@@ -5241,18 +6718,6 @@
         "usage_count": 2
       },
       {
-        "name": "transformers",
-        "usage_count": 2
-      },
-      {
-        "name": "torchvision",
-        "usage_count": 2
-      },
-      {
-        "name": "math",
-        "usage_count": 2
-      },
-      {
         "name": "datasets",
         "usage_count": 2
       },
@@ -5262,6 +6727,10 @@
       },
       {
         "name": "src.data.tokenization",
+        "usage_count": 1
+      },
+      {
+        "name": "copy",
         "usage_count": 1
       },
       {
@@ -5306,10 +6775,6 @@
       },
       {
         "name": "threading",
-        "usage_count": 1
-      },
-      {
-        "name": "abc",
         "usage_count": 1
       },
       {
