@@ -269,6 +269,11 @@
             "path": "src/utils/metrics_tracker.py"
           },
           {
+            "name": "gradient_manager.py",
+            "type": "file",
+            "path": "src/utils/gradient_manager.py"
+          },
+          {
             "name": "visualization.py",
             "type": "file",
             "path": "src/utils/visualization.py"
@@ -1884,6 +1889,12 @@
     {
       "filename": "metrics_tracker.py",
       "module_path": "src/utils/metrics_tracker.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
+    },
+    {
+      "filename": "gradient_manager.py",
+      "module_path": "src/utils/gradient_manager.py",
       "module_purpose": "No metadata function available",
       "has_metadata_function": false
     },
@@ -4861,9 +4872,9 @@
     }
   ],
   "summary": {
-    "total_modules": 125,
+    "total_modules": 126,
     "modules_with_metadata": 73,
-    "modules_without_metadata": 52
+    "modules_without_metadata": 53
   },
   "complexity_summary": {
     "average_complexity": 5.726027397260274,
