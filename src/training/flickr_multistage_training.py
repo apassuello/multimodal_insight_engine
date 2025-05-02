@@ -33,13 +33,13 @@ from torch.optim.adamw import AdamW
 
 # Local imports
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.training.multimodal_trainer import MultimodalTrainer
+from src.training.trainers.multimodal_trainer import MultimodalTrainer
 from src.data.multimodal_dataset import MultimodalDataset
 from src.data.multimodal_data_utils import SemanticGroupBatchSampler
-from src.training.loss.vicreg_loss import VICRegLoss
-from src.training.loss.contrastive_loss import ContrastiveLoss
-from src.training.loss.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
-from src.training.loss.hard_negative_mining_contrastive_loss import (
+from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.losses.contrastive_loss import ContrastiveLoss
+from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
+from src.training.losses.hard_negative_mining_contrastive_loss import (
     HardNegativeMiningContrastiveLoss,
 )
 from src.models.pretrained import (

@@ -464,57 +464,68 @@ class SingleModalityStrategy(TrainingStrategy):
         warmup_steps = self.config.get("warmup_steps", 500)
         total_steps = self.config.get("total_steps", 10000)
 
-        # Set up parameter groups with different learning rates
-        param_groups = [
-            # Vision base model: very low learning rate to preserve pretrained knowledge
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if "vision_model" in n and p.requires_grad
-                ],
-                "lr": base_lr * 0.01,  # 1% of base learning rate
-                "name": "vision_model",
-            },
-            # Text base model: very low learning rate to preserve pretrained knowledge
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if "text_model" in n and p.requires_grad
-                ],
-                "lr": base_lr * 0.01,  # 1% of base learning rate
-                "name": "text_model",
-            },
-            # Projection layers: full learning rate for adaptation
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if any(x in n for x in ["projection", "adapter"])
-                    and p.requires_grad
-                ],
-                "lr": base_lr,  # Full learning rate
-                "name": "projection_layers",
-            },
-            # Other parameters: default learning rate
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if not any(
-                        x in n
-                        for x in ["vision_model", "text_model", "projection", "adapter"]
-                    )
-                    and p.requires_grad
-                ],
-                "lr": base_lr * 0.1,  # 10% of base learning rate
-                "name": "other",
-            },
-        ]
+        # Create a dictionary to track which parameters are already assigned to a group
+        assigned_params = set()
 
-        # Remove empty groups
-        param_groups = [g for g in param_groups if len(g["params"]) > 0]
+        # Helper function to get parameters that match a pattern and haven't been assigned yet
+        def get_unassigned_params(pattern_func):
+            params = []
+            for n, p in self.model.named_parameters():
+                if p.requires_grad and pattern_func(n) and id(p) not in assigned_params:
+                    params.append(p)
+                    assigned_params.add(id(p))
+            return params
+
+        # Set up parameter groups with different learning rates
+        param_groups = []
+
+        # Vision base model: very low learning rate to preserve pretrained knowledge
+        vision_params = get_unassigned_params(lambda n: "vision_model" in n)
+        if vision_params:
+            param_groups.append(
+                {
+                    "params": vision_params,
+                    "lr": base_lr * 0.01,  # 1% of base learning rate
+                    "name": "vision_model",
+                }
+            )
+
+        # Text base model: very low learning rate to preserve pretrained knowledge
+        text_params = get_unassigned_params(lambda n: "text_model" in n)
+        if text_params:
+            param_groups.append(
+                {
+                    "params": text_params,
+                    "lr": base_lr * 0.01,  # 1% of base learning rate
+                    "name": "text_model",
+                }
+            )
+
+        # Projection layers: full learning rate for adaptation
+        projection_params = get_unassigned_params(
+            lambda n: any(x in n for x in ["projection", "adapter"])
+        )
+        if projection_params:
+            param_groups.append(
+                {
+                    "params": projection_params,
+                    "lr": base_lr,  # Full learning rate
+                    "name": "projection_layers",
+                }
+            )
+
+        # Other parameters: default learning rate
+        other_params = get_unassigned_params(
+            lambda n: True  # Get all remaining parameters
+        )
+        if other_params:
+            param_groups.append(
+                {
+                    "params": other_params,
+                    "lr": base_lr * 0.1,  # 10% of base learning rate
+                    "name": "other",
+                }
+            )
 
         # Create optimizer
         optimizer = AdamW(

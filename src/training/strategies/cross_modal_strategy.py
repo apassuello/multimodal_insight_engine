@@ -487,85 +487,84 @@ class CrossModalStrategy(TrainingStrategy):
         warmup_steps = self.config.get("warmup_steps", 200)
         total_steps = self.config.get("total_steps", 5000)
 
-        # Set up parameter groups with different learning rates
-        param_groups = [
-            # Vision base model: low learning rate
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if "vision_model" in n and p.requires_grad
-                ],
-                "lr": base_lr * 0.01,  # 1% of base learning rate
-                "name": "vision_model",
-            },
-            # Text base model: low learning rate
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if "text_model" in n and p.requires_grad
-                ],
-                "lr": base_lr * 0.01,  # 1% of base learning rate
-                "name": "text_model",
-            },
-            # Cross-modal components: full learning rate (main focus)
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if any(
-                        x in n
-                        for x in [
-                            "cross_attention",
-                            "cross_modal",
-                            "fusion",
-                            "interaction",
-                        ]
-                    )
-                    and p.requires_grad
-                ],
-                "lr": base_lr,  # Full learning rate
-                "name": "cross_modal_components",
-            },
-            # Projection layers: medium learning rate
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if any(x in n for x in ["projection", "adapter"])
-                    and p.requires_grad
-                ],
-                "lr": base_lr * 0.5,  # 50% of base learning rate
-                "name": "projection_layers",
-            },
-            # Other parameters: medium learning rate
-            {
-                "params": [
-                    p
-                    for n, p in self.model.named_parameters()
-                    if not any(
-                        x in n
-                        for x in [
-                            "vision_model",
-                            "text_model",
-                            "cross_attention",
-                            "cross_modal",
-                            "fusion",
-                            "interaction",
-                            "projection",
-                            "adapter",
-                        ]
-                    )
-                    and p.requires_grad
-                ],
-                "lr": base_lr * 0.1,  # 10% of base learning rate
-                "name": "other",
-            },
-        ]
+        # Create a dictionary to track which parameters are already assigned to a group
+        assigned_params = set()
 
-        # Remove empty groups
-        param_groups = [g for g in param_groups if len(g["params"]) > 0]
+        # Helper function to get parameters that match a pattern and haven't been assigned yet
+        def get_unassigned_params(pattern_func):
+            params = []
+            for n, p in self.model.named_parameters():
+                if p.requires_grad and pattern_func(n) and id(p) not in assigned_params:
+                    params.append(p)
+                    assigned_params.add(id(p))
+            return params
+
+        # Set up parameter groups with different learning rates
+        param_groups = []
+
+        # Vision base model: low learning rate
+        vision_params = get_unassigned_params(lambda n: "vision_model" in n)
+        if vision_params:
+            param_groups.append(
+                {
+                    "params": vision_params,
+                    "lr": base_lr * 0.01,  # 1% of base learning rate
+                    "name": "vision_model",
+                }
+            )
+
+        # Text base model: low learning rate
+        text_params = get_unassigned_params(lambda n: "text_model" in n)
+        if text_params:
+            param_groups.append(
+                {
+                    "params": text_params,
+                    "lr": base_lr * 0.01,  # 1% of base learning rate
+                    "name": "text_model",
+                }
+            )
+
+        # Cross-modal components: full learning rate (main focus)
+        cross_modal_params = get_unassigned_params(
+            lambda n: any(
+                x in n
+                for x in ["cross_attention", "cross_modal", "fusion", "interaction"]
+            )
+        )
+        if cross_modal_params:
+            param_groups.append(
+                {
+                    "params": cross_modal_params,
+                    "lr": base_lr,  # Full learning rate
+                    "name": "cross_modal_components",
+                }
+            )
+
+        # Projection layers: medium learning rate
+        projection_params = get_unassigned_params(
+            lambda n: any(x in n for x in ["projection", "adapter"])
+        )
+        if projection_params:
+            param_groups.append(
+                {
+                    "params": projection_params,
+                    "lr": base_lr * 0.5,  # 50% of base learning rate
+                    "name": "projection_layers",
+                }
+            )
+
+        # Other parameters: medium learning rate
+        other_params = get_unassigned_params(
+            lambda n: True
+        )  # Get all remaining parameters
+        if other_params:
+            param_groups.append(
+                {
+                    "params": other_params,
+                    "lr": base_lr * 0.1,  # 10% of base learning rate
+                    "name": "other",
+                }
+            )
 
         # Create optimizer
         optimizer = AdamW(

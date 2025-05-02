@@ -24,7 +24,7 @@ SPECIAL NOTES:
 - Provides comprehensive training visualization tools
 """
 
-# src/training/transformer_trainer.py
+# src/training/trainers/transformer_trainer.py
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -36,7 +36,11 @@ import numpy as np
 from tqdm import tqdm
 import os
 
-from .transformer_utils import create_padding_mask, create_causal_mask, LabelSmoothing
+from src.training.transformer_utils import (
+    create_padding_mask,
+    create_causal_mask,
+    LabelSmoothing,
+)
 
 
 class TransformerTrainer:

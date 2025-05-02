@@ -21,14 +21,14 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 # Local imports
-from src.training.loss import (
+from src.training.losses import (
     ContrastiveLoss,
     MultiModalMixedContrastiveLoss,
     VICRegLoss,
     MemoryQueueContrastiveLoss,
     HardNegativeMiningContrastiveLoss,
 )
-from src.training.loss.vicreg_loss import (
+from src.training.losses.vicreg_loss import (
     VICRegLoss,
 )  # Explicit import for type checking
 from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
@@ -676,12 +676,12 @@ class MultimodalTrainer:
             if any(x in name for x in ["vision_model", "text_model"]):
                 param.requires_grad = False
             # Freeze cross-attention and fusion layers
-            elif any(x in name for x in ["cross", "fusion", "gate"]): 
+            elif any(x in name for x in ["cross", "fusion", "gate"]):
                 param.requires_grad = False
             # Only train projection layers and other non-base components
             else:
                 param.requires_grad = True
-                
+
         logger.info("Stage 1: Base models frozen, training only projection layers")
 
         # Create optimizer for Stage 1
@@ -854,8 +854,10 @@ class MultimodalTrainer:
             # Unfreeze all fusion components
             else:
                 param.requires_grad = True
-                
-        logger.info("Stage 2: Unfrozen top 3 layers of base models + all fusion components")
+
+        logger.info(
+            "Stage 2: Unfrozen top 3 layers of base models + all fusion components"
+        )
 
         # Create optimizer for Stage 2 with separate learning rates
         stage2_optimizer = torch.optim.AdamW(
@@ -866,8 +868,9 @@ class MultimodalTrainer:
                         for n, p in self.model.named_parameters()
                         if "vision_model" in n and p.requires_grad
                     ],
-                    "lr": self.learning_rate * 0.01,  # Very small learning rate for vision model layers
-                    "name": "vision_model"  # Add name for gradient scheduler
+                    "lr": self.learning_rate
+                    * 0.01,  # Very small learning rate for vision model layers
+                    "name": "vision_model",  # Add name for gradient scheduler
                 },
                 {
                     "params": [
@@ -875,8 +878,9 @@ class MultimodalTrainer:
                         for n, p in self.model.named_parameters()
                         if "text_model" in n and p.requires_grad
                     ],
-                    "lr": self.learning_rate * 0.01,  # Very small learning rate for text model layers
-                    "name": "text_model"  # Add name for gradient scheduler
+                    "lr": self.learning_rate
+                    * 0.01,  # Very small learning rate for text model layers
+                    "name": "text_model",  # Add name for gradient scheduler
                 },
                 {
                     "params": [
@@ -885,19 +889,29 @@ class MultimodalTrainer:
                         if any(x in n for x in ["cross", "fusion", "gate"])
                         and p.requires_grad
                     ],
-                    "lr": self.learning_rate * 0.1,  # 10% of base learning rate for fusion
-                    "name": "fusion_components"  # Add name for gradient scheduler
+                    "lr": self.learning_rate
+                    * 0.1,  # 10% of base learning rate for fusion
+                    "name": "fusion_components",  # Add name for gradient scheduler
                 },
                 {
                     "params": [
                         p
                         for n, p in self.model.named_parameters()
-                        if not any(x in n for x in ["vision_model", "text_model", "cross", "fusion", "gate"])
+                        if not any(
+                            x in n
+                            for x in [
+                                "vision_model",
+                                "text_model",
+                                "cross",
+                                "fusion",
+                                "gate",
+                            ]
+                        )
                         and p.requires_grad
                     ],
                     "lr": self.learning_rate,  # Full learning rate for projection layers
-                    "name": "projection_layers"  # Add name for gradient scheduler
-                }
+                    "name": "projection_layers",  # Add name for gradient scheduler
+                },
             ],
             weight_decay=self.weight_decay,
         )
@@ -936,8 +950,10 @@ class MultimodalTrainer:
         # This is the typical final stage in progressive unfreezing
         for param in self.model.parameters():
             param.requires_grad = True
-            
-        logger.info("Stage 3: All layers unfrozen for final fine-tuning with differential learning rates")
+
+        logger.info(
+            "Stage 3: All layers unfrozen for final fine-tuning with differential learning rates"
+        )
 
         # Create optimizer for Stage 3 with layer-wise learning rates
         stage3_optimizer = torch.optim.AdamW(
