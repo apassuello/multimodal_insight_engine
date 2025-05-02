@@ -7,12 +7,12 @@ metrics, and other training utilities.
 """
 
 # Import trainers
-from .trainer import train_model
-from .multimodal_trainer import MultimodalTrainer
-from .transformer_trainer import TransformerTrainer
+from .trainers.trainer import train_model
+from .trainers.multimodal_trainer import MultimodalTrainer
+from .trainers.transformer_trainer import TransformerTrainer
 
 # Import loss functions
-from .loss import (
+from .losses import (
     ContrastiveLoss,
     MemoryQueueContrastiveLoss,
     DynamicTemperatureContrastiveLoss,
@@ -20,7 +20,7 @@ from .loss import (
     MultiModalMixedContrastiveLoss,
     DecoupledContrastiveLoss,
 )
-from .loss.loss_factory import create_loss_function
+from .losses.loss_factory import create_loss_function
 
 # Import optimizers
 from .optimizers import (

@@ -1,7 +1,7 @@
 # MultiModal Insight Engine Architecture
 ## Project Overview
 This document provides an overview of the project structure, key components, and architecture.
-Generated from 84 source files.
+Generated from 125 source files.
 
 ## Directory Structure
 ```
@@ -12,25 +12,56 @@ Generated from 84 source files.
         📄 pruning.py
         📄 benchmarking.py
     📁 training/
-        📄 loss_factory.py
+        📁 losses/
+            📄 multimodal_mixed_contrastive_loss.py
+            📄 loss_factory.py
+            📄 vicreg_loss.py
+            📄 multitask_loss.py
+            📄 contrastive_learning.py
+            📄 memory_queue_contrastive_loss.py
+            📄 supervised_contrastive_loss.py
+            📄 decoupled_contrastive_loss.py
+            📄 barlow_twins_loss.py
+            📄 combined_loss.py
+            📄 hard_negative_mining_contrastive_loss.py
+            📄 ema_moco_loss.py
+            📄 contrastive_loss.py
+            📄 hybrid_pretrain_vicreg_loss.py
+            📄 clip_style_loss.py
+            📄 feature_consistency_loss.py
+            📄 losses.py
+            📄 decorrelation_loss.py
+            📄 dynamic_temperature_contrastive_loss.py
         📄 metrics.py
-        📄 contrastive_learning.py
+        📄 flickr_multistage_training.py
+        📁 strategies/
+            📄 single_modality_strategy.py
+            📄 training_strategy.py
+            📄 end_to_end_strategy.py
+            📄 cross_modal_strategy.py
         📄 transformer_utils.py
-        📄 vision_transformer_trainer.py
+        📁 trainers/
+            📄 multistage_trainer.py
+            📄 vision_transformer_trainer.py
+            📄 language_model_trainer.py
+            📄 trainer_factory.py
+            📄 transformer_trainer.py
+            📄 trainer.py
+            📄 multimodal_trainer.py
         📄 optimizers.py
-        📄 language_model_trainer.py
-        📄 transformer_trainer.py
-        📄 losses.py
-        📄 trainer.py
-        📄 multimodal_trainer.py
         📄 joint_bpe_training.py
     📁 utils/
         📄 model_utils.py
         📄 logging.py
         📄 argument_configs.py
+        📄 learningrate_scheduler.py
         📄 config.py
+        📄 feature_attribution.py
+        📄 metrics_tracker.py
+        📄 gradient_manager.py
         📄 visualization.py
         📄 list_models.py
+        📄 gradient_handler.py
         📄 profiling.py
     📁 models/
         📄 attention.py
@@ -38,13 +69,19 @@ Generated from 84 source files.
         📄 feed_forward.py
         📁 vision/
             📄 image_preprocessing.py
-            📄 multimodal_integration.py
             📄 vision_transformer.py
-            📄 cross_modal_attention.py
             📄 patch_embedding.py
         📄 base_model.py
         📁 multimodal/
-            📄 fusion.py
+            📄 multimodal_decoder_generation.py
+            📄 multimodal_integration.py
+            📄 vicreg_multimodal_model.py
+            📄 bidirectional_cross_attention.py
+            📄 co_attention_fusion.py
+            📄 gated_cross_modal_attention.py
+            📄 clip_style_direct_projection.py
+            📄 dual_encoder.py
+            📄 cross_modal_attention_base.py
         📄 embeddings.py
         📄 transformer.py
         📄 text_generation.py
@@ -70,6 +107,9 @@ Generated from 84 source files.
             📄 model_loader.py
             📄 prompt_injection.py
             📄 evaluator.py
+    📁 configs/
+        📄 training_config.py
+        📄 stage_config.py
     📁 evaluation/
         📄 translation_metrics.py
         📄 language_model_evaluation.py
@@ -78,8 +118,10 @@ Generated from 84 source files.
         📄 wmt_dataset.py
         📄 curriculum_dataset.py
         📄 image_dataset.py
+        📄 augmentation_pipeline.py
         📄 wmt_dataloader.py
         📄 combined_dataset.py
+        📄 augmentation.py
         📄 iwslt_dataset.py
         📄 language_modeling.py
         📄 europarl_dataset.py
@@ -91,10 +133,13 @@ Generated from 84 source files.
             📄 base_tokenizer.py
             📄 utils.py
             📄 preprocessing.py
+            📄 bert_tokenizer_adapter.py
             📄 bpe_tokenizer.py
+            📄 tokenizer_metrics.py
             📄 vocabulary.py
             📄 turbo_bpe_preprocessor.py
             📄 simple_tokenizer.py
+        📄 fixed_semantic_sampler.py
         📄 multimodal_dataset.py
         📄 preprocessing.py
         📄 sequence_data.py
@@ -107,6 +152,10 @@ Generated from 84 source files.
 ## Module Summary
 | Module | Purpose | Complexity |
 |--------|---------|------------|
+| `src/configs/stage_config.py` | No metadata function available | N/A |
+| `src/configs/training_config.py` | No metadata function available | N/A |
+| `src/data/augmentation.py` | No metadata function available | N/A |
+| `src/data/augmentation_pipeline.py` | Provides comprehensive augmentation capabilities for multimodal datasets | 8 |
 | `src/data/combined_dataset.py` | No metadata function available | N/A |
 | `src/data/combined_translation_dataset.py` | Implements dataset class for combining multiple translation datasets with configurable sampling | 2 |
 | `src/data/combined_wmt_translation_dataset.py` | No metadata function available | N/A |
@@ -114,19 +163,22 @@ Generated from 84 source files.
 | `src/data/dataloader.py` | Provides utilities for handling multimodal data with PyTorch DataLoader | 3 |
 | `src/data/dataset_wrapper.py` | Provides dataset wrappers to standardize interfaces for different dataset types | 3 |
 | `src/data/europarl_dataset.py` | Provides a dataset class for loading and preprocessing Europarl parallel corpus data | 4 |
+| `src/data/fixed_semantic_sampler.py` | No metadata function available | N/A |
 | `src/data/image_dataset.py` | Provides dataset functionality for loading and preprocessing image data for vision transformer mo... | 4 |
 | `src/data/iwslt_dataset.py` | Provides a dataset class for loading and preprocessing IWSLT dataset for machine translation | 5 |
 | `src/data/language_modeling.py` | Implements dataset and dataloaders for language modeling tasks with efficient tokenization and ba... | 5 |
-| `src/data/multimodal_data_utils.py` | Utilities for multimodal data loading and processing | 7 |
-| `src/data/multimodal_dataset.py` | No metadata function available | N/A |
+| `src/data/multimodal_data_utils.py` | Provides utility functions for handling multimodal data including image-text pairs and feature pr... | 8 |
+| `src/data/multimodal_dataset.py` | Implements dataset classes for handling multimodal data pairs with support for various data forma... | 8 |
 | `src/data/opensubtitles_dataset.py` | Provides a dataset class for loading and preprocessing OpenSubtitles parallel corpus data for mac... | 4 |
 | `src/data/preprocessing.py` | Provides data preprocessing utilities for time series data and machine learning datasets | 4 |
 | `src/data/sequence_data.py` | Provides dataset and dataloader utilities for transformer sequence-to-sequence tasks | 6 |
 | `src/data/tokenization/base_tokenizer.py` | Defines the abstract base class for all tokenizers in the system with standard interface | 2 |
+| `src/data/tokenization/bert_tokenizer_adapter.py` | Provides an adapter class to make HuggingFace BERT tokenizers compatible with the project's token... | 4 |
 | `src/data/tokenization/bpe_tokenizer.py` | Implements Byte Pair Encoding tokenizer for subword tokenization with merge operations | 7 |
 | `src/data/tokenization/optimized_bpe_tokenizer.py` | Implements an optimized Byte Pair Encoding tokenizer with smart caching and batch processing | 9 |
 | `src/data/tokenization/preprocessing.py` | Provides text preprocessing utilities for tokenization including Unicode normalization and text c... | 3 |
 | `src/data/tokenization/simple_tokenizer.py` | No metadata function available | N/A |
+| `src/data/tokenization/tokenizer_metrics.py` | No metadata function available | N/A |
 | `src/data/tokenization/turbo_bpe_preprocessor.py` | No metadata function available | N/A |
 | `src/data/tokenization/utils.py` | No metadata function available | N/A |
 | `src/data/tokenization/vocabulary.py` | Implements a flexible vocabulary system for mapping between tokens and indices with special token... | 6 |
@@ -143,19 +195,25 @@ Generated from 84 source files.
 | `src/models/feed_forward.py` | Implements various feed-forward neural network architectures with modern features for flexible mo... | 6 |
 | `src/models/layers.py` | Implements fundamental neural network layers with advanced features for transformer architectures | 4 |
 | `src/models/model_factory.py` | Factory functions for creating and configuring different types of models | 8 |
-| `src/models/multimodal/fusion.py` | No metadata function available | N/A |
+| `src/models/multimodal/bidirectional_cross_attention.py` | Implements bidirectional cross-attention mechanism for multimodal fusion between vision and text ... | 8 |
+| `src/models/multimodal/clip_style_direct_projection.py` | Implements a CLIP-style model with direct projection between modalities | 7 |
+| `src/models/multimodal/co_attention_fusion.py` | Implements co-attention fusion mechanism for combining vision and text features through mutual at... | 7 |
+| `src/models/multimodal/cross_modal_attention_base.py` | Provides base class and utilities for implementing cross-modal attention mechanisms between diffe... | 6 |
+| `src/models/multimodal/dual_encoder.py` | No metadata function available | N/A |
+| `src/models/multimodal/gated_cross_modal_attention.py` | Implements gated cross-modal attention mechanism for controlled information flow between modalities | 7 |
+| `src/models/multimodal/multimodal_decoder_generation.py` | Implements a multimodal decoder generation model for text generation conditioned on multiple moda... | 9 |
+| `src/models/multimodal/multimodal_integration.py` | Implements models for combining vision and text modalities in a unified architecture | 7 |
+| `src/models/multimodal/vicreg_multimodal_model.py` | Implements VICReg (Variance-Invariance-Covariance Regularization) for multimodal representation l... | 8 |
 | `src/models/positional.py` | Implements various positional encoding schemes for transformer models to handle sequence order in... | 7 |
 | `src/models/pretrained/adapters.py` | Implements adapter layers for fine-tuning frozen pretrained models efficiently | 3 |
 | `src/models/pretrained/base_wrapper.py` | Provides a base wrapper class for pretrained models with consistent interface | 4 |
 | `src/models/pretrained/clip_model.py` | Provides a wrapper for OpenAI CLIP multimodal models with standardized interface | 5 |
-| `src/models/pretrained/huggingface_wrapper.py` | No metadata function available | N/A |
+| `src/models/pretrained/huggingface_wrapper.py` | Provides wrapper classes for HuggingFace models to make them compatible with the project's archit... | 7 |
 | `src/models/pretrained/model_registry.py` | Implements a registry pattern for accessing and instantiating pretrained models | 3 |
 | `src/models/pretrained/vision_transformer.py` | Provides a wrapper for Hugging Face Vision Transformer models with standardized interface | 3 |
 | `src/models/text_generation.py` | Provides utilities for text generation using language models | 7 |
 | `src/models/transformer.py` | Implements transformer models for sequence processing tasks | 9 |
-| `src/models/vision/cross_modal_attention.py` | No metadata function available | N/A |
 | `src/models/vision/image_preprocessing.py` | Provides utilities for preprocessing images for vision transformer models | 6 |
-| `src/models/vision/multimodal_integration.py` | Implements models for combining vision and text modalities in a unified architecture | 7 |
 | `src/models/vision/patch_embedding.py` | Implements patch embedding for Vision Transformer (ViT) models | 5 |
 | `src/models/vision/vision_transformer.py` | Implements Vision Transformer (ViT) architecture for image classification tasks | 8 |
 | `src/optimization/benchmarking.py` | Provides a framework for measuring and comparing model optimization techniques. | 6 |
@@ -172,22 +230,50 @@ Generated from 84 source files.
 | `src/safety/red_teaming/model_loader.py` | No metadata function available | N/A |
 | `src/safety/red_teaming/prompt_injection.py` | No metadata function available | N/A |
 | `src/safety/utils.py` | Provides utility functions and constants for safety evaluation, including pattern matching, scori... | 9 |
-| `src/training/contrastive_learning.py` | No metadata function available | N/A |
+| `src/training/flickr_multistage_training.py` | No metadata function available | N/A |
 | `src/training/joint_bpe_training.py` | Implements joint BPE tokenizer training for multilingual text processing in machine translation t... | 3 |
-| `src/training/language_model_trainer.py` | Implements a specialized trainer for language modeling tasks with support for causal language mod... | 8 |
-| `src/training/loss_factory.py` | Factory functions for creating and configuring loss functions | 7 |
-| `src/training/losses.py` | Implements custom loss functions for model training with support for label smoothing and weighted... | 4 |
+| `src/training/losses/barlow_twins_loss.py` | Implements Barlow Twins loss for multimodal learning through redundancy reduction | 6 |
+| `src/training/losses/clip_style_loss.py` | Implements a CLIP-style contrastive loss for multimodal learning with bidirectional alignment | 7 |
+| `src/training/losses/combined_loss.py` | Implements a flexible combined loss function that can aggregate multiple loss components with wei... | 5 |
+| `src/training/losses/contrastive_learning.py` | Implements contrastive learning losses and utilities for self-supervised and supervised learning | 7 |
+| `src/training/losses/contrastive_loss.py` | Implements core contrastive loss functions for self-supervised learning with InfoNCE and variants | 8 |
+| `src/training/losses/decorrelation_loss.py` | Implements decorrelation regularization to prevent feature collapse in multimodal models | 6 |
+| `src/training/losses/decoupled_contrastive_loss.py` | No metadata function available | N/A |
+| `src/training/losses/dynamic_temperature_contrastive_loss.py` | Implements contrastive loss with dynamic temperature scaling based on training progress | 7 |
+| `src/training/losses/ema_moco_loss.py` | Implements MoCo (Momentum Contrast) with EMA updates for large-batch contrastive learning | 8 |
+| `src/training/losses/feature_consistency_loss.py` | Implements feature consistency loss to prevent catastrophic forgetting during fine-tuning | 7 |
+| `src/training/losses/hard_negative_mining_contrastive_loss.py` | Implements contrastive loss with hard negative mining for more effective training | 8 |
+| `src/training/losses/hybrid_pretrain_vicreg_loss.py` | Implements a hybrid pretraining loss that combines VICReg with contrastive learning for improved ... | 9 |
+| `src/training/losses/loss_factory.py` | Factory functions for creating and configuring loss functions | 7 |
+| `src/training/losses/losses.py` | Implements custom loss functions for model training with support for label smoothing and weighted... | 4 |
+| `src/training/losses/memory_queue_contrastive_loss.py` | Implements contrastive loss with memory queue for maintaining large sets of negative examples | 7 |
+| `src/training/losses/multimodal_mixed_contrastive_loss.py` | Implements a mixed contrastive loss combining multiple contrastive learning objectives for multim... | 8 |
+| `src/training/losses/multitask_loss.py` | No metadata function available | N/A |
+| `src/training/losses/supervised_contrastive_loss.py` | Implements supervised contrastive learning for multimodal models using explicit labels | 7 |
+| `src/training/losses/vicreg_loss.py` | Implements VICReg (Variance-Invariance-Covariance Regularization) loss for representation learning | 7 |
 | `src/training/metrics.py` | Implements common training metrics for model evaluation with support for various tasks | 7 |
-| `src/training/multimodal_trainer.py` | No metadata function available | N/A |
 | `src/training/optimizers.py` | Implements custom optimizers and learning rate schedulers for model training | 8 |
-| `src/training/trainer.py` | Provides a generic, flexible training loop for PyTorch models with support for callbacks and earl... | 6 |
-| `src/training/transformer_trainer.py` | Implements a specialized trainer for transformer models with support for encoder-decoder architec... | 8 |
+| `src/training/strategies/cross_modal_strategy.py` | No metadata function available | N/A |
+| `src/training/strategies/end_to_end_strategy.py` | No metadata function available | N/A |
+| `src/training/strategies/single_modality_strategy.py` | Implements the first stage training strategy for multimodal models, focusing on modality-specific... | 8 |
+| `src/training/strategies/training_strategy.py` | Provides an abstract base class for training strategies used in the multistage training framework | 6 |
+| `src/training/trainers/language_model_trainer.py` | Implements a specialized trainer for language modeling tasks with support for causal language mod... | 8 |
+| `src/training/trainers/multimodal_trainer.py` | No metadata function available | N/A |
+| `src/training/trainers/multistage_trainer.py` | No metadata function available | N/A |
+| `src/training/trainers/trainer.py` | Provides a generic, flexible training loop for PyTorch models with support for callbacks and earl... | 6 |
+| `src/training/trainers/trainer_factory.py` | Factory for creating trainers based on configuration with appropriate strategies | 7 |
+| `src/training/trainers/transformer_trainer.py` | Implements a specialized trainer for transformer models with support for encoder-decoder architec... | 8 |
+| `src/training/trainers/vision_transformer_trainer.py` | Provides a specialized trainer for Vision Transformer models with advanced training techniques | 8 |
 | `src/training/transformer_utils.py` | Provides utility functions and classes for transformer model training, including attention maskin... | 6 |
-| `src/training/vision_transformer_trainer.py` | Provides a specialized trainer for Vision Transformer models with advanced training techniques | 8 |
 | `src/utils/argument_configs.py` | Argument configuration utilities for multimodal training scripts | 4 |
 | `src/utils/config.py` | Provides configuration management utilities with file loading and environment support | 3 |
+| `src/utils/feature_attribution.py` | No metadata function available | N/A |
+| `src/utils/gradient_handler.py` | Handles gradient operations including clipping, monitoring, balancing, and analysis for multimoda... | 8 |
+| `src/utils/gradient_manager.py` | No metadata function available | N/A |
+| `src/utils/learningrate_scheduler.py` | Implements custom learning rate schedulers for transformer and multimodal training | 7 |
 | `src/utils/list_models.py` | Provides utilities for listing and retrieving information about available models | 4 |
 | `src/utils/logging.py` | Provides custom logging functionality with configurable file and console output | 4 |
+| `src/utils/metrics_tracker.py` | Tracks and visualizes training metrics across epochs and steps with issue detection | 7 |
 | `src/utils/model_utils.py` | No metadata function available | N/A |
 | `src/utils/profiling.py` | Provides utilities for profiling and benchmarking PyTorch models with comprehensive performance a... | 9 |
 | `src/utils/visualization.py` | Provides visualization utilities for model performance, attention patterns, embeddings, and multi... | 7 |
@@ -197,19 +283,19 @@ Generated from 84 source files.
 **Top 10 Most Complex Modules:**
 
 ```
-src/utils/profiling.py                           | ██████████████████████████████ (9)
-src/models/transformer.py                        | ██████████████████████████████ (9)
-src/safety/harness.py                            | ██████████████████████████████ (9)
-src/safety/utils.py                              | ██████████████████████████████ (9)
-src/data/tokenization/optimized_bpe_tokenizer.py | ██████████████████████████████ (9)
-src/optimization/quantization.py                 | ██████████████████████████ (8)
-src/training/vision_transformer_trainer.py       | ██████████████████████████ (8)
-src/training/optimizers.py                       | ██████████████████████████ (8)
-src/training/language_model_trainer.py           | ██████████████████████████ (8)
-src/training/transformer_trainer.py              | ██████████████████████████ (8)
+src/training/losses/hybrid_pretrain_vicreg_loss.py       | ██████████████████████████████ (9)
+src/utils/profiling.py                                   | ██████████████████████████████ (9)
+src/models/transformer.py                                | ██████████████████████████████ (9)
+src/models/multimodal/multimodal_decoder_generation.py   | ██████████████████████████████ (9)
+src/safety/harness.py                                    | ██████████████████████████████ (9)
+src/safety/utils.py                                      | ██████████████████████████████ (9)
+src/data/tokenization/optimized_bpe_tokenizer.py         | ██████████████████████████████ (9)
+src/optimization/quantization.py                         | ██████████████████████████ (8)
+src/training/optimizers.py                               | ██████████████████████████ (8)
+src/training/losses/multimodal_mixed_contrastive_loss.py | ██████████████████████████ (8)
 ```
 
-**Average Module Complexity:** 5.64
+**Average Module Complexity:** 6.13
 
 ## Dependencies
 **External Dependencies:**
@@ -218,32 +304,34 @@ src/training/transformer_trainer.py              | █████████�
 
 |---------|-------------|
 
-| torch | 47 |
-| numpy | 20 |
-| matplotlib | 9 |
-| tqdm | 9 |
-| logging | 8 |
-| json | 8 |
+| torch | 79 |
+| numpy | 26 |
+| typing | 20 |
+| logging | 15 |
+| matplotlib | 11 |
+| tqdm | 10 |
+| json | 9 |
+| math | 5 |
+| transformers | 5 |
+| PIL | 5 |
 | random | 5 |
-| typing | 4 |
+| os | 4 |
+| torchvision | 4 |
 | re | 4 |
-| os | 3 |
+| abc | 3 |
 | seaborn | 3 |
 | nltk | 2 |
 | argparse | 2 |
 | sklearn | 2 |
 | psutil | 2 |
-| transformers | 2 |
-| PIL | 2 |
 | datasets | 2 |
 | collections.Counter | 2 |
-| time | 1 |
 | src.data.tokenization | 1 |
+| copy | 1 |
+| time | 1 |
 | huggingface_hub | 1 |
 | pandas | 1 |
 | timm | 1 |
-| torchvision | 1 |
-| math | 1 |
 | open_clip | 1 |
 | datetime | 1 |
 | collections | 1 |
@@ -251,7 +339,6 @@ src/training/transformer_trainer.py              | █████████�
 | torch.utils.data | 1 |
 | tensorflow | 1 |
 | threading | 1 |
-| abc | 1 |
 | unicodedata | 1 |
 | html | 1 |
 | multiprocessing.Pool | 1 |
@@ -464,27 +551,6 @@ Implements label smoothing loss for improved model generalization
 - `forward`: Computes smoothed loss with proper handling of padding tokens
 
 
-### VisionTransformerTrainer (`training/vision_transformer_trainer.py`)
-Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support
-
-**Dependencies:**
-- `torch`
-- `torch.nn`
-- `VisionTransformer`
-- `matplotlib`
-- `numpy`
-- `tqdm`
-
-**Key Methods:**
-- `train_epoch`: Train the model for one epoch with mixup/cutmix augmentation support
-- `validate`: Validate the model on validation dataset
-- `train`: Train the model for specified number of epochs with early stopping
-- `save_checkpoint`: Save a checkpoint of the model and training state
-- `load_checkpoint`: Load a checkpoint of the model and training state
-- `_mixup_data`: Perform mixup data augmentation
-- `_cutmix_data`: Perform cutmix data augmentation
-
-
 ### AdamW (`training/optimizers.py`)
 AdamW optimizer with improved weight decay handling and gradient clipping
 
@@ -525,7 +591,336 @@ Cosine annealing learning rate scheduler with warm restarts
 - `get_lr`: Computes learning rates based on cosine annealing
 
 
-### LanguageModelTrainer (`training/language_model_trainer.py`)
+### MultiModalMixedContrastiveLoss (`training/losses/multimodal_mixed_contrastive_loss.py`)
+Combines multiple contrastive learning objectives with configurable weights
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize mixed contrastive loss with temperature and weights
+- `forward`: Compute mixed contrastive loss components
+- `_nt_xent_loss`: Compute NT-Xent contrastive loss
+
+
+### VICRegLoss (`training/losses/vicreg_loss.py`)
+Implements VICReg loss with variance, invariance, and covariance terms
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize VICReg loss with component weights
+- `forward`: Compute VICReg loss components
+
+
+### ContrastiveLearning (`training/losses/contrastive_learning.py`)
+Base class for implementing various contrastive learning objectives
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize contrastive learning with temperature scaling
+- `forward`: Compute contrastive loss with optional supervision
+
+
+### MemoryQueueContrastiveLoss (`training/losses/memory_queue_contrastive_loss.py`)
+Contrastive loss with memory queue for enhanced negative sampling
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize loss with queue parameters
+- `forward`: Compute loss using memory queue
+- `_dequeue_and_enqueue`: Update memory queue with new keys
+
+
+### SupervisedContrastiveLoss (`training/losses/supervised_contrastive_loss.py`)
+Improves contrastive learning by leveraging class labels to identify semantically related samples
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `logging`
+
+**Key Methods:**
+- `forward`: Computes supervised contrastive loss with support for class labels or similarity scores
+
+
+### BarlowTwinsLoss (`training/losses/barlow_twins_loss.py`)
+Loss function that creates embeddings with minimal redundancy between their components
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `typing`
+
+**Key Methods:**
+- `__init__`: Initialize the Barlow Twins loss module with configurable parameters
+- `project`: Apply projection heads to features if enabled
+- `forward`: Compute Barlow Twins loss between vision and text features
+
+
+### CombinedLoss (`training/losses/combined_loss.py`)
+Combines multiple loss functions with configurable weights
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize combined loss with component functions and weights
+- `forward`: Compute weighted combination of loss components
+
+
+### HardNegativeMiningContrastiveLoss (`training/losses/hard_negative_mining_contrastive_loss.py`)
+Contrastive loss that mines hard negatives during training
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize loss with temperature and mining parameters
+- `forward`: Compute loss with mined hard negatives
+- `mine_hard_negatives`: Find hard negative examples in batch
+
+
+### EMAMoCoLoss (`training/losses/ema_moco_loss.py`)
+Enables efficient contrastive learning with memory queue and momentum-updated encoders
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `logging`
+- `math`
+- `copy`
+
+**Key Methods:**
+- `forward`: Computes MoCo loss with EMA-updated encoders and memory queue
+- `_momentum_update_key_encoder`: Updates key encoder using momentum for stable feature space
+- `_dequeue_and_enqueue`: Updates queue by dequeuing old keys and enqueuing new ones
+- `_copy_and_detach`: Creates a deep copy of a model detached from computation graph
+
+
+### ContrastiveLoss (`training/losses/contrastive_loss.py`)
+Implements InfoNCE contrastive loss with various configurations and memory bank support
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+
+**Key Methods:**
+- `__init__`: Initialize contrastive loss with temperature, loss type, and memory options
+- `project`: Apply projection heads to features and normalize them
+- `forward`: Compute contrastive loss between vision and text features with various configurations
+- `update_memory_bank`: Update memory bank with new vision and text features for additional negatives
+- `update_global_embeddings`: Update global embedding store for improved contrastive learning with more negatives
+
+
+### HybridPretrainVICRegLoss (`training/losses/hybrid_pretrain_vicreg_loss.py`)
+Combines VICReg and contrastive losses with adaptive transition
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize hybrid loss with coefficients and warmup
+- `forward`: Compute hybrid loss with current transition state
+- `update_step`: Update training progress for adaptive transition
+
+
+### CLIPStyleLoss (`training/losses/clip_style_loss.py`)
+Aligns visual and textual representations in a shared embedding space using bidirectional contrastive learning
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `logging`
+
+**Key Methods:**
+- `forward`: Computes bidirectional contrastive loss with comprehensive metrics
+- `_create_smooth_labels`: Creates smoothed label distributions for more stable training
+- `_compute_recall_at_k`: Calculates recall@K metrics for retrieval evaluation
+
+
+### FeatureConsistencyLoss (`training/losses/feature_consistency_loss.py`)
+Maintains consistency between current and reference model features to prevent forgetting
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `logging`
+
+**Key Methods:**
+- `forward`: Computes consistency loss between current and reference features
+- `_compute_distance`: Calculates distance between feature representations using selected metric
+
+
+### CrossEntropyLoss (`training/losses/losses.py`)
+Cross-entropy loss with label smoothing for classification tasks
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+
+**Key Methods:**
+- `forward`: Computes cross-entropy loss with label smoothing and optional sample weights
+
+
+### MeanSquaredError (`training/losses/losses.py`)
+Mean squared error loss with support for weighted samples and gradient clipping
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Computes MSE loss with optional sample weights and gradient clipping
+
+
+### DecorrelationLoss (`training/losses/decorrelation_loss.py`)
+Prevents feature collapse by penalizing correlation between feature dimensions
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `logging`
+- `math`
+
+**Key Methods:**
+- `forward`: Computes decorrelation loss for vision, text, or generic features
+- `_compute_covariance`: Computes feature covariance matrix for regularization
+- `_compute_off_diagonal_loss`: Calculates loss from off-diagonal covariance elements
+
+
+### DynamicTemperatureContrastiveLoss (`training/losses/dynamic_temperature_contrastive_loss.py`)
+Contrastive loss with temperature that adapts during training
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize loss with temperature bounds
+- `forward`: Compute loss with current temperature
+- `update_temperature`: Update temperature based on training metrics
+
+
+### SingleModalityStrategy (`training/strategies/single_modality_strategy.py`)
+Training strategy for the first stage of multimodal training: modality-specific learning
+
+**Inherits from:** `TrainingStrategy`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `tqdm`
+- `TrainingStrategy`
+- `WarmupCosineScheduler`
+- `GradientHandler`
+- `ContrastiveLoss`
+- `VICRegLoss`
+
+**Key Methods:**
+- `initialize_strategy`: Initialize the strategy by freezing cross-modal components and configuring modality-specific training
+- `_configure_loss_function`: Configure appropriate loss function for single modality training
+- `prepare_batch`: Prepare a batch with focus on separate modality processing
+- `training_step`: Perform a training step with modality-specific focus
+- `configure_optimizers`: Configure optimizers with layer-wise learning rates for modality components
+- `on_epoch_end`: Perform end-of-epoch actions including progressive unfreezing
+
+
+### TrainingStrategy (`training/strategies/training_strategy.py`)
+Abstract base class defining the interface for all training strategies in multimodal learning
+
+**Inherits from:** `ABC`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `typing`
+- `logging`
+- `abc`
+
+**Key Methods:**
+- `initialize_strategy`: Initialize the strategy with appropriate parameter freezing and configuration
+- `prepare_batch`: Prepare a batch of data for the model with strategy-specific processing
+- `training_step`: Perform a single training step with forward/backward passes
+- `validation_step`: Perform a single validation step with metrics calculation
+- `configure_optimizers`: Configure optimizers and schedulers for current strategy
+
+
+### VisionTransformerTrainer (`training/trainers/vision_transformer_trainer.py`)
+Specialized trainer for Vision Transformer models with mixup/cutmix augmentation support
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `VisionTransformer`
+- `matplotlib`
+- `numpy`
+- `tqdm`
+
+**Key Methods:**
+- `train_epoch`: Train the model for one epoch with mixup/cutmix augmentation support
+- `validate`: Validate the model on validation dataset
+- `train`: Train the model for specified number of epochs with early stopping
+- `save_checkpoint`: Save a checkpoint of the model and training state
+- `load_checkpoint`: Load a checkpoint of the model and training state
+- `_mixup_data`: Perform mixup data augmentation
+- `_cutmix_data`: Perform cutmix data augmentation
+
+
+### LanguageModelTrainer (`training/trainers/language_model_trainer.py`)
 Main trainer class for language model training with comprehensive training and evaluation capabilities
 
 **Dependencies:**
@@ -544,7 +939,31 @@ Main trainer class for language model training with comprehensive training and e
 - `plot_training_curves`: Visualizes training metrics including loss, perplexity, and learning rate
 
 
-### TransformerTrainer (`training/transformer_trainer.py`)
+### TrainerFactory (`training/trainers/trainer_factory.py`)
+Factory for creating trainers based on configuration
+
+**Inherits from:** ``
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `MultimodalTrainer`
+- `MultistageTrainer`
+- `TrainingStrategy`
+- `SingleModalityStrategy`
+- `CrossModalStrategy`
+- `EndToEndStrategy`
+- `WarmupCosineScheduler`
+- `LinearWarmupScheduler`
+
+**Key Methods:**
+- `create_trainer`: Create a trainer based on configuration
+- `_create_multimodal_trainer`: Create a standard multimodal trainer with configuration
+- `_create_multistage_trainer`: Create a multistage trainer with appropriate strategies
+- `_create_parameter_groups`: Create parameter groups with different learning rates
+
+
+### TransformerTrainer (`training/trainers/transformer_trainer.py`)
 Main trainer class for transformer model training with comprehensive training and evaluation capabilities
 
 **Dependencies:**
@@ -567,33 +986,6 @@ Main trainer class for transformer model training with comprehensive training an
 - `plot_epoch_metrics`: Visualizes detailed metrics for a specific epoch
 
 
-### CrossEntropyLoss (`training/losses.py`)
-Cross-entropy loss with label smoothing for classification tasks
-
-**Inherits from:** `nn.Module`
-
-**Dependencies:**
-- `torch`
-- `torch.nn`
-- `torch.nn.functional`
-
-**Key Methods:**
-- `forward`: Computes cross-entropy loss with label smoothing and optional sample weights
-
-
-### MeanSquaredError (`training/losses.py`)
-Mean squared error loss with support for weighted samples and gradient clipping
-
-**Inherits from:** `nn.Module`
-
-**Dependencies:**
-- `torch`
-- `torch.nn`
-
-**Key Methods:**
-- `forward`: Computes MSE loss with optional sample weights and gradient clipping
-
-
 ### LogManager (`utils/logging.py`)
 Central logging manager that configures and provides logger instances
 
@@ -605,6 +997,48 @@ Central logging manager that configures and provides logger instances
 **Key Methods:**
 - `get_logger`: Creates or retrieves a logger with the specified name and level
 - `configure_file_logging`: Sets up file logging to the specified directory
+
+
+### WarmupCosineScheduler (`utils/learningrate_scheduler.py`)
+Scheduler that combines a warmup phase with cosine annealing decay
+
+**Inherits from:** `_LRScheduler`
+
+**Dependencies:**
+- `torch`
+- `torch.optim.lr_scheduler`
+- `math`
+
+**Key Methods:**
+- `__init__`: Initialize scheduler with warmup and cosine decay parameters
+- `get_lr`: Calculate learning rates based on current step and schedule parameters
+
+
+### LinearWarmupScheduler (`utils/learningrate_scheduler.py`)
+Scheduler with linear warmup followed by linear decay
+
+**Inherits from:** `_LRScheduler`
+
+**Dependencies:**
+- `torch`
+- `torch.optim.lr_scheduler`
+
+**Key Methods:**
+- `__init__`: Initialize scheduler with linear warmup and decay parameters
+- `get_lr`: Calculate learning rates using linear scheduling
+
+
+### LayerwiseLRScheduler (`utils/learningrate_scheduler.py`)
+A utility for creating layer-wise learning rates with different schedules
+
+**Dependencies:**
+- `torch`
+- `typing`
+
+**Key Methods:**
+- `add_scheduler`: Add a scheduler for a specific parameter group
+- `step`: Update learning rates for all parameter groups with schedulers
+- `get_last_lrs`: Get the last computed learning rate for each parameter group
 
 
 ### ConfigManager (`utils/config.py`)
@@ -619,6 +1053,50 @@ Manages application configuration with support for file and environment loading
 - `get`: Get a configuration value with optional default
 - `set`: Set a configuration value
 - `save_to_file`: Save current configuration to a JSON file
+
+
+### MetricsTracker (`utils/metrics_tracker.py`)
+Tracks and visualizes training metrics with early stopping and issue detection
+
+**Dependencies:**
+- `torch`
+- `numpy`
+- `matplotlib`
+- `typing`
+- `os`
+- `json`
+- `logging`
+- `collections`
+- `time`
+
+**Key Methods:**
+- `__init__`: Initialize metrics tracker with configuration for monitoring and visualization
+- `update_step_metrics`: Update metrics for the current step
+- `update_epoch_metrics`: Update metrics for the current epoch
+- `check_early_stopping`: Check if early stopping criteria are met
+- `create_visualizations`: Create visualizations of tracked metrics
+- `update_alignment_metrics`: Update metrics related to multimodal alignment quality
+- `check_for_issues`: Check for potential training issues based on metric patterns
+
+
+### GradientHandler (`utils/gradient_handler.py`)
+Handles gradient operations including clipping, monitoring, balancing, and analysis
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `typing`
+- `logging`
+- `matplotlib`
+- `numpy`
+- `os`
+
+**Key Methods:**
+- `__init__`: Initialize gradient handler with configuration for balance and monitoring
+- `clip_gradients`: Clip gradients if clip_value is set and return total gradient norm
+- `analyze_gradients`: Analyze gradient norms across different model components
+- `balance_component_gradients`: Balance gradients between components according to target ratios
+- `_visualize_gradients`: Create visualizations of gradient flow across components
 
 
 ### ModelProfiler (`utils/profiling.py`)
@@ -1017,25 +1495,6 @@ Efficiently extracts fixed-size patches from image tensors using unfold operatio
 - `forward`: Extracts patches from a batch of images and returns patch dimensions
 
 
-### MultiModalTransformer (`models/vision/multimodal_integration.py`)
-Combines vision and text transformer models with projection layers to a common embedding space
-
-**Inherits from:** `BaseModel`
-
-**Dependencies:**
-- `torch`
-- `torch.nn`
-- `torch.nn.functional`
-- `..base_model`
-- `..transformer`
-- `.vision_transformer`
-
-**Key Methods:**
-- `encode_image`: Projects image features to multimodal embedding space
-- `encode_text`: Projects text features to multimodal embedding space
-- `forward`: Processes image and/or text inputs and computes similarity if both are provided
-
-
 ### PatchEmbed (`models/vision/vision_transformer.py`)
 Converts images into sequences of patch embeddings using efficient convolution
 
@@ -1105,6 +1564,177 @@ Extracts image patches and projects them to an embedding space with positional i
 - `forward`: Transforms images into sequences of embedded patches with positional information
 
 
+### MultimodalDecoderGeneration (`models/multimodal/multimodal_decoder_generation.py`)
+Generative model that combines vision and text inputs to generate text outputs
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `typing`
+
+**Key Methods:**
+- `__init__`: Initialize the multimodal decoder generation model
+- `prepare_inputs_for_decoder`: Prepare fused representation for the decoder
+- `forward`: Process inputs through the model to compute logits and loss
+- `generate`: Generate text based on visual and/or textual inputs
+
+
+### CrossModalFusionTransformer (`models/multimodal/multimodal_decoder_generation.py`)
+Transformer-based fusion mechanism for combining vision and text representations
+
+**Inherits from:** `nn.Module`
+
+
+### GatedMultimodalFusion (`models/multimodal/multimodal_decoder_generation.py`)
+Gated fusion module that controls information flow between modalities
+
+**Inherits from:** `nn.Module`
+
+
+### MultiModalTransformer (`models/multimodal/multimodal_integration.py`)
+Combines vision and text transformer models with projection layers to a common embedding space
+
+**Inherits from:** `BaseModel`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `..base_model`
+- `..transformer`
+- `.vision_transformer`
+
+**Key Methods:**
+- `encode_image`: Projects image features to multimodal embedding space
+- `encode_text`: Projects text features to multimodal embedding space
+- `forward`: Processes image and/or text inputs and computes similarity if both are provided
+
+
+### CrossAttentionMultiModalTransformer (`models/multimodal/multimodal_integration.py`)
+Advanced multimodal transformer using cross-attention mechanisms for rich cross-modal interactions
+
+**Inherits from:** `BaseModel`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `torch.nn.functional`
+- `src.models.base_model`
+- `src.models.transformer`
+- `src.models.vision.vision_transformer`
+- `src.models.multimodal.co_attention_fusion`
+- `src.models.multimodal.bidirectional_cross_attention`
+
+**Key Methods:**
+- `extract_vision_features`: Extracts features from images using the vision model
+- `extract_text_features`: Extracts features from text using the text model with device-aware processing
+- `forward`: Processes image and/or text inputs with cross-attention fusion and returns enhanced features
+
+
+### VICRegMultimodalModel (`models/multimodal/vicreg_multimodal_model.py`)
+Implements VICReg approach for learning aligned multimodal representations
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `transformers`
+
+**Key Methods:**
+- `__init__`: Initialize VICReg multimodal model with encoders and projectors
+- `forward`: Compute VICReg representations and regularization terms
+
+
+### BidirectionalCrossAttention (`models/multimodal/bidirectional_cross_attention.py`)
+Implements bidirectional attention flow between vision and text modalities
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize bidirectional cross-attention module
+- `forward`: Compute bidirectional attention and fuse features
+
+
+### CoAttentionFusion (`models/multimodal/co_attention_fusion.py`)
+Implements parallel co-attention mechanism for multimodal feature fusion
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize co-attention fusion module
+- `forward`: Compute co-attention and fuse features
+
+
+### GatedCrossModalAttention (`models/multimodal/gated_cross_modal_attention.py`)
+Implements gated attention mechanism for controlled cross-modal feature fusion
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize gated cross-modal attention module
+- `forward`: Compute gated cross-modal attention and fuse features
+
+
+### CLIPStyleDirectProjection (`models/multimodal/clip_style_direct_projection.py`)
+CLIP-style model that directly projects vision and text to a shared space
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `numpy`
+
+**Key Methods:**
+- `__init__`: Initialize CLIP-style model with projection options
+- `extract_text_features`: Extract features from text model with pooling
+- `extract_vision_features`: Extract features from vision model with pooling
+- `forward`: Process images and text, compute similarity
+
+
+### MultiHeadProjection (`models/multimodal/clip_style_direct_projection.py`)
+Multi-head projection module for more expressive projections
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `forward`: Project features through multiple heads and concatenate
+
+
+### CrossModalAttentionBase (`models/multimodal/cross_modal_attention_base.py`)
+Abstract base class defining interface for cross-modal attention mechanisms
+
+**Inherits from:** `nn.Module, ABC`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+- `abc`
+
+**Key Methods:**
+- `__init__`: Initialize base cross-modal attention module
+- `forward`: Abstract method for computing cross-modal attention
+
+
 ### VisionTransformerWrapper (`models/pretrained/vision_transformer.py`)
 Wrapper for Hugging Face Vision Transformer models with simplified interface
 
@@ -1118,6 +1748,36 @@ Wrapper for Hugging Face Vision Transformer models with simplified interface
 - `__init__`: Initialize with specific ViT model
 - `load_model`: Load a pretrained Vision Transformer model
 - `forward`: Process images through the Vision Transformer
+
+
+### HuggingFaceTextModelWrapper (`models/pretrained/huggingface_wrapper.py`)
+Wrapper for HuggingFace text models (BERT, RoBERTa, etc.) with standardized interface
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `transformers`
+
+**Key Methods:**
+- `__init__`: Initialize wrapper with a HuggingFace model by name
+- `encode`: Encode text using the HuggingFace model with fallback handling
+- `forward`: Forward pass that calls encode for encoder-only models
+
+
+### DimensionMatchingWrapper (`models/pretrained/huggingface_wrapper.py`)
+Wrapper that adds projection layer to match dimensions between models
+
+**Inherits from:** `nn.Module`
+
+**Dependencies:**
+- `torch`
+- `torch.nn`
+
+**Key Methods:**
+- `__init__`: Initialize wrapper with base model and projection dimensions
+- `encode`: Encode inputs using base model and project to target dimension
+- `forward`: Forward pass that calls encode
 
 
 ### CLIPModelWrapper (`models/pretrained/clip_model.py`)
@@ -1362,6 +2022,56 @@ Dataset for loading and preprocessing images for vision transformer models
 - `__getitem__`: Load, preprocess and return an image with its label and path
 
 
+### MultimodalAugmentationPipeline (`data/augmentation_pipeline.py`)
+Configurable pipeline for applying augmentations to both image and text data
+
+**Key Methods:**
+- `__init__`: Initialize the augmentation pipeline with configurable parameters
+- `augment_image`: Apply image augmentations with probability
+- `augment_text`: Apply text augmentations with probability
+- `__call__`: Apply augmentations to a batch of multimodal data
+
+
+### TextAugmentation (`data/augmentation_pipeline.py`)
+Base class for text augmentation transforms
+
+
+### DropWords (`data/augmentation_pipeline.py`)
+Randomly drop words from text
+
+**Inherits from:** `TextAugmentation`
+
+
+### ShuffleWords (`data/augmentation_pipeline.py`)
+Shuffle some words within a window
+
+**Inherits from:** `TextAugmentation`
+
+
+### ReplaceWithSynonym (`data/augmentation_pipeline.py`)
+Replace words with simple synonyms
+
+**Inherits from:** `TextAugmentation`
+
+
+### ChangeWordOrder (`data/augmentation_pipeline.py`)
+Change the order of phrases in text
+
+**Inherits from:** `TextAugmentation`
+
+
+### AddMisspelling (`data/augmentation_pipeline.py`)
+Add simple misspellings to text
+
+**Inherits from:** `TextAugmentation`
+
+
+### RandomPosterize (`data/augmentation_pipeline.py`)
+Apply posterization to images
+
+**Inherits from:** `nn.Module`
+
+
 ### WMTDataLoader (`data/wmt_dataloader.py`)
 Loads and preprocesses WMT parallel corpus data with batching capability
 
@@ -1430,6 +2140,112 @@ Combines samples from multiple translation datasets for unified training
 
 **Key Methods:**
 - `__init__`: Initialize the combined dataset with configurable sources and sample counts
+
+
+### SemanticBatchSampler (`data/multimodal_data_utils.py`)
+Sample batch items to ensure related semantic content is grouped together
+
+**Inherits from:** `Sampler`
+
+**Dependencies:**
+- `torch.utils.data`
+- `collections.defaultdict`
+
+**Key Methods:**
+- `__init__`: Create semantically meaningful batches for contrastive learning
+- `_create_semantic_groups`: Group samples by match_id for semantic batching
+
+
+### SemanticGroupBatchSampler (`data/multimodal_data_utils.py`)
+Advanced batch sampler ensuring each batch contains multiple examples from the same semantic groups
+
+**Inherits from:** `BatchSampler`
+
+**Dependencies:**
+- `torch.utils.data`
+- `collections.defaultdict`
+- `random`
+
+**Key Methods:**
+- `__init__`: Initialize sampler with semantic grouping parameters
+- `_get_match_ids`: Extract match_ids from the dataset
+- `_apply_random_capping`: Cap group sizes by randomly selecting samples
+- `_apply_split_capping`: Cap group sizes by creating new smaller groups
+- `__iter__`: Generate batches with proper semantic grouping
+
+
+### MultimodalDataset (`data/multimodal_data_utils.py`)
+Enhanced dataset for feature statistics and semantic grouping
+
+**Inherits from:** `None`
+
+**Dependencies:**
+- `torch`
+- `collections.defaultdict`
+
+**Key Methods:**
+- `__init__`: Initialize dataset with feature diversity and semantic grouping
+- `_compute_feature_diversity`: Compute diversity score for a set of features
+- `get_diverse_features`: Get diverse features by selecting from different semantic groups
+
+
+### FeatureStats (`data/multimodal_data_utils.py`)
+Store and track statistics about feature vectors
+
+**Inherits from:** `dataclass`
+
+**Dependencies:**
+- `torch`
+- `dataclasses`
+
+
+### MultimodalDataset (`data/multimodal_dataset.py`)
+Base dataset class for handling image-text pairs with configurable preprocessing
+
+**Inherits from:** `Dataset`
+
+**Dependencies:**
+- `torch.utils.data`
+- `PIL`
+- `torchvision`
+
+**Key Methods:**
+- `__init__`: Initialize dataset with data path and preprocessing options
+- `__getitem__`: Get a processed image-text pair with optional transformations
+- `_load_metadata`: Load and validate dataset metadata from file
+- `get_hard_negative`: Get index of hard negative sample for contrastive learning
+
+
+### Flickr30kDataset (`data/multimodal_dataset.py`)
+Specialized dataset for Flickr30k with 5 captions per image support
+
+**Inherits from:** `MultimodalDataset`
+
+**Dependencies:**
+- `torch.utils.data`
+- `PIL`
+- `torchvision`
+
+**Key Methods:**
+- `__init__`: Initialize Flickr30k dataset with specialized configuration
+- `_load_from_cache`: Load preprocessed dataset from cache if available
+- `_generate_synthetic_data`: Create synthetic data for testing when real data unavailable
+
+
+### EnhancedMultimodalDataset (`data/multimodal_dataset.py`)
+Advanced dataset with semantic grouping, caching, and multiple caption support
+
+**Inherits from:** `Dataset`
+
+**Dependencies:**
+- `torch.utils.data`
+- `PIL`
+- `Image`
+
+**Key Methods:**
+- `__init__`: Initialize enhanced dataset with advanced configuration options
+- `__getitem__`: Get sample with proper format for MultimodalTrainer including match_id
+- `_load_flickr30k`: Load and process Flickr30k dataset with semantic grouping
 
 
 ### DataPreprocessor (`data/preprocessing.py`)
@@ -1584,6 +2400,20 @@ Abstract base class that defines the standard interface for all tokenizer implem
 - `special_tokens`: Get the special tokens used by this tokenizer
 
 
+### BertTokenizerAdapter (`data/tokenization/bert_tokenizer_adapter.py`)
+Adapter class that wraps HuggingFace BERT tokenizers to match project interface
+
+**Inherits from:** `BaseTokenizer`
+
+**Dependencies:**
+- `transformers.BertTokenizer`
+
+**Key Methods:**
+- `__init__`: Initialize adapter with a pretrained BERT tokenizer
+- `tokenize`: Convert text into BERT tokens
+- `encode`: Convert text to BERT token indices
+
+
 ### BPETokenizer (`data/tokenization/bpe_tokenizer.py`)
 Tokenizer that implements Byte Pair Encoding algorithm for subword tokenization
 
@@ -1629,10 +2459,10 @@ Manages token-to-index and index-to-token mappings with special token handling
 
 
 ## Statistics
-- Total Python modules: 84
-- Modules with metadata: 70
-- Modules without metadata: 14
-- External dependencies: 37
+- Total Python modules: 125
+- Modules with metadata: 102
+- Modules without metadata: 23
+- External dependencies: 38
 
 ---
 Generated automatically from source code metadata

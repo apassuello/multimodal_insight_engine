@@ -9,10 +9,24 @@ from .cross_modal_attention_base import CrossModalAttention
 from .gated_cross_modal_attention import GatedCrossModalAttention
 from .bidirectional_cross_attention import BidirectionalCrossAttention
 from .co_attention_fusion import CoAttentionFusion
+from .multimodal_integration import (
+    MultiModalTransformer,
+    CrossAttentionMultiModalTransformer,
+)
+from .dual_encoder import DualEncoder
+from .clip_style_direct_projection import CLIPStyleDirectProjection
+from .multimodal_decoder_generation import MultimodalDecoderGeneration
+from .vicreg_multimodal_model import VICRegMultimodalModel
 
 __all__ = [
     "CrossModalAttention",
     "GatedCrossModalAttention",
     "BidirectionalCrossAttention",
     "CoAttentionFusion",
+    "MultiModalTransformer",
+    "CrossAttentionMultiModalTransformer",
+    "DualEncoder",
+    "CLIPStyleDirectProjection",
+    "MultimodalDecoderGeneration",
+    "VICRegMultimodalModel",
 ]
