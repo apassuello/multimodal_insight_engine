@@ -1,3 +1,25 @@
+"""MODULE: multistage_trainer.py
+PURPOSE: Implements a flexible trainer for multistage training of multimodal models with distinct training strategies for each stage.
+
+KEY COMPONENTS:
+- MultistageTrainer: Main trainer that orchestrates the multistage training process
+- Integration with various training strategies (SingleModalityStrategy, CrossModalStrategy, EndToEndStrategy)
+- Comprehensive stage management with proper transitions between stages
+- Support for stage-specific metrics tracking and visualization
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+- Training strategies from src.training.strategies
+- Configuration management from src.configs
+- Metrics tracking from src.utils
+
+SPECIAL NOTES:
+- Designed for progressive training of complex multimodal models
+- Supports both configuration-based and programmatic strategy definition
+- Handles component freezing/unfreezing during stage transitions
+- Provides comprehensive visualizations and diagnostics for each stage
+"""
+
 # src/training/trainers/multistage_trainer.py
 
 import torch
@@ -796,3 +818,57 @@ class MultistageTrainer:
         # Save the model
         torch.save(model_dict, path)
         logger.info(f"Model saved to {path}")
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a flexible trainer for multistage training of multimodal models with distinct training strategies for each stage",
+        "key_classes": [
+            {
+                "name": "MultistageTrainer",
+                "purpose": "Manages sequential training stages with different strategies for progressive model improvement",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model: nn.Module, train_dataloader: DataLoader, val_dataloader: Optional[DataLoader] = None, test_dataloader: Optional[DataLoader] = None, config: Optional[TrainingConfig] = None, strategies: Optional[Dict[str, Dict]] = None, checkpoint_dir: str = 'checkpoints', log_dir: str = 'logs', device: Optional[torch.device] = None, **kwargs)",
+                        "brief_description": "Initialize trainer with model, data, and stage configurations",
+                    },
+                    {
+                        "name": "train",
+                        "signature": "train(self) -> Dict[str, Any]",
+                        "brief_description": "Train the model through all configured stages sequentially",
+                    },
+                    {
+                        "name": "train_stage",
+                        "signature": "train_stage(self, stage_idx: int) -> Dict[str, Any]",
+                        "brief_description": "Train a specific stage by index",
+                    },
+                    {
+                        "name": "_apply_component_freezing",
+                        "signature": "_apply_component_freezing(self, stage_config: StageConfig) -> None",
+                        "brief_description": "Apply component freezing/unfreezing based on stage configuration",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": [
+                    "TrainingStrategy",
+                    "SingleModalityStrategy",
+                    "CrossModalStrategy",
+                    "EndToEndStrategy",
+                    "MetricsTracker",
+                ],
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
+        "complexity_score": 8,  # High complexity due to multi-stage orchestration and component management
+    }

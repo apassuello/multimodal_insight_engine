@@ -1,3 +1,23 @@
+"""MODULE: multimodal_trainer.py
+PURPOSE: Provides a comprehensive training framework for multimodal models with support for contrastive learning and various training strategies.
+
+KEY COMPONENTS:
+- MultimodalTrainer: Main trainer class for end-to-end multimodal model training
+- ModalityBalancingScheduler: Dynamically balances learning rates between vision and text modalities
+- Comprehensive evaluation metrics for vision-text retrieval tasks
+- Support for various training techniques (gradient accumulation, mixed precision, early stopping)
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+- NumPy and Matplotlib for metrics and visualization
+- Tqdm for progress tracking
+
+SPECIAL NOTES:
+- Supports multiple loss functions including contrastive, VICReg, and memory queue variants
+- Implements gradient balancing between modalities for better convergence
+- Includes comprehensive metrics tracking and visualization capabilities
+"""
+
 # src/training/multimodal_trainer.py
 
 # Standard library imports
@@ -2833,3 +2853,75 @@ class MultimodalTrainer:
             if save_dir:
                 plt.savefig(os.path.join(save_dir, "tokenizer_quality.png"))
             plt.close()
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides a comprehensive training framework for multimodal models with support for contrastive learning and various training strategies",
+        "key_classes": [
+            {
+                "name": "MultimodalTrainer",
+                "purpose": "Main trainer class for multimodal models with support for various training techniques and evaluation metrics",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model: nn.Module, train_dataloader: DataLoader, val_dataloader: Optional[DataLoader] = None, test_dataloader: Optional[DataLoader] = None, optimizer: Optional[Any] = None, scheduler: Optional[Any] = None, loss_fn: Optional[nn.Module] = None, num_epochs: int = 20, learning_rate: float = 1e-4, weight_decay: float = 0.01, warmup_steps: int = 0, checkpoint_dir: str = 'checkpoints', log_dir: str = 'logs', device: Optional[torch.device] = None, mixed_precision: bool = False, accumulation_steps: int = 1, evaluation_steps: int = 0, log_steps: int = 50, early_stopping_patience: Optional[int] = None, clip_grad_norm: Optional[float] = None, balance_modality_gradients: bool = False, args: Optional[Any] = None)",
+                        "brief_description": "Initialize trainer with model, data, and training configuration",
+                    },
+                    {
+                        "name": "train",
+                        "signature": "train(self) -> Dict[str, List[float]]",
+                        "brief_description": "Train the model for specified number of epochs with comprehensive logging and evaluation",
+                    },
+                    {
+                        "name": "evaluate",
+                        "signature": "evaluate(self, dataloader: DataLoader) -> Dict[str, float]",
+                        "brief_description": "Evaluate model on given dataloader with comprehensive metrics calculation",
+                    },
+                    {
+                        "name": "train_multistage",
+                        "signature": "train_multistage(self)",
+                        "brief_description": "Train the model using a progressive multistage approach to improve convergence",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "torch.optim",
+                    "ContrastiveLoss",
+                    "VICRegLoss",
+                ],
+            },
+            {
+                "name": "ModalityBalancingScheduler",
+                "purpose": "Dynamically balances learning rates between vision and text modalities based on gradient statistics",
+                "key_methods": [
+                    {
+                        "name": "collect_gradient_stats",
+                        "signature": "collect_gradient_stats(self, model)",
+                        "brief_description": "Collect gradient statistics for vision and text components",
+                    },
+                    {
+                        "name": "step",
+                        "signature": "step(self, model)",
+                        "brief_description": "Adjust learning rates based on gradient ratio between modalities",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": ["torch"],
+            },
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
+        "complexity_score": 9,  # Very high complexity due to comprehensive training features and metrics
+    }

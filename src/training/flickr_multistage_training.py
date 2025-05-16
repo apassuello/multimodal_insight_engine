@@ -721,3 +721,74 @@ def train_flickr30k_multistage(
 
     # Run all stages
     trainer.train_all_stages()
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a three-stage training pipeline for multimodal vision-language models using the Flickr30k dataset",
+        "key_classes": [
+            {
+                "name": "FlickrMultistageTrainer",
+                "purpose": "Manages the three-stage training process with different optimization strategies for each stage",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, model: nn.Module, data_root: str, output_dir: str = 'flickr30k', device: Optional[torch.device] = None, batch_size: int = 64, num_workers: int = 4, stage1_epochs: int = 30, stage2_epochs: int = 15, stage3_epochs: int = 15, image_size: int = 224, use_metadata: bool = True)",
+                        "brief_description": "Initialize the multistage trainer with model, data paths, and training configuration",
+                    },
+                    {
+                        "name": "train_stage1",
+                        "signature": "train_stage1(self)",
+                        "brief_description": "Run Stage 1: Modality-Specific Learning with focus on individual encoders",
+                    },
+                    {
+                        "name": "train_stage2",
+                        "signature": "train_stage2(self)",
+                        "brief_description": "Run Stage 2: Cross-Modal Fusion to align vision and text feature spaces",
+                    },
+                    {
+                        "name": "train_stage3",
+                        "signature": "train_stage3(self)",
+                        "brief_description": "Run Stage 3: End-to-End Fine-tuning of all components together",
+                    },
+                    {
+                        "name": "train_all_stages",
+                        "signature": "train_all_stages(self)",
+                        "brief_description": "Run all three training stages in sequence",
+                    },
+                ],
+                "inheritance": "object",
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "torch.optim",
+                    "EnhancedMultimodalDataset",
+                    "SemanticGroupBatchSampler",
+                ],
+            }
+        ],
+        "key_functions": [
+            {
+                "name": "create_flickr30k_multistage_model",
+                "signature": "create_flickr30k_multistage_model(vision_model: VisionTransformerWrapper, text_model: HuggingFaceTextModelWrapper, projection_dim: int = 512) -> VICRegMultimodalModel",
+                "brief_description": "Create a multimodal model instance configured for Flickr30k multistage training",
+            },
+            {
+                "name": "train_flickr30k_multistage",
+                "signature": "train_flickr30k_multistage(data_root: str, output_dir: str = 'flickr30k', batch_size: int = 64, stage1_epochs: int = 30, stage2_epochs: int = 15, stage3_epochs: int = 15, vision_model: str = 'ViT-B/16', text_model: str = 'bert-base-uncased', embedding_dim: int = 512, use_metadata: bool = True)",
+                "brief_description": "Top-level function to set up and run the complete multistage training pipeline",
+            },
+        ],
+        "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],
+        "complexity_score": 9,  # Very high complexity due to multi-stage training and dynamic component management
+    }

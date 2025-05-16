@@ -1,3 +1,21 @@
+"""MODULE: model_utils.py
+PURPOSE: Provides utility functions for working with neural network models, including inspection, parameter counting, and device management.
+
+KEY COMPONENTS:
+- Model parameter counting and summarization
+- Device detection and management
+- Tensor conversion utilities
+- Model device placement tools
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+
+SPECIAL NOTES:
+- Includes smart device detection with MPS/Apple Silicon support
+- Provides utilities for consistent model placement across heterogeneous architectures
+- Handles tensor conversion for serialization
+"""
+
 # src/utils/model_utils.py
 """
 Utility functions for working with neural network models.
@@ -9,6 +27,7 @@ data conversion, and other helper functions for model management.
 import torch
 import torch.nn as nn
 from typing import Dict, List, Tuple, Optional, Union, Any
+import os
 
 
 def count_parameters(model: nn.Module) -> int:
@@ -80,7 +99,11 @@ def get_device(device_name: Optional[str] = None) -> torch.device:
 
     if torch.cuda.is_available():
         return torch.device("cuda")
-    elif hasattr(torch, "backends") and hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    elif (
+        hasattr(torch, "backends")
+        and hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+    ):
         return torch.device("mps")
     else:
         return torch.device("cpu")
@@ -89,10 +112,10 @@ def get_device(device_name: Optional[str] = None) -> torch.device:
 def convert_tensors_to_python_types(obj: Any) -> Any:
     """
     Convert PyTorch tensors to native Python types for JSON serialization.
-    
+
     Args:
         obj: Object to convert (could be tensor, dict, list, tuple, or other)
-        
+
     Returns:
         Converted object with tensors replaced by Python native types
     """
@@ -116,30 +139,30 @@ def convert_tensors_to_python_types(obj: Any) -> Any:
 def ensure_model_on_device(model: nn.Module, device: torch.device) -> nn.Module:
     """
     Ensure all model components are on the correct device.
-    
+
     Args:
         model: The model to check
         device: Target device
-        
+
     Returns:
         model: The model with all components on the target device
     """
     # Move the model to the specified device
     model = model.to(device)
-    
+
     # Check common submodules in multimodal models
     if hasattr(model, "vision_model"):
         model.vision_model = model.vision_model.to(device)
-        
+
     if hasattr(model, "text_model"):
         model.text_model = model.text_model.to(device)
-        
+
     if hasattr(model, "fusion_module"):
         model.fusion_module = model.fusion_module.to(device)
-        
+
     if hasattr(model, "classifier"):
         model.classifier = model.classifier.to(device)
-    
+
     # Verify all parameters are on the device
     devices = {param.device for param in model.parameters()}
     if len(devices) > 1:
@@ -147,5 +170,50 @@ def ensure_model_on_device(model: nn.Module, device: torch.device) -> nn.Module:
         for name, param in model.named_parameters():
             if param.device != device:
                 param.data = param.data.to(device)
-    
+
     return model
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Provides utility functions for working with neural network models, including inspection, parameter counting, and device management",
+        "key_functions": [
+            {
+                "name": "count_parameters",
+                "signature": "count_parameters(model: nn.Module) -> int",
+                "brief_description": "Count the total number of trainable parameters in a model",
+            },
+            {
+                "name": "print_model_summary",
+                "signature": "print_model_summary(model: nn.Module, title: str = 'MODEL SUMMARY') -> None",
+                "brief_description": "Print a concise summary of the model architecture and parameter counts",
+            },
+            {
+                "name": "get_device",
+                "signature": "get_device(device_name: Optional[str] = None) -> torch.device",
+                "brief_description": "Get the appropriate device based on availability (CUDA, MPS, CPU)",
+            },
+            {
+                "name": "convert_tensors_to_python_types",
+                "signature": "convert_tensors_to_python_types(obj: Any) -> Any",
+                "brief_description": "Convert PyTorch tensors to native Python types for JSON serialization",
+            },
+            {
+                "name": "ensure_model_on_device",
+                "signature": "ensure_model_on_device(model: nn.Module, device: torch.device) -> nn.Module",
+                "brief_description": "Ensure all model components are on the correct device, handling complex multimodal models",
+            },
+        ],
+        "external_dependencies": ["torch", "torch.nn"],
+        "complexity_score": 5,  # Medium complexity for utility functions
+    }

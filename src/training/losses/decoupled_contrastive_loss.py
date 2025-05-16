@@ -1,9 +1,28 @@
+"""MODULE: decoupled_contrastive_loss.py
+PURPOSE: Implements decoupled contrastive learning for multimodal models by separating vision-to-text and text-to-vision learning objectives.
+
+KEY COMPONENTS:
+- DecoupledContrastiveLoss: Main loss class that decouples vision-to-text and text-to-vision learning
+- Instance discrimination within and across modalities
+- Flexible weighting of different loss components
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+- Logging
+
+SPECIAL NOTES:
+- Provides better separation of concerns for vision and text modalities
+- Implements fine-grained control over cross-modal and intra-modal learning
+- Includes comprehensive metrics and similarity calculations
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, List, Optional, Tuple, Any, Union
 import numpy as np
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -290,3 +309,51 @@ class DecoupledContrastiveLoss(nn.Module):
             self
         """
         return self.train(False)
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements decoupled contrastive learning for multimodal models by separating vision-to-text and text-to-vision learning objectives",
+        "key_classes": [
+            {
+                "name": "DecoupledContrastiveLoss",
+                "purpose": "Implements a decoupled approach to contrastive learning with separated vision-to-text and text-to-vision objectives",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, temperature: float = 0.07, lambda_v: float = 0.5, lambda_t: float = 0.5, reduction: str = 'mean')",
+                        "brief_description": "Initialize with temperature scaling and loss component weights",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: List[str]) -> Dict[str, Any]",
+                        "brief_description": "Compute decoupled contrastive loss with separated vision-to-text and text-to-vision components",
+                    },
+                    {
+                        "name": "train",
+                        "signature": "train(self, mode: bool = True)",
+                        "brief_description": "Set the module to training mode",
+                    },
+                    {
+                        "name": "eval",
+                        "signature": "eval(self)",
+                        "brief_description": "Set the module to evaluation mode",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
+            }
+        ],
+        "external_dependencies": ["torch", "numpy", "logging"],
+        "complexity_score": 8,  # High complexity due to separate similarity matrices and bidirectional loss computation
+    }

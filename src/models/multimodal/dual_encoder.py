@@ -1,8 +1,28 @@
+"""MODULE: dual_encoder.py
+PURPOSE: Implements a dual encoder architecture for vision-text multimodal learning with specialized projection layers.
+
+KEY COMPONENTS:
+- DualEncoder: Core class that handles dual encoding of vision and text inputs with projection layers
+- Feature extraction and normalization for both modalities
+- Learned temperature scaling for similarity computation
+- Variance preservation techniques during training
+
+DEPENDENCIES:
+- PyTorch (torch, torch.nn)
+- NumPy (for initialization)
+
+SPECIAL NOTES:
+- Includes dynamic scaling based on feature variance for improved training stability
+- Provides asymmetric projection paths for vision and text modalities
+- Monitors feature diversity metrics during training
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Optional, Tuple
 import numpy as np
+import os
 
 
 class DualEncoder(nn.Module):
@@ -147,3 +167,51 @@ class DualEncoder(nn.Module):
                 return features[:, 0]  # CLS token
 
         return features
+
+
+def extract_file_metadata(file_path=__file__):
+    """
+    Extract structured metadata about this module.
+
+    Args:
+        file_path: Path to the source file (defaults to current file)
+
+    Returns:
+        dict: Structured metadata about the module's purpose and components
+    """
+    return {
+        "filename": os.path.basename(file_path),
+        "module_purpose": "Implements a dual encoder architecture for vision-text multimodal learning with specialized projection layers",
+        "key_classes": [
+            {
+                "name": "DualEncoder",
+                "purpose": "Core class that processes both vision and text inputs through modality-specific encoders and projections",
+                "key_methods": [
+                    {
+                        "name": "__init__",
+                        "signature": "__init__(self, vision_model, text_model, projection_dim=512)",
+                        "brief_description": "Initialize with vision and text encoders and configurable projection dimension",
+                    },
+                    {
+                        "name": "forward",
+                        "signature": "forward(self, images=None, text_data=None)",
+                        "brief_description": "Process vision and text inputs, computing aligned features and similarity scores",
+                    },
+                    {
+                        "name": "_extract_features",
+                        "signature": "_extract_features(self, model, inputs)",
+                        "brief_description": "Extract features from various model types with unified interface",
+                    },
+                    {
+                        "name": "_get_model_dimension",
+                        "signature": "_get_model_dimension(self, model)",
+                        "brief_description": "Determine output dimension from different model architectures",
+                    },
+                ],
+                "inheritance": "nn.Module",
+                "dependencies": ["torch", "torch.nn", "numpy"],
+            }
+        ],
+        "external_dependencies": ["torch", "torch.nn", "numpy"],
+        "complexity_score": 7,  # High complexity due to dynamic scaling and diverse model support
+    }

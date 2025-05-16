@@ -526,6 +526,11 @@
         "type": "directory",
         "children": [
           {
+            "name": "flickr30k_multistage_config.py",
+            "type": "file",
+            "path": "src/configs/flickr30k_multistage_config.py"
+          },
+          {
             "name": "training_config.py",
             "type": "file",
             "path": "src/configs/training_config.py"
@@ -1143,9 +1148,68 @@
     },
     {
       "filename": "flickr_multistage_training.py",
-      "module_path": "src/training/flickr_multistage_training.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a three-stage training pipeline for multimodal vision-language models using the Flickr30k dataset",
+      "key_classes": [
+        {
+          "name": "FlickrMultistageTrainer",
+          "purpose": "Manages the three-stage training process with different optimization strategies for each stage",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, data_root: str, output_dir: str = 'flickr30k', device: Optional[torch.device] = None, batch_size: int = 64, num_workers: int = 4, stage1_epochs: int = 30, stage2_epochs: int = 15, stage3_epochs: int = 15, image_size: int = 224, use_metadata: bool = True)",
+              "brief_description": "Initialize the multistage trainer with model, data paths, and training configuration"
+            },
+            {
+              "name": "train_stage1",
+              "signature": "train_stage1(self)",
+              "brief_description": "Run Stage 1: Modality-Specific Learning with focus on individual encoders"
+            },
+            {
+              "name": "train_stage2",
+              "signature": "train_stage2(self)",
+              "brief_description": "Run Stage 2: Cross-Modal Fusion to align vision and text feature spaces"
+            },
+            {
+              "name": "train_stage3",
+              "signature": "train_stage3(self)",
+              "brief_description": "Run Stage 3: End-to-End Fine-tuning of all components together"
+            },
+            {
+              "name": "train_all_stages",
+              "signature": "train_all_stages(self)",
+              "brief_description": "Run all three training stages in sequence"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.optim",
+            "EnhancedMultimodalDataset",
+            "SemanticGroupBatchSampler"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "create_flickr30k_multistage_model",
+          "signature": "create_flickr30k_multistage_model(vision_model: VisionTransformerWrapper, text_model: HuggingFaceTextModelWrapper, projection_dim: int = 512) -> VICRegMultimodalModel",
+          "brief_description": "Create a multimodal model instance configured for Flickr30k multistage training"
+        },
+        {
+          "name": "train_flickr30k_multistage",
+          "signature": "train_flickr30k_multistage(data_root: str, output_dir: str = 'flickr30k', batch_size: int = 64, stage1_epochs: int = 30, stage2_epochs: int = 15, stage3_epochs: int = 15, vision_model: str = 'ViT-B/16', text_model: str = 'bert-base-uncased', embedding_dim: int = 512, use_metadata: bool = True)",
+          "brief_description": "Top-level function to set up and run the complete multistage training pipeline"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "matplotlib",
+        "tqdm"
+      ],
+      "complexity_score": 9,
+      "module_path": "src/training/flickr_multistage_training.py"
     },
     {
       "filename": "transformer_utils.py",
@@ -1368,9 +1432,42 @@
     },
     {
       "filename": "multitask_loss.py",
-      "module_path": "src/training/losses/multitask_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a flexible multitask loss function that combines multiple task-specific losses with configurable weights",
+      "key_classes": [
+        {
+          "name": "MultitaskLoss",
+          "purpose": "Combines multiple loss functions with configurable or dynamic weighting for multitask learning",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, loss_functions: Dict[str, nn.Module], loss_weights: Optional[Dict[str, float]] = None, dynamic_weighting: bool = False, reduction: str = 'mean')",
+              "brief_description": "Initialize with task-specific loss functions and optional weighting configuration"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, inputs: Dict[str, Any], targets: Dict[str, Any]) -> Dict[str, torch.Tensor]",
+              "brief_description": "Compute weighted combination of task-specific losses"
+            },
+            {
+              "name": "_update_dynamic_weights",
+              "signature": "_update_dynamic_weights(self, individual_losses: Dict[str, torch.Tensor]) -> None",
+              "brief_description": "Update task weights dynamically based on current loss values"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "logging"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/training/losses/multitask_loss.py"
     },
     {
       "filename": "contrastive_learning.py",
@@ -1475,9 +1572,48 @@
     },
     {
       "filename": "decoupled_contrastive_loss.py",
-      "module_path": "src/training/losses/decoupled_contrastive_loss.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements decoupled contrastive learning for multimodal models by separating vision-to-text and text-to-vision learning objectives",
+      "key_classes": [
+        {
+          "name": "DecoupledContrastiveLoss",
+          "purpose": "Implements a decoupled approach to contrastive learning with separated vision-to-text and text-to-vision objectives",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, temperature: float = 0.07, lambda_v: float = 0.5, lambda_t: float = 0.5, reduction: str = 'mean')",
+              "brief_description": "Initialize with temperature scaling and loss component weights"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor, match_ids: List[str]) -> Dict[str, Any]",
+              "brief_description": "Compute decoupled contrastive loss with separated vision-to-text and text-to-vision components"
+            },
+            {
+              "name": "train",
+              "signature": "train(self, mode: bool = True)",
+              "brief_description": "Set the module to training mode"
+            },
+            {
+              "name": "eval",
+              "signature": "eval(self)",
+              "brief_description": "Set the module to evaluation mode"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.nn.functional"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "logging"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/losses/decoupled_contrastive_loss.py"
     },
     {
       "filename": "barlow_twins_loss.py",
@@ -2176,9 +2312,51 @@
     },
     {
       "filename": "multistage_trainer.py",
-      "module_path": "src/training/trainers/multistage_trainer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a flexible trainer for multistage training of multimodal models with distinct training strategies for each stage",
+      "key_classes": [
+        {
+          "name": "MultistageTrainer",
+          "purpose": "Manages sequential training stages with different strategies for progressive model improvement",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, train_dataloader: DataLoader, val_dataloader: Optional[DataLoader] = None, test_dataloader: Optional[DataLoader] = None, config: Optional[TrainingConfig] = None, strategies: Optional[Dict[str, Dict]] = None, checkpoint_dir: str = 'checkpoints', log_dir: str = 'logs', device: Optional[torch.device] = None, **kwargs)",
+              "brief_description": "Initialize trainer with model, data, and stage configurations"
+            },
+            {
+              "name": "train",
+              "signature": "train(self) -> Dict[str, Any]",
+              "brief_description": "Train the model through all configured stages sequentially"
+            },
+            {
+              "name": "train_stage",
+              "signature": "train_stage(self, stage_idx: int) -> Dict[str, Any]",
+              "brief_description": "Train a specific stage by index"
+            },
+            {
+              "name": "_apply_component_freezing",
+              "signature": "_apply_component_freezing(self, stage_config: StageConfig) -> None",
+              "brief_description": "Apply component freezing/unfreezing based on stage configuration"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "TrainingStrategy",
+            "SingleModalityStrategy",
+            "CrossModalStrategy",
+            "EndToEndStrategy",
+            "MetricsTracker"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "matplotlib",
+        "tqdm"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/training/trainers/multistage_trainer.py"
     },
     {
       "filename": "vision_transformer_trainer.py",
@@ -2444,15 +2622,108 @@
     },
     {
       "filename": "multimodal_trainer.py",
-      "module_path": "src/training/trainers/multimodal_trainer.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides a comprehensive training framework for multimodal models with support for contrastive learning and various training strategies",
+      "key_classes": [
+        {
+          "name": "MultimodalTrainer",
+          "purpose": "Main trainer class for multimodal models with support for various training techniques and evaluation metrics",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, train_dataloader: DataLoader, val_dataloader: Optional[DataLoader] = None, test_dataloader: Optional[DataLoader] = None, optimizer: Optional[Any] = None, scheduler: Optional[Any] = None, loss_fn: Optional[nn.Module] = None, num_epochs: int = 20, learning_rate: float = 1e-4, weight_decay: float = 0.01, warmup_steps: int = 0, checkpoint_dir: str = 'checkpoints', log_dir: str = 'logs', device: Optional[torch.device] = None, mixed_precision: bool = False, accumulation_steps: int = 1, evaluation_steps: int = 0, log_steps: int = 50, early_stopping_patience: Optional[int] = None, clip_grad_norm: Optional[float] = None, balance_modality_gradients: bool = False, args: Optional[Any] = None)",
+              "brief_description": "Initialize trainer with model, data, and training configuration"
+            },
+            {
+              "name": "train",
+              "signature": "train(self) -> Dict[str, List[float]]",
+              "brief_description": "Train the model for specified number of epochs with comprehensive logging and evaluation"
+            },
+            {
+              "name": "evaluate",
+              "signature": "evaluate(self, dataloader: DataLoader) -> Dict[str, float]",
+              "brief_description": "Evaluate model on given dataloader with comprehensive metrics calculation"
+            },
+            {
+              "name": "train_multistage",
+              "signature": "train_multistage(self)",
+              "brief_description": "Train the model using a progressive multistage approach to improve convergence"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "torch.optim",
+            "ContrastiveLoss",
+            "VICRegLoss"
+          ]
+        },
+        {
+          "name": "ModalityBalancingScheduler",
+          "purpose": "Dynamically balances learning rates between vision and text modalities based on gradient statistics",
+          "key_methods": [
+            {
+              "name": "collect_gradient_stats",
+              "signature": "collect_gradient_stats(self, model)",
+              "brief_description": "Collect gradient statistics for vision and text components"
+            },
+            {
+              "name": "step",
+              "signature": "step(self, model)",
+              "brief_description": "Adjust learning rates based on gradient ratio between modalities"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "matplotlib",
+        "tqdm"
+      ],
+      "complexity_score": 9,
+      "module_path": "src/training/trainers/multimodal_trainer.py"
     },
     {
       "filename": "model_utils.py",
-      "module_path": "src/utils/model_utils.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides utility functions for working with neural network models, including inspection, parameter counting, and device management",
+      "key_functions": [
+        {
+          "name": "count_parameters",
+          "signature": "count_parameters(model: nn.Module) -> int",
+          "brief_description": "Count the total number of trainable parameters in a model"
+        },
+        {
+          "name": "print_model_summary",
+          "signature": "print_model_summary(model: nn.Module, title: str = 'MODEL SUMMARY') -> None",
+          "brief_description": "Print a concise summary of the model architecture and parameter counts"
+        },
+        {
+          "name": "get_device",
+          "signature": "get_device(device_name: Optional[str] = None) -> torch.device",
+          "brief_description": "Get the appropriate device based on availability (CUDA, MPS, CPU)"
+        },
+        {
+          "name": "convert_tensors_to_python_types",
+          "signature": "convert_tensors_to_python_types(obj: Any) -> Any",
+          "brief_description": "Convert PyTorch tensors to native Python types for JSON serialization"
+        },
+        {
+          "name": "ensure_model_on_device",
+          "signature": "ensure_model_on_device(model: nn.Module, device: torch.device) -> nn.Module",
+          "brief_description": "Ensure all model components are on the correct device, handling complex multimodal models"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torch.nn"
+      ],
+      "complexity_score": 5,
+      "module_path": "src/utils/model_utils.py"
     },
     {
       "filename": "logging.py",
@@ -2674,9 +2945,105 @@
     },
     {
       "filename": "feature_attribution.py",
-      "module_path": "src/utils/feature_attribution.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements various feature attribution techniques for model interpretability and visualization",
+      "key_classes": [
+        {
+          "name": "GradCAM",
+          "purpose": "Implements Gradient-weighted Class Activation Mapping for vision models",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, target_layer: nn.Module, use_cuda: bool = False)",
+              "brief_description": "Initialize GradCAM with model and target layer"
+            },
+            {
+              "name": "__call__",
+              "signature": "__call__(self, input_image: torch.Tensor, target_class: Optional[int] = None) -> Tuple[np.ndarray, torch.Tensor]",
+              "brief_description": "Generate a GradCAM heatmap for the input image"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "numpy"
+          ]
+        },
+        {
+          "name": "IntegratedGradients",
+          "purpose": "Implements the integrated gradients method for computing feature importance",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, model: nn.Module, use_cuda: bool = False, steps: int = 50)",
+              "brief_description": "Initialize integrated gradients with model and steps"
+            },
+            {
+              "name": "__call__",
+              "signature": "__call__(self, input_tensor: torch.Tensor, target_class: Optional[int] = None, baseline: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Compute integrated gradients for an input tensor"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        },
+        {
+          "name": "SaliencyMap",
+          "purpose": "Creates simple saliency maps based on input gradients",
+          "key_methods": [
+            {
+              "name": "__call__",
+              "signature": "__call__(self, input_tensor: torch.Tensor, target_class: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor]",
+              "brief_description": "Compute saliency map highlighting important input features"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "torch",
+            "torch.nn"
+          ]
+        },
+        {
+          "name": "AttributionVisualizer",
+          "purpose": "Utilities for visualizing feature attributions for both images and text",
+          "key_methods": [
+            {
+              "name": "overlay_heatmap",
+              "signature": "overlay_heatmap(image: Union[np.ndarray, Image.Image, torch.Tensor], heatmap: np.ndarray, colormap: str = 'jet', alpha: float = 0.5) -> np.ndarray",
+              "brief_description": "Overlay a heatmap on an image for visualization"
+            },
+            {
+              "name": "visualize_text_attribution",
+              "signature": "visualize_text_attribution(tokens: List[str], attributions: torch.Tensor, colormap: str = 'RdBu_r', threshold: float = 0.0) -> plt.Figure",
+              "brief_description": "Visualize attributions for text tokens"
+            }
+          ],
+          "inheritance": "object",
+          "dependencies": [
+            "numpy",
+            "matplotlib",
+            "PIL"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "attribution_for_multimodal_model",
+          "signature": "attribution_for_multimodal_model(model: nn.Module, image: torch.Tensor, text: Union[str, torch.Tensor], attribution_method: str = 'grad_cam', target_class: Optional[int] = None, **kwargs) -> Dict[str, Any]",
+          "brief_description": "Compute attributions for a multimodal model using the specified method"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "numpy",
+        "matplotlib",
+        "PIL"
+      ],
+      "complexity_score": 8,
+      "module_path": "src/utils/feature_attribution.py"
     },
     {
       "filename": "metrics_tracker.py",
@@ -4101,9 +4468,48 @@
     },
     {
       "filename": "dual_encoder.py",
-      "module_path": "src/models/multimodal/dual_encoder.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Implements a dual encoder architecture for vision-text multimodal learning with specialized projection layers",
+      "key_classes": [
+        {
+          "name": "DualEncoder",
+          "purpose": "Core class that processes both vision and text inputs through modality-specific encoders and projections",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, vision_model, text_model, projection_dim=512)",
+              "brief_description": "Initialize with vision and text encoders and configurable projection dimension"
+            },
+            {
+              "name": "forward",
+              "signature": "forward(self, images=None, text_data=None)",
+              "brief_description": "Process vision and text inputs, computing aligned features and similarity scores"
+            },
+            {
+              "name": "_extract_features",
+              "signature": "_extract_features(self, model, inputs)",
+              "brief_description": "Extract features from various model types with unified interface"
+            },
+            {
+              "name": "_get_model_dimension",
+              "signature": "_get_model_dimension(self, model)",
+              "brief_description": "Determine output dimension from different model architectures"
+            }
+          ],
+          "inheritance": "nn.Module",
+          "dependencies": [
+            "torch",
+            "torch.nn",
+            "numpy"
+          ]
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torch.nn",
+        "numpy"
+      ],
+      "complexity_score": 7,
+      "module_path": "src/models/multimodal/dual_encoder.py"
     },
     {
       "filename": "cross_modal_attention_base.py",
@@ -4752,6 +5158,12 @@
       ],
       "complexity_score": 8,
       "module_path": "src/safety/red_teaming/evaluator.py"
+    },
+    {
+      "filename": "flickr30k_multistage_config.py",
+      "module_path": "src/configs/flickr30k_multistage_config.py",
+      "module_purpose": "No metadata function available",
+      "has_metadata_function": false
     },
     {
       "filename": "training_config.py",
@@ -5955,9 +6367,48 @@
     },
     {
       "filename": "utils.py",
-      "module_path": "src/data/tokenization/utils.py",
-      "module_purpose": "No metadata function available",
-      "has_metadata_function": false
+      "module_purpose": "Provides utility functions and classes for tokenization and text processing in transformer models",
+      "key_classes": [
+        {
+          "name": "TransformerTextDataset",
+          "purpose": "PyTorch dataset for transformer text processing with support for BOS/EOS tokens and attention masks",
+          "key_methods": [
+            {
+              "name": "__init__",
+              "signature": "__init__(self, texts: List[str], tokenizer: BaseTokenizer, max_length: Optional[int] = None, add_bos: bool = True, add_eos: bool = True, return_tensors: bool = True)",
+              "brief_description": "Initialize dataset with texts and tokenization parameters"
+            },
+            {
+              "name": "__getitem__",
+              "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
+              "brief_description": "Get a processed example with input_ids and attention_mask"
+            }
+          ],
+          "inheritance": "Dataset",
+          "dependencies": [
+            "torch.utils.data",
+            ".base_tokenizer"
+          ]
+        }
+      ],
+      "key_functions": [
+        {
+          "name": "create_transformer_dataloaders",
+          "signature": "create_transformer_dataloaders(train_texts: List[str], tokenizer: BaseTokenizer, val_texts: Optional[List[str]] = None, batch_size: int = 32, max_length: Optional[int] = None, shuffle: bool = True, num_workers: int = 0) -> Tuple[DataLoader, Optional[DataLoader]]",
+          "brief_description": "Create train and validation dataloaders for transformer training with appropriate collation"
+        },
+        {
+          "name": "transformer_collate_fn",
+          "signature": "transformer_collate_fn(batch: List[Union[Dict[str, torch.Tensor], List[int]]]) -> Union[Dict[str, torch.Tensor], torch.Tensor]",
+          "brief_description": "Collate and pad batches of text sequences for transformer models"
+        }
+      ],
+      "external_dependencies": [
+        "torch",
+        "torch.utils.data"
+      ],
+      "complexity_score": 5,
+      "module_path": "src/data/tokenization/utils.py"
     },
     {
       "filename": "preprocessing.py",
@@ -6209,19 +6660,27 @@
     }
   ],
   "summary": {
-    "total_modules": 125,
-    "modules_with_metadata": 104,
-    "modules_without_metadata": 21
+    "total_modules": 126,
+    "modules_with_metadata": 113,
+    "modules_without_metadata": 13
   },
   "complexity_summary": {
-    "average_complexity": 6.163461538461538,
+    "average_complexity": 6.256637168141593,
     "modules_by_complexity": [
+      {
+        "module": "src/training/flickr_multistage_training.py",
+        "score": 9
+      },
       {
         "module": "src/training/losses/hybrid_pretrain_vicreg_loss.py",
         "score": 9
       },
       {
         "module": "src/training/strategies/end_to_end_strategy.py",
+        "score": 9
+      },
+      {
+        "module": "src/training/trainers/multimodal_trainer.py",
         "score": 9
       },
       {
@@ -6261,6 +6720,10 @@
         "score": 8
       },
       {
+        "module": "src/training/losses/decoupled_contrastive_loss.py",
+        "score": 8
+      },
+      {
         "module": "src/training/losses/hard_negative_mining_contrastive_loss.py",
         "score": 8
       },
@@ -6277,6 +6740,10 @@
         "score": 8
       },
       {
+        "module": "src/training/trainers/multistage_trainer.py",
+        "score": 8
+      },
+      {
         "module": "src/training/trainers/vision_transformer_trainer.py",
         "score": 8
       },
@@ -6286,6 +6753,10 @@
       },
       {
         "module": "src/training/trainers/transformer_trainer.py",
+        "score": 8
+      },
+      {
+        "module": "src/utils/feature_attribution.py",
         "score": 8
       },
       {
@@ -6357,6 +6828,10 @@
         "score": 7
       },
       {
+        "module": "src/training/losses/multitask_loss.py",
+        "score": 7
+      },
+      {
         "module": "src/training/losses/contrastive_learning.py",
         "score": 7
       },
@@ -6422,6 +6897,10 @@
       },
       {
         "module": "src/models/multimodal/clip_style_direct_projection.py",
+        "score": 7
+      },
+      {
+        "module": "src/models/multimodal/dual_encoder.py",
         "score": 7
       },
       {
@@ -6505,6 +6984,10 @@
         "score": 5
       },
       {
+        "module": "src/utils/model_utils.py",
+        "score": 5
+      },
+      {
         "module": "src/models/vision/patch_embedding.py",
         "score": 5
       },
@@ -6522,6 +7005,10 @@
       },
       {
         "module": "src/data/wikipedia_dataset.py",
+        "score": 5
+      },
+      {
+        "module": "src/data/tokenization/utils.py",
         "score": 5
       },
       {
@@ -6635,15 +7122,15 @@
     ]
   },
   "dependency_summary": {
-    "total_external_dependencies": 38,
+    "total_external_dependencies": 39,
     "dependencies_by_usage": [
       {
         "name": "torch",
-        "usage_count": 81
+        "usage_count": 90
       },
       {
         "name": "numpy",
-        "usage_count": 26
+        "usage_count": 32
       },
       {
         "name": "typing",
@@ -6651,19 +7138,23 @@
       },
       {
         "name": "logging",
+        "usage_count": 17
+      },
+      {
+        "name": "matplotlib",
         "usage_count": 15
       },
       {
         "name": "tqdm",
-        "usage_count": 12
-      },
-      {
-        "name": "matplotlib",
-        "usage_count": 11
+        "usage_count": 15
       },
       {
         "name": "json",
         "usage_count": 9
+      },
+      {
+        "name": "PIL",
+        "usage_count": 6
       },
       {
         "name": "math",
@@ -6671,10 +7162,6 @@
       },
       {
         "name": "transformers",
-        "usage_count": 5
-      },
-      {
-        "name": "PIL",
         "usage_count": 5
       },
       {
@@ -6706,6 +7193,10 @@
         "usage_count": 2
       },
       {
+        "name": "torch.nn",
+        "usage_count": 2
+      },
+      {
         "name": "argparse",
         "usage_count": 2
       },
@@ -6719,6 +7210,10 @@
       },
       {
         "name": "datasets",
+        "usage_count": 2
+      },
+      {
+        "name": "torch.utils.data",
         "usage_count": 2
       },
       {
@@ -6763,10 +7258,6 @@
       },
       {
         "name": "pathlib",
-        "usage_count": 1
-      },
-      {
-        "name": "torch.utils.data",
         "usage_count": 1
       },
       {
