@@ -24,6 +24,13 @@ from .utils import (
     SENSITIVITY_MULTIPLIERS,
 )
 
+# Optional constitutional AI support
+try:
+    from .constitutional import ConstitutionalFramework, ConstitutionalSafetyEvaluator
+    CONSTITUTIONAL_AI_AVAILABLE = True
+except ImportError:
+    CONSTITUTIONAL_AI_AVAILABLE = False
+
 
 class SafetyEvaluator:
     """
@@ -40,6 +47,8 @@ class SafetyEvaluator:
         safety_thresholds: Optional[Dict[str, float]] = None,
         sensitivity: str = SENSITIVITY_MEDIUM,
         log_dir: str = "safety_data/logs",
+        use_constitutional_ai: bool = False,
+        constitutional_framework: Optional[Any] = None,
     ):
         """
         Initialize the safety evaluator.
@@ -48,9 +57,26 @@ class SafetyEvaluator:
             safety_thresholds: Dictionary mapping safety categories to threshold values
             sensitivity: Sensitivity level (low, medium, high)
             log_dir: Directory for storing safety logs
+            use_constitutional_ai: Whether to use constitutional AI evaluation
+            constitutional_framework: Optional constitutional framework (uses default if None)
         """
         # Store sensitivity setting
         self.sensitivity = sensitivity
+
+        # Constitutional AI support
+        self.use_constitutional_ai = use_constitutional_ai and CONSTITUTIONAL_AI_AVAILABLE
+        self.constitutional_evaluator = None
+
+        if self.use_constitutional_ai:
+            if constitutional_framework is None and CONSTITUTIONAL_AI_AVAILABLE:
+                from .constitutional import setup_default_framework
+                constitutional_framework = setup_default_framework()
+
+            if CONSTITUTIONAL_AI_AVAILABLE:
+                self.constitutional_evaluator = ConstitutionalSafetyEvaluator(
+                    framework=constitutional_framework,
+                    use_self_critique=False  # Can be enabled if critique model available
+                )
 
         # Set default thresholds
         default_thresholds = {
@@ -87,13 +113,14 @@ class SafetyEvaluator:
             "category_counts": {category: 0 for category in self.safety_thresholds},
         }
 
-    def evaluate_text(self, text: str) -> Dict[str, Any]:
+    def evaluate_text(self, text: str, use_constitutional: Optional[bool] = None) -> Dict[str, Any]:
         """
         Evaluate text for safety concerns.
-        
+
         Args:
             text: Text to evaluate
-            
+            use_constitutional: Override for constitutional AI usage (uses instance setting if None)
+
         Returns:
             Dictionary with safety evaluation results
         """
@@ -104,16 +131,17 @@ class SafetyEvaluator:
                 "harmful_instructions": 0.0,
                 "bias": 0.0,
                 "personal_information": 0.0,
-                "flagged_categories": []
+                "flagged_categories": [],
+                "constitutional_evaluation": None
             }
-            
+
         # Convert to lowercase for case-insensitive matching
-        text = text.lower()
+        text_lower = text.lower()
         
         # Check for toxic words
         toxic_words = ["hate", "idiot", "stupid", "kill", "die", "attack"]
-        toxicity_score = sum(word in text for word in toxic_words) / len(toxic_words)
-        
+        toxicity_score = sum(word in text_lower for word in toxic_words) / len(toxic_words)
+
         # Check for harmful instructions
         harmful_instructions = [
             "hacking", "hacked", "hacker", "hack", "hacking", "hacked", "hacker", "hack",
@@ -124,13 +152,13 @@ class SafetyEvaluator:
             "credit card", "number", "card", "secret", "pin", "passphrase",
             "username", "user id", "login"
         ]
-        harmful_instructions_score = sum(phrase in text for phrase in harmful_instructions) / len(harmful_instructions)
-        
+        harmful_instructions_score = sum(phrase in text_lower for phrase in harmful_instructions) / len(harmful_instructions)
+
         # Check for bias
         bias_words = ["all", "every", "men", "women", "people from", "individuals from"]
-        bias_score = sum(word in text for word in bias_words) / len(bias_words)
+        bias_score = sum(word in text_lower for word in bias_words) / len(bias_words)
         
-        # Check for personal information
+        # Check for personal information (use original text for regex)
         personal_info_patterns = [
             r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b",  # SSN
             r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b",  # Phone
@@ -140,8 +168,8 @@ class SafetyEvaluator:
             r"\b(?:password|passphrase|pin|secret)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{6,}['\"]?)",  # Passwords
             r"\b(?:username|user id|login)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{3,}['\"]?)",  # Usernames
         ]
-        personal_info_score = sum(pattern in text for pattern in personal_info_patterns) / len(personal_info_patterns)
-        
+        personal_info_score = sum(bool(re.search(pattern, text, re.IGNORECASE)) for pattern in personal_info_patterns) / len(personal_info_patterns)
+
         # Determine if text should be flagged
         flagged = any([
             toxicity_score > 0.3,
@@ -149,7 +177,7 @@ class SafetyEvaluator:
             bias_score > 0.3,
             personal_info_score > 0.3
         ])
-        
+
         # Collect flagged categories
         flagged_categories = []
         if toxicity_score > 0.3:
@@ -160,15 +188,30 @@ class SafetyEvaluator:
             flagged_categories.append("bias")
         if personal_info_score > 0.3:
             flagged_categories.append("personal_information")
-        
-        return {
+
+        result = {
             "flagged": flagged,
             "toxicity": toxicity_score,
             "harmful_instructions": harmful_instructions_score,
             "bias": bias_score,
             "personal_information": personal_info_score,
-            "flagged_categories": flagged_categories
+            "flagged_categories": flagged_categories,
+            "constitutional_evaluation": None
         }
+
+        # Apply constitutional AI evaluation if enabled
+        apply_constitutional = use_constitutional if use_constitutional is not None else self.use_constitutional_ai
+        if apply_constitutional and self.constitutional_evaluator is not None:
+            constitutional_result = self.constitutional_evaluator.evaluate(text, include_critique=False)
+            result["constitutional_evaluation"] = constitutional_result
+
+            # Update flagged status if constitutional AI found issues
+            if constitutional_result.get("flagged", False):
+                result["flagged"] = True
+                if "constitutional" not in flagged_categories:
+                    result["flagged_categories"].append("constitutional")
+
+        return result
 
     def log_evaluation(
         self,
@@ -267,6 +310,69 @@ class SafetyEvaluator:
         print(
             f"Safety evaluator sensitivity set to {sensitivity}. New thresholds: {self.safety_thresholds}"
         )
+
+    def validate_input(
+        self,
+        input_text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        override: bool = False
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Validate input text for safety.
+
+        Args:
+            input_text: The input text to validate
+            metadata: Additional information about the input
+            override: Whether to override safety concerns
+
+        Returns:
+            Tuple of (is_safe, validation_info)
+        """
+        if override:
+            return True, {"is_safe": True, "overridden": True}
+
+        evaluation = self.evaluate_text(input_text)
+
+        is_safe = not evaluation["flagged"]
+        validation_info = {
+            "is_safe": is_safe,
+            "evaluation": evaluation,
+            "reason": "Passed all safety checks" if is_safe else f"Failed: {evaluation['flagged_categories']}"
+        }
+
+        return is_safe, validation_info
+
+    def filter_output(
+        self,
+        output_text: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Filter output text for safety.
+
+        Args:
+            output_text: The output text to filter
+            metadata: Additional information about the output
+
+        Returns:
+            Tuple of (filtered_text, filtering_info)
+        """
+        evaluation = self.evaluate_text(output_text)
+
+        filtering_info = {
+            "was_filtered": evaluation["flagged"],
+            "evaluation": evaluation
+        }
+
+        # Simple filtering: if severely problematic, return warning message
+        if evaluation["flagged"] and len(evaluation["flagged_categories"]) > 2:
+            filtered_text = "[Content filtered due to safety concerns]"
+            filtering_info["filter_applied"] = True
+        else:
+            filtered_text = output_text
+            filtering_info["filter_applied"] = False
+
+        return filtered_text, filtering_info
 
 
 # Helper function to avoid import issues in code snippets
