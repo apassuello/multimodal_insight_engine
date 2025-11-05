@@ -233,14 +233,35 @@ Please provide an improved response that addresses these issues while still bein
     def _generate_with_model(self, prompt: str) -> str:
         """
         Generate text using the critique model.
-        Placeholder - actual implementation depends on model type.
         """
         if self.critique_model is None:
             return ""
 
-        # This is a simplified placeholder
-        # Real implementation would need proper tokenization and generation
-        return "[Critique would be generated here with actual model]"
+        try:
+            from .model_utils import generate_text, GenerationConfig
+
+            # Check if model has tokenizer attribute
+            if hasattr(self.critique_model, 'tokenizer'):
+                tokenizer = self.critique_model.tokenizer
+                model = self.critique_model
+            else:
+                # Try to get tokenizer from model config
+                return "[Model requires tokenizer - use model_utils.load_model()]"
+
+            # Generate critique
+            config = GenerationConfig(
+                max_length=256,
+                temperature=0.7,
+                do_sample=True
+            )
+
+            critique = generate_text(model, tokenizer, prompt, config)
+            return critique
+
+        except ImportError:
+            return "[transformers library required for model generation]"
+        except Exception as e:
+            return f"[Generation error: {str(e)}]"
 
     def _generate_improvement(self, prompt: str) -> str:
         """

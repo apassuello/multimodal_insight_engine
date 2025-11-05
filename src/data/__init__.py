@@ -23,6 +23,21 @@ from .tokenization import (
     Vocabulary
 )
 
+# Import constitutional AI dataset utilities
+from .constitutional_dataset import (
+    PromptDataset,
+    PromptResponseDataset,
+    ConstitutionalTrainingDataset,
+    PromptTemplate,
+    load_huggingface_dataset,
+    create_default_prompts,
+    save_prompts_to_file,
+    DEFAULT_PROMPT_TEMPLATE,
+    INSTRUCTION_PROMPT_TEMPLATE,
+    CHAT_PROMPT_TEMPLATE,
+    CONSTITUTIONAL_CRITIQUE_TEMPLATE
+)
+
 __all__ = [
     "LanguageModelingDataset",
     "TransformerDataset",
@@ -35,5 +50,17 @@ __all__ = [
     "SimpleTokenizer",
     "BPETokenizer",
     "BaseTokenizer",
-    "Vocabulary"
+    "Vocabulary",
+    # Constitutional AI datasets
+    "PromptDataset",
+    "PromptResponseDataset",
+    "ConstitutionalTrainingDataset",
+    "PromptTemplate",
+    "load_huggingface_dataset",
+    "create_default_prompts",
+    "save_prompts_to_file",
+    "DEFAULT_PROMPT_TEMPLATE",
+    "INSTRUCTION_PROMPT_TEMPLATE",
+    "CHAT_PROMPT_TEMPLATE",
+    "CONSTITUTIONAL_CRITIQUE_TEMPLATE"
 ]
