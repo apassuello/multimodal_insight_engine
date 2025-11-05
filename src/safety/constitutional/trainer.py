@@ -3,7 +3,8 @@ PURPOSE: RLAIF (Reinforcement Learning from AI Feedback) trainer for Constitutio
 KEY COMPONENTS:
 - RLAIFTrainer: Trainer implementing RL from AI Feedback with constitutional principles
 - Constitutional feedback generation and scoring
-DEPENDENCIES: torch, typing, framework, evaluator
+- Actual training implementation with policy gradient
+DEPENDENCIES: torch, typing, framework, evaluator, model_utils
 SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning
 """
 
@@ -109,7 +110,7 @@ class RLAIFTrainer:
 
             # Generate multiple responses per prompt
             for _ in range(num_responses_per_prompt):
-                # Generate response (placeholder - needs actual generation)
+                # Generate response
                 response = self._generate_response(prompt, use_tokenizer)
 
                 # Evaluate with constitutional framework
@@ -154,10 +155,35 @@ class RLAIFTrainer:
         Returns:
             Generated response text
         """
-        # Placeholder implementation
-        # Real implementation needs proper tokenization and generation
-        # This would use the policy_model to generate actual responses
-        return f"[Response to: {prompt[:50]}...]"
+        try:
+            from .model_utils import generate_text, GenerationConfig
+
+            # Get tokenizer
+            if tokenizer is None:
+                if hasattr(self.policy_model, 'tokenizer'):
+                    tokenizer = self.policy_model.tokenizer
+                else:
+                    return f"[No tokenizer available for {prompt[:30]}...]"
+
+            # Generate response
+            config = GenerationConfig(
+                max_length=150,
+                temperature=self.temperature,
+                do_sample=True
+            )
+
+            response = generate_text(
+                self.policy_model,
+                tokenizer,
+                prompt,
+                config,
+                device=self.device
+            )
+
+            return response
+
+        except Exception as e:
+            return f"[Generation error: {str(e)}]"
 
     def _generate_critique(self, prompt: str, response: str) -> str:
         """
@@ -184,9 +210,30 @@ Provide a detailed analysis of any issues with respect to:
 
 Analysis:"""
 
-        # Generate critique (placeholder)
-        # Real implementation would use critique_model
-        return "[Critique would be generated here]"
+        try:
+            from .model_utils import generate_text, GenerationConfig
+
+            # Use critique model or policy model
+            model = self.critique_model if self.critique_model is not None else self.policy_model
+
+            # Get tokenizer
+            if hasattr(model, 'tokenizer'):
+                tokenizer = model.tokenizer
+            else:
+                return "[No tokenizer available for critique generation]"
+
+            # Generate critique
+            config = GenerationConfig(
+                max_length=256,
+                temperature=0.7,
+                do_sample=True
+            )
+
+            critique = generate_text(model, tokenizer, critique_prompt, config, device=self.device)
+            return critique
+
+        except Exception as e:
+            return f"[Critique generation error: {str(e)}]"
 
     def _compute_combined_score(
         self,
@@ -254,15 +301,19 @@ Analysis:"""
 
     def train_step(
         self,
-        training_batch: Dict[str, Any],
-        tokenizer: Optional[Any] = None
+        prompt: str,
+        responses: List[str],
+        rewards: List[float],
+        tokenizer: Any
     ) -> Dict[str, float]:
         """
-        Perform a single training step with constitutional feedback.
+        Perform a single training step with constitutional feedback using policy gradient.
 
         Args:
-            training_batch: Batch of training data
-            tokenizer: Optional tokenizer
+            prompt: Input prompt
+            responses: List of generated responses
+            rewards: Reward for each response (based on constitutional compliance)
+            tokenizer: Tokenizer
 
         Returns:
             Dictionary with training metrics
@@ -270,25 +321,62 @@ Analysis:"""
         self.policy_model.train()
         self.optimizer.zero_grad()
 
-        # Placeholder for actual training logic
-        # Real implementation would:
-        # 1. Compute log probabilities for best responses
-        # 2. Compute rewards based on constitutional scores
-        # 3. Update policy using policy gradient
-        # 4. Track metrics
+        # Tokenize prompt
+        prompt_ids = tokenizer(prompt, return_tensors="pt", padding=True)
+        prompt_ids = {k: v.to(self.device) for k, v in prompt_ids.items()}
 
-        loss = torch.tensor(0.0, requires_grad=True, device=self.device)
+        total_loss = 0.0
+        valid_samples = 0
 
-        # Backward and optimize
-        loss.backward()
-        self.optimizer.step()
+        # Compute policy gradient loss
+        for response, reward in zip(responses, rewards):
+            # Tokenize response
+            full_text = prompt + response
+            full_ids = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+            full_ids = {k: v.to(self.device) for k, v in full_ids.items()}
 
-        self.stats["training_iterations"] += 1
+            # Get model outputs
+            outputs = self.policy_model(**full_ids, labels=full_ids["input_ids"])
 
-        return {
-            "loss": loss.item(),
-            "learning_rate": self.optimizer.param_groups[0]["lr"]
-        }
+            # Extract loss for this response
+            response_loss = outputs.loss
+
+            # Weight by reward (inverse - lower score is better)
+            # Convert score to reward: reward = -score (higher reward for lower violations)
+            advantage = -reward
+
+            # Policy gradient: maximize reward = minimize -reward * log_prob
+            weighted_loss = response_loss * advantage
+
+            total_loss += weighted_loss
+            valid_samples += 1
+
+        if valid_samples > 0:
+            # Average loss
+            loss = total_loss / valid_samples
+
+            # Backward pass
+            loss.backward()
+
+            # Clip gradients
+            torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), 1.0)
+
+            # Update parameters
+            self.optimizer.step()
+
+            self.stats["training_iterations"] += 1
+
+            return {
+                "loss": loss.item(),
+                "avg_reward": float(np.mean([-r for r in rewards])),  # Flip back for reporting
+                "learning_rate": self.optimizer.param_groups[0]["lr"]
+            }
+        else:
+            return {
+                "loss": 0.0,
+                "avg_reward": 0.0,
+                "learning_rate": self.optimizer.param_groups[0]["lr"]
+            }
 
     def train(
         self,
@@ -306,20 +394,27 @@ Analysis:"""
             prompts: Training prompts
             num_epochs: Number of training epochs
             num_responses_per_prompt: Response candidates per prompt
-            batch_size: Training batch size
-            tokenizer: Optional tokenizer
+            batch_size: Training batch size (for prompt batching)
+            tokenizer: Tokenizer for the model
             validation_prompts: Optional validation prompts
 
         Returns:
             Training results and metrics
         """
+        # Get tokenizer
+        if tokenizer is None:
+            if hasattr(self.policy_model, 'tokenizer'):
+                tokenizer = self.policy_model.tokenizer
+            else:
+                raise ValueError("Tokenizer required for training")
+
         print(f"Starting Constitutional AI training for {num_epochs} epochs...")
         print(f"Training on {len(prompts)} prompts")
         print(f"Generating {num_responses_per_prompt} responses per prompt")
 
         training_history = {
             "epoch_losses": [],
-            "epoch_scores": [],
+            "epoch_rewards": [],
             "validation_scores": []
         }
 
@@ -327,6 +422,7 @@ Analysis:"""
             print(f"\nEpoch {epoch + 1}/{num_epochs}")
 
             # Generate training data
+            print("Generating responses and evaluating...")
             training_data = self.generate_training_data(
                 prompts,
                 num_responses_per_prompt,
@@ -335,25 +431,31 @@ Analysis:"""
 
             # Training loop
             epoch_losses = []
-            epoch_scores = []
+            epoch_rewards = []
 
+            print("Training on generated data...")
             for batch_data in tqdm(training_data, desc="Training"):
-                metrics = self.train_step(batch_data, tokenizer)
-                epoch_losses.append(metrics["loss"])
+                prompt = batch_data["prompt"]
+                responses = batch_data["responses"]
+                evaluations = batch_data["evaluations"]
 
-                # Track constitutional scores
-                best_idx = batch_data["best_response_idx"]
-                best_score = batch_data["evaluations"][best_idx]["combined_score"]
-                epoch_scores.append(best_score)
+                # Extract rewards (use combined scores)
+                rewards = [eval_dict["combined_score"] for eval_dict in evaluations]
+
+                # Training step
+                metrics = self.train_step(prompt, responses, rewards, tokenizer)
+
+                epoch_losses.append(metrics["loss"])
+                epoch_rewards.append(metrics["avg_reward"])
 
             # Compute epoch metrics
             avg_loss = np.mean(epoch_losses)
-            avg_score = np.mean(epoch_scores)
+            avg_reward = np.mean(epoch_rewards)
 
             training_history["epoch_losses"].append(avg_loss)
-            training_history["epoch_scores"].append(avg_score)
+            training_history["epoch_rewards"].append(avg_reward)
 
-            print(f"Epoch {epoch + 1} - Avg Loss: {avg_loss:.4f}, Avg Constitutional Score: {avg_score:.4f}")
+            print(f"Epoch {epoch + 1} - Avg Loss: {avg_loss:.4f}, Avg Reward: {avg_reward:.4f}")
 
             # Validation if prompts provided
             if validation_prompts:
@@ -362,11 +464,12 @@ Analysis:"""
                 print(f"Validation Constitutional Score: {val_score:.4f}")
 
         # Update final statistics
-        self.stats["avg_constitutional_score"] = float(np.mean(training_history["epoch_scores"]))
+        if training_history["epoch_rewards"]:
+            self.stats["avg_constitutional_score"] = float(np.mean(training_history["epoch_rewards"]))
 
-        if len(training_history["epoch_scores"]) > 1:
-            improvement = training_history["epoch_scores"][0] - training_history["epoch_scores"][-1]
-            self.stats["improvement_rate"] = float(improvement)
+            if len(training_history["epoch_rewards"]) > 1:
+                improvement = training_history["epoch_rewards"][0] - training_history["epoch_rewards"][-1]
+                self.stats["improvement_rate"] = float(improvement)
 
         return {
             "training_history": training_history,

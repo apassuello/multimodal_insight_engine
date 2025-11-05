@@ -29,6 +29,12 @@ from .principles import (
 from .evaluator import ConstitutionalSafetyEvaluator, critique_indicates_issues
 from .filter import ConstitutionalSafetyFilter
 from .trainer import RLAIFTrainer
+from .model_utils import (
+    load_model,
+    generate_text,
+    batch_generate,
+    GenerationConfig
+)
 
 __all__ = [
     # Core framework
@@ -49,6 +55,12 @@ __all__ = [
 
     # Training
     "RLAIFTrainer",
+
+    # Model utilities
+    "load_model",
+    "generate_text",
+    "batch_generate",
+    "GenerationConfig",
 ]
 
 __version__ = "0.1.0"
