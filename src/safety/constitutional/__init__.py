@@ -9,12 +9,17 @@ Components:
 - ConstitutionalFramework: Collection of principles for comprehensive evaluation
 - ConstitutionalSafetyEvaluator: Two-stage evaluator with self-critique
 - ConstitutionalSafetyFilter: Input/output filtering with constitutional principles
-- RLAIFTrainer: Reinforcement Learning from AI Feedback trainer
+- RLAIFTrainer: Reinforcement Learning from AI Feedback trainer (simple policy gradient)
+- PPOTrainer: Proximal Policy Optimization trainer (advanced RL with clipping and GAE)
+- RewardModel: Neural network for scoring responses based on constitutional compliance
+- RewardModelTrainer: Complete pipeline for training reward models with validation
 
 Key Features:
 - Four core principles: harm prevention, truthfulness, fairness, autonomy respect
 - Two-stage evaluation: direct checks + model self-critique
 - RLAIF: Scalable training with AI-generated feedback
+- Reward modeling: Learn to score responses from preference pairs (Component 2)
+- PPO: Stable RL training with clipped objectives and advantage estimation
 - Flexible: Enable/disable principles, adjust weights, extend with custom principles
 """
 
@@ -29,6 +34,14 @@ from .principles import (
 from .evaluator import ConstitutionalSafetyEvaluator, critique_indicates_issues
 from .filter import ConstitutionalSafetyFilter
 from .trainer import RLAIFTrainer
+from .ppo_trainer import PPOTrainer
+from .reward_model import (
+    RewardModel,
+    RewardModelTrainer,
+    compute_reward_loss,
+    train_reward_model,
+    evaluate_reward_model
+)
 from .model_utils import (
     load_model,
     generate_text,
@@ -55,6 +68,14 @@ __all__ = [
 
     # Training
     "RLAIFTrainer",
+    "PPOTrainer",
+
+    # Reward Model (Component 2)
+    "RewardModel",
+    "RewardModelTrainer",
+    "compute_reward_loss",
+    "train_reward_model",
+    "evaluate_reward_model",
 
     # Model utilities
     "load_model",
