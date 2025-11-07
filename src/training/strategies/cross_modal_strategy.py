@@ -1,18 +1,17 @@
 # src/training/strategies/cross_modal_strategy.py
 
+import logging
+import os
+from typing import Any, Dict
+
 import torch
 import torch.nn as nn
 from torch.optim.adamw import AdamW
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
-import os
-from tqdm import tqdm
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.utils.learningrate_scheduler import WarmupCosineScheduler
-from src.utils.gradient_handler import GradientHandler
-from src.utils.metrics_tracker import MetricsTracker
 from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
+from src.training.strategies.training_strategy import TrainingStrategy
+from src.utils.gradient_handler import GradientHandler
+from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
 logger = logging.getLogger(__name__)
 

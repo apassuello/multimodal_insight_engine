@@ -1,13 +1,13 @@
 # src/utils/learningrate_scheduler.py
 
+import logging
+import math
 import os
-import torch
+from typing import Dict, List
+
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torch.optim.sgd import SGD
-from torch.optim.lr_scheduler import _LRScheduler
-import math
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
 
 logger = logging.getLogger(__name__)
 

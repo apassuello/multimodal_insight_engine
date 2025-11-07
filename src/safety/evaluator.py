@@ -7,18 +7,16 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, numpy, typing, re, json, os, utils (safety categories and sensitivity settings)
 SPECIAL NOTES: Implements configurable sensitivity levels and threshold-based safety checks"""
 
-import torch
-import numpy as np
-from typing import Dict, List, Union, Optional, Any, Tuple
-import re
 import json
 import os
+import re
+from typing import Any, Dict, Optional, Tuple
 
 from .utils import (
-    CATEGORY_TOXICITY,
     CATEGORY_BIAS,
     CATEGORY_HARMFUL_INSTRUCTIONS,
     CATEGORY_PERSONAL_INFORMATION,
+    CATEGORY_TOXICITY,
     SAFETY_CATEGORIES,
     SENSITIVITY_MEDIUM,
     SENSITIVITY_MULTIPLIERS,
@@ -26,7 +24,7 @@ from .utils import (
 
 # Optional constitutional AI support
 try:
-    from .constitutional import ConstitutionalFramework, ConstitutionalSafetyEvaluator
+    from .constitutional import ConstitutionalSafetyEvaluator
     CONSTITUTIONAL_AI_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_AI_AVAILABLE = False
@@ -137,7 +135,7 @@ class SafetyEvaluator:
 
         # Convert to lowercase for case-insensitive matching
         text_lower = text.lower()
-        
+
         # Check for toxic words
         toxic_words = ["hate", "idiot", "stupid", "kill", "die", "attack"]
         toxicity_score = sum(word in text_lower for word in toxic_words) / len(toxic_words)
@@ -157,7 +155,7 @@ class SafetyEvaluator:
         # Check for bias
         bias_words = ["all", "every", "men", "women", "people from", "individuals from"]
         bias_score = sum(word in text_lower for word in bias_words) / len(bias_words)
-        
+
         # Check for personal information (use original text for regex)
         personal_info_patterns = [
             r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b",  # SSN
@@ -274,9 +272,9 @@ class SafetyEvaluator:
             sensitivity: New sensitivity level (low, medium, high)
         """
         from .utils import (
+            SENSITIVITY_HIGH,
             SENSITIVITY_LOW,
             SENSITIVITY_MEDIUM,
-            SENSITIVITY_HIGH,
             SENSITIVITY_MULTIPLIERS,
         )
 

@@ -16,6 +16,7 @@ SPECIAL NOTES:
 
 import os
 from typing import List
+
 from src.data.tokenization import BPETokenizer
 
 
@@ -48,12 +49,12 @@ def train_joint_bpe_tokenizer(
     """
     if not src_texts or not tgt_texts:
         raise ValueError("Source and target texts cannot be empty")
-        
+
     print(f"Training joint BPE tokenizer with vocab size {vocab_size}...")
-    
+
     # Combine texts from both languages
     combined_texts = src_texts + tgt_texts
-    
+
     # Train BPE tokenizer
     tokenizer = BPETokenizer(num_merges=vocab_size-256)
     tokenizer.train(
@@ -62,10 +63,10 @@ def train_joint_bpe_tokenizer(
         min_frequency=min_frequency,
         show_progress=True,
     )
-    
+
     # Save tokenizer
     tokenizer.save_pretrained(save_dir)
-    
+
     return tokenizer
 
 
@@ -79,14 +80,14 @@ def main():
     # Example usage
     src_texts = ["Hallo, wie geht es dir?", "Ich lerne maschinelle Übersetzung."]
     tgt_texts = ["Hello, how are you?", "I am learning machine translation."]
-    
+
     # Train joint BPE tokenizer
     joint_tokenizer = train_joint_bpe_tokenizer(src_texts, tgt_texts, vocab_size=8000)
-    
+
     # Load the tokenizer for both languages
     src_tokenizer = BPETokenizer.from_pretrained("models/tokenizers")
     tgt_tokenizer = BPETokenizer.from_pretrained("models/tokenizers")
-    
+
     print(f"Source tokenizer vocab size: {src_tokenizer.vocab_size}")
     print(f"Target tokenizer vocab size: {tgt_tokenizer.vocab_size}")
 
@@ -123,4 +124,4 @@ def extract_file_metadata(file_path=__file__):
         ],
         "external_dependencies": ["src.data.tokenization"],
         "complexity_score": 3,  # Low complexity as it's a straightforward tokenizer training module
-    } 
+    }

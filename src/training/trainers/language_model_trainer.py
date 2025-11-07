@@ -21,17 +21,18 @@ SPECIAL NOTES:
 - Includes comprehensive training visualization capabilities
 """
 
+import math
+import os
+import time
+from typing import Optional
+
+import matplotlib.pyplot as plt
+
 # src/training/language_model_trainer.py
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Union, Any
-import time
-import math
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
+
 
 class LanguageModelTrainer:
     """
@@ -40,7 +41,7 @@ class LanguageModelTrainer:
     This trainer handles the causal language modeling objective
     and includes utilities for evaluation and generation.
     """
-    
+
     def __init__(
         self,
         model: nn.Module,
@@ -77,31 +78,31 @@ class LanguageModelTrainer:
         self.warmup_steps = warmup_steps
         self.max_grad_norm = max_grad_norm
         self.log_dir = log_dir
-        
+
         # Create log directory
         os.makedirs(log_dir, exist_ok=True)
-        
+
         # Set device
         if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else 
-                                     "mps" if torch.backends.mps.is_available() else 
+            self.device = torch.device("cuda" if torch.cuda.is_available() else
+                                     "mps" if torch.backends.mps.is_available() else
                                      "cpu")
         else:
             self.device = device
-        
+
         # Move model to device
         self.model.to(self.device)
-        
+
         # Create optimizer
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=learning_rate,
             weight_decay=weight_decay,
         )
-        
+
         # Create learning rate scheduler
         self.scheduler = self._create_lr_scheduler()
-        
+
         # Initialize tracking variables
         self.global_step = 0
         self.best_val_loss = float('inf')
@@ -110,7 +111,7 @@ class LanguageModelTrainer:
         self.learning_rates = []
         self.train_perplexities = []
         self.val_perplexities = []
-        
+
     def _create_lr_scheduler(self):
         """
         Create a learning rate scheduler with linear warmup and decay.
@@ -123,11 +124,11 @@ class LanguageModelTrainer:
             if current_step < self.warmup_steps:
                 return float(current_step) / float(max(1, self.warmup_steps))
             # Linear decay
-            return max(0.0, 
+            return max(0.0,
                      float(1.0 - current_step / (len(self.train_dataloader) * self.num_epochs)))
-        
+
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
-    
+
     def _log_training_step(self, loss, lr, step):
         """
         Log training metrics for a single step.
@@ -139,16 +140,16 @@ class LanguageModelTrainer:
         """
         self.train_losses.append(loss)
         self.learning_rates.append(lr)
-        
+
         # Calculate perplexity
         perplexity = math.exp(loss)
         self.train_perplexities.append(perplexity)
-        
+
         # Don't print every few seconds, let the tqdm progress bar handle displaying metrics
         # Only print at milestone steps for record-keeping
         if step % 10000 == 0:
             print(f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}")
-    
+
     def train(self, num_epochs, save_dir="models/language", model_name="language_model"):
         """
         Train the language model.
@@ -163,29 +164,29 @@ class LanguageModelTrainer:
         """
         # Create save directory
         os.makedirs(save_dir, exist_ok=True)
-        
+
         # Store number of epochs for scheduler
         self.num_epochs = num_epochs
-        
+
         print(f"Starting training on {self.device}...")
         start_time = time.time()
-        
+
         for epoch in range(num_epochs):
             epoch_start_time = time.time()
-            
+
             # Training loop
             self.model.train()
             train_loss = 0.0
             num_batches = len(self.train_dataloader)
-            
+
             # Create tqdm progress bar with additional metrics
-            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}", 
+            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}",
                          dynamic_ncols=True, leave=True, position=0)
-            
+
             for i, batch in enumerate(pbar):
                 # Move batch to device
                 batch = {k: v.to(self.device) for k, v in batch.items()}
-                
+
                 # Forward pass
                 outputs = self.model(
                     src=batch["input_ids"],
@@ -194,44 +195,44 @@ class LanguageModelTrainer:
                     tgt_mask=batch.get("tgt_mask"),
                     memory_mask=batch.get("memory_mask")
                 )
-                
+
                 # Calculate loss
                 logits = outputs.logits if hasattr(outputs, "logits") else outputs
-                
+
                 # Reshape for cross-entropy
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_labels = batch["labels"][..., 1:].contiguous()
-                
+
                 # Calculate loss (ignore padding)
                 loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), 
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
                               shift_labels.view(-1))
-                
+
                 # Backward pass
                 self.optimizer.zero_grad()
                 loss.backward()
-                
+
                 # Gradient clipping
                 if self.max_grad_norm > 0:
                     nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-                
+
                 # Update weights
                 self.optimizer.step()
-                
+
                 # Update learning rate
                 self.scheduler.step()
-                
+
                 # Log training information
                 self._log_training_step(
                     loss.item(),
                     self.scheduler.get_last_lr()[0],
                     self.global_step
                 )
-                
+
                 # Update training loss
                 curr_loss = loss.item()
                 train_loss += curr_loss
-                
+
                 # Update progress bar with current metrics - force update
                 curr_avg_loss = train_loss / (i + 1)
                 curr_ppl = math.exp(curr_avg_loss)
@@ -241,38 +242,38 @@ class LanguageModelTrainer:
                     'ppl': f'{curr_ppl:.2f}',
                     'lr': f'{self.scheduler.get_last_lr()[0]:.7f}'
                 }, refresh=True)  # Force refresh
-                
+
                 # Update global step
                 self.global_step += 1
-            
+
             # Calculate average training loss
             avg_train_loss = train_loss / num_batches
             train_perplexity = math.exp(avg_train_loss)
             print(f"Epoch {epoch+1} - Train Loss: {avg_train_loss:.4f}, Train Perplexity: {train_perplexity:.2f}")
-            
+
             # Validation
             if self.val_dataloader is not None:
                 val_loss, val_perplexity = self.evaluate()
                 print(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}, Val Perplexity: {val_perplexity:.2f}")
-                
+
                 # Save best model
                 if val_loss < self.best_val_loss:
                     self.best_val_loss = val_loss
                     self.save_model(f"{save_dir}/{model_name}_best.pt")
                     print(f"New best model saved with validation loss: {val_loss:.4f}")
-            
+
             # Save checkpoint
             if (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
                 self.save_model(f"{save_dir}/{model_name}_epoch{epoch+1}.pt")
-            
+
             # Print epoch time
             epoch_time = time.time() - epoch_start_time
             print(f"Epoch {epoch+1} completed in {epoch_time:.2f}s")
-        
+
         # Print total training time
         total_time = time.time() - start_time
         print(f"Training completed in {total_time:.2f}s")
-        
+
         # Return training statistics
         return {
             "train_losses": self.train_losses,
@@ -282,7 +283,7 @@ class LanguageModelTrainer:
             "val_perplexities": self.val_perplexities,
             "best_val_loss": self.best_val_loss,
         }
-    
+
     def evaluate(self):
         """
         Evaluate the model on the validation set.
@@ -292,20 +293,20 @@ class LanguageModelTrainer:
         """
         if self.val_dataloader is None:
             return 0.0, 0.0
-        
+
         self.model.eval()
         val_loss = 0.0
         num_batches = len(self.val_dataloader)
-        
+
         with torch.no_grad():
             # Create tqdm progress bar with metrics
-            pbar = tqdm(self.val_dataloader, desc="Validation", 
+            pbar = tqdm(self.val_dataloader, desc="Validation",
                         dynamic_ncols=True, leave=True, position=0)
-            
+
             for i, batch in enumerate(pbar):
                 # Move batch to device
                 batch = {k: v.to(self.device) for k, v in batch.items()}
-                
+
                 # Forward pass
                 outputs = self.model(
                     src=batch["input_ids"],
@@ -314,23 +315,23 @@ class LanguageModelTrainer:
                     tgt_mask=batch.get("tgt_mask"),
                     memory_mask=batch.get("memory_mask")
                 )
-                
+
                 # Calculate loss
                 logits = outputs.logits if hasattr(outputs, "logits") else outputs
-                
+
                 # Reshape for cross-entropy
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_labels = batch["labels"][..., 1:].contiguous()
-                
+
                 # Calculate loss (ignore padding)
                 loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), 
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
                               shift_labels.view(-1))
-                
+
                 # Update validation loss
                 curr_loss = loss.item()
                 val_loss += curr_loss
-                
+
                 # Update progress bar
                 curr_avg_loss = val_loss / (i + 1)
                 curr_ppl = math.exp(curr_avg_loss)
@@ -339,19 +340,19 @@ class LanguageModelTrainer:
                     'avg_loss': f'{curr_avg_loss:.4f}',
                     'ppl': f'{curr_ppl:.2f}'
                 }, refresh=True)
-        
+
         # Calculate average validation loss
         avg_val_loss = val_loss / num_batches
-        
+
         # Calculate perplexity
         perplexity = math.exp(avg_val_loss)
-        
+
         # Store metrics
         self.val_losses.append(avg_val_loss)
         self.val_perplexities.append(perplexity)
-        
+
         return avg_val_loss, perplexity
-    
+
     def save_model(self, path):
         """
         Save the model checkpoint to disk.
@@ -372,7 +373,7 @@ class LanguageModelTrainer:
             'val_perplexities': self.val_perplexities,
         }
         torch.save(checkpoint, path)
-    
+
     def load_model(self, path):
         """
         Load a model checkpoint from disk.
@@ -391,7 +392,7 @@ class LanguageModelTrainer:
         self.learning_rates = checkpoint['learning_rates']
         self.train_perplexities = checkpoint['train_perplexities']
         self.val_perplexities = checkpoint['val_perplexities']
-    
+
     def plot_training_curves(self, save_path=None):
         """
         Plot training curves for loss, perplexity, and learning rate.
@@ -400,7 +401,7 @@ class LanguageModelTrainer:
             save_path: Optional path to save the plot. If None, displays the plot.
         """
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
-        
+
         # Plot losses
         ax1.plot(self.train_losses, label='Train Loss')
         if self.val_losses:
@@ -409,7 +410,7 @@ class LanguageModelTrainer:
         ax1.set_xlabel('Steps')
         ax1.set_ylabel('Loss')
         ax1.legend()
-        
+
         # Plot perplexities
         ax2.plot(self.train_perplexities, label='Train Perplexity')
         if self.val_perplexities:
@@ -418,16 +419,16 @@ class LanguageModelTrainer:
         ax2.set_xlabel('Steps')
         ax2.set_ylabel('Perplexity')
         ax2.legend()
-        
+
         # Plot learning rates
         ax3.plot(self.learning_rates, label='Learning Rate')
         ax3.set_title('Learning Rate Schedule')
         ax3.set_xlabel('Steps')
         ax3.set_ylabel('Learning Rate')
         ax3.legend()
-        
+
         plt.tight_layout()
-        
+
         if save_path:
             plt.savefig(save_path)
         else:

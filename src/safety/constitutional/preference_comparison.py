@@ -10,11 +10,11 @@ SPECIAL NOTES: Implements Component 3 of Constitutional AI (RLAIF Phase 2b)
 """
 
 import re
-import torch
-from typing import List, Dict, Any, Optional
 from itertools import combinations
-from torch.utils.data import Dataset
+from typing import Any, Dict, List
 
+import torch
+from torch.utils.data import Dataset
 
 # Comparison prompt template from Anthropics Constitutional AI paper
 COMPARISON_TEMPLATE = """Consider the following conversation and two possible assistant responses:
@@ -85,11 +85,11 @@ def generate_comparison(
         ... )
         >>> print(comparison['preferred'])  # 'B'
     """
-    from .model_utils import generate_text, GenerationConfig
-    
+    from .model_utils import GenerationConfig, generate_text
+
     # Format principles as numbered list
     principles_text = '\n'.join([f'{i+1}. {p}' for i, p in enumerate(principles)])
-    
+
     # Build comparison prompt using the template
     comparison_prompt = COMPARISON_TEMPLATE.format(
         prompt=prompt,
@@ -97,23 +97,23 @@ def generate_comparison(
         response_b=response_b,
         principles_text=principles_text
     )
-    
+
     # Generate comparison using model
     config = GenerationConfig(
         max_length=300,
         temperature=0.7,
         do_sample=True
     )
-    
+
     comparison_text = generate_text(model, tokenizer, comparison_prompt, config, device)
-    
+
     # Extract preference from comparison
     preference = extract_preference(comparison_text)
-    
+
     # Determine chosen and rejected responses
     response_chosen = response_a if preference == 'A' else response_b
     response_rejected = response_b if preference == 'A' else response_a
-    
+
     return {
         'preferred': preference,
         'comparison_text': comparison_text,
@@ -146,62 +146,62 @@ def extract_preference(comparison_text: str) -> str:
     """
     # Normalize text for matching
     text = comparison_text.lower()
-    
+
     # Pattern 1: "Response A/B is better/superior/preferred"
     if re.search(r'\bresponse\s+a\b.{0,50}\b(better|superior|preferred|stronger)', text):
         return 'A'
     if re.search(r'\bresponse\s+b\b.{0,50}\b(better|superior|preferred|stronger)', text):
         return 'B'
-    
+
     # Pattern 2: "better/prefer/choose ... Response A/B"
     if re.search(r'\b(better|prefer|choose).{0,50}\bresponse\s+a\b', text):
         return 'A'
     if re.search(r'\b(better|prefer|choose).{0,50}\bresponse\s+b\b', text):
         return 'B'
-    
+
     # Pattern 3: "A/B is better/preferred"
     if re.search(r'\ba\s+(is|seems|appears).{0,30}\b(better|superior|preferred)', text):
         return 'A'
     if re.search(r'\bb\s+(is|seems|appears).{0,30}\b(better|superior|preferred)', text):
         return 'B'
-    
+
     # Pattern 4: Direct statements like "A better" or "prefer B"
     if re.search(r'\bprefer\s+a\b', text):
         return 'A'
     if re.search(r'\bprefer\s+b\b', text):
         return 'B'
-    
+
     # Pattern 5: "choose A" or "select B"
     if re.search(r'\b(choose|select)\s+a\b', text):
         return 'A'
     if re.search(r'\b(choose|select)\s+b\b', text):
         return 'B'
-    
+
     # Pattern 6: Look for "A:" or "B:" at the start indicating final choice
     if re.search(r'^\s*a\s*:', text):
         return 'A'
     if re.search(r'^\s*b\s*:', text):
         return 'B'
-    
+
     # Pattern 7: "Response B" mentioned more positively than "Response A"
     # Count positive mentions
     a_positive = len(re.findall(r'\bresponse\s+a\b.{0,50}\b(good|excellent|accurate|helpful|clear)', text))
     b_positive = len(re.findall(r'\bresponse\s+b\b.{0,50}\b(good|excellent|accurate|helpful|clear)', text))
-    
+
     if b_positive > a_positive:
         return 'B'
     elif a_positive > b_positive:
         return 'A'
-    
+
     # Pattern 8: Look for negative mentions (worse, problematic, inaccurate)
     a_negative = len(re.findall(r'\bresponse\s+a\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)', text))
     b_negative = len(re.findall(r'\bresponse\s+b\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)', text))
-    
+
     if a_negative > b_negative:
         return 'B'  # A has more negatives, so B is better
     elif b_negative > a_negative:
         return 'A'  # B has more negatives, so A is better
-    
+
     # Default to 'A' if preference is unclear or tie
     return 'A'
 
@@ -255,31 +255,31 @@ def generate_preference_pairs(
         use_tqdm = True
     except ImportError:
         use_tqdm = False
-    
-    from .model_utils import generate_text, GenerationConfig
-    
+
+    from .model_utils import GenerationConfig, generate_text
+
     preference_data = []
-    
+
     # Extract principle descriptions from framework
     principles = [p.description for p in framework.principles.values()]
-    
+
     # Configuration for generating diverse responses
     config = GenerationConfig(
         max_length=150,
         temperature=1.0,  # Higher temperature for diversity
         do_sample=True
     )
-    
+
     # Setup iterator with optional progress bar
     iterator = tqdm(prompts, desc='Generating preference pairs') if use_tqdm else prompts
-    
+
     for prompt in iterator:
         # Generate multiple response candidates for this prompt
         responses = []
         for _ in range(responses_per_prompt):
             response = generate_text(model, tokenizer, prompt, config, device)
             responses.append(response)
-        
+
         # Compare all pairs of responses
         # For n responses, this generates C(n,2) = n*(n-1)/2 comparisons
         for response_a, response_b in combinations(responses, 2):
@@ -293,7 +293,7 @@ def generate_preference_pairs(
                     tokenizer=tokenizer,
                     device=device
                 )
-                
+
                 # Add to preference dataset
                 preference_data.append({
                     'prompt': prompt,
@@ -305,7 +305,7 @@ def generate_preference_pairs(
                 # Log error but continue processing
                 print(f"Warning: Failed to generate comparison for prompt '{prompt[:50]}...': {e}")
                 continue
-    
+
     return preference_data
 
 
@@ -329,7 +329,7 @@ class PreferenceDataset(Dataset):
         ...     rejected_ids = batch['rejected_input_ids']
         ...     # Train reward model...
     """
-    
+
     def __init__(
         self,
         data: List[Dict[str, Any]],
@@ -347,11 +347,11 @@ class PreferenceDataset(Dataset):
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length
-    
+
     def __len__(self) -> int:
         """Return number of preference pairs in dataset."""
         return len(self.data)
-    
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
         Get a single preference pair.
@@ -367,11 +367,11 @@ class PreferenceDataset(Dataset):
                 - rejected_attention_mask: Attention mask for rejected response
         """
         item = self.data[idx]
-        
+
         # Combine prompt with responses for full context
         chosen_text = item['prompt'] + ' ' + item['response_chosen']
         rejected_text = item['prompt'] + ' ' + item['response_rejected']
-        
+
         # Tokenize chosen response
         chosen_encoding = self.tokenizer(
             chosen_text,
@@ -380,7 +380,7 @@ class PreferenceDataset(Dataset):
             truncation=True,
             return_tensors='pt'
         )
-        
+
         # Tokenize rejected response
         rejected_encoding = self.tokenizer(
             rejected_text,
@@ -389,7 +389,7 @@ class PreferenceDataset(Dataset):
             truncation=True,
             return_tensors='pt'
         )
-        
+
         return {
             'chosen_input_ids': chosen_encoding['input_ids'].squeeze(),
             'chosen_attention_mask': chosen_encoding['attention_mask'].squeeze(),

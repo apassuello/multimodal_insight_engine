@@ -1,12 +1,13 @@
 # src/safety/red_teaming/model_loader.py
 
-import os
-import torch
 import json
-from typing import Callable, Dict, Any, Optional, Union
+import os
 from pathlib import Path
-import sys
-from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
+from typing import Any, Callable, Dict, Optional
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 class ModelLoader:
     """
@@ -16,7 +17,7 @@ class ModelLoader:
     and pre-trained models from Hugging Face, and wrap them with a consistent
     interface for use in red teaming exercises.
     """
-    
+
     def __init__(
         self,
         local_models_dir: str = "./models/pretrained/",
@@ -37,10 +38,10 @@ class ModelLoader:
         """
         self.local_models_dir = Path(local_models_dir)
         self.verbose = verbose
-        
+
         # Create directory if it doesn't exist
         os.makedirs(self.local_models_dir, exist_ok=True)
-        
+
         # Determine device
         if device is None:
             if torch.cuda.is_available():
@@ -51,19 +52,19 @@ class ModelLoader:
                 self.device = "cpu"
         else:
             self.device = device
-            
+
         if self.verbose:
             print(f"Using device: {self.device}")
-        
+
         # Generation parameters
         self.max_length = max_length
         self.temperature = temperature
-        
+
         # Cache for loaded models
         self.loaded_models = {}
-    
+
     def load_model(
-        self, 
+        self,
         model_name: str,
         is_local: bool = None
     ) -> Callable[[str], str]:
@@ -82,7 +83,7 @@ class ModelLoader:
         if model_name in self.loaded_models:
             print(f"Using cached model: {model_name}")
             return self.loaded_models[model_name]
-        
+
         # Determine if model is local or from Hugging Face
         if is_local is None:
             # Check if model exists in local directory
@@ -90,18 +91,18 @@ class ModelLoader:
             is_local = local_path.exists()
             print(f"Listing available local models in: {self.local_models_dir}")
             print(f"Listing available local model_path in: {local_path}")
-        
+
         # Load the appropriate model type
         if is_local:
             model_func = self._load_local_model(model_name)
         else:
             model_func = self._load_huggingface_model(model_name)
-        
+
         # Cache the loaded model
         self.loaded_models[model_name] = model_func
-        
+
         return model_func
-    
+
     def _load_local_model(self, model_name: str) -> Callable[[str], str]:
         """
         Load a locally trained model or local Hugging Face model.
@@ -114,12 +115,12 @@ class ModelLoader:
         """
         model_path = self.local_models_dir / model_name
         print(f"Loading local model from: {model_path}")
-        
+
         # Check if this is a Hugging Face format model
         if (model_path / "config.json").exists() and (model_path / "tokenizer.json").exists():
             print("Detected Hugging Face format model")
             return self._load_huggingface_model(str(model_path))
-        
+
         # Otherwise, try to load as a custom PyTorch model
         print("Attempting to load as custom PyTorch model")
         # Check for config file to determine model type
@@ -131,7 +132,7 @@ class ModelLoader:
         else:
             # Default to transformer type if no config
             model_type = "transformer"
-        
+
         # Load model based on type
         if model_type == "transformer":
             return self._load_local_transformer(model_path)
@@ -139,15 +140,15 @@ class ModelLoader:
             return self._load_local_encoder_decoder(model_path)
         else:
             raise ValueError(f"Unsupported local model type: {model_type}")
-    
+
     def _load_local_transformer(self, model_path: Path) -> Callable[[str], str]:
         """Load a local transformer model."""
         # Import here to avoid circular imports
-        from src.models.transformer import Transformer, EncoderDecoderTransformer
-        
+        from src.models.transformer import EncoderDecoderTransformer, Transformer
+
         # Check which model class to use
         encoder_only_path = model_path / "encoder_only"
-        
+
         if encoder_only_path.exists() or not (model_path / "decoder.pt").exists():
             # Load encoder-only transformer
             print("Loading encoder-only transformer model")
@@ -158,11 +159,11 @@ class ModelLoader:
             print("Loading encoder-decoder transformer model")
             model = EncoderDecoderTransformer(src_vocab_size=10000, tgt_vocab_size=10000)  # Placeholder sizes
             model.load(str(model_path / "model.pt"), map_location=self.device)
-        
+
         # Set model to evaluation mode
         model.eval()
         model.to(torch.device(self.device))
-        
+
         # Load tokenizer
         tokenizer_path = model_path / "tokenizer"
         if tokenizer_path.exists():
@@ -174,7 +175,7 @@ class ModelLoader:
             tokenizer = lambda text: text.split()
             tokenizer.encode = lambda text: [ord(c) for c in text]
             tokenizer.decode = lambda ids: ''.join(chr(i) for i in ids)
-        
+
         # Create a wrapped function for inference
         def model_func(prompt: str) -> str:
             try:
@@ -186,7 +187,7 @@ class ModelLoader:
                     else:
                         # Fallback for simple tokenizer
                         input_tensor = torch.tensor([[ord(c) for c in prompt]], dtype=torch.long).to(self.device)
-                    
+
                     # Generate output
                     if isinstance(model, EncoderDecoderTransformer):
                         # For encoder-decoder, use its generation method
@@ -203,34 +204,34 @@ class ModelLoader:
                         logits = model(input_tensor)
                         # Simple greedy decoding
                         output_ids = torch.argmax(logits, dim=-1)[0].tolist()
-                    
+
                     # Decode output
                     if hasattr(tokenizer, "decode"):
                         output_text = tokenizer.decode(output_ids)
                     else:
                         # Fallback for simple tokenizer
                         output_text = ''.join(chr(i) for i in output_ids if i < 128)  # ASCII only
-                    
+
                     return output_text
             except Exception as e:
                 return f"Error generating response: {str(e)}"
-        
+
         return model_func
-    
+
     def _load_local_encoder_decoder(self, model_path: Path) -> Callable[[str], str]:
         """Load a local encoder-decoder model."""
         # This implementation would be similar to _load_local_transformer
         # but tailored to your specific encoder-decoder architecture
         # For now, we'll use a placeholder implementation
-        
+
         def model_func(prompt: str) -> str:
             try:
                 return f"[Output from local encoder-decoder model for: {prompt[:50]}...]"
             except Exception as e:
                 return f"Error generating response: {str(e)}"
-        
+
         return model_func
-    
+
     def _load_huggingface_model(self, model_name: str) -> Callable[[str], str]:
         """
         Load a model from Hugging Face (remote or local).
@@ -248,19 +249,19 @@ class ModelLoader:
                 print("Contents of model directory:")
                 for file in os.listdir(model_name):
                     print(f"  - {file}")
-        
+
         try:
             if self.verbose:
                 print("\nLoading tokenizer...")
             tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
             if self.verbose:
                 print("Tokenizer loaded successfully")
-            
+
             if self.verbose:
                 print("\nLoading model...")
                 print(f"Device: {self.device}")
                 print(f"Using device_map: auto")
-            
+
             # Memory-efficient loading options
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -274,12 +275,12 @@ class ModelLoader:
             )
             if self.verbose:
                 print("Model loaded successfully")
-            
+
             # Set to evaluation mode
             model.eval()
             if self.verbose:
                 print("Model set to evaluation mode")
-            
+
             # Create a wrapped function for inference
             def model_func(prompt: str) -> str:
                 try:
@@ -292,12 +293,12 @@ class ModelLoader:
                         inputs = tokenizer(prompt, return_tensors="pt")
                         if self.verbose:
                             print(f"Input shape: {inputs['input_ids'].shape}")
-                        
+
                         # Move inputs to device
                         inputs = {k: v.to(self.device) for k, v in inputs.items()}
                         if self.verbose:
                             print(f"Inputs moved to device: {self.device}")
-                        
+
                         # Generate output
                         if self.verbose:
                             print("Generating output...")
@@ -318,47 +319,47 @@ class ModelLoader:
                         )
                         if self.verbose:
                             print(f"Output shape: {outputs.shape}")
-                        
+
                         # Decode output
                         if self.verbose:
                             print("Decoding output...")
                         output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                        
+
                         # For some models, we need to remove the prompt from the output
                         if output_text.startswith(prompt):
                             output_text = output_text[len(prompt):].strip()
-                        
+
                         # Ensure non-empty response
                         if not output_text or output_text.strip() == "":
                             output_text = "I apologize, but I cannot generate a response to that prompt."
-                        
+
                         if self.verbose:
                             print("\nModel Output:")
                             print("-" * 50)
                             print(output_text[:500] + "..." if len(output_text) > 500 else output_text)
                             print("-" * 50)
                             print("Generation complete")
-                        
+
                         return output_text
                 except Exception as e:
                     if self.verbose:
                         print(f"Error during inference: {str(e)}")
                     return f"Error generating response: {str(e)}"
-            
+
             return model_func
-            
+
         except Exception as e:
             error_msg = str(e)
             if self.verbose:
                 print(f"\nError loading model from Hugging Face: {error_msg}")
                 print(f"Error type: {type(e).__name__}")
-            
+
             # Return a function that explains the error
             def error_func(prompt: str) -> str:
                 return f"Error loading model '{model_name}': {error_msg}"
-            
+
             return error_func
-    
+
     def list_available_local_models(self) -> list:
         """
         List all available local models.
@@ -369,9 +370,9 @@ class ModelLoader:
         print(f"Listing available local models in: {self.local_models_dir}")
         if not self.local_models_dir.exists():
             return []
-        
+
         return [d.name for d in self.local_models_dir.iterdir() if d.is_dir()]
-    
+
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """
         Get information about a model.
@@ -404,20 +405,20 @@ class ModelLoader:
                     "name": model_name,
                     "error": str(e)
                 }
-        
+
         # Get info from local model
         info = {
             "name": model_name,
             "source": "local",
             "path": str(model_path),
         }
-        
+
         # Read config if available
         config_path = model_path / "config.json"
         if config_path.exists():
             with open(config_path, "r") as f:
                 info["config"] = json.load(f)
-        
+
         return info
 
 
@@ -452,5 +453,5 @@ def load_model(
         temperature=temperature,
         verbose=verbose
     )
-    
+
     return loader.load_model(model_name, is_local=is_local)

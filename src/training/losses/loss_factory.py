@@ -6,20 +6,21 @@ This module provides factory functions to create various types of loss functions
 tailored for multimodal learning, with appropriate configurations.
 """
 
+import logging
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
-import logging
-from typing import Dict, Any, Optional, Union, Callable
 
+from .barlow_twins_loss import BarlowTwinsLoss
+from .combined_loss import CombinedLoss
 from .contrastive_loss import ContrastiveLoss
-from .memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
+from .decoupled_contrastive_loss import DecoupledContrastiveLoss
 from .dynamic_temperature_contrastive_loss import DynamicTemperatureContrastiveLoss
 from .hard_negative_mining_contrastive_loss import HardNegativeMiningContrastiveLoss
+from .memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
 from .multimodal_mixed_contrastive_loss import MultiModalMixedContrastiveLoss
-from .barlow_twins_loss import BarlowTwinsLoss
-from .decoupled_contrastive_loss import DecoupledContrastiveLoss
 from .vicreg_loss import VICRegLoss
-from .combined_loss import CombinedLoss
 
 
 # Simple and effective InfoNCE-style contrastive loss for SimpleMultimodalModel

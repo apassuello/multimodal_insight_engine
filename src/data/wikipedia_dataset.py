@@ -1,9 +1,11 @@
 import os
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 import tensorflow as tf
 import torch
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any, Union
 from tqdm import tqdm
+
 
 class WikipediaDataset:
     """
@@ -12,7 +14,7 @@ class WikipediaDataset:
     This class handles loading and preprocessing data from the WikiWeb2M dataset
     stored in TFRecord format.
     """
-    
+
     def __init__(
         self,
         data_dir: str = "data/wiki",
@@ -41,18 +43,18 @@ class WikipediaDataset:
         self.cache_processed_data = cache_processed_data
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
         self.image_size = image_size
-        
+
         # Ensure cache directory exists if caching is enabled
         if self.cache_processed_data and not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir)
-        
+
         # Set random seed for reproducibility
         np.random.seed(random_seed)
         tf.random.set_seed(random_seed)
-        
+
         # Load the data
         self.data = self.load_data()
-        
+
     def _get_file_paths(self) -> List[str]:
         """
         Get file paths for the specified split.
@@ -71,7 +73,7 @@ class WikipediaDataset:
                 return [filepath]
             else:
                 raise FileNotFoundError(f"Could not find file for {self.split} split: {filepath}")
-    
+
     def _parse_example(self, example_proto):
         """
         Parse a single example from the TFRecord.
@@ -92,9 +94,9 @@ class WikipediaDataset:
             'webpage/url': tf.io.FixedLenFeature([], tf.string, default_value=''),
             'webpage/title': tf.io.FixedLenFeature([], tf.string, default_value=''),
         }
-        
+
         return tf.io.parse_single_example(example_proto, feature_description)
-    
+
     def _process_image(self, image_data):
         """
         Process image data from raw bytes.
@@ -109,7 +111,7 @@ class WikipediaDataset:
         image = tf.image.resize(image, [self.image_size, self.image_size])
         image = tf.cast(image, tf.float32) / 255.0  # Normalize to [0, 1]
         return image
-    
+
     def _process_text(self, text_data):
         """
         Process text data from raw bytes.
@@ -121,12 +123,12 @@ class WikipediaDataset:
             Processed text string
         """
         return text_data.decode('utf-8')
-    
+
     def _get_cache_path(self):
         """Get path for cached processed data."""
         max_str = f"_max{self.max_examples}" if self.max_examples else ""
         return os.path.join(self.cache_dir, f"wikiweb2m_{self.split}{max_str}.pt")
-    
+
     def load_data(self) -> Dict[str, List[Any]]:
         """
         Load and preprocess the data.
@@ -135,17 +137,17 @@ class WikipediaDataset:
             Dictionary containing processed data
         """
         cache_path = self._get_cache_path() if self.cache_processed_data else None
-        
+
         # Try to load from cache first
         if cache_path and os.path.exists(cache_path):
             print(f"Loading cached processed data from {cache_path}")
             return torch.load(cache_path)
-        
+
         # Get file paths for the specified split
         file_paths = self._get_file_paths()
         if not file_paths:
             raise FileNotFoundError(f"No files found for split '{self.split}' in {self.data_dir}")
-            
+
         # Initialize data containers
         data = {
             'images': [],
@@ -153,50 +155,50 @@ class WikipediaDataset:
             'urls': [],
             'titles': []
         }
-        
+
         # Process each file
         total_examples = 0
         for file_path in file_paths:
             print(f"Processing {file_path}")
             dataset = tf.data.TFRecordDataset([file_path], compression_type="GZIP")
-            
+
             for example_proto in tqdm(dataset):
                 if self.max_examples is not None and total_examples >= self.max_examples:
                     break
-                    
+
                 parsed = self._parse_example(example_proto)
-                
+
                 # Process image
                 image_data = parsed['image/encoded'].numpy()
                 image = self._process_image(image_data).numpy()
                 data['images'].append(image)
-                
+
                 # Process text
                 text_data = parsed['text/encoded'].numpy()
                 text = self._process_text(text_data)
                 data['texts'].append(text)
-                
+
                 # Get metadata
                 data['urls'].append(parsed['webpage/url'].numpy().decode('utf-8'))
                 data['titles'].append(parsed['webpage/title'].numpy().decode('utf-8'))
-                
+
                 total_examples += 1
-            
+
             if self.max_examples is not None and total_examples >= self.max_examples:
                 break
-        
+
         print(f"Loaded {total_examples} examples from {self.split} split")
-        
+
         # Convert lists to tensors
         data['images'] = torch.tensor(np.array(data['images']), dtype=torch.float32)
-        
+
         # Cache processed data if enabled
         if cache_path:
             print(f"Saving processed data to cache: {cache_path}")
             torch.save(data, cache_path)
-        
+
         return data
-    
+
     def to_pytorch_dataset(self):
         """
         Convert to a PyTorch dataset compatible with the MultimodalDataset class.
@@ -205,7 +207,7 @@ class WikipediaDataset:
             Dictionary of tensors ready for MultimodalDataset
         """
         from src.data.dataloader import MultimodalDataset
-        
+
         # Create tensor dictionary
         tensor_dict = {
             'image': self.data['images'],
@@ -215,7 +217,7 @@ class WikipediaDataset:
                 'title': self.data['titles']
             }
         }
-        
+
         return MultimodalDataset(tensor_dict)
 
 def create_wiki_dataloaders(
@@ -240,12 +242,12 @@ def create_wiki_dataloaders(
     Returns:
         Tuple of (train_loader, val_loader, test_loader)
     """
-    from src.data.dataloader import create_dataloader, collate_fn
-    
+    from src.data.dataloader import collate_fn, create_dataloader
+
     # Default to no limits if not specified
     if max_examples is None:
         max_examples = {}
-    
+
     # Create datasets for each split
     train_dataset = WikipediaDataset(
         data_dir=data_dir,
@@ -254,7 +256,7 @@ def create_wiki_dataloaders(
         image_size=image_size,
         random_seed=random_seed
     ).to_pytorch_dataset()
-    
+
     val_dataset = WikipediaDataset(
         data_dir=data_dir,
         split="val",
@@ -262,7 +264,7 @@ def create_wiki_dataloaders(
         image_size=image_size,
         random_seed=random_seed
     ).to_pytorch_dataset()
-    
+
     test_dataset = WikipediaDataset(
         data_dir=data_dir,
         split="test",
@@ -270,7 +272,7 @@ def create_wiki_dataloaders(
         image_size=image_size,
         random_seed=random_seed
     ).to_pytorch_dataset()
-    
+
     # Create dataloaders
     train_loader = create_dataloader(
         train_dataset,
@@ -279,7 +281,7 @@ def create_wiki_dataloaders(
         num_workers=num_workers,
         collate_fn=collate_fn
     )
-    
+
     val_loader = create_dataloader(
         val_dataset,
         batch_size=batch_size,
@@ -287,7 +289,7 @@ def create_wiki_dataloaders(
         num_workers=num_workers,
         collate_fn=collate_fn
     )
-    
+
     test_loader = create_dataloader(
         test_dataset,
         batch_size=batch_size,
@@ -295,7 +297,7 @@ def create_wiki_dataloaders(
         num_workers=num_workers,
         collate_fn=collate_fn
     )
-    
+
     return train_loader, val_loader, test_loader
 
 def extract_file_metadata(file_path=__file__):
@@ -345,4 +347,4 @@ def extract_file_metadata(file_path=__file__):
         ],
         "external_dependencies": ["tensorflow", "torch", "numpy", "tqdm"],
         "complexity_score": 5  # High complexity for handling TFRecord data and image processing
-    } 
+    }

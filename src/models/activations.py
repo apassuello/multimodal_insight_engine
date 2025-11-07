@@ -5,10 +5,12 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, torch.nn, torch.nn.functional
 SPECIAL NOTES: This module provides activation functions optimized for transformer architectures"""
 
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import os
+
 
 class GELU(nn.Module):
     """
@@ -20,11 +22,11 @@ class GELU(nn.Module):
     
     The implementation uses the approximate form: x * 0.5 * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
     """
-    
+
     def __init__(self):
         """Initialize the GELU activation layer."""
         super().__init__()
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Apply the GELU activation function.

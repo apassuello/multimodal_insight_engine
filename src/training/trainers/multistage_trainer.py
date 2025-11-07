@@ -22,25 +22,23 @@ SPECIAL NOTES:
 
 # src/training/trainers/multistage_trainer.py
 
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from typing import Dict, List, Optional, Any, Callable, Union, Tuple
+import copy
 import logging
 import os
 import time
-import copy
-import json
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-import numpy as np
+from typing import Any, Dict, Optional
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.training.strategies.single_modality_strategy import SingleModalityStrategy
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from src.configs.training_config import StageConfig, TrainingConfig
 from src.training.strategies.cross_modal_strategy import CrossModalStrategy
 from src.training.strategies.end_to_end_strategy import EndToEndStrategy
+from src.training.strategies.single_modality_strategy import SingleModalityStrategy
+from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.metrics_tracker import MetricsTracker
-from src.configs.training_config import TrainingConfig, StageConfig
 
 logger = logging.getLogger(__name__)
 

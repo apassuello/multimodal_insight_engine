@@ -1,11 +1,14 @@
+from typing import List
+
 import pytest
 import torch
-from typing import Dict, List
+
 from src.data.tokenization.utils import (
     TransformerTextDataset,
     create_transformer_dataloaders,
-    transformer_collate_fn
+    transformer_collate_fn,
 )
+
 
 class MockTokenizer:
     def __init__(self):
@@ -27,7 +30,7 @@ class MockTokenizer:
             "world": 5,
             "test": 6
         }
-    
+
     def encode(self, text: str) -> List[int]:
         return [self.vocab.get(word, self.vocab["<unk>"]) for word in text.split()]
 
@@ -54,7 +57,7 @@ def test_transformer_dataset_initialization(mock_tokenizer, sample_texts):
         add_bos=True,
         add_eos=True
     )
-    
+
     assert len(dataset) == len(sample_texts)
     assert dataset.max_length == 10
     assert dataset.add_bos is True
@@ -72,19 +75,19 @@ def test_transformer_dataset_getitem(mock_tokenizer, sample_texts):
         add_bos=True,
         add_eos=True
     )
-    
+
     item = dataset[0]  # Get first item
-    
+
     assert isinstance(item, dict)
     assert "input_ids" in item
     assert "attention_mask" in item
     assert isinstance(item["input_ids"], torch.Tensor)
     assert isinstance(item["attention_mask"], torch.Tensor)
-    
+
     # Check that BOS and EOS tokens are added
     assert item["input_ids"][0].item() == dataset.bos_idx
     assert item["input_ids"][-1].item() == dataset.eos_idx
-    
+
     # Check attention mask
     assert torch.all(item["attention_mask"] == 1)
 
@@ -98,7 +101,7 @@ def test_transformer_dataset_max_length(mock_tokenizer, sample_texts):
         add_bos=True,
         add_eos=True
     )
-    
+
     item = dataset[2]  # Get the longest text
     assert item["input_ids"].size(0) <= max_length
     assert item["attention_mask"].size(0) <= max_length
@@ -112,7 +115,7 @@ def test_transformer_dataset_no_special_tokens(mock_tokenizer, sample_texts):
         add_bos=False,
         add_eos=False
     )
-    
+
     item = dataset[0]
     token_ids = item["input_ids"].tolist()
     assert dataset.bos_idx not in token_ids
@@ -125,7 +128,7 @@ def test_transformer_dataset_return_lists(mock_tokenizer, sample_texts):
         tokenizer=mock_tokenizer,
         return_tensors=False
     )
-    
+
     item = dataset[0]
     assert isinstance(item["input_ids"], list)
     assert isinstance(item["attention_mask"], list)
@@ -138,7 +141,7 @@ def test_create_transformer_dataloaders(mock_tokenizer, sample_texts):
         val_texts=sample_texts[:1],
         batch_size=2
     )
-    
+
     assert train_loader is not None
     assert val_loader is not None
     assert len(train_loader.dataset) == len(sample_texts)
@@ -150,7 +153,7 @@ def test_create_transformer_dataloaders_no_validation(mock_tokenizer, sample_tex
         train_texts=sample_texts,
         tokenizer=mock_tokenizer
     )
-    
+
     assert train_loader is not None
     assert val_loader is None
 
@@ -167,15 +170,15 @@ def test_transformer_collate_fn_tensor_input():
             "attention_mask": torch.tensor([1, 1, 1])
         }
     ]
-    
+
     collated = transformer_collate_fn(batch)
-    
+
     assert isinstance(collated, dict)
     assert "input_ids" in collated
     assert "attention_mask" in collated
     assert collated["input_ids"].shape == (2, 4)  # batch_size=2, max_len=4
     assert collated["attention_mask"].shape == (2, 4)
-    
+
     # Check padding
     assert torch.equal(collated["attention_mask"][1], torch.tensor([1, 1, 1, 0]))
 
@@ -187,15 +190,15 @@ def test_transformer_collate_fn_list_input():
         [1, 2],
         [1, 2, 3, 4]
     ]
-    
+
     # Call collate function
     result = transformer_collate_fn(batch)
-    
+
     # Check result is a tensor
     assert isinstance(result, torch.Tensor)
     assert result.shape[0] == 3  # batch size
     assert result.shape[1] == 4  # max sequence length
-    
+
     # Check padding is correct
     assert result[0].tolist() == [1, 2, 3, 0]  # padded with 0
     assert result[1].tolist() == [1, 2, 0, 0]  # padded with 0
@@ -215,7 +218,7 @@ def test_transformer_dataset_end_to_end(mock_tokenizer, sample_texts):
         tokenizer=mock_tokenizer,
         max_length=10
     )
-    
+
     # Create dataloader
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -226,12 +229,12 @@ def test_transformer_dataset_end_to_end(mock_tokenizer, sample_texts):
         pin_memory=True,  # Use pinned memory
         prefetch_factor=2  # Prefetch batches
     )
-    
+
     # Get a batch
     batch = next(iter(dataloader))
-    
+
     assert isinstance(batch, dict)
     assert "input_ids" in batch
     assert "attention_mask" in batch
     assert batch["input_ids"].shape[0] == 2  # batch_size
-    assert batch["attention_mask"].shape == batch["input_ids"].shape 
+    assert batch["attention_mask"].shape == batch["input_ids"].shape

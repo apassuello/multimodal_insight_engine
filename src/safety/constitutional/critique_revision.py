@@ -10,13 +10,14 @@ DEPENDENCIES: torch, transformers, tqdm, typing, framework, model_utils
 SPECIAL NOTES: Implements Phase 1 of Constitutional AI methodology from Anthropic (2022)
 """
 
+from typing import Any, Dict, List
+
 import torch
 from torch.utils.data import DataLoader, Dataset
-from typing import List, Dict, Any, Optional
 from tqdm import tqdm
 
 from .framework import ConstitutionalFramework
-from .model_utils import generate_text, GenerationConfig
+from .model_utils import GenerationConfig, generate_text
 
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:

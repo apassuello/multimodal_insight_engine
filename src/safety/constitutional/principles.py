@@ -11,10 +11,9 @@ SPECIAL NOTES: Implements four core constitutional principles from Constitutiona
 """
 
 import re
-import numpy as np
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
-from .framework import ConstitutionalPrinciple, ConstitutionalFramework
+from .framework import ConstitutionalFramework, ConstitutionalPrinciple
 
 
 def evaluate_harm_potential(text: str) -> Dict[str, Any]:

@@ -1,11 +1,11 @@
 # src/training/losses/decorrelation_loss.py
 
+import logging
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any, Union
-import logging
-import math
 
 logger = logging.getLogger(__name__)
 

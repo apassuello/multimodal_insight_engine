@@ -8,8 +8,8 @@ from .integration import SafetyAugmentedModel
 # Optional constitutional AI components
 try:
     from .constitutional import (
-        ConstitutionalPrinciple,
         ConstitutionalFramework,
+        ConstitutionalPrinciple,
         ConstitutionalSafetyEvaluator,
         ConstitutionalSafetyFilter,
         RLAIFTrainer,

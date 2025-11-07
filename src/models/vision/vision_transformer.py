@@ -10,12 +10,12 @@ DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing, math, ..base_model
 SPECIAL NOTES: Follows the architecture described in "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Tuple, Optional, Union, List, Dict, Any
 import math
 import os
+from typing import Optional, Tuple, Union
+
+import torch
+import torch.nn as nn
 
 from ..base_model import BaseModel
 

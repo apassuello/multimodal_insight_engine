@@ -14,15 +14,16 @@ DEPENDENCIES:
 - typing
 """
 
+import logging
 import os
+from typing import Dict, Literal, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
-from typing import Dict, Tuple, Optional, Union, List, Any, Literal
 
-from src.training.losses.vicreg_loss import VICRegLoss
 from src.training.losses.contrastive_loss import ContrastiveLoss
+from src.training.losses.vicreg_loss import VICRegLoss
 
 logger = logging.getLogger(__name__)
 

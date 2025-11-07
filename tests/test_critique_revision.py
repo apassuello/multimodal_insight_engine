@@ -3,19 +3,20 @@ Unit tests for critique_revision.py
 Tests the critique-revision cycle for Constitutional AI Phase 1 (Supervised Learning).
 """
 
-import pytest
+from unittest.mock import Mock, patch
+
 import torch
-from unittest.mock import Mock, MagicMock, patch
+
 from src.safety.constitutional.critique_revision import (
+    CRITIQUE_TEMPLATE,
+    REVISION_TEMPLATE,
+    ConstitutionalDataset,
+    critique_revision_pipeline,
     generate_critique,
     generate_revision,
-    critique_revision_pipeline,
-    ConstitutionalDataset,
     supervised_finetune,
-    CRITIQUE_TEMPLATE,
-    REVISION_TEMPLATE
 )
-from src.safety.constitutional.framework import ConstitutionalFramework, ConstitutionalPrinciple
+from src.safety.constitutional.framework import ConstitutionalFramework
 
 
 class TestPromptTemplates:

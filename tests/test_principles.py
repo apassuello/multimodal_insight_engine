@@ -3,17 +3,16 @@ Unit tests for principles.py
 Tests the four constitutional principle evaluators and default framework setup.
 """
 
-import pytest
 from src.safety.constitutional.principles import (
-    evaluate_harm_potential,
     analyze_potential_consequences,
+    evaluate_autonomy_respect,
+    evaluate_fairness,
+    evaluate_harm_potential,
     evaluate_truthfulness,
-    identify_unsupported_claims,
     identify_logical_contradictions,
     identify_misleading_statistics,
-    evaluate_fairness,
-    evaluate_autonomy_respect,
-    setup_default_framework
+    identify_unsupported_claims,
+    setup_default_framework,
 )
 
 

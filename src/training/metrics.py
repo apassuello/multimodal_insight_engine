@@ -19,12 +19,12 @@ SPECIAL NOTES:
 - Provides flexible reduction options for different evaluation scenarios
 """
 
-import torch
-import numpy as np
-from typing import Optional, Union, List, Dict, Any
-from nltk.translate.bleu_score import corpus_bleu
-import nltk
 import os
+from typing import Any
+
+import numpy as np
+import torch
+from nltk.translate.bleu_score import corpus_bleu
 
 
 class Accuracy:
@@ -40,17 +40,17 @@ class Accuracy:
         reduction (str, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
     """
-    
+
     def __init__(self, top_k: int = 1, reduction: str = 'mean'):
         self.top_k = top_k
         self.reduction = reduction
         self.reset()
-    
+
     def reset(self):
         """Reset the metric state."""
         self.correct = 0
         self.total = 0
-    
+
     def update(self, pred: torch.Tensor, target: torch.Tensor):
         """
         Update the metric with new predictions and targets.
@@ -66,7 +66,7 @@ class Accuracy:
             _, pred = torch.topk(pred, k=self.top_k, dim=-1)
             self.correct += sum(1 for p, t in zip(pred, target) if t in p)
         self.total += target.size(0)
-    
+
     def compute(self) -> float:
         """
         Compute the current accuracy value.
@@ -91,16 +91,16 @@ class Perplexity:
         reduction (str, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
     """
-    
+
     def __init__(self, reduction: str = 'mean'):
         self.reduction = reduction
         self.reset()
-    
+
     def reset(self):
         """Reset the metric state."""
         self.total_loss = 0.0
         self.total_tokens = 0
-    
+
     def update(self, loss: torch.Tensor, num_tokens: int):
         """
         Update the metric with new loss values and token counts.
@@ -111,7 +111,7 @@ class Perplexity:
         """
         self.total_loss += loss.item() * num_tokens
         self.total_tokens += num_tokens
-    
+
     def compute(self) -> float:
         """
         Compute the current perplexity value.
@@ -136,18 +136,18 @@ class F1Score:
         average (str, optional): Averaging method: 'macro' | 'micro' | 'weighted'.
             Defaults to 'macro'.
     """
-    
+
     def __init__(self, num_classes: int, average: str = 'macro'):
         self.num_classes = num_classes
         self.average = average
         self.reset()
-    
+
     def reset(self):
         """Reset the metric state."""
         self.tp = torch.zeros(self.num_classes)
         self.fp = torch.zeros(self.num_classes)
         self.fn = torch.zeros(self.num_classes)
-    
+
     def update(self, pred: torch.Tensor, target: torch.Tensor):
         """
         Update the metric with new predictions and targets.
@@ -160,7 +160,7 @@ class F1Score:
             self.tp[c] += ((pred == c) & (target == c)).sum().item()
             self.fp[c] += ((pred == c) & (target != c)).sum().item()
             self.fn[c] += ((pred != c) & (target == c)).sum().item()
-    
+
     def compute(self) -> float:
         """
         Compute the current F1 score.
@@ -199,16 +199,16 @@ class BLEUScore:
     Args:
         weights (tuple, optional): Weights for different n-grams. Defaults to (0.25, 0.25, 0.25, 0.25).
     """
-    
+
     def __init__(self, weights: tuple = (0.25, 0.25, 0.25, 0.25)):
         self.weights = weights
         self.reset()
-    
+
     def reset(self):
         """Reset the metric state."""
         self.references = []
         self.hypotheses = []
-    
+
     def update(self, hypothesis: str, reference: str):
         """
         Update the metric with new hypothesis and reference.
@@ -219,7 +219,7 @@ class BLEUScore:
         """
         self.hypotheses.append(hypothesis.split())
         self.references.append([reference.split()])
-    
+
     def compute(self) -> float:
         """
         Compute the current BLEU score.
@@ -241,14 +241,14 @@ class CustomMetric:
     interface. It includes methods for resetting the metric state, updating with new
     values, and computing the final metric value.
     """
-    
+
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
         """Reset the metric state. Override this method in subclasses."""
         raise NotImplementedError
-    
+
     def update(self, *args, **kwargs):
         """
         Update the metric with new values. Override this method in subclasses.
@@ -258,7 +258,7 @@ class CustomMetric:
             **kwargs: Keyword arguments for the update
         """
         raise NotImplementedError
-    
+
     def compute(self) -> Any:
         """
         Compute the current metric value. Override this method in subclasses.

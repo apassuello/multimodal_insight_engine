@@ -7,19 +7,20 @@ DEPENDENCIES: torch, torch.nn, typing, ..base_model, ..transformer, .vision_tran
 SPECIAL NOTES: Current implementation uses a simple integration approach that will be enhanced in future versions
 """
 
+import os
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Tuple
-import os
 
 from src.models.base_model import BaseModel
-from src.models.transformer import EncoderDecoderTransformer
-from src.models.vision.vision_transformer import VisionTransformer
-from src.models.multimodal.co_attention_fusion import CoAttentionFusion
 from src.models.multimodal.bidirectional_cross_attention import (
     BidirectionalCrossAttention,
 )
+from src.models.multimodal.co_attention_fusion import CoAttentionFusion
+from src.models.transformer import EncoderDecoderTransformer
+from src.models.vision.vision_transformer import VisionTransformer
 
 
 class MultiModalTransformer(BaseModel):

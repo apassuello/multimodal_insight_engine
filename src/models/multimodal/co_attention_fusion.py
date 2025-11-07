@@ -15,9 +15,10 @@ DEPENDENCIES:
 """
 
 import os
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, Tuple, Any
 
 from .bidirectional_cross_attention import BidirectionalCrossAttention
 

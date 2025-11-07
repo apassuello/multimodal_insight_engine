@@ -1,6 +1,7 @@
 import os
 import random
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
+
 
 class WMTDataLoader:
     def __init__(self, data_dir: str, source_lang: str, target_lang: str, batch_size: int = 32, max_examples: Optional[int] = None, seed: int = 42, shuffle: bool = True):
@@ -72,8 +73,8 @@ class WMTDataLoader:
 # Example usage:
 # dataloader = WMTDataLoader(data_dir='data/wmt/training', source_lang='en', target_lang='fr', max_examples=1000)
 # for source_batch, target_batch in dataloader:
-#     # Process batches 
-    
+#     # Process batches
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.

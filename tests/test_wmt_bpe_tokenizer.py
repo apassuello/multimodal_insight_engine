@@ -1,6 +1,8 @@
 import pytest
 import torch
+
 from src.data.tokenization.wmt_bpe_tokenizer import WMTBPETokenizer
+
 
 @pytest.fixture
 def device():
@@ -68,11 +70,11 @@ def test_tokenize_word_optimized(tokenizer):
     # Test with a word that can be merged
     tokens = tokenizer._tokenize_word_optimized("hello")
     assert tokens == ["hello"]  # Should merge to a single token
-    
+
     # Test with a word that can't be fully merged
     tokens = tokenizer._tokenize_word_optimized("test")
     assert len(tokens) > 0  # Should be split into subwords
-    
+
     # Test cache functionality
     assert "hello" in tokenizer.word_token_cache
     assert tokenizer.word_token_cache["hello"] == ["hello"]
@@ -84,7 +86,7 @@ def test_tokenize(tokenizer):
     assert len(tokens) > 0
     assert "hello" in tokens
     assert "world" in tokens
-    
+
     # Test cache functionality
     assert text in tokenizer.token_cache
     assert tokenizer.token_cache[text] == tokens
@@ -136,12 +138,12 @@ def test_cache_size_limit(tokenizer):
     """Test that cache size limits are respected."""
     # Set a small cache size
     tokenizer.cache_size = 2
-    
+
     # Add more items than the cache size
     texts = ["hello", "world", "test", "token"]
     for text in texts:
         tokenizer._tokenize_word_optimized(text)
-    
+
     # Check that cache size is not exceeded
     assert len(tokenizer.word_token_cache) <= tokenizer.cache_size
 
@@ -150,10 +152,10 @@ def test_unknown_token_handling(tokenizer):
     # Test with truly unknown characters that can't be in the vocabulary
     text = "@@@@"  # Special characters unlikely to be in vocab or subwords
     token_ids = tokenizer.encode(text)
-    
+
     # At least one unknown token should be present for truly unknown input
     assert tokenizer.vocab["<unk>"] in token_ids
-    
+
     # For regular words, test that encoding works without asserting values
     text = "unknown"
     token_ids = tokenizer.encode(text)

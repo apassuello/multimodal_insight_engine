@@ -1,9 +1,11 @@
 # src/optimization/__init__.py
 import torch
-from .quantization import QuantizationConfig, DynamicQuantizer, StaticQuantizer
-from .mixed_precision import MixedPrecisionConverter
-from .pruning import PruningConfig, ModelPruner
+
 from .benchmarking import OptimizationBenchmark
+from .mixed_precision import MixedPrecisionConverter
+from .pruning import ModelPruner, PruningConfig
+from .quantization import DynamicQuantizer, QuantizationConfig, StaticQuantizer
+
 
 # Convenience functions for easy access
 def quantize_model(
@@ -34,14 +36,14 @@ def quantize_model(
         bits=bits,
         **kwargs
     )
-    
+
     if quantization_type == "dynamic":
         quantizer = DynamicQuantizer(model, config)
     elif quantization_type == "static":
         quantizer = StaticQuantizer(model, config, calibration_loader)
     else:
         raise ValueError(f"Unsupported quantization type: {quantization_type}")
-    
+
     return quantizer.optimize()
 
 def prune_model(
@@ -67,7 +69,7 @@ def prune_model(
         amount=amount,
         **kwargs
     )
-    
+
     pruner = ModelPruner(model, config)
     return pruner.prune_model()
 
@@ -93,7 +95,7 @@ def convert_to_mixed_precision(
             dtype = torch.bfloat16
         else:
             dtype = torch.float16
-    
+
     converter = MixedPrecisionConverter(model, dtype, use_auto_cast)
     return converter.convert_to_mixed_precision()
 
@@ -116,22 +118,22 @@ def benchmark_optimizations(
         OptimizationBenchmark instance with results
     """
     benchmark = OptimizationBenchmark(model, input_generator, **kwargs)
-    
+
     # Benchmark original model
     benchmark.benchmark_original_model()
-    
+
     # Apply and benchmark each optimization
     for i, (opt_fn, opt_kwargs, name) in enumerate(optimizations):
         # Apply optimization
         optimized_model = opt_fn(model, **opt_kwargs)
-        
+
         # Benchmark optimized model
         benchmark.benchmark_optimized_model(optimized_model, name)
-    
+
     # Generate comparison
     benchmark.compare_optimizations()
-    
+
     # Generate report
     benchmark.generate_report()
-    
+
     return benchmark

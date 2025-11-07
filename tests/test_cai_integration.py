@@ -3,18 +3,15 @@ Integration tests for Constitutional AI components.
 Tests end-to-end workflows combining framework, principles, evaluator, and filter.
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from src.safety.constitutional.framework import ConstitutionalFramework, ConstitutionalPrinciple
-from src.safety.constitutional.principles import (
-    setup_default_framework,
-    evaluate_harm_potential,
-    evaluate_truthfulness,
-    evaluate_fairness,
-    evaluate_autonomy_respect
-)
+
 from src.safety.constitutional.evaluator import ConstitutionalSafetyEvaluator
 from src.safety.constitutional.filter import ConstitutionalSafetyFilter
+from src.safety.constitutional.framework import (
+    ConstitutionalFramework,
+    ConstitutionalPrinciple,
+)
+from src.safety.constitutional.principles import setup_default_framework
 
 
 class TestFrameworkToEvaluatorIntegration:

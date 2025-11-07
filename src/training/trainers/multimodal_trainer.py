@@ -20,38 +20,39 @@ SPECIAL NOTES:
 
 # src/training/multimodal_trainer.py
 
+import logging
+
 # Standard library imports
 import os
-import time
-import json
 import random
-import logging
+import time
 from collections import defaultdict
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
+from typing import Any, Dict, List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Third-party imports
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 from torch.optim.adamw import AdamW
 from torch.utils.data import DataLoader
-import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
 
 # Local imports
 from src.training.losses import (
     ContrastiveLoss,
+    HardNegativeMiningContrastiveLoss,
+    MemoryQueueContrastiveLoss,
     MultiModalMixedContrastiveLoss,
     VICRegLoss,
-    MemoryQueueContrastiveLoss,
-    HardNegativeMiningContrastiveLoss,
 )
-from src.training.losses.vicreg_loss import (
+from src.training.losses.vicreg_loss import (  # Explicit import for type checking
     VICRegLoss,
-)  # Explicit import for type checking
-from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
+)
 
 logger = logging.getLogger(__name__)
 

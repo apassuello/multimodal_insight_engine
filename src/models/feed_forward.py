@@ -7,14 +7,15 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing, .base_model, .layers
 SPECIAL NOTES: Provides flexible architectures with options for layer normalization, residual connections, and dropout"""
 
+import os
+from typing import Dict, List, Literal
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Optional, Union, Dict, Any, Literal
-import os
 
 from .base_model import BaseModel
-from .layers import LinearLayer, FeedForwardBlock
+from .layers import FeedForwardBlock, LinearLayer
 
 
 class FeedForwardNN(BaseModel):

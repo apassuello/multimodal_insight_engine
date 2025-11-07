@@ -13,13 +13,8 @@ DEPENDENCIES:
 """
 
 import os
-import sys
-import requests
 import random
-from tqdm import tqdm
-import tarfile
-import io
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 
 class IWSLTDataset:
@@ -151,7 +146,7 @@ class IWSLTDataset:
         )
 
         try:
-            from datasets import load_dataset, get_dataset_config_names
+            from datasets import get_dataset_config_names, load_dataset
 
             # First try the TED talks dataset for years 2014-2016
             if requested_year in ["2014", "2015", "2016"]:
@@ -384,9 +379,10 @@ class IWSLTDataset:
             f"Downloading IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
         )
 
-        import requests
-        import tarfile
         import io
+        import tarfile
+
+        import requests
 
         # This is a simplified example - the actual URL structure would need to be adjusted
         # based on the specific IWSLT release

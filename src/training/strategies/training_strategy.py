@@ -1,11 +1,12 @@
 # src/training/strategies/training_strategy.py
 
+import logging
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
 from torch.optim.optimizer import Optimizer
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,6 @@ class TrainingStrategy(ABC):
 
         This method must be implemented by concrete strategies.
         """
-        pass
 
     @abstractmethod
     def prepare_batch(self, batch: Dict[str, Any]) -> Dict[str, Any]:
@@ -103,7 +103,6 @@ class TrainingStrategy(ABC):
         Returns:
             Processed batch ready for the model
         """
-        pass
 
     @abstractmethod
     def training_step(self, batch: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,7 +115,6 @@ class TrainingStrategy(ABC):
         Returns:
             Dictionary containing the loss and other metrics
         """
-        pass
 
     @abstractmethod
     def validation_step(self, batch: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,7 +127,6 @@ class TrainingStrategy(ABC):
         Returns:
             Dictionary containing validation metrics
         """
-        pass
 
     @abstractmethod
     def configure_optimizers(self) -> tuple:
@@ -139,7 +136,6 @@ class TrainingStrategy(ABC):
         Returns:
             Tuple of (optimizer, scheduler)
         """
-        pass
 
     def freeze_parameters(self, model_components: List[str]) -> None:
         """
@@ -240,7 +236,6 @@ class TrainingStrategy(ABC):
             epoch: Current epoch number
         """
         # Default implementation does nothing
-        pass
 
     def on_epoch_end(self, epoch: int) -> None:
         """
@@ -250,7 +245,6 @@ class TrainingStrategy(ABC):
             epoch: Current epoch number
         """
         # Default implementation does nothing
-        pass
 
 
 def extract_file_metadata(file_path=__file__):

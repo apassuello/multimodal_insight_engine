@@ -6,21 +6,22 @@ This module provides functions for running inference with multimodal models,
 including visualization of model outputs and performance metrics.
 """
 
+import logging
 import os
+from typing import Any, Dict
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
-import logging
-from typing import Dict, List, Any, Optional, Union
 from torch.utils.data import DataLoader
 
+from ..utils.model_utils import count_parameters
 from ..utils.visualization import (
-    visualize_similarity_matrix,
     visualize_attention_maps,
-    visualize_test_samples
+    visualize_similarity_matrix,
+    visualize_test_samples,
 )
-from ..utils.model_utils import count_parameters, convert_tensors_to_python_types
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def run_inference_demo(
     # Use real test dataset instead of synthetic for better accuracy
     # The main test split is already created and available in the test loader
     from ..data.multimodal_dataset import EnhancedMultimodalDataset
-    
+
     test_dataset = EnhancedMultimodalDataset(
         split="test",
         image_preprocessor=image_preprocessor,

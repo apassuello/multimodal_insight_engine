@@ -1,16 +1,19 @@
 # src/models/pretrained/vision_transformer.py
-from .base_wrapper import PretrainedModelWrapper
-from transformers import ViTModel, ViTConfig
-import torch
 import os
+
+import torch
+from transformers import ViTModel
+
+from .base_wrapper import PretrainedModelWrapper
+
 
 class VisionTransformerWrapper(PretrainedModelWrapper):
     """Wrapper for Hugging Face Vision Transformer models."""
-    
+
     def __init__(self, model_name: str = "google/vit-base-patch16-224"):
         super().__init__(model_name=model_name)
         self.load_model(model_name)
-        
+
     def load_model(self, model_name: str) -> None:
         """Load a pretrained Vision Transformer."""
         # Map shortened model names to full Hugging Face identifiers
@@ -21,14 +24,14 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
             "vit-large-384": "google/vit-large-patch16-384",
             "vit-huge": "google/vit-huge-patch14-224-in21k",
         }
-        
+
         # Use the mapping if available, otherwise use the original name
         full_model_name = model_mapping.get(model_name, model_name)
         print(f"Loading vision model: {full_model_name} (from '{model_name}')")
-        
+
         self.pretrained_model = ViTModel.from_pretrained(full_model_name)
         self.config = self.pretrained_model.config.to_dict()
-        
+
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the Vision Transformer.

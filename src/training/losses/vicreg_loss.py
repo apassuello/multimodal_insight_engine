@@ -15,10 +15,11 @@ DEPENDENCIES:
 """
 
 import os
+from typing import Dict, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Optional, Union
 
 
 class VICRegLoss(nn.Module):

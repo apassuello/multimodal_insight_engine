@@ -15,15 +15,16 @@ DEPENDENCIES:
 - torchvision
 """
 
-import os
-import torch
-import random
 import logging
-import numpy as np
-from typing import Dict, List, Tuple, Any, Optional, Iterator
-from torch.utils.data import DataLoader, SubsetRandomSampler, Sampler, BatchSampler
+import os
+import random
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
+import numpy as np
+import torch
+from torch.utils.data import BatchSampler, DataLoader, Sampler, SubsetRandomSampler
 
 from .multimodal_dataset import EnhancedMultimodalDataset
 

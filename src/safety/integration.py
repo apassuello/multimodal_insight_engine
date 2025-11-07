@@ -1,9 +1,10 @@
 # src/safety/integration.py
 
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
-from .filter import SafetyFilter
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from .filter import SafetyFilter
 
 """MODULE: integration.py
 PURPOSE: Provides integration layer for augmenting models with safety mechanisms

@@ -5,14 +5,7 @@ A framework for multimodal learning and understanding.
 """
 
 # Import major modules
-from . import models
-from . import data
-from . import training
-from . import utils
-from . import configs
-from . import evaluation
-from . import optimization
-from . import safety
+from . import configs, data, evaluation, models, optimization, safety, training, utils
 
 __all__ = [
     "models",

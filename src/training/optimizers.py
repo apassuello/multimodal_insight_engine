@@ -17,12 +17,13 @@ SPECIAL NOTES:
 - Provides flexible learning rate scheduling strategies
 """
 
+import math
+import os
+from typing import List, Optional, Tuple
+
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import _LRScheduler
-from typing import Optional, List, Dict, Any, Union, Tuple
-import math
-import os
 
 
 class AdamW(optim.AdamW):
@@ -41,7 +42,7 @@ class AdamW(optim.AdamW):
         amsgrad: Whether to use the AMSGrad variant of this algorithm
         clip_grad: Maximum gradient norm for clipping (default: None)
     """
-    
+
     def __init__(
         self,
         params,
@@ -61,7 +62,7 @@ class AdamW(optim.AdamW):
             amsgrad=amsgrad
         )
         self.clip_grad = clip_grad
-    
+
     def step(self, closure=None):
         """
         Performs a single optimization step.
@@ -94,7 +95,7 @@ class OneCycleLR(_LRScheduler):
         final_div_factor: Final learning rate = initial_lr/final_div_factor
         anneal_strategy: Specifies the annealing strategy: 'cos' or 'linear'
     """
-    
+
     def __init__(
         self,
         optimizer,
@@ -114,28 +115,28 @@ class OneCycleLR(_LRScheduler):
         self.div_factor = div_factor
         self.final_div_factor = final_div_factor
         self.anneal_strategy = anneal_strategy
-        
+
         # Calculate total steps
         self.total_steps = epochs * steps_per_epoch
-        
+
         # Calculate warmup steps
         self.warmup_steps = int(self.total_steps * pct_start)
-        
+
         # Initialize base learning rates
         self.base_lr = max_lr / div_factor
         self.final_lr = self.base_lr / final_div_factor
-        
+
         # Initialize step counter
         self.step_count = 0
-        
+
         # Initialize learning rates
         self._init_lr()
-    
+
     def _init_lr(self):
         """Initialize learning rates for all parameter groups."""
         for group in self.optimizer.param_groups:
             group['lr'] = self.base_lr
-    
+
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
@@ -154,7 +155,7 @@ class OneCycleLR(_LRScheduler):
             else:  # linear
                 lr = self.max_lr + (self.final_lr - self.max_lr) * progress
         return [lr] * len(self.optimizer.param_groups)
-    
+
     def step(self, closure=None):
         """
         Performs a scheduler step.
@@ -184,7 +185,7 @@ class CosineAnnealingLR(_LRScheduler):
         eta_min: Minimum learning rate
         warmup_steps: Number of warmup steps
     """
-    
+
     def __init__(
         self,
         optimizer,
@@ -196,7 +197,7 @@ class CosineAnnealingLR(_LRScheduler):
         self.eta_min = eta_min
         self.warmup_steps = warmup_steps
         super().__init__(optimizer)
-    
+
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
@@ -233,7 +234,7 @@ class LinearWarmupLR(_LRScheduler):
         start_lr: Initial learning rate
         target_lr: Target learning rate
     """
-    
+
     def __init__(
         self,
         optimizer,
@@ -245,7 +246,7 @@ class LinearWarmupLR(_LRScheduler):
         self.start_lr = start_lr
         self.target_lr = target_lr
         super().__init__(optimizer)
-    
+
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
@@ -276,11 +277,11 @@ class GradientClipper:
         max_norm: Maximum gradient norm
         norm_type: Type of norm to use (default: 2)
     """
-    
+
     def __init__(self, max_norm: float, norm_type: float = 2.0):
         self.max_norm = max_norm
         self.norm_type = norm_type
-    
+
     def clip_grad_norm(self, model: torch.nn.Module):
         """
         Clip gradients of all parameters in the model.

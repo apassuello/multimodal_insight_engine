@@ -16,12 +16,12 @@ SPECIAL NOTES:
 - Designed for use in multimodal and multitask learning scenarios
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Callable, Any, Union, Optional, Tuple
 import logging
 import os
+from typing import Any, Dict, Optional
+
+import torch
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 

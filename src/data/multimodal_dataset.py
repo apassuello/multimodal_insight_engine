@@ -16,17 +16,18 @@ DEPENDENCIES:
 - multimodal_data_utils
 """
 
-import torch
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-import PIL.Image as Image
-import os
 import json
-import time
+import os
 import random
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
-import numpy as np
+import time
 from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Union
+
+import numpy as np
+import PIL.Image as Image
+import torch
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
 
 from ..models.vision.image_preprocessing import ImagePreprocessor
 
@@ -428,8 +429,8 @@ class Flickr30kDataset(MultimodalDataset):
             # Load the dataset from HuggingFace if not in cache
             try:
                 # Load from Hugging Face datasets
-                from datasets import load_dataset
                 import tqdm
+                from datasets import load_dataset
 
                 print(f"Loading Flickr30k dataset for split: {split}...")
 
@@ -528,8 +529,8 @@ class Flickr30kDataset(MultimodalDataset):
 
     def _save_to_cache(self) -> None:
         """Save the dataset to cache for faster loading next time."""
-        import pickle
         import json
+        import pickle
 
         # Create cache directory if it doesn't exist
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -635,8 +636,8 @@ class Flickr30kDataset(MultimodalDataset):
 
         # Save synthetic data to cache
         try:
-            import pickle
             import json
+            import pickle
 
             # Create cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)
@@ -662,6 +663,7 @@ class Flickr30kDataset(MultimodalDataset):
 
 
 import logging
+
 from datasets import load_dataset
 
 logger = logging.getLogger(__name__)
@@ -815,8 +817,8 @@ class EnhancedMultimodalDataset(Dataset):
 
         try:
             import numpy as np
-            from sklearn.cluster import KMeans
             import torch
+            from sklearn.cluster import KMeans
             from tqdm import tqdm
 
             logger.info(
@@ -825,7 +827,7 @@ class EnhancedMultimodalDataset(Dataset):
 
             # Import a pretrained model for feature extraction
             try:
-                from torchvision.models import resnet18, ResNet18_Weights
+                from torchvision.models import ResNet18_Weights, resnet18
 
                 pretrained_model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
                 pretrained_model.fc = torch.nn.Identity()  # Remove classification layer
@@ -1149,8 +1151,8 @@ class EnhancedMultimodalDataset(Dataset):
 
             # Save to cache for next time
             try:
-                import pickle
                 import json
+                import pickle
 
                 # Create cache directory if it doesn't exist
                 os.makedirs(cache_dir, exist_ok=True)
@@ -1261,8 +1263,8 @@ class EnhancedMultimodalDataset(Dataset):
 
         # Save synthetic data to cache
         try:
-            import pickle
             import json
+            import pickle
 
             # Create cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)

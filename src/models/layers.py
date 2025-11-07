@@ -1,8 +1,9 @@
+import os
+from typing import Literal, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Optional, Union, Literal
-import os
 
 """MODULE: layers.py
 PURPOSE: Implements fundamental neural network layers with advanced features like initialization, normalization, and residual connections
@@ -14,8 +15,8 @@ SPECIAL NOTES: Provides building blocks for transformer architectures with moder
 
 class LinearLayer(nn.Module):
     """A linear layer with initialization, dropout, and normalization options."""
-    
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, 
+
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
                  init_type: str = 'kaiming_uniform', dropout: float = 0.0,
                  use_layer_norm: bool = False):
         """
@@ -32,13 +33,13 @@ class LinearLayer(nn.Module):
         super().__init__()
         self.linear = nn.Linear(in_features, out_features, bias=bias)
         self._init_weights(init_type)
-        
+
         # Dropout for regularization
         self.dropout = nn.Dropout(dropout) if dropout > 0.0 else None
-        
+
         # Layer normalization
         self.layer_norm = nn.LayerNorm(out_features) if use_layer_norm else None
-    
+
     def _init_weights(self, init_type: str) -> None:
         """Initialize the weights using the specified method."""
         if init_type == 'kaiming_uniform':
@@ -51,10 +52,10 @@ class LinearLayer(nn.Module):
             nn.init.xavier_normal_(self.linear.weight)
         else:
             raise ValueError(f"Unknown initialization type: {init_type}")
-            
+
         if self.linear.bias is not None:
             nn.init.zeros_(self.linear.bias)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the linear layer.
@@ -67,17 +68,17 @@ class LinearLayer(nn.Module):
         """
         # Move input to device
         x = x.to(next(self.parameters()).device)
-        
+
         x = self.linear(x)
-        
+
         # Apply layer normalization if specified
         if self.layer_norm is not None:
             x = self.layer_norm(x)
-            
+
         # Apply dropout if specified
         if self.dropout is not None:
             x = self.dropout(x)
-            
+
         return x
 
 
@@ -85,10 +86,10 @@ class FeedForwardBlock(nn.Module):
     """
     A feed-forward block with optional residual connection.
     """
-    
-    def __init__(self, input_dim: int, hidden_dim: Optional[int] = None, 
-                 output_dim: Optional[int] = None, 
-                 activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu', 
+
+    def __init__(self, input_dim: int, hidden_dim: Optional[int] = None,
+                 output_dim: Optional[int] = None,
+                 activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu',
                  dropout: float = 0.0, use_layer_norm: bool = False,
                  use_residual: bool = False):
         """
@@ -104,38 +105,38 @@ class FeedForwardBlock(nn.Module):
             use_residual: Whether to use a residual (skip) connection
         """
         super().__init__()
-        
+
         # Set default dimensions if not provided
         hidden_dim = hidden_dim if hidden_dim is not None else 4 * input_dim
         output_dim = output_dim if output_dim is not None else input_dim
-        
+
         # Check if residual connection is possible
         self.use_residual = use_residual and input_dim == output_dim
         if use_residual and input_dim != output_dim:
             print(f"Warning: Cannot use residual connection when input_dim ({input_dim}) "
                   f"!= output_dim ({output_dim}). Disabling residual connection.")
-        
+
         # First linear layer
         self.linear1 = LinearLayer(
-            input_dim, 
-            hidden_dim, 
+            input_dim,
+            hidden_dim,
             init_type='kaiming_uniform' if activation == 'relu' else 'xavier_uniform',
             dropout=0.0,
             use_layer_norm=False
         )
-        
+
         # Second linear layer
         self.linear2 = LinearLayer(
-            hidden_dim, 
-            output_dim, 
+            hidden_dim,
+            output_dim,
             init_type='xavier_uniform',
             dropout=dropout,
             use_layer_norm=use_layer_norm
         )
-        
+
         # Store the activation type
         self.activation = activation
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the feed-forward block.
@@ -148,13 +149,13 @@ class FeedForwardBlock(nn.Module):
         """
         # Move input to device
         x = x.to(next(self.parameters()).device)
-        
+
         # Store input for residual connection
         residual = x
-        
+
         # First linear layer
         x = self.linear1(x)
-        
+
         # Apply activation function
         if self.activation == 'relu':
             x = F.relu(x)
@@ -166,14 +167,14 @@ class FeedForwardBlock(nn.Module):
             x = torch.sigmoid(x)
         else:
             raise ValueError(f"Unknown activation function: {self.activation}")
-        
+
         # Second linear layer
         x = self.linear2(x)
-        
+
         # Apply residual connection if specified
         if self.use_residual:
             x = x + residual
-        
+
         return x
 
 def extract_file_metadata(file_path=__file__):

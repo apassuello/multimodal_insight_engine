@@ -1,22 +1,23 @@
 import os
+import random
 import sys
 import time
-import torch
-import random
-from typing import List, Dict, Tuple, Optional
-from tqdm import tqdm
+from typing import List, Tuple
+
 import matplotlib.pyplot as plt
 import pytest
+import torch
+from tqdm import tqdm
+
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.europarl_dataset import EuroparlDataset
 from src.data.tokenization import (
     BPETokenizer,
     WhitespaceTokenizer,
-    Vocabulary,
-    clean_text,
     create_transformer_dataloaders,
 )
+
 
 @pytest.fixture
 def en_tokenizer():
@@ -71,11 +72,11 @@ def train_bpe_tokenizers(
         Tuple of (german_tokenizer, english_tokenizer)
     """
     print(f"Training BPE tokenizers with vocab size {vocab_size}...")
-    
+
     # Create save directories
     os.makedirs(f"{save_dir}/de", exist_ok=True)  # German directory first
     os.makedirs(f"{save_dir}/en", exist_ok=True)  # English directory second
-    
+
     # Train German tokenizer (source language)
     print("Training German tokenizer (source language)...")
     start_time = time.time()
@@ -89,7 +90,7 @@ def train_bpe_tokenizers(
     de_time = time.time() - start_time
     print(f"German tokenizer trained in {de_time:.2f}s")
     print(f"German vocabulary size: {de_tokenizer.vocab_size}")
-    
+
     # Train English tokenizer (target language)
     print("Training English tokenizer (target language)...")
     start_time = time.time()
@@ -103,19 +104,19 @@ def train_bpe_tokenizers(
     en_time = time.time() - start_time
     print(f"English tokenizer trained in {en_time:.2f}s")
     print(f"English vocabulary size: {en_tokenizer.vocab_size}")
-    
+
     # Save tokenizers
     print("Saving tokenizers...")
     de_tokenizer.save_pretrained(f"{save_dir}/de")
     en_tokenizer.save_pretrained(f"{save_dir}/en")
-    
+
     # Return German tokenizer first (source), then English tokenizer (target)
     return de_tokenizer, en_tokenizer
 
 
 def test_tokenizers(
     en_tokenizer: BPETokenizer,
-    de_tokenizer: BPETokenizer, 
+    de_tokenizer: BPETokenizer,
     example_sentences: List[str] = None,
 ) -> None:
     """
@@ -133,23 +134,23 @@ def test_tokenizers(
             "Transformers are powerful models for NLP.",
             "This is an example of English to German translation."
         ]
-    
+
     print("\n=== Testing Tokenizers ===")
-    
+
     for sentence in example_sentences:
         print(f"\nOriginal: {sentence}")
-        
+
         # Tokenize with BPE
         bpe_tokens = en_tokenizer.tokenize(sentence)
         bpe_ids = en_tokenizer.encode(sentence)
-        
+
         print(f"BPE Tokens ({len(bpe_tokens)}): {bpe_tokens}")
         print(f"BPE IDs: {bpe_ids[:10]}..." if len(bpe_ids) > 10 else f"BPE IDs: {bpe_ids}")
-        
+
         # Decode back to text
         decoded = en_tokenizer.decode(bpe_ids)
         print(f"Decoded: {decoded}")
-        
+
         # Compare with whitespace tokenizer for reference
         ws_tokenizer = WhitespaceTokenizer()
         ws_tokens = ws_tokenizer.tokenize(sentence)
@@ -170,35 +171,35 @@ def analyze_tokenization(
         sample_size: Number of texts to sample
     """
     print("\n=== Tokenization Analysis ===")
-    
+
     # Create whitespace tokenizer for comparison
     ws_tokenizer = WhitespaceTokenizer()
-    
+
     # Sample texts
     if sample_size > len(en_texts):
         sample_size = len(en_texts)
-    
+
     sampled_texts = random.sample(en_texts, sample_size)
-    
+
     # Collect statistics
     bpe_token_counts = []
     ws_token_counts = []
-    
+
     for text in tqdm(sampled_texts, desc="Analyzing tokenization"):
         bpe_tokens = en_tokenizer.tokenize(text)
         ws_tokens = ws_tokenizer.tokenize(text)
-        
+
         bpe_token_counts.append(len(bpe_tokens))
         ws_token_counts.append(len(ws_tokens))
-    
+
     # Calculate statistics
     avg_bpe_tokens = sum(bpe_token_counts) / len(bpe_token_counts)
     avg_ws_tokens = sum(ws_token_counts) / len(ws_token_counts)
-    
+
     print(f"Average BPE tokens per text: {avg_bpe_tokens:.2f}")
     print(f"Average whitespace tokens per text: {avg_ws_tokens:.2f}")
     print(f"Ratio (BPE/Whitespace): {avg_bpe_tokens/avg_ws_tokens:.2f}")
-    
+
     # Plot token count distributions
     plt.figure(figsize=(10, 6))
     plt.hist(ws_token_counts, alpha=0.5, label='Whitespace', bins=30)
@@ -209,7 +210,7 @@ def analyze_tokenization(
     plt.legend()
     plt.savefig('token_distribution.png')
     plt.close()
-    
+
     print("Token distribution histogram saved as 'token_distribution.png'")
 
 
@@ -221,7 +222,7 @@ def demonstrate_oov_handling(en_tokenizer: BPETokenizer) -> None:
         en_tokenizer: English tokenizer
     """
     print("\n=== OOV Word Handling ===")
-    
+
     # Create some words that might not be in the training corpus
     oov_words = [
         "untrained",
@@ -231,7 +232,7 @@ def demonstrate_oov_handling(en_tokenizer: BPETokenizer) -> None:
         "anthropically",  # Made-up word related to Anthropic
         "multimodality",
     ]
-    
+
     for word in oov_words:
         tokens = en_tokenizer.tokenize(word)
         print(f"Word: {word}")
@@ -243,7 +244,7 @@ def demonstrate_oov_handling(en_tokenizer: BPETokenizer) -> None:
 def prepare_for_transformer(
     de_tokenizer: BPETokenizer,  # German tokenizer (source)
     en_tokenizer: BPETokenizer,  # English tokenizer (target)
-    de_texts: List[str],         # German texts (source) 
+    de_texts: List[str],         # German texts (source)
     en_texts: List[str],         # English texts (target)
     max_length: int = 128,
     batch_size: int = 32,
@@ -260,7 +261,7 @@ def prepare_for_transformer(
         batch_size: Batch size
     """
     print("\n=== Preparing for Transformer Training (German → English) ===")
-    
+
     # Create training data loaders
     print("Creating source (German) dataloader...")
     de_train_dataloader, _ = create_transformer_dataloaders(
@@ -269,7 +270,7 @@ def prepare_for_transformer(
         batch_size=batch_size,
         max_length=max_length,
     )
-    
+
     print("Creating target (English) dataloader...")
     en_train_dataloader, _ = create_transformer_dataloaders(
         train_texts=en_texts[:1000],  # Use a subset for demonstration
@@ -277,23 +278,23 @@ def prepare_for_transformer(
         batch_size=batch_size,
         max_length=max_length,
     )
-    
+
     # Show examples of batches
     print("\nExample German batch (source language):")
     de_batch = next(iter(de_train_dataloader))
     print(f"Input IDs shape: {de_batch['input_ids'].shape}")
     print(f"Attention mask shape: {de_batch['attention_mask'].shape}")
-    
+
     # Decode a sample sequence
     sample_seq = de_batch['input_ids'][0].tolist()
     sample_mask = de_batch['attention_mask'][0].tolist()
-    
+
     # Only include tokens where attention mask is 1 (exclude padding)
     active_tokens = [idx for idx, mask in zip(sample_seq, sample_mask) if mask == 1]
-    
+
     print(f"Sample sequence length: {len(active_tokens)}")
     print(f"Decoded German sample: {de_tokenizer.decode(active_tokens)}")
-    
+
     print("\nInstructions for German to English translation training:")
     print("1. Use the German tokenizer to tokenize source texts")
     print("2. Use the English tokenizer to tokenize target texts")
@@ -305,7 +306,7 @@ def prepare_for_transformer(
 def main():
     # Set seed for reproducibility
     set_seed(42)
-    
+
     print("Loading Europarl dataset...")
     # Load the Europarl dataset instead of IWSLT
     train_dataset = EuroparlDataset(
@@ -314,15 +315,15 @@ def main():
         tgt_lang="en",
         max_examples=100000  # Adjust as needed
     )
-    
+
     # Split data into source and target languages
     en_texts = train_dataset.src_data
     de_texts = train_dataset.tgt_data
-    
+
     print(f"Loaded {len(en_texts)} training examples")
     print(f"Example English text: {en_texts[0]}")
     print(f"Example German text: {de_texts[0]}")
-    
+
     # Rest of your code remains the same
     # Train tokenizers
     en_tokenizer, de_tokenizer = train_bpe_tokenizers(
@@ -332,20 +333,20 @@ def main():
         min_frequency=2,
         save_dir="models/tokenizers",
     )
-    
+
     # Test tokenizers
     test_tokenizers(en_tokenizer, de_tokenizer)
-    
+
     # Analyze tokenization
     analyze_tokenization(
         en_tokenizer=en_tokenizer,
         en_texts=en_texts,
         sample_size=1000,  # Analyze 1000 examples
     )
-    
+
     # Demonstrate OOV handling
     demonstrate_oov_handling(en_tokenizer)
-    
+
     # Prepare for transformer training
     prepare_for_transformer(
         en_tokenizer=en_tokenizer,

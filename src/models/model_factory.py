@@ -7,22 +7,22 @@ including vision transformers, text models, and multimodal models with
 appropriate configuration.
 """
 
+import logging
+from typing import Any
+
 import torch
 import torch.nn as nn
-import logging
-from typing import Dict, Any, Optional, Union, Tuple
 
-from ..models.vision.vision_transformer import VisionTransformer
+from ..models.pretrained.huggingface_wrapper import (
+    DimensionMatchingWrapper,
+    HuggingFaceTextModelWrapper,
+)
 from ..models.transformer import EncoderDecoderTransformer
+from ..models.vision.vision_transformer import VisionTransformer
+from ..utils.model_utils import count_parameters
 from .multimodal.multimodal_integration import (
-    MultiModalTransformer,
     CrossAttentionMultiModalTransformer,
 )
-from ..models.pretrained.huggingface_wrapper import (
-    HuggingFaceTextModelWrapper,
-    DimensionMatchingWrapper,
-)
-from ..utils.model_utils import count_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
     # Create text transformer with pretrained weights
     try:
-        from transformers import AutoModel, AutoTokenizer
+        pass
 
         logger.info(f"Loading pretrained text model: {args.text_model}")
 

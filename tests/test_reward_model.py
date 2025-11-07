@@ -9,21 +9,21 @@ Tests cover:
 - Integration with PreferenceDataset
 """
 
+import tempfile
+from pathlib import Path
+
 import pytest
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import tempfile
-import shutil
-from pathlib import Path
 
 # Import the components to test
 from src.safety.constitutional.reward_model import (
     RewardModel,
+    RewardModelTrainer,
     compute_reward_loss,
-    train_reward_model,
     evaluate_reward_model,
-    RewardModelTrainer
+    train_reward_model,
 )
 
 
@@ -468,8 +468,9 @@ class TestIntegrationWithPreferenceDataset:
 
     def test_works_with_preference_dataset(self, reward_model, sample_preference_data, tokenizer, device):
         """Test that reward model works with PreferenceDataset."""
-        from src.safety.constitutional.preference_comparison import PreferenceDataset
         from torch.utils.data import DataLoader
+
+        from src.safety.constitutional.preference_comparison import PreferenceDataset
 
         # Create dataset
         dataset = PreferenceDataset(

@@ -15,12 +15,11 @@ DEPENDENCIES:
 - typing
 """
 
+import logging
 import os
+
 import torch
 import torch.nn as nn
-import logging
-from typing import Dict, Optional, Union, Tuple, Any, List
-from transformers import PreTrainedModel, AutoModel, AutoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
 
         # Load the model on appropriate device
         if "mobilebert" in model_name.lower():
-            from transformers import MobileBertModel, MobileBertTokenizer
+            from transformers import MobileBertModel
 
             print(f"Loading MobileBERT model: {model_name}")
             self.encoder = MobileBertModel.from_pretrained(model_name)
@@ -81,7 +80,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             print(f"MobileBERT hidden size: {self.d_model}")  # Diagnostic logging
 
         elif "albert" in model_name.lower():
-            from transformers import AlbertModel, AlbertTokenizer
+            from transformers import AlbertModel
 
             print(f"Loading ALBERT model: {model_name}")
             self.encoder = AlbertModel.from_pretrained(model_name)
@@ -107,7 +106,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             print(f"FlauBERT hidden size: {self.d_model}")  # Diagnostic logging
 
         elif "bert" in model_name.lower() and "distil" not in model_name.lower():
-            from transformers import BertModel, BertTokenizer
+            from transformers import BertModel
 
             print(f"Loading BERT model: {model_name}")
             self.encoder = BertModel.from_pretrained(model_name)
@@ -115,7 +114,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder_type = "bert"
 
         elif "roberta" in model_name.lower():
-            from transformers import RobertaModel, RobertaTokenizer
+            from transformers import RobertaModel
 
             print(f"Loading RoBERTa model: {model_name}")
             self.encoder = RobertaModel.from_pretrained(model_name)
@@ -123,7 +122,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder_type = "roberta"
 
         elif "distilbert" in model_name.lower():
-            from transformers import DistilBertModel, DistilBertTokenizer
+            from transformers import DistilBertModel
 
             print(f"Loading DistilBERT model: {model_name}")
             self.encoder = DistilBertModel.from_pretrained(model_name)

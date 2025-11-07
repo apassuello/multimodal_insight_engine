@@ -9,11 +9,11 @@ KEY COMPONENTS:
 DEPENDENCIES: re, json, os, typing, datetime
 SPECIAL NOTES: Implements comprehensive regex-based pattern matching for various safety concerns"""
 
-import re
 import json
 import os
-from typing import Dict, List, Tuple, Set, Optional, Any
+import re
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 # Safety categories
 CATEGORY_TOXICITY = "toxicity"

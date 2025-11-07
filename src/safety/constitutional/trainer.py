@@ -8,15 +8,15 @@ DEPENDENCIES: torch, typing, framework, evaluator, model_utils
 SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning
 """
 
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Any, Optional, Tuple
-import numpy as np
 from tqdm import tqdm
 
-from .framework import ConstitutionalFramework
 from .evaluator import ConstitutionalSafetyEvaluator
+from .framework import ConstitutionalFramework
 from .principles import setup_default_framework
 
 
@@ -156,7 +156,7 @@ class RLAIFTrainer:
             Generated response text
         """
         try:
-            from .model_utils import generate_text, GenerationConfig
+            from .model_utils import GenerationConfig, generate_text
 
             # Get tokenizer
             if tokenizer is None:
@@ -211,7 +211,7 @@ Provide a detailed analysis of any issues with respect to:
 Analysis:"""
 
         try:
-            from .model_utils import generate_text, GenerationConfig
+            from .model_utils import GenerationConfig, generate_text
 
             # Use critique model or policy model
             model = self.critique_model if self.critique_model is not None else self.policy_model

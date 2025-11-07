@@ -7,10 +7,10 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, torch.nn, typing
 SPECIAL NOTES: Supports both learned and sinusoidal positional embeddings and optional class tokens"""
 
+import os
+
 import torch
 import torch.nn as nn
-from typing import Tuple, Optional
-import os
 
 
 class PatchEmbedding(nn.Module):

@@ -14,9 +14,9 @@ DEPENDENCIES:
 """
 
 import os
-from transformers import BertTokenizer, PreTrainedTokenizer
-from typing import List, Dict, Optional, Union, Any
-from .base_tokenizer import BaseTokenizer
+from typing import Dict, List
+
+from transformers import BertTokenizer
 
 
 class BertTokenizerAdapter:

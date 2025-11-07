@@ -1,18 +1,19 @@
-import torch
-import os
 import json
-import time
-import psutil
 import logging
-import threading
-from typing import List, Dict, Tuple, Optional, Set, Counter as CounterType, Any, Union
-from collections import Counter, OrderedDict
+import os
 import re
+import threading
+import time
+from collections import Counter, OrderedDict
+from typing import Any, Dict, List, Optional, Tuple
+
+import psutil
+import torch
 from tqdm import tqdm
 
 from .base_tokenizer import BaseTokenizer
-from .vocabulary import Vocabulary
 from .preprocessing import clean_text
+from .vocabulary import Vocabulary
 
 logger = logging.getLogger(__name__)
 

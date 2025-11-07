@@ -1,22 +1,20 @@
 # src/training/strategies/end_to_end_strategy.py
 
-import torch
-import torch.nn as nn
-from torch.optim.adamw import AdamW
-from typing import Dict, List, Optional, Any, Callable, Union
 import logging
 import os
-from tqdm import tqdm
-import torch.nn.functional as F
+from typing import Any, Dict
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.utils.learningrate_scheduler import WarmupCosineScheduler
-from src.utils.gradient_handler import GradientHandler
-from src.utils.metrics_tracker import MetricsTracker
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim.adamw import AdamW
+
 from src.training.losses.hard_negative_mining_contrastive_loss import (
     HardNegativeMiningContrastiveLoss,
 )
-from src.training.losses.feature_consistency_loss import FeatureConsistencyLoss
+from src.training.strategies.training_strategy import TrainingStrategy
+from src.utils.gradient_handler import GradientHandler
+from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
 logger = logging.getLogger(__name__)
 

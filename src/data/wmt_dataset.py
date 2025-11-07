@@ -14,11 +14,10 @@ DEPENDENCIES:
 """
 
 import os
-import sys
 import random
+from typing import List, Optional, Tuple
+
 from tqdm import tqdm
-from typing import List, Tuple, Optional, Dict, Any
-import json
 
 
 class WMTDataset:
@@ -125,7 +124,7 @@ class WMTDataset:
             Tuple containing lists of source and target sentences
         """
         try:
-            from datasets import load_dataset, get_dataset_config_names
+            from datasets import get_dataset_config_names, load_dataset
 
             # Determine dataset name and config
             dataset_name = f"wmt{self.year}"

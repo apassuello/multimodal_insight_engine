@@ -1,25 +1,26 @@
 # src/training/trainers/trainer_factory.py
 
-import torch
-import torch.nn as nn
-from typing import Dict, Optional, Any, Union, List, Type
 import logging
 import os
+from typing import Any, Dict, List, Optional, Union
+
+import torch
+import torch.nn as nn
+
+from src.training.strategies.cross_modal_strategy import CrossModalStrategy
+from src.training.strategies.end_to_end_strategy import EndToEndStrategy
+
+# Import strategies
+from src.training.strategies.single_modality_strategy import SingleModalityStrategy
 
 # Import trainers
 from src.training.trainers.multimodal_trainer import MultimodalTrainer
 from src.training.trainers.multistage_trainer import MultistageTrainer
 
-# Import strategies
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.training.strategies.single_modality_strategy import SingleModalityStrategy
-from src.training.strategies.cross_modal_strategy import CrossModalStrategy
-from src.training.strategies.end_to_end_strategy import EndToEndStrategy
-
 # Import utilities
 from src.utils.learningrate_scheduler import (
-    WarmupCosineScheduler,
     LinearWarmupScheduler,
+    WarmupCosineScheduler,
 )
 
 logger = logging.getLogger(__name__)

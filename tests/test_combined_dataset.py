@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
 from src.data.combined_translation_dataset import CombinedTranslationDataset
 
 # Mock the OpenSubtitlesDataset import
@@ -26,14 +28,14 @@ def test_combined_dataset_initialization(mock_europarl_dataset, mock_opensubtitl
     """Test basic initialization of CombinedTranslationDataset."""
     with patch('src.data.combined_translation_dataset.EuroparlDataset', return_value=mock_europarl_dataset), \
          patch('src.data.combined_translation_dataset.OpenSubtitlesDataset', return_value=mock_opensubtitles_dataset):
-        
+
         # Test with default parameters
         dataset = CombinedTranslationDataset()
         assert dataset.src_lang == "de"
         assert dataset.tgt_lang == "en"
         assert len(dataset.src_data) == 5  # 3 from europarl + 2 from opensubtitles
         assert len(dataset.tgt_data) == 5
-        
+
         # Test with custom parameters
         dataset = CombinedTranslationDataset(
             src_lang="fr",
@@ -67,4 +69,4 @@ def test_combined_dataset_empty_datasets():
     """Test initialization with empty datasets dictionary."""
     dataset = CombinedTranslationDataset(datasets={})
     assert len(dataset.src_data) == 0
-    assert len(dataset.tgt_data) == 0 
+    assert len(dataset.tgt_data) == 0

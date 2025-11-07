@@ -1,14 +1,13 @@
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-import math
+
 from src.training.optimizers import (
     AdamW,
-    OneCycleLR,
     CosineAnnealingLR,
-    LinearWarmupLR,
     GradientClipper,
+    LinearWarmupLR,
+    OneCycleLR,
 )
 
 

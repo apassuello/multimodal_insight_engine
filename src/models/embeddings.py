@@ -1,8 +1,8 @@
+import math
+import os
+
 import torch
 import torch.nn as nn
-import math
-from typing import Optional
-import os
 
 """MODULE: embeddings.py
 PURPOSE: Implements token embedding layers for transformer models with proper initialization and scaling
@@ -18,7 +18,7 @@ class TokenEmbedding(nn.Module):
     This layer converts token indices to dense vector representations.
     It also scales the embeddings by sqrt(d_model) as per the original transformer paper.
     """
-    
+
     def __init__(self, vocab_size: int, d_model: int):
         """
         Initialize the token embedding layer.
@@ -28,13 +28,13 @@ class TokenEmbedding(nn.Module):
             d_model: Dimension of the embeddings
         """
         super().__init__()
-        
+
         self.embedding = nn.Embedding(vocab_size, d_model)
         self.d_model = d_model
-        
+
         # Initialize weights using Xavier uniform initialization
         nn.init.xavier_uniform_(self.embedding.weight)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Convert token indices to embeddings.
@@ -47,11 +47,11 @@ class TokenEmbedding(nn.Module):
         """
         # Apply embedding and scale by sqrt(d_model)
         embeddings = self.embedding(x)
-        
+
         # Ensure embeddings have the correct shape and dimension
         batch_size, seq_length = x.shape
         embeddings = embeddings.view(batch_size, seq_length, self.d_model)
-        
+
         # Scale embeddings
         return embeddings * math.sqrt(self.d_model)
 

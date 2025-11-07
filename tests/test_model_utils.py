@@ -3,16 +3,18 @@ Unit tests for model_utils.py
 Tests utility functions for model loading and text generation.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 import torch
+
 from src.safety.constitutional.model_utils import (
     GenerationConfig,
-    load_model,
-    generate_text,
     batch_generate,
+    generate_text,
+    get_model_device,
+    load_model,
     prepare_model_for_training,
-    get_model_device
 )
 
 

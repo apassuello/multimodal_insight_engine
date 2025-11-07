@@ -1,11 +1,10 @@
-import numpy as np
-from typing import List, Dict, Tuple
-from collections import Counter
-import re
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-import nltk
-from nltk.metrics.distance import edit_distance
 import os
+from typing import Dict, List, Tuple
+
+import nltk
+import numpy as np
+from nltk.metrics.distance import edit_distance
+from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 
 # Download required NLTK data
 try:
@@ -28,15 +27,15 @@ def calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[
     # Tokenize hypotheses and references
     hyp_tokens = [nltk.word_tokenize(hyp.lower()) for hyp in hypotheses]
     ref_tokens = [nltk.word_tokenize(ref.lower()) for ref in references]
-    
+
     # Calculate BLEU score with smoothing
     smoothing = SmoothingFunction().method1
     scores = []
-    
+
     for hyp, ref in zip(hyp_tokens, ref_tokens):
         score = sentence_bleu([ref], hyp, weights=weights, smoothing_function=smoothing)
         scores.append(score)
-    
+
     return float(np.mean(scores))
 
 def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
@@ -51,19 +50,19 @@ def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
         Average TER score (lower is better)
     """
     scores = []
-    
+
     for hyp, ref in zip(hypotheses, references):
         # Tokenize
         hyp_tokens = nltk.word_tokenize(hyp.lower())
         ref_tokens = nltk.word_tokenize(ref.lower())
-        
+
         # Calculate edit distance
         distance = edit_distance(hyp_tokens, ref_tokens)
-        
+
         # Normalize by reference length
         score = distance / len(ref_tokens)
         scores.append(score)
-    
+
     return float(np.mean(scores))
 
 def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[str, float]:
@@ -79,7 +78,7 @@ def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[s
     """
     bleu = calculate_bleu(hypotheses, references)
     ter = calculate_ter(hypotheses, references)
-    
+
     return {
         "bleu": bleu,
         "ter": ter
@@ -134,4 +133,4 @@ def extract_file_metadata(file_path=__file__):
         ],
         "external_dependencies": ["numpy", "nltk", "re"],
         "complexity_score": 3  # Moderate-low complexity with straightforward implementation of standard metrics
-    } 
+    }

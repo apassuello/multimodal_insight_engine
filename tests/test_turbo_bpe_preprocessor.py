@@ -1,8 +1,9 @@
-import pytest
 import os
-import torch
-import pickle
 from collections import namedtuple
+
+import pytest
+import torch
+
 from src.data.tokenization.turbo_bpe_preprocessor import TurboBPEPreprocessor
 
 # Mock dataset class for testing
@@ -20,13 +21,13 @@ class MockTokenizer:
             "<unk>": 0
         }
         self.word_token_cache = {}
-    
+
     def preprocess(self, text):
         return text.lower()
-    
+
     def _tokenize_word(self, word):
         return [word]
-    
+
     def token_to_index(self, token):
         return self.vocab.get(token, self.vocab["<unk>"])
 
@@ -75,7 +76,7 @@ def test_cache_operations(preprocessor, sample_dataset, mock_tokenizer):
     # Test saving to cache
     test_data = (["token1"], ["token2"])
     preprocessor.save_preprocessed_data(test_data, sample_dataset)
-    
+
     # Test loading from cache
     cached_data = preprocessor.check_cached_preprocessed_data(sample_dataset)
     assert cached_data == test_data
@@ -84,11 +85,11 @@ def test_process_text_batch(preprocessor, mock_tokenizer):
     """Test batch text processing."""
     texts = ["hello world", "test"]
     result = preprocessor._process_text_batch(texts, mock_tokenizer)
-    
+
     assert isinstance(result, list)
     assert len(result) == len(texts)
     assert all(isinstance(ids, list) for ids in result)
-    
+
     # Test caching
     assert "hello world" in preprocessor.word_cache
     assert "test" in preprocessor.word_cache
@@ -104,7 +105,7 @@ def test_process_data_chunk(preprocessor, mock_tokenizer):
         'tgt_bos': 1,
         'tgt_eos': 2
     }
-    
+
     result = preprocessor._process_data_chunk((
         chunk_id,
         src_chunk,
@@ -113,7 +114,7 @@ def test_process_data_chunk(preprocessor, mock_tokenizer):
         mock_tokenizer,
         special_tokens
     ))
-    
+
     assert isinstance(result, tuple)
     assert len(result) == 3
     assert result[0] == chunk_id
@@ -128,30 +129,30 @@ def test_preprocess_with_caching(preprocessor, sample_dataset, mock_tokenizer):
         mock_tokenizer,
         mock_tokenizer
     )
-    
+
     assert isinstance(src_sequences, list)
     assert isinstance(tgt_sequences, list)
     assert len(src_sequences) == len(sample_dataset.src_data)
     assert len(tgt_sequences) == len(sample_dataset.tgt_data)
-    
+
     # Second run - should use cache
     cached_src, cached_tgt = preprocessor.preprocess_with_caching(
         sample_dataset,
         mock_tokenizer,
         mock_tokenizer
     )
-    
+
     assert cached_src == src_sequences
     assert cached_tgt == tgt_sequences
 
 def test_optimize_tokenizer(preprocessor, mock_tokenizer):
     """Test tokenizer optimization."""
     optimized = preprocessor.optimize_tokenizer_for_preprocessing(mock_tokenizer)
-    
+
     # Test that optimization added necessary attributes
     assert hasattr(optimized, 'word_token_cache')
     assert hasattr(optimized, '_tokenize_word_original')
-    
+
     # Test optimized tokenization
     word = "test"
     result = optimized._tokenize_word(word)
@@ -166,7 +167,7 @@ def test_force_regenerate(preprocessor, sample_dataset, mock_tokenizer):
         mock_tokenizer,
         mock_tokenizer
     )
-    
+
     # Second run with force_regenerate=True
     second_run = preprocessor.preprocess_with_caching(
         sample_dataset,
@@ -174,7 +175,7 @@ def test_force_regenerate(preprocessor, sample_dataset, mock_tokenizer):
         mock_tokenizer,
         force_regenerate=True
     )
-    
+
     # Results should be the same but should have regenerated
     assert second_run == first_run
 
@@ -182,10 +183,10 @@ def test_cache_size_management(preprocessor, mock_tokenizer):
     """Test that cache size is properly managed."""
     # Generate many texts to process
     texts = [f"text{i}" for i in range(1000)]
-    
+
     # Process texts
     preprocessor._process_text_batch(texts, mock_tokenizer)
-    
+
     # Check that cache size is reasonable
     assert len(preprocessor.word_cache) <= 100000  # Max cache size
 
@@ -196,12 +197,12 @@ def test_special_token_handling(preprocessor, sample_dataset, mock_tokenizer):
         mock_tokenizer,
         mock_tokenizer
     )
-    
+
     # Check that special tokens are added correctly
     for sequence in src_sequences:
         assert sequence[0] == mock_tokenizer.special_tokens["bos_token_idx"]
         assert sequence[-1] == mock_tokenizer.special_tokens["eos_token_idx"]
-    
+
     for sequence in tgt_sequences:
         assert sequence[0] == mock_tokenizer.special_tokens["bos_token_idx"]
-        assert sequence[-1] == mock_tokenizer.special_tokens["eos_token_idx"] 
+        assert sequence[-1] == mock_tokenizer.special_tokens["eos_token_idx"]

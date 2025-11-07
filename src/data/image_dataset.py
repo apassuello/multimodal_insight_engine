@@ -13,13 +13,14 @@ KEY COMPONENTS:
     - Integration with image preprocessing pipeline
 """
 
-import torch
-from torch.utils.data import Dataset
-import os
-from PIL import Image
-from typing import Optional, Callable, List, Tuple, Dict, Any
 import json
+import os
 from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
 
 from ..models.vision.image_preprocessing import ImagePreprocessor
 

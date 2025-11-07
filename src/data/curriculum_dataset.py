@@ -13,12 +13,13 @@ KEY COMPONENTS:
     - Tools for monitoring curriculum progression and statistics
 """
 
+import os
+from collections import Counter
+from typing import Any, Dict, List
+
+import numpy as np
 import torch
 from torch.utils.data import Dataset
-import numpy as np
-from collections import Counter
-from typing import List, Dict, Tuple, Optional, Callable, Any
-import os
 
 
 class CurriculumTranslationDataset(Dataset):

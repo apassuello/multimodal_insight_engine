@@ -7,8 +7,8 @@ with the standard Python logging module.
 
 import logging as std_logging
 import os
-from typing import Optional, Dict, Any, Union
 import sys
+from typing import Optional, Union
 
 # Re-export NullHandler from standard logging
 NullHandler = std_logging.NullHandler
@@ -31,13 +31,13 @@ class LogManager:
     
     This class provides methods for configuring loggers and obtaining logger instances.
     """
-    
+
     def __init__(self):
         """Initialize the log manager."""
         self.loggers = {}
         self.default_level = LOG_LEVELS.get(os.environ.get('LOG_LEVEL', DEFAULT_LOG_LEVEL), std_logging.INFO)
         self.default_format = os.environ.get('LOG_FORMAT', DEFAULT_LOG_FORMAT)
-        
+
     def get_logger(self, name: str, level: Optional[Union[str, int]] = None) -> std_logging.Logger:
         """
         Get a logger instance with the specified name.
@@ -51,10 +51,10 @@ class LogManager:
         """
         if name in self.loggers:
             return self.loggers[name]
-        
+
         # Create new logger
         logger = std_logging.getLogger(name)
-        
+
         # Set level
         if level is not None:
             if isinstance(level, str):
@@ -62,18 +62,18 @@ class LogManager:
             logger.setLevel(level)
         else:
             logger.setLevel(self.default_level)
-        
+
         # Add handler if not already present
         if not logger.handlers:
             handler = std_logging.StreamHandler(sys.stdout)
             formatter = std_logging.Formatter(self.default_format)
             handler.setFormatter(formatter)
             logger.addHandler(handler)
-        
+
         # Store and return
         self.loggers[name] = logger
         return logger
-    
+
     def configure_file_logging(self, log_dir: str, name: str = 'application') -> None:
         """
         Configure file logging for the application.
@@ -83,16 +83,16 @@ class LogManager:
             name: Name of the log file (will be used as prefix)
         """
         os.makedirs(log_dir, exist_ok=True)
-        
+
         # Create file handler
         log_file = os.path.join(log_dir, f"{name}.log")
         file_handler = std_logging.FileHandler(log_file)
         file_handler.setFormatter(std_logging.Formatter(self.default_format))
-        
+
         # Add to root logger
         root_logger = std_logging.getLogger()
         root_logger.addHandler(file_handler)
-        
+
         # Log start message
         root_logger.info(f"File logging configured: {log_file}")
 

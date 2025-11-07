@@ -7,8 +7,8 @@ DEPENDENCIES: typing, re, framework, principles
 SPECIAL NOTES: Extends safety filtering with principled transformations
 """
 
-from typing import Dict, Any, Optional, Tuple
 import re
+from typing import Any, Dict, Optional, Tuple
 
 from .framework import ConstitutionalFramework
 from .principles import setup_default_framework

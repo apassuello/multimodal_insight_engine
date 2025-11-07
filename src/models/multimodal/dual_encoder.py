@@ -17,12 +17,12 @@ SPECIAL NOTES:
 - Monitors feature diversity metrics during training
 """
 
+import os
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Tuple
-import numpy as np
-import os
 
 
 class DualEncoder(nn.Module):

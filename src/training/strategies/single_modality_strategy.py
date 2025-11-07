@@ -1,18 +1,17 @@
 # src/training/strategies/single_modality_strategy.py
 
+import logging
+from typing import Any, Dict
+
 import torch
 import torch.nn as nn
 from torch.optim.adamw import AdamW
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
-from tqdm import tqdm
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.utils.learningrate_scheduler import WarmupCosineScheduler
-from src.utils.gradient_handler import GradientHandler
-from src.utils.metrics_tracker import MetricsTracker
 from src.training.losses.contrastive_loss import ContrastiveLoss
 from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.strategies.training_strategy import TrainingStrategy
+from src.utils.gradient_handler import GradientHandler
+from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
 logger = logging.getLogger(__name__)
 

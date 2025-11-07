@@ -1,17 +1,18 @@
 # src/safety/filter.py
 
+import os
 import re
-from typing import Dict, List, Union, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from .evaluator import SafetyEvaluator
 from .utils import (
-    CATEGORY_TOXICITY,
     CATEGORY_BIAS,
     CATEGORY_HARMFUL_INSTRUCTIONS,
     CATEGORY_PERSONAL_INFORMATION,
+    CATEGORY_TOXICITY,
     PII_PATTERNS,
     TOXICITY_PATTERNS,
 )
-import os
 
 """MODULE: filter.py
 PURPOSE: Implements safety filtering mechanisms for model inputs and outputs

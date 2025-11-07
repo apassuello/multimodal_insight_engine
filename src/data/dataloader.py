@@ -1,8 +1,8 @@
-import torch
-from torch.utils.data import Dataset, DataLoader
-from typing import Dict, Any, Optional, Tuple, List, Callable
-import numpy as np
 import os
+from typing import Dict, List, Optional, Tuple
+
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 
 class MultimodalDataset(Dataset):

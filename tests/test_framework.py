@@ -3,9 +3,14 @@ Unit tests for framework.py
 Tests the core Constitutional AI framework classes (ConstitutionalPrinciple and ConstitutionalFramework).
 """
 
+from typing import Any, Dict
+
 import pytest
-from typing import Dict, Any
-from src.safety.constitutional.framework import ConstitutionalPrinciple, ConstitutionalFramework
+
+from src.safety.constitutional.framework import (
+    ConstitutionalFramework,
+    ConstitutionalPrinciple,
+)
 
 
 class TestConstitutionalPrinciple:

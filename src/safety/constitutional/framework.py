@@ -7,7 +7,7 @@ DEPENDENCIES: typing
 SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's research
 """
 
-from typing import Callable, Dict, Any, List, Optional
+from typing import Any, Callable, Dict, List
 
 
 class ConstitutionalPrinciple:

@@ -1,11 +1,12 @@
+import math
+import os
+from typing import Literal, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-import math
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-import numpy as np
-from typing import Optional, Literal
-import os
 
 """MODULE: positional.py
 PURPOSE: Implements various positional encoding schemes for transformer models to handle sequence order information
@@ -108,7 +109,7 @@ class PositionalEncoding(nn.Module):
                 raise ValueError(
                     f"Input dimension ({d_model}) does not match model dimension ({self.d_model})"
                 )
-        
+
         if seq_length > self.max_seq_length:
             raise ValueError(
                 f"Sequence length ({seq_length}) exceeds maximum length ({self.max_seq_length})"
@@ -179,7 +180,7 @@ class PositionalEncoding(nn.Module):
         """
         if self.encoding_type != "learned":
             raise ValueError("Can only save embeddings for learned positional encoding")
-        
+
         torch.save(self.position_embeddings, path)
 
     def load_learned_embeddings(self, path: str) -> None:
@@ -194,8 +195,8 @@ class PositionalEncoding(nn.Module):
         """
         if self.encoding_type != "learned":
             raise ValueError("Can only load embeddings for learned positional encoding")
-        
-        self.position_embeddings = torch.load(path)
+
+        self.position_embeddings = torch.load(path, weights_only=True)
 
 
 class RotaryPositionEncoding(nn.Module):
@@ -206,7 +207,7 @@ class RotaryPositionEncoding(nn.Module):
     models better handle relative positions and longer sequences.
     Based on the paper "RoFormer: Enhanced Transformer with Rotary Position Embedding"
     """
-    
+
     def __init__(self, head_dim: int, max_seq_length: int = 5000, base: int = 10000):
         """
         Initialize the rotary position embeddings.
@@ -217,38 +218,38 @@ class RotaryPositionEncoding(nn.Module):
             base: Base for the frequency calculation
         """
         super().__init__()
-        
+
         if head_dim % 2 != 0:
             raise ValueError(f"head_dim must be divisible by 2, got {head_dim}")
-        
+
         self.head_dim = head_dim
         self.max_seq_length = max_seq_length
         self.base = base
-        
+
         # Pre-compute frequency bands
         self._compute_freqs()
-    
+
     def _compute_freqs(self):
         """Compute the frequency bands for rotary embeddings."""
         # Create frequency bands
         theta = 1.0 / (self.base ** (torch.arange(0, self.head_dim, 2).float() / self.head_dim))
-        
+
         # Create position sequence
         seq_idx = torch.arange(self.max_seq_length).float()
-        
+
         # Compute frequencies for each position and dimension
         # Shape: [seq_len, head_dim/2]
         freqs = torch.outer(seq_idx, theta)
-        
+
         # Cache cos and sin values for efficiency
         # Each has shape [seq_len, head_dim/2]
         emb_cos = torch.cos(freqs)
         emb_sin = torch.sin(freqs)
-        
+
         # Register buffers (not parameters)
         self.register_buffer("cos_cached", emb_cos)
         self.register_buffer("sin_cached", emb_sin)
-    
+
     def forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple:
         """
         Apply rotary position embeddings to query and key tensors.
@@ -263,50 +264,50 @@ class RotaryPositionEncoding(nn.Module):
         """
         if seq_len is None:
             seq_len = q.size(1)
-        
+
         if seq_len > self.max_seq_length:
             raise ValueError(
                 f"Sequence length ({seq_len}) exceeds maximum length ({self.max_seq_length})"
             )
-        
+
         # Validate input dimensions
         assert q.size(-1) == self.head_dim, f"Query dim {q.size(-1)} doesn't match head_dim {self.head_dim}"
         assert k.size(-1) == self.head_dim, f"Key dim {k.size(-1)} doesn't match head_dim {self.head_dim}"
-        
+
         # Get the cos and sin values for the current sequence length
         cos = self.cos_cached[:seq_len]  # [seq_len, head_dim/2]
         sin = self.sin_cached[:seq_len]  # [seq_len, head_dim/2]
-        
+
         # Reshape q and k for easier rotation
         q_reshape = q.reshape(*q.shape[:-1], -1, 2)  # [batch, seq_len, n_heads, head_dim/2, 2]
         k_reshape = k.reshape(*k.shape[:-1], -1, 2)  # [batch, seq_len, n_heads, head_dim/2, 2]
-        
+
         # Separate real and imaginary parts
         q_real, q_imag = q_reshape[..., 0], q_reshape[..., 1]  # Each has shape [batch, seq_len, n_heads, head_dim/2]
         k_real, k_imag = k_reshape[..., 0], k_reshape[..., 1]  # Each has shape [batch, seq_len, n_heads, head_dim/2]
-        
+
         # Reshape cos and sin for broadcasting
         # cos and sin have shape [seq_len, head_dim/2]
         # We need to add batch and head dimensions
         cos = cos.unsqueeze(0).unsqueeze(2)  # [1, seq_len, 1, head_dim/2]
         sin = sin.unsqueeze(0).unsqueeze(2)  # [1, seq_len, 1, head_dim/2]
-        
+
         # Apply rotation
         # (a + bi) * (c + di) = (ac - bd) + (ad + bc)i
         q_real_new = q_real * cos - q_imag * sin  # [batch, seq_len, n_heads, head_dim/2]
         q_imag_new = q_real * sin + q_imag * cos  # [batch, seq_len, n_heads, head_dim/2]
         k_real_new = k_real * cos - k_imag * sin  # [batch, seq_len, n_heads, head_dim/2]
         k_imag_new = k_real * sin + k_imag * cos  # [batch, seq_len, n_heads, head_dim/2]
-        
+
         # Reshape back to original shape
         q_new = torch.stack([q_real_new, q_imag_new], dim=-1)  # [batch, seq_len, n_heads, head_dim/2, 2]
         k_new = torch.stack([k_real_new, k_imag_new], dim=-1)  # [batch, seq_len, n_heads, head_dim/2, 2]
-        
+
         q_new = q_new.reshape(*q.shape)  # [batch, seq_len, n_heads, head_dim]
         k_new = k_new.reshape(*k.shape)  # [batch, seq_len, n_heads, head_dim]
-        
+
         return q_new, k_new
-    
+
     def visualize_rotation(self, seq_length: int = 20) -> Figure:
         """
         Visualize the rotary position embeddings.
@@ -321,50 +322,50 @@ class RotaryPositionEncoding(nn.Module):
         # Use a single head with the correct head_dim
         q = torch.ones(1, seq_length, 1, self.head_dim)
         k = torch.ones(1, seq_length, 1, self.head_dim)
-        
+
         # Apply rotary embeddings
         q_rot, k_rot = self.forward(q, k, seq_length)
-        
+
         # Create a figure with two subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
-        
+
         # Plot the first two dimensions of q at each position
         ax1.set_title("Rotation of Query Vector (first 2 dimensions)")
         for pos in range(seq_length):
             ax1.arrow(
-                0, 0, 
+                0, 0,
                 q_rot[0, pos, 0, 0].item(), q_rot[0, pos, 0, 1].item(),
                 head_width=0.05, head_length=0.1, fc=f'C{pos}', ec=f'C{pos}',
                 label=f"Position {pos}" if pos < 10 else None
             )
-        
+
         ax1.set_xlim(-1.5, 1.5)
         ax1.set_ylim(-1.5, 1.5)
         ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
         ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
         ax1.set_aspect('equal')
         ax1.grid(True, alpha=0.3)
-        
+
         # Only show legend for first 10 positions to avoid cluttering
         ax1.legend(loc='upper right')
-        
+
         # Plot the first two dimensions of k at each position
         ax2.set_title("Rotation of Key Vector (first 2 dimensions)")
         for pos in range(seq_length):
             ax2.arrow(
-                0, 0, 
+                0, 0,
                 k_rot[0, pos, 0, 0].item(), k_rot[0, pos, 0, 1].item(),
                 head_width=0.05, head_length=0.1, fc=f'C{pos}', ec=f'C{pos}',
                 label=f"Position {pos}" if pos < 10 else None
             )
-        
+
         ax2.set_xlim(-1.5, 1.5)
         ax2.set_ylim(-1.5, 1.5)
         ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
         ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
         ax2.set_aspect('equal')
         ax2.grid(True, alpha=0.3)
-        
+
         plt.tight_layout()
         return fig
 

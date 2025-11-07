@@ -1,12 +1,13 @@
 # src/utils/gradient_handler.py
 
-import torch
-import torch.nn as nn
-from typing import Any, Dict, List, Optional, Union, Set, Callable
 import logging
+import os
+from typing import Any, Dict, Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+import torch
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 

@@ -16,13 +16,13 @@ SPECIAL NOTES:
 - Includes comprehensive metrics and similarity calculations
 """
 
+import logging
+import os
+from typing import Any, Dict, List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any, Union
-import numpy as np
-import logging
-import os
 
 logger = logging.getLogger(__name__)
 

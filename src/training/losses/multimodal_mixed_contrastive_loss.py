@@ -14,13 +14,13 @@ DEPENDENCIES:
 - typing
 """
 
+import logging
 import os
+from typing import Dict, List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Union, Any
-import numpy as np
-import logging
 
 logger = logging.getLogger(__name__)
 

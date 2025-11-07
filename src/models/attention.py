@@ -1,10 +1,10 @@
+import math
+import os
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Tuple
-import inspect
-import os
 
 """MODULE: attention.py
 PURPOSE: Implements various attention mechanisms for transformer architectures
@@ -428,27 +428,27 @@ class GroupedQueryAttention(nn.Module):
         - Output: (batch_size, seq_len, d_model)
         - mask (optional): (batch_size, seq_len, seq_len)
     """
-    
+
     def __init__(self, d_model, num_heads, num_key_value_heads):
         super().__init__()
         assert d_model % num_heads == 0, f"d_model {d_model} must be divisible by num_heads {num_heads}"
         assert num_heads % num_key_value_heads == 0, f"num_heads {num_heads} must be divisible by num_key_value_heads {num_key_value_heads}"
-        
+
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_kv_heads = num_key_value_heads
         self.head_dim = d_model // num_heads
-        
+
         # Query projections (one per head)
         self.q_proj = nn.Linear(d_model, d_model)
-        
+
         # Key/Value projections (shared across groups of heads)
         self.k_proj = nn.Linear(d_model, d_model)
         self.v_proj = nn.Linear(d_model, d_model)
-        
+
         # Output projection
         self.out_proj = nn.Linear(d_model, d_model)
-        
+
     def forward(self, x, mask=None):
         """Forward pass for the Grouped-Query Attention mechanism.
         
@@ -461,46 +461,46 @@ class GroupedQueryAttention(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, seq_len, d_model)
         """
         batch_size, seq_len, _ = x.shape
-        
+
         # Project queries, keys, values
         q = self.q_proj(x)  # [batch_size, seq_len, d_model]
         k = self.k_proj(x)  # [batch_size, seq_len, d_model]
         v = self.v_proj(x)  # [batch_size, seq_len, d_model]
-        
+
         # Reshape for multi-head attention
         q = q.view(batch_size, seq_len, self.num_heads, self.head_dim)
         k = k.view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
         v = v.view(batch_size, seq_len, self.num_kv_heads, self.head_dim)
-        
+
         # Transpose to [batch_size, num_heads/num_kv_heads, seq_len, head_dim]
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
-        
+
         # For each query head, determine which kv head to use
         heads_per_kv = self.num_heads // self.num_kv_heads
-        
+
         # Repeat k and v for each query head in the group
         k = k.repeat_interleave(heads_per_kv, dim=1)  # [batch_size, num_heads, seq_len, head_dim]
         v = v.repeat_interleave(heads_per_kv, dim=1)  # [batch_size, num_heads, seq_len, head_dim]
-        
+
         # Compute attention scores
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-        
+
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
-        
+
         # Apply softmax to get attention weights
         attn_weights = F.softmax(scores, dim=-1)
-        
+
         # Apply attention weights to values
         context = torch.matmul(attn_weights, v)  # [batch_size, num_heads, seq_len, head_dim]
-        
+
         # Reshape and apply output projection
         context = context.transpose(1, 2).contiguous()  # [batch_size, seq_len, num_heads, head_dim]
         context = context.view(batch_size, seq_len, self.d_model)  # [batch_size, seq_len, d_model]
         output = self.out_proj(context)
-        
+
         return output
 
 
@@ -536,30 +536,30 @@ class ALiBiAttention(nn.Module):
         - Output: (batch_size, seq_length, hidden_size)
         - mask (optional): (batch_size, seq_length, seq_length)
     """
-    
+
     def __init__(self, hidden_size, num_heads, max_seq_length=2048):
         super().__init__()
-        
+
         self.num_heads = num_heads
         self.head_dim = hidden_size // num_heads
-        
+
         # Linear projections
         self.q_proj = nn.Linear(hidden_size, hidden_size)
         self.k_proj = nn.Linear(hidden_size, hidden_size)
         self.v_proj = nn.Linear(hidden_size, hidden_size)
         self.out_proj = nn.Linear(hidden_size, hidden_size)
-        
+
         # Create slope matrix for ALiBi
         # Different slope for each head
         slopes = torch.Tensor(self._get_slopes(num_heads))
-        
+
         # Create distance matrix [seq_len, seq_len]
         distances = torch.arange(max_seq_length).unsqueeze(0) - torch.arange(max_seq_length).unsqueeze(1)
-        
+
         # Convert to bias matrix [1, num_heads, seq_len, seq_len]
         self.alibi_bias = slopes.unsqueeze(1).unsqueeze(1) * distances.unsqueeze(0)
         self.register_buffer("bias", self.alibi_bias)
-        
+
     def _get_slopes(self, n):
         """Calculate attention head-specific slopes for ALiBi position biases.
         
@@ -576,14 +576,14 @@ class ALiBiAttention(nn.Module):
         def get_slopes_power_of_2(n):
             start = 2**(-(2**-(math.log2(n)-3)))
             return [start * 2**(-i) for i in range(n)]
-        
+
         if math.log2(n).is_integer():
             return get_slopes_power_of_2(n)
         else:
             closest_power_of_2 = 2**math.floor(math.log2(n))
             return get_slopes_power_of_2(closest_power_of_2) + \
                    get_slopes_power_of_2(2*closest_power_of_2)[0:n-closest_power_of_2]
-    
+
     def forward(self, x, mask=None):
         """Forward pass of the ALiBi attention layer.
         
@@ -600,34 +600,34 @@ class ALiBiAttention(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, seq_length, hidden_size)
         """
         batch_size, seq_len, hidden_size = x.shape
-        
+
         # Linear projections
         q = self.q_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
         k = self.k_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
         v = self.v_proj(x).view(batch_size, seq_len, self.num_heads, self.head_dim)
-        
+
         # Transpose for attention [batch, heads, seq_len, head_dim]
         q = q.transpose(1, 2)
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
-        
+
         # Calculate attention scores
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-        
+
         # Add ALiBi bias (only need the part up to current sequence length)
         scores = scores + self.bias[:, :seq_len, :seq_len]
-        
+
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
-        
+
         # Attention weights and context
         attn_weights = F.softmax(scores, dim=-1)
         context = torch.matmul(attn_weights, v)
-        
+
         # Transpose back and reshape
         context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, hidden_size)
         output = self.out_proj(context)
-        
+
         return output
 
 def extract_file_metadata(file_path=__file__):

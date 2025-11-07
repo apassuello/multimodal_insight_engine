@@ -18,15 +18,15 @@ SPECIAL NOTES:
 - Visualization tools integrated for easy interpretation
 """
 
+import logging
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
-from typing import Dict, List, Tuple, Optional, Union, Any, Callable
-import os
-import logging
 
 logger = logging.getLogger(__name__)
 

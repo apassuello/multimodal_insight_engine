@@ -1,10 +1,11 @@
 # src/data/sequence_data.py
-import torch
-from torch.utils.data import Dataset, DataLoader, random_split
-from typing import Dict, List, Tuple, Optional, Any, Callable, Union
-import numpy as np
 import os
-import torch.nn.functional as F
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader, Dataset
+
 from src.data.curriculum_dataset import CurriculumTranslationDataset
 
 

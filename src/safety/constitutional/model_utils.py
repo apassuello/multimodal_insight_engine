@@ -8,9 +8,10 @@ DEPENDENCIES: transformers, torch
 SPECIAL NOTES: Provides model integration for constitutional training
 """
 
-import torch
-from typing import List, Optional, Dict, Any, Union
 from dataclasses import dataclass
+from typing import List, Optional
+
+import torch
 
 
 @dataclass

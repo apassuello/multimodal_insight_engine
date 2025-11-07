@@ -1,10 +1,11 @@
 import os
-import sys
-import torch
 import random
+import sys
+from typing import List, Optional, Tuple
+
 import numpy as np
-from typing import List, Dict, Tuple, Optional
-from torch.utils.data import Dataset, DataLoader
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,13 +13,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import our tokenization modules
 from src.data.tokenization import (
     BPETokenizer,
-    create_transformer_dataloaders,
 )
 
 # Import the transformer and training components
 from src.models.transformer import EncoderDecoderTransformer
 from src.training.transformer_trainer import TransformerTrainer
-from src.training.transformer_utils import create_padding_mask, create_causal_mask
 
 
 class TranslationDataset(Dataset):
@@ -27,7 +26,7 @@ class TranslationDataset(Dataset):
     
     This dataset handles parallel text data for sequence-to-sequence tasks.
     """
-    
+
     def __init__(
         self,
         source_texts: List[str],
@@ -49,14 +48,14 @@ class TranslationDataset(Dataset):
             max_target_length: Maximum target sequence length
         """
         assert len(source_texts) == len(target_texts), "Source and target must have same length"
-        
+
         self.source_texts = source_texts
         self.target_texts = target_texts
         self.source_tokenizer = source_tokenizer
         self.target_tokenizer = target_tokenizer
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
-        
+
         # Get special token indices
         self.src_pad_idx = source_tokenizer.special_tokens.get("pad_token_idx", 0)
         self.tgt_pad_idx = target_tokenizer.special_tokens.get("pad_token_idx", 0)
@@ -64,38 +63,38 @@ class TranslationDataset(Dataset):
         self.tgt_bos_idx = target_tokenizer.special_tokens.get("bos_token_idx", 1)
         self.src_eos_idx = source_tokenizer.special_tokens.get("eos_token_idx", 2)
         self.tgt_eos_idx = target_tokenizer.special_tokens.get("eos_token_idx", 2)
-    
+
     def __len__(self):
         return len(self.source_texts)
-    
+
     def __getitem__(self, idx):
         source_text = self.source_texts[idx]
         target_text = self.target_texts[idx]
-        
+
         # Tokenize and encode
         source_ids = self.source_tokenizer.encode(source_text)
         target_ids = self.target_tokenizer.encode(target_text)
-        
+
         # Add special tokens
         source_ids = [self.src_bos_idx] + source_ids + [self.src_eos_idx]
         target_ids = [self.tgt_bos_idx] + target_ids + [self.tgt_eos_idx]
-        
+
         # Truncate if needed
         if self.max_source_length is not None and len(source_ids) > self.max_source_length:
             source_ids = source_ids[:self.max_source_length-1] + [self.src_eos_idx]  # Keep EOS token
-            
+
         if self.max_target_length is not None and len(target_ids) > self.max_target_length:
             target_ids = target_ids[:self.max_target_length-1] + [self.tgt_eos_idx]  # Keep EOS token
-        
+
         # Create source and target input/output
         src = torch.tensor(source_ids, dtype=torch.long)
-        
+
         # Target input is shifted right (remove last token)
         tgt_input = torch.tensor(target_ids[:-1], dtype=torch.long)
-        
+
         # Target output is shifted left (remove first token)
         tgt_output = torch.tensor(target_ids[1:], dtype=torch.long)
-        
+
         return {
             "src": src,
             "tgt_input": tgt_input,
@@ -117,47 +116,47 @@ def collate_translation_batch(batch):
     src_sequences = [item["src"] for item in batch]
     tgt_input_sequences = [item["tgt_input"] for item in batch]
     tgt_output_sequences = [item["tgt_output"] for item in batch]
-    
+
     # Get max lengths
     src_max_len = max(seq.size(0) for seq in src_sequences)
     tgt_input_max_len = max(seq.size(0) for seq in tgt_input_sequences)
     tgt_output_max_len = max(seq.size(0) for seq in tgt_output_sequences)
-    
+
     # Get padding indices (assuming same across batch)
     src_pad_idx = 0  # Default padding index
     tgt_pad_idx = 0  # Default padding index
-    
+
     # Pad sequences
     src_padded = torch.stack([
         torch.cat([seq, torch.full((src_max_len - seq.size(0),), src_pad_idx, dtype=torch.long)])
         if seq.size(0) < src_max_len else seq
         for seq in src_sequences
     ])
-    
+
     tgt_input_padded = torch.stack([
         torch.cat([seq, torch.full((tgt_input_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long)])
         if seq.size(0) < tgt_input_max_len else seq
         for seq in tgt_input_sequences
     ])
-    
+
     tgt_output_padded = torch.stack([
         torch.cat([seq, torch.full((tgt_output_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long)])
         if seq.size(0) < tgt_output_max_len else seq
         for seq in tgt_output_sequences
     ])
-    
+
     # Create masks
     src_padding_mask = (src_padded != src_pad_idx).unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, src_len]
     tgt_padding_mask = (tgt_input_padded != tgt_pad_idx).unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, tgt_len]
-    
+
     # Create causal mask for target
     device = tgt_input_padded.device
     tgt_causal_mask = torch.tril(torch.ones((tgt_input_max_len, tgt_input_max_len), device=device)).bool()
     tgt_causal_mask = tgt_causal_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, tgt_len, tgt_len]
-    
+
     # Combine padding and causal mask for target
     tgt_mask = tgt_padding_mask & tgt_causal_mask
-    
+
     return {
         "src": src_padded,
         "tgt_input": tgt_input_padded,
@@ -201,24 +200,24 @@ def create_translation_dataloaders(
     """
     # Set random seed for reproducibility
     random.seed(random_seed)
-    
+
     # Create indices for splitting
     indices = list(range(len(source_texts)))
     if shuffle:
         random.shuffle(indices)
-    
+
     # Calculate split
     val_size = int(len(indices) * validation_split)
     train_indices = indices[val_size:]
     val_indices = indices[:val_size]
-    
+
     # Split data
     train_source = [source_texts[i] for i in train_indices]
     train_target = [target_texts[i] for i in train_indices]
-    
+
     val_source = [source_texts[i] for i in val_indices]
     val_target = [target_texts[i] for i in val_indices]
-    
+
     # Create datasets
     train_dataset = TranslationDataset(
         source_texts=train_source,
@@ -228,7 +227,7 @@ def create_translation_dataloaders(
         max_source_length=max_source_length,
         max_target_length=max_target_length,
     )
-    
+
     val_dataset = TranslationDataset(
         source_texts=val_source,
         target_texts=val_target,
@@ -237,7 +236,7 @@ def create_translation_dataloaders(
         max_source_length=max_source_length,
         max_target_length=max_target_length,
     )
-    
+
     # Create dataloaders
     train_dataloader = DataLoader(
         train_dataset,
@@ -245,14 +244,14 @@ def create_translation_dataloaders(
         shuffle=shuffle,
         collate_fn=collate_translation_batch,
     )
-    
+
     val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
         collate_fn=collate_translation_batch,
     )
-    
+
     return train_dataloader, val_dataloader
 
 
@@ -305,7 +304,7 @@ def train_translation_model(
         positional_encoding="sinusoidal",
         share_embeddings=False,  # Set to True to share embeddings between encoder and decoder
     )
-    
+
     # Define a custom train function for the transformer trainer
     def custom_train_step(model, batch):
         # Forward pass
@@ -315,28 +314,28 @@ def train_translation_model(
             src_mask=batch["src_mask"],
             tgt_mask=batch["tgt_mask"],
         )
-        
+
         # Calculate loss (cross-entropy)
         loss_func = torch.nn.CrossEntropyLoss(ignore_index=pad_idx)
-        
+
         # Reshape outputs and targets for loss calculation
         outputs = outputs.view(-1, outputs.size(-1))
         targets = batch["tgt_output"].view(-1)
-        
+
         loss = loss_func(outputs, targets)
-        
+
         # Calculate accuracy
         predictions = outputs.argmax(dim=-1)
         mask = (targets != pad_idx)
         correct = (predictions == targets) & mask
         total = mask.sum().item()
         accuracy = correct.sum().item() / total if total > 0 else 0.0
-        
+
         return {
             "loss": loss,
             "accuracy": torch.tensor(accuracy, device=loss.device),
         }
-    
+
     # Create trainer
     trainer = TransformerTrainer(
         model=model,
@@ -350,13 +349,13 @@ def train_translation_model(
         early_stopping_patience=5,
         device=device,
     )
-    
+
     # Train model
     model.train_step = custom_train_step
     model.validation_step = custom_train_step
-    
+
     history = trainer.train(epochs=epochs, save_path=save_path)
-    
+
     return model, history
 
 
@@ -383,25 +382,25 @@ def translate(
         Translated text
     """
     model.eval()
-    
+
     # Tokenize source text
     source_ids = source_tokenizer.encode(text)
     source_ids = [source_tokenizer.special_tokens["bos_token_idx"]] + source_ids + [source_tokenizer.special_tokens["eos_token_idx"]]
     source_tensor = torch.tensor([source_ids], dtype=torch.long).to(device)
-    
+
     # Create source mask
     src_mask = (source_tensor != source_tokenizer.special_tokens["pad_token_idx"]).unsqueeze(1).unsqueeze(2)
-    
+
     # Initialize target with BOS token
     tgt_bos = target_tokenizer.special_tokens["bos_token_idx"]
     target_tensor = torch.tensor([[tgt_bos]], dtype=torch.long).to(device)
-    
+
     # Generate translation
     for _ in range(max_length):
         # Create target mask (causal)
         tgt_len = target_tensor.size(1)
         tgt_mask = torch.tril(torch.ones((tgt_len, tgt_len), device=device)).bool().unsqueeze(0).unsqueeze(0)
-        
+
         # Forward pass
         output = model(
             src=source_tensor,
@@ -409,25 +408,25 @@ def translate(
             src_mask=src_mask,
             tgt_mask=tgt_mask,
         )
-        
+
         # Get the next token prediction
         next_token_logits = output[:, -1, :]
         next_token = next_token_logits.argmax(dim=-1, keepdim=True)
-        
+
         # Append the next token
         target_tensor = torch.cat([target_tensor, next_token], dim=1)
-        
+
         # Stop if EOS token is generated
         if next_token.item() == target_tokenizer.special_tokens["eos_token_idx"]:
             break
-    
+
     # Decode the generated tokens
     generated_ids = target_tensor[0, 1:].tolist()  # Skip the BOS token
-    
+
     # Stop at EOS token if present
     if target_tokenizer.special_tokens["eos_token_idx"] in generated_ids:
         generated_ids = generated_ids[:generated_ids.index(target_tokenizer.special_tokens["eos_token_idx"])]
-    
+
     translation = target_tokenizer.decode(generated_ids)
     return translation
 
@@ -437,18 +436,18 @@ def main():
     # Load tokenizers
     en_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/en")
     de_tokenizer = BPETokenizer.from_pretrained("models/tokenizers/de")
-    
+
     print(f"Loaded English tokenizer with vocab size: {en_tokenizer.vocab_size}")
     print(f"Loaded German tokenizer with vocab size: {de_tokenizer.vocab_size}")
-    
+
     # Load a small subset of data for demonstration
     from demos.translation_example import IWSLTDataset
-    
+
     # Set random seed for reproducibility
     np.random.seed(42)
     torch.manual_seed(42)
     random.seed(42)
-    
+
     # Load dataset
     train_dataset = IWSLTDataset(
         src_lang="en",
@@ -457,7 +456,7 @@ def main():
         split="train",
         max_examples=5000  # Small subset for demonstration
     )
-    
+
     # Create dataloaders
     train_dataloader, val_dataloader = create_translation_dataloaders(
         source_texts=train_dataset.src_data,
@@ -468,15 +467,15 @@ def main():
         max_source_length=128,
         max_target_length=128,
     )
-    
+
     print(f"Created dataloaders with {len(train_dataloader)} training batches and {len(val_dataloader)} validation batches")
-    
+
     # Display a batch example
     batch = next(iter(train_dataloader))
     print(f"Source shape: {batch['src'].shape}")
     print(f"Target input shape: {batch['tgt_input'].shape}")
     print(f"Target output shape: {batch['tgt_output'].shape}")
-    
+
     # Example of how to train the model (commented out to avoid actual training)
     """
     model, history = train_translation_model(
@@ -505,7 +504,7 @@ def main():
     print(f"Source: {source_text}")
     print(f"Translation: {translation}")
     """
-    
+
     print("\nIntegration with Transformer Model Complete!")
     print("To train the model and perform translations:")
     print("1. Uncomment the training code block in the script")

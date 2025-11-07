@@ -1,9 +1,11 @@
+import os
+
 import pytest
 import torch
-import os
-import tempfile
+
 from src.data.tokenization.optimized_bpe_tokenizer import OptimizedBPETokenizer
 from src.data.tokenization.vocabulary import Vocabulary
+
 
 @pytest.fixture
 def device():
@@ -58,11 +60,11 @@ def test_tokenize_word_optimized(tokenizer):
     # Test with a word that can be merged
     tokens = tokenizer._tokenize_word_optimized("hello")
     assert tokens == ["hello"]  # Should merge to a single token
-    
+
     # Test with a word that can't be fully merged
     tokens = tokenizer._tokenize_word_optimized("test")
     assert len(tokens) > 1  # Should be split into subwords
-    
+
     # Test cache functionality
     assert "hello" in tokenizer.word_token_cache
     assert tokenizer.word_token_cache["hello"] == ["hello"]
@@ -74,7 +76,7 @@ def test_tokenize(tokenizer):
     assert len(tokens) > 0
     assert "hello" in tokens
     assert "world" in tokens
-    
+
     # Test cache functionality
     print("-----------")
     print(tokenizer.token_cache)
@@ -92,13 +94,13 @@ def test_encode(tokenizer):
 def test_batch_encode_optimized(tokenizer):
     """Test optimized batch encoding."""
     texts = ["hello world", "test token", "hello test"]
-    
+
     # Test without batch size
     encoded = tokenizer.batch_encode_optimized(texts)
     assert len(encoded) == len(texts)
     assert all(isinstance(seq, list) for seq in encoded)
     assert all(all(isinstance(id_, int) for id_ in seq) for seq in encoded)
-    
+
     # Test with batch size
     encoded_batched = tokenizer.batch_encode_optimized(texts, batch_size=2)
     assert encoded == encoded_batched  # Results should be the same
@@ -115,15 +117,15 @@ def test_save_and_load_pretrained(tokenizer, tmp_path):
     # Save the tokenizer
     save_path = str(tmp_path / "tokenizer")
     tokenizer.save_pretrained(save_path)
-    
+
     # Check that files were created
     assert os.path.exists(save_path)
     assert os.path.exists(os.path.join(save_path, "vocab.json"))
     assert os.path.exists(os.path.join(save_path, "merges.txt"))
-    
+
     # Load the tokenizer
     loaded_tokenizer = OptimizedBPETokenizer.from_pretrained(save_path)
-    
+
     # Test that loaded tokenizer works the same
     text = "hello world"
     original_tokens = tokenizer.tokenize(text)
@@ -138,13 +140,13 @@ def test_train(tokenizer):
         "hello test",
         "world token"
     ]
-    
+
     # Train the tokenizer
     tokenizer.train(texts, vocab_size=100, min_frequency=1)
-    
+
     # Verify that merges were learned
     assert len(tokenizer.merges) > 0
-    
+
     # Test tokenization with trained merges
     tokens = tokenizer.tokenize("hello world")
     assert len(tokens) > 0
@@ -184,11 +186,11 @@ def test_cache_size_limit(tokenizer):
     """Test that cache size limits are respected."""
     # Set a small cache size
     tokenizer.cache_size = 2
-    
+
     # Add more items than the cache size
     texts = ["hello", "world", "test", "token"]
     for text in texts:
         tokenizer._tokenize_word_optimized(text)
-    
+
     # Check that cache size is not exceeded
-    assert len(tokenizer.word_token_cache) <= tokenizer.cache_size 
+    assert len(tokenizer.word_token_cache) <= tokenizer.cache_size

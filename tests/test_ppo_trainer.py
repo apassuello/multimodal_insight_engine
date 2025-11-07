@@ -12,8 +12,6 @@ Tests all core PPO components:
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-from unittest.mock import Mock, MagicMock, patch
 
 from src.safety.constitutional.ppo_trainer import PPOTrainer
 

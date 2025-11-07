@@ -9,13 +9,12 @@ DEPENDENCIES: torch, typing, pathlib, json, csv, datasets (optional)
 SPECIAL NOTES: Supports multiple data formats and HuggingFace datasets integration
 """
 
-import json
 import csv
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Callable
+import json
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
-import torch
 from torch.utils.data import Dataset
 
 

@@ -13,11 +13,11 @@ KEY COMPONENTS:
     - HTML handling and contraction normalization
 """
 
-import re
-import unicodedata
 import html
 import os
-from typing import List
+import re
+import unicodedata
+
 
 def normalize_unicode(text: str) -> str:
     """
@@ -55,26 +55,26 @@ def clean_text(
     # Handle None or empty text
     if not text:
         return ""
-    
+
     # Convert to unicode and normalize
     text = normalize_unicode(text)
-    
+
     # Strip HTML
     if strip_html:
         text = html.unescape(text)  # Convert HTML entities
         text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
-    
+
     # Convert to lowercase
     if lower:
         text = text.lower()
-    
+
     # Remove accents
     if remove_accents:
         text = ''.join(
             c for c in unicodedata.normalize('NFD', text)
             if not unicodedata.combining(c)
         )
-    
+
     # Handle contractions
     if handle_contractions:
         # This is a simplified approach; a more comprehensive solution would use a dictionary
@@ -85,10 +85,10 @@ def clean_text(
         text = re.sub(r"'ve", " have", text)
         text = re.sub(r"'m", " am", text)
         text = re.sub(r"'d", " would", text)
-    
+
     # Remove extra whitespace
     text = re.sub(r'\s+', ' ', text).strip()
-    
+
     return text
 
 def segment_on_punc(text: str) -> str:

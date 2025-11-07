@@ -8,15 +8,13 @@ DEPENDENCIES: torch, language_model_trainer, constitutional AI modules
 SPECIAL NOTES: Implements Constitutional AI training approach for safer model outputs
 """
 
+import os
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Union, Any, Tuple
-import time
-import math
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
 
 from .language_model_trainer import LanguageModelTrainer
@@ -24,7 +22,6 @@ from .language_model_trainer import LanguageModelTrainer
 # Import constitutional AI components
 try:
     from src.safety.constitutional import (
-        ConstitutionalFramework,
         ConstitutionalSafetyEvaluator,
         RLAIFTrainer,
         setup_default_framework,

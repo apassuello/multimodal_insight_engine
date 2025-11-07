@@ -1,19 +1,19 @@
-import torch
+import math
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
-import sys
-import os
-import math
+import torch
 import torch.nn.functional as F
 
 # Add the src directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from src.models.attention import (
+    MultiHeadAttention,
     ScaledDotProductAttention,
     SimpleAttention,
-    MultiHeadAttention,
 )
 
 

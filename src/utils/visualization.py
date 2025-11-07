@@ -7,17 +7,19 @@ better interpretability.
 """
 
 import os
-import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
+
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-from typing import List, Dict, Any, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from tqdm import tqdm
 
-def plot_training_history(history: Dict[str, List[float]], 
+
+def plot_training_history(history: Dict[str, List[float]],
                          figsize: Tuple[int, int] = (12, 8),
                          save_path: Optional[str] = None) -> None:
     """
@@ -31,19 +33,19 @@ def plot_training_history(history: Dict[str, List[float]],
     fig, axes = plt.subplots(len(history), 1, figsize=figsize)
     if len(history) == 1:
         axes = [axes]
-    
+
     for i, (metric, values) in enumerate(history.items()):
         axes[i].plot(values)
         axes[i].set_title(f'{metric} history')
         axes[i].set_xlabel('Epoch')
         axes[i].set_ylabel(metric.capitalize())
         axes[i].grid(True)
-    
+
     plt.tight_layout()
-    
+
     if save_path:
         plt.savefig(save_path)
-    
+
     plt.show()
 
 def plot_attention_weights(attention_weights: torch.Tensor,
@@ -65,25 +67,25 @@ def plot_attention_weights(attention_weights: torch.Tensor,
     """
     # Extract the specified layer and head
     weights = attention_weights[layer, head].cpu().detach().numpy()
-    
+
     plt.figure(figsize=figsize)
-    ax = sns.heatmap(weights, 
-                    annot=False, 
-                    cmap='viridis', 
-                    xticklabels=tokens if tokens else [], 
+    ax = sns.heatmap(weights,
+                    annot=False,
+                    cmap='viridis',
+                    xticklabels=tokens if tokens else [],
                     yticklabels=tokens if tokens else [])
-    
+
     plt.title(f'Attention Weights (Layer {layer}, Head {head})')
     plt.xlabel('Target Tokens')
     plt.ylabel('Source Tokens')
-    
+
     if tokens:
         plt.xticks(rotation=90)
         plt.yticks(rotation=0)
-    
+
     if save_path:
         plt.savefig(save_path)
-    
+
     plt.show()
 
 def plot_embeddings_tsne(embeddings: torch.Tensor,
@@ -104,38 +106,38 @@ def plot_embeddings_tsne(embeddings: torch.Tensor,
     # Convert embeddings to numpy if they're torch tensors
     if isinstance(embeddings, torch.Tensor):
         embeddings = embeddings.cpu().detach().numpy()
-    
+
     # Apply t-SNE
     tsne = TSNE(n_components=2, random_state=random_state, perplexity=min(30, len(embeddings)-1))
     reduced_embeddings = tsne.fit_transform(embeddings)
-    
+
     plt.figure(figsize=figsize)
-    
+
     if labels is not None:
         # If we have labels, use them for coloring
         unique_labels = list(set(labels))
         colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_labels)))
-        
+
         for i, label in enumerate(unique_labels):
             indices = [j for j, l in enumerate(labels) if l == label]
-            plt.scatter(reduced_embeddings[indices, 0], 
-                       reduced_embeddings[indices, 1], 
-                       color=colors[i], 
+            plt.scatter(reduced_embeddings[indices, 0],
+                       reduced_embeddings[indices, 1],
+                       color=colors[i],
                        label=label,
                        alpha=0.7)
         plt.legend()
     else:
         # If no labels, just plot the points
         plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], alpha=0.7)
-    
+
     plt.title('t-SNE Visualization of Embeddings')
     plt.xlabel('Dimension 1')
     plt.ylabel('Dimension 2')
     plt.grid(True)
-    
+
     if save_path:
         plt.savefig(save_path)
-    
+
     plt.show()
 
 def count_parameters(model: nn.Module) -> int:
@@ -152,8 +154,8 @@ def count_parameters(model: nn.Module) -> int:
 
 
 def visualize_similarity_matrix(
-    similarity_matrix: torch.Tensor, 
-    captions: List[str], 
+    similarity_matrix: torch.Tensor,
+    captions: List[str],
     save_path: Optional[str] = None
 ) -> None:
     """

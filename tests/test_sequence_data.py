@@ -1,12 +1,13 @@
 import pytest
 import torch
-import numpy as np
+
 from src.data.sequence_data import (
-    transformer_collate_fn,
-    TransformerDataset,
     TransformerCollator,
-    TransformerDataModule
+    TransformerDataModule,
+    TransformerDataset,
+    transformer_collate_fn,
 )
+
 
 @pytest.fixture
 def device():
@@ -53,34 +54,34 @@ def test_transformer_collate_fn(sample_sequences, device):
         {"src_tokens": src, "tgt_tokens": tgt}
         for src, tgt in zip(sample_sequences["source"], sample_sequences["target"])
     ]
-    
+
     # Collate the batch
     collated = transformer_collate_fn(batch, pad_idx=0)
-    
+
     # Check structure
     assert isinstance(collated, dict)
     assert "src" in collated
     assert "tgt" in collated
-    
+
     # Check shapes
     assert collated["src"].shape == (10, 4)  # batch_size=10, max_src_len=4
     assert collated["tgt"].shape == (10, 4)  # batch_size=10, max_tgt_len=4
-    
+
     # Check device
     assert collated["src"].device == device
     assert collated["tgt"].device == device
-    
+
     # Check padding
     assert collated["src"][1, 2] == 0  # Padding token
     assert collated["src"][1, 3] == 0  # Padding token
     assert collated["tgt"][1, 2] == 0  # Padding token
     assert collated["tgt"][1, 3] == 0  # Padding token
-    
+
     # Check actual data
     assert torch.all(collated["src"][0, :3] == torch.tensor([1, 2, 3], device=device))
     assert torch.all(collated["src"][1, :2] == torch.tensor([4, 5], device=device))
     assert torch.all(collated["src"][2, :4] == torch.tensor([6, 7, 8, 9], device=device))
-    
+
     assert torch.all(collated["tgt"][0, :3] == torch.tensor([32, 33, 34], device=device))
     assert torch.all(collated["tgt"][1, :2] == torch.tensor([35, 36], device=device))
     assert torch.all(collated["tgt"][2, :4] == torch.tensor([37, 38, 39, 40], device=device))
@@ -96,7 +97,7 @@ def test_transformer_dataset_initialization(sample_sequences):
         bos_idx=1,
         eos_idx=2
     )
-    
+
     assert len(dataset) == 10
     assert dataset.max_src_len == 5
     assert dataset.max_tgt_len == 5
@@ -115,27 +116,27 @@ def test_transformer_dataset_getitem(sample_sequences, device):
         bos_idx=1,
         eos_idx=2
     )
-    
+
     # Get first item
     item = dataset[0]
-    
+
     # Check structure
     assert isinstance(item, dict)
     assert "src_tokens" in item
     assert "tgt_tokens" in item
-    
+
     # Check tensor types
     assert isinstance(item["src_tokens"], torch.Tensor)
     assert isinstance(item["tgt_tokens"], torch.Tensor)
-    
+
     # Check shapes
     assert item["src_tokens"].dim() == 1
     assert item["tgt_tokens"].dim() == 1
-    
+
     # Check device
     assert item["src_tokens"].device == device
     assert item["tgt_tokens"].device == device
-    
+
     # Check content
     assert torch.all(item["src_tokens"] == torch.tensor([1, 2, 3], device=device))
     assert torch.all(item["tgt_tokens"] == torch.tensor([1, 32, 33, 34, 2], device=device))  # With BOS and EOS
@@ -151,18 +152,18 @@ def test_transformer_dataset_truncation(sample_sequences, device):
         bos_idx=1,
         eos_idx=2
     )
-    
+
     # Get first item
     item = dataset[0]
-    
+
     # Check truncation
     assert item["src_tokens"].size(0) == 2
     assert item["tgt_tokens"].size(0) == 2
-    
+
     # Check device
     assert item["src_tokens"].device == device
     assert item["tgt_tokens"].device == device
-    
+
     # Check content after truncation
     assert torch.all(item["src_tokens"] == torch.tensor([1, 2], device=device))
     assert torch.all(item["tgt_tokens"] == torch.tensor([1, 32], device=device))  # BOS + first token
@@ -170,25 +171,25 @@ def test_transformer_dataset_truncation(sample_sequences, device):
 def test_transformer_collator(sample_sequences, device):
     """Test the TransformerCollator class."""
     collator = TransformerCollator(pad_idx=0)
-    
+
     # Create a batch of examples
     batch = [
         {"src_tokens": src, "tgt_tokens": tgt}
         for src, tgt in zip(sample_sequences["source"], sample_sequences["target"])
     ]
-    
+
     # Collate the batch
     collated = collator(batch)
-    
+
     # Check structure
     assert isinstance(collated, dict)
     assert "src" in collated
     assert "tgt" in collated
-    
+
     # Check shapes
     assert collated["src"].shape == (10, 4)  # batch_size=10, max_src_len=4
     assert collated["tgt"].shape == (10, 4)  # batch_size=10, max_tgt_len=4
-    
+
     # Check device
     assert collated["src"].device == device
     assert collated["tgt"].device == device
@@ -208,7 +209,7 @@ def test_transformer_data_module_initialization(sample_sequences):
         shuffle=True,
         num_workers=1
     )
-    
+
     assert data_module.batch_size == 2
     assert data_module.max_src_len == 5
     assert data_module.max_tgt_len == 5
@@ -234,23 +235,23 @@ def test_transformer_data_module_dataloaders(sample_sequences, device):
         shuffle=True,
         num_workers=1
     )
-    
+
     # Get dataloaders
     train_dataloader = data_module.get_train_dataloader()
     val_dataloader = data_module.get_val_dataloader()
-    
+
     # Check dataloader types
     assert isinstance(train_dataloader, torch.utils.data.DataLoader)
     assert isinstance(val_dataloader, torch.utils.data.DataLoader)
-    
+
     # Check batch sizes
     assert train_dataloader.batch_size == 2
     assert val_dataloader.batch_size == 2
-    
+
     # Check that we can iterate over the dataloaders
     train_batch = next(iter(train_dataloader))
     val_batch = next(iter(val_dataloader))
-    
+
     # Check batch structure
     for batch in [train_batch, val_batch]:
         assert isinstance(batch, dict)
@@ -259,4 +260,4 @@ def test_transformer_data_module_dataloaders(sample_sequences, device):
         assert isinstance(batch["src"], torch.Tensor)
         assert isinstance(batch["tgt"], torch.Tensor)
         assert batch["src"].device == device
-        assert batch["tgt"].device == device 
+        assert batch["tgt"].device == device

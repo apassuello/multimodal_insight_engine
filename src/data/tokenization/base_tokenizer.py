@@ -1,7 +1,8 @@
 # src/data/tokenization/base_tokenizer.py
-from abc import ABC, abstractmethod
-from typing import List, Dict
 import os
+from abc import ABC, abstractmethod
+from typing import Dict, List
+
 
 class BaseTokenizer(ABC):
     """
@@ -10,7 +11,7 @@ class BaseTokenizer(ABC):
     This defines the standard interface that all tokenizer implementations
     should follow to ensure interoperability with the transformer model.
     """
-    
+
     @abstractmethod
     def tokenize(self, text: str) -> List[str]:
         """
@@ -22,8 +23,7 @@ class BaseTokenizer(ABC):
         Returns:
             A list of tokens
         """
-        pass
-    
+
     @abstractmethod
     def encode(self, text: str) -> List[int]:
         """
@@ -35,8 +35,7 @@ class BaseTokenizer(ABC):
         Returns:
             A list of token indices
         """
-        pass
-    
+
     @abstractmethod
     def decode(self, token_ids: List[int]) -> str:
         """
@@ -48,8 +47,7 @@ class BaseTokenizer(ABC):
         Returns:
             The reconstructed text
         """
-        pass
-    
+
     @abstractmethod
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
@@ -61,8 +59,7 @@ class BaseTokenizer(ABC):
         Returns:
             List of token index lists
         """
-        pass
-    
+
     @property
     @abstractmethod
     def vocab_size(self) -> int:
@@ -72,8 +69,7 @@ class BaseTokenizer(ABC):
         Returns:
             The number of tokens in the vocabulary
         """
-        pass
-    
+
     @property
     @abstractmethod
     def special_tokens(self) -> Dict[str, int]:
@@ -83,8 +79,7 @@ class BaseTokenizer(ABC):
         Returns:
             Dictionary mapping special token names to their indices
         """
-        pass
-        
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.

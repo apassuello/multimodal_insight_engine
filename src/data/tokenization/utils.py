@@ -15,12 +15,14 @@ SPECIAL NOTES:
 - Supports both dictionary-based and list-based batch formats
 """
 
+import os
+
 # src/data/tokenization/utils.py
-from typing import List, Dict, Tuple, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 import torch.nn.functional as F  # Add this import
-from torch.utils.data import Dataset, DataLoader
-import os
+from torch.utils.data import DataLoader, Dataset
 
 from .base_tokenizer import BaseTokenizer
 

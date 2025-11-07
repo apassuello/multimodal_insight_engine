@@ -12,41 +12,36 @@ Each stage uses different components, loss functions, learning rates, and batch 
 strategies to systematically develop multimodal understanding capabilities.
 """
 
-import os
 import json
-import time
 import logging
+import os
+from collections import defaultdict
+from typing import Dict, Optional, Tuple
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
-import numpy as np
-from tqdm import tqdm
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
-import matplotlib.pyplot as plt
-from collections import defaultdict
-from torch.optim.optimizer import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.adamw import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
+
+from src.data.multimodal_data_utils import SemanticGroupBatchSampler
+from src.data.multimodal_dataset import EnhancedMultimodalDataset
 
 # Local imports
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.training.trainers.multimodal_trainer import MultimodalTrainer
-from src.data.multimodal_dataset import MultimodalDataset
-from src.data.multimodal_data_utils import SemanticGroupBatchSampler
-from src.training.losses.vicreg_loss import VICRegLoss
+from src.models.pretrained import (
+    HuggingFaceTextModelWrapper,
+    VisionTransformerWrapper,
+)
 from src.training.losses.contrastive_loss import ContrastiveLoss
-from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
 from src.training.losses.hard_negative_mining_contrastive_loss import (
     HardNegativeMiningContrastiveLoss,
 )
-from src.models.pretrained import (
-    VisionTransformerWrapper,
-    HuggingFaceTextModelWrapper,
-)
-from src.data.multimodal_dataset import EnhancedMultimodalDataset
+from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
+from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.trainers.multimodal_trainer import MultimodalTrainer
 
 logger = logging.getLogger(__name__)
 

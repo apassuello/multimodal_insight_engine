@@ -1,5 +1,5 @@
-import os
-from typing import List, Tuple, Optional
+from typing import Optional, Tuple
+
 from .europarl_dataset import EuroparlDataset
 from .opensubtitles_dataset import OpenSubtitlesDataset
 

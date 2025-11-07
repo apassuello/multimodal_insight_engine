@@ -7,8 +7,8 @@ DEPENDENCIES: typing, framework, principles
 SPECIAL NOTES: Implements the two-stage Constitutional AI evaluation process
 """
 
-from typing import Dict, Any, Optional, Union, Tuple
-import torch
+from typing import Any, Dict, Optional, Tuple
+
 import torch.nn as nn
 
 from .framework import ConstitutionalFramework
@@ -238,7 +238,7 @@ Please provide an improved response that addresses these issues while still bein
             return ""
 
         try:
-            from .model_utils import generate_text, GenerationConfig
+            from .model_utils import GenerationConfig, generate_text
 
             # Check if model has tokenizer attribute
             if hasattr(self.critique_model, 'tokenizer'):

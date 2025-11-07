@@ -15,17 +15,15 @@ KEY COMPONENTS:
     - Training visualization tools
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from typing import Dict, List, Optional, Tuple, Any, Callable
-import time
-import math
+import os
+from typing import Any, Dict, List, Optional, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 from tqdm import tqdm
-import os
 
 from ..models.vision.vision_transformer import VisionTransformer
 

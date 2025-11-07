@@ -1,26 +1,29 @@
 # src/models/model_registry.py
-from typing import Dict, Type, Any, Optional
 import os
+from typing import Type
+
 import torch.nn as nn
+
+from .clip_model import CLIPModelWrapper
 
 # Import your model wrappers
 from .vision_transformer import VisionTransformerWrapper
-from .clip_model import CLIPModelWrapper
+
 # Add more model imports as you expand
 
 class ModelRegistry:
     """Registry pattern for accessing and instantiating models."""
-    
+
     _models = {
         # Homemade models
         'transformer': None,  # Your current implementation
-        
+
         # Pretrained model wrappers
         'vit': VisionTransformerWrapper,
         'clip': CLIPModelWrapper,
         # Add more models as you implement them
     }
-    
+
     @classmethod
     def get_model(cls, model_type: str, **kwargs) -> nn.Module:
         """
@@ -35,10 +38,10 @@ class ModelRegistry:
         """
         if model_type not in cls._models:
             raise ValueError(f"Unknown model type: {model_type}")
-            
+
         model_class = cls._models[model_type]
         return model_class(**kwargs)
-    
+
     @classmethod
     def register_model(cls, model_type: str, model_class: Type[nn.Module]) -> None:
         """
