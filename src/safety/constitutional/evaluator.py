@@ -338,7 +338,7 @@ def critique_indicates_issues(critique: str) -> bool:
     # Check for concern indicators
     concern_phrases = [
         "violates", "violation", "problematic", "issue", "concern",
-        "inappropriate", "harmful", "biased", "misleading", "deceptive",
+        "inappropriate", "harmful", "bias", "biased", "misleading", "deceptive",
         "unfair", "coercive", "manipulative", "dangerous"
     ]
 

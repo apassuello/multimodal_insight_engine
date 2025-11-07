@@ -59,7 +59,9 @@ class ConstitutionalPrinciple:
             return {
                 "flagged": False,
                 "reason": "Principle disabled",
-                "enabled": False
+                "enabled": False,
+                "principle_name": self.name,
+                "weight": self.weight
             }
 
         result = self.evaluation_fn(text)
