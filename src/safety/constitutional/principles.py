@@ -38,7 +38,7 @@ def evaluate_harm_potential(text: str) -> Dict[str, Any]:
         r"ways to (harm|hurt|injure|kill|damage|attack)",
         r"instructions for (harming|hurting|injuring|killing|attacking|damaging)",
         r"(guide|tutorial|method) (on|for|to) (harm|hurt|injure|kill|attack|damage)",
-        r"(make|create|build|construct) (a )?(weapon|bomb|explosive|poison)"
+        r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?"
     ]
 
     explicit_harm = any(re.search(pattern, text, re.IGNORECASE) for pattern in harm_patterns)
