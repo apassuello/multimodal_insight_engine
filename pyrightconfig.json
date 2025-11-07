@@ -1,0 +1,9 @@
+{
+    "venvPath": "/Users/apa/miniconda3/envs",
+    "venv": "me",
+    "extraPaths": [
+        "/Users/apa/miniconda3/envs/me/lib/python3.10/site-packages"
+    ],
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false
+}

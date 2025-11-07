@@ -1,0 +1,20 @@
+{
+  "metrics": {
+    "i2t_recall@1": 0.0,
+    "t2i_recall@1": 0.0625,
+    "avg_recall@1": 0.03125,
+    "i2t_recall@5": 0.4375,
+    "t2i_recall@5": 0.3125,
+    "avg_recall@5": 0.375,
+    "i2t_recall@10": 0.8125,
+    "t2i_recall@10": 0.6875,
+    "avg_recall@10": 0.75
+  },
+  "model_info": {
+    "total_parameters": 54987266,
+    "vision_model": "vit-small",
+    "text_model": "mobilebert",
+    "fusion_type": "bidirectional",
+    "fusion_dim": 512
+  }
+}

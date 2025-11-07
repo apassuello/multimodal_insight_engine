@@ -1,0 +1,267 @@
+{
+  "project_name": "MultiModal_Insight_Engine",
+  "output_dir": "outputs/flickr30k_experiment/20250501-103109",
+  "seed": 42,
+  "data_config": {
+    "dataset": "flickr30k",
+    "data_dir": "data/flickr30k",
+    "cache_dir": "cache/flickr30k",
+    "train_split_ratio": 0.8,
+    "val_split_ratio": 0.1,
+    "test_split_ratio": 0.1,
+    "image_size": 224,
+    "max_text_length": 77,
+    "captions_per_image": 5,
+    "min_samples_per_group": 2,
+    "aug_image": true,
+    "aug_text": false,
+    "use_synthetic": false,
+    "synthetic_samples": 0,
+    "batch_size": 64,
+    "max_train_examples": null,
+    "max_val_examples": null,
+    "max_test_examples": null
+  },
+  "model_config": {
+    "vision_model": "google/vit-base-patch16-224",
+    "text_model": "bert-base-uncased",
+    "projection_dim": 512,
+    "num_cross_attention_heads": 8,
+    "cross_attention_dropout": 0.1,
+    "use_gated_fusion": true,
+    "use_pretrained": true,
+    "use_pretrained_text": true,
+    "fusion_dim": 512,
+    "fusion_type": "bidirectional",
+    "model_size": null,
+    "freeze_base_models": false
+  },
+  "stages": [
+    {
+      "name": "modality_specific_learning",
+      "epochs": 5,
+      "batch_size": 64,
+      "early_stopping": true,
+      "patience": 5,
+      "evaluation_metrics": [
+        "val_loss"
+      ],
+      "monitor_metric": "val_r@5",
+      "monitor_mode": "max",
+      "clip_grad_norm": 1.0,
+      "mixed_precision": true,
+      "gradient_accumulation_steps": 1,
+      "losses": [
+        {
+          "name": "clip_style_loss",
+          "weight": 1.0,
+          "params": {
+            "temperature": 0.07
+          }
+        },
+        {
+          "name": "decorrelation_loss",
+          "weight": 0.5,
+          "params": {}
+        }
+      ],
+      "optimizer": {
+        "name": "adamw",
+        "lr": 5e-05,
+        "weight_decay": 0.01,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08
+      },
+      "scheduler": {
+        "name": "warmup_cosine",
+        "warmup_steps": 100,
+        "warmup_ratio": 0.1,
+        "min_lr_ratio": 0.0
+      },
+      "components": [
+        {
+          "name": "vision_model",
+          "freeze": true,
+          "lr_multiplier": 0.1
+        },
+        {
+          "name": "text_model",
+          "freeze": true,
+          "lr_multiplier": 0.1
+        },
+        {
+          "name": "vision_projection",
+          "freeze": false,
+          "lr_multiplier": 1.0
+        },
+        {
+          "name": "text_projection",
+          "freeze": false,
+          "lr_multiplier": 1.0
+        },
+        {
+          "name": "cross_attention",
+          "freeze": true,
+          "lr_multiplier": 0.0
+        }
+      ]
+    },
+    {
+      "name": "cross_modal_fusion",
+      "epochs": 8,
+      "batch_size": 64,
+      "early_stopping": true,
+      "patience": 5,
+      "evaluation_metrics": [
+        "val_loss"
+      ],
+      "monitor_metric": "val_r@5",
+      "monitor_mode": "max",
+      "clip_grad_norm": 1.0,
+      "mixed_precision": true,
+      "gradient_accumulation_steps": 1,
+      "losses": [
+        {
+          "name": "ema_moco_loss",
+          "weight": 1.0,
+          "params": {
+            "queue_size": 8192,
+            "momentum": 0.99,
+            "temperature": 0.07
+          }
+        },
+        {
+          "name": "decorrelation_loss",
+          "weight": 0.25,
+          "params": {}
+        }
+      ],
+      "optimizer": {
+        "name": "adamw",
+        "lr": 0.0001,
+        "weight_decay": 0.01,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08
+      },
+      "scheduler": {
+        "name": "warmup_cosine",
+        "warmup_steps": 100,
+        "warmup_ratio": 0.1,
+        "min_lr_ratio": 0.0
+      },
+      "components": [
+        {
+          "name": "vision_model",
+          "freeze": true,
+          "lr_multiplier": 0.0
+        },
+        {
+          "name": "text_model",
+          "freeze": true,
+          "lr_multiplier": 0.0
+        },
+        {
+          "name": "vision_projection",
+          "freeze": false,
+          "lr_multiplier": 0.5
+        },
+        {
+          "name": "text_projection",
+          "freeze": false,
+          "lr_multiplier": 0.5
+        },
+        {
+          "name": "cross_attention",
+          "freeze": false,
+          "lr_multiplier": 1.0
+        }
+      ]
+    },
+    {
+      "name": "end_to_end_fine_tuning",
+      "epochs": 10,
+      "batch_size": 32,
+      "early_stopping": true,
+      "patience": 5,
+      "evaluation_metrics": [
+        "val_loss"
+      ],
+      "monitor_metric": "val_r@5",
+      "monitor_mode": "max",
+      "clip_grad_norm": 1.0,
+      "mixed_precision": true,
+      "gradient_accumulation_steps": 2,
+      "losses": [
+        {
+          "name": "hard_negative_mining_contrastive_loss",
+          "weight": 1.0,
+          "params": {
+            "mining_ratio": 0.5,
+            "temperature": 0.05
+          }
+        },
+        {
+          "name": "feature_consistency_loss",
+          "weight": 0.5,
+          "params": {
+            "distance": "cosine"
+          }
+        },
+        {
+          "name": "decorrelation_loss",
+          "weight": 0.1,
+          "params": {}
+        }
+      ],
+      "optimizer": {
+        "name": "adamw",
+        "lr": 5e-06,
+        "weight_decay": 0.01,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08
+      },
+      "scheduler": {
+        "name": "warmup_cosine",
+        "warmup_steps": 50,
+        "warmup_ratio": 0.05,
+        "min_lr_ratio": 0.0
+      },
+      "components": [
+        {
+          "name": "vision_model",
+          "freeze": false,
+          "lr_multiplier": 0.01
+        },
+        {
+          "name": "text_model",
+          "freeze": false,
+          "lr_multiplier": 0.01
+        },
+        {
+          "name": "vision_projection",
+          "freeze": false,
+          "lr_multiplier": 0.1
+        },
+        {
+          "name": "text_projection",
+          "freeze": false,
+          "lr_multiplier": 0.1
+        },
+        {
+          "name": "cross_attention",
+          "freeze": false,
+          "lr_multiplier": 0.5
+        }
+      ]
+    }
+  ]
+}

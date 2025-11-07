@@ -1,0 +1,25 @@
+{
+  "sample_item": {
+    "image": "<PIL.JpegImagePlugin.JpegImageFile image mode=RGB size=401x500 at 0x52AA76F00>",
+    "captions": "[['A black dog runs in the grass, its tongue hanging out.', 'A black dog running across green grass.', 'A black dong runs across a grassy field', 'Small black dog running in grass', 'A black dog running in grass.']]",
+    "image_id": "13524",
+    "idx": "13524",
+    "match_id": "group_29"
+  },
+  "match_ids_sample": [
+    "group_29",
+    "group_6",
+    "group_5",
+    "group_17",
+    "group_30",
+    "group_86",
+    "group_12",
+    "group_21",
+    "group_27",
+    "group_39"
+  ],
+  "unique_ids_count": 100,
+  "total_items": 100,
+  "grouped_ids_count": 0,
+  "group_sizes": []
+}

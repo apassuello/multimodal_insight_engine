@@ -1,0 +1,35 @@
+{
+  "metrics": {
+    "global_i2t_recall@1": 0.235,
+    "global_t2i_recall@1": 0.04,
+    "global_avg_recall@1": 0.13749999999999998,
+    "global_i2t_recall@5": 0.539,
+    "global_t2i_recall@5": 0.184,
+    "global_avg_recall@5": 0.36150000000000004,
+    "global_i2t_recall@10": 0.693,
+    "global_t2i_recall@10": 0.332,
+    "global_avg_recall@10": 0.5125,
+    "global_i2t_accuracy": 0.235,
+    "global_t2i_accuracy": 0.04,
+    "global_accuracy": 0.13749999999999998,
+    "in_batch_i2t_accuracy": 0.23499999940395355,
+    "in_batch_t2i_accuracy": 0.03999999910593033,
+    "in_batch_accuracy": 0.13749999925494194,
+    "in_batch_i2t_recall@1": 0.23499999940395355,
+    "in_batch_t2i_recall@1": 0.03999999910593033,
+    "in_batch_avg_recall@1": 0.13749999925494194,
+    "in_batch_i2t_recall@5": 0.5389999747276306,
+    "in_batch_t2i_recall@5": 0.18400000035762787,
+    "in_batch_avg_recall@5": 0.36149998754262924,
+    "in_batch_i2t_recall@10": 0.6930000185966492,
+    "in_batch_t2i_recall@10": 0.3319999873638153,
+    "in_batch_avg_recall@10": 0.5125000029802322
+  },
+  "model_info": {
+    "total_parameters": 54987266,
+    "vision_model": "vit-small",
+    "text_model": "mobilebert",
+    "fusion_type": "bidirectional",
+    "fusion_dim": 512
+  }
+}
