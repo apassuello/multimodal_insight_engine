@@ -1,0 +1,74 @@
+# Pre-commit hooks for code quality and consistency
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 24.1.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=100]
+
+  # Import sorting with isort
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.0
+    hooks:
+      - id: isort
+        args: [--profile, black]
+
+  # Linting with flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=100, --ignore=E203,W503,E501]
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-bugbear
+
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-all
+          - torch
+          - torch-stubs
+        args: [--ignore-missing-imports, --warn-unused-ignores]
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Security scanning with Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        exclude: tests/
+        args: [-c, .bandit]
+
+# Local hooks configuration
+default_language_version:
+  python: python3
+
+# Configure which files to check
+files: ^src/|^tests/
+exclude: ^(\.git|\.venv|venv|migrations)/
+
+# Performance settings
+fail_fast: false
+minimum_pre_commit_version: 2.15.0

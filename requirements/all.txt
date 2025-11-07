@@ -1,0 +1,6 @@
+# All dependencies for comprehensive development and testing
+# Includes both base and development dependencies
+# Install with: pip install -r requirements/all.txt
+
+-r base.txt
+-r dev.txt
