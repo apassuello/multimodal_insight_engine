@@ -35,6 +35,9 @@ from .terminal_display import TerminalDisplay
 from .sample_comparator import SampleComparator, SampleComparison
 from .quality_analyzer import QualityAnalyzer, QualityAlert, AlertSeverity
 
+# PPO-specific tracking
+from .ppo_metrics_tracker import PPOMetricsTracker, PPOSnapshot
+
 __all__ = [
     # Main orchestrator
     'TrainingMonitor',
@@ -63,6 +66,10 @@ __all__ = [
     'QualityAnalyzer',
     'QualityAlert',
     'AlertSeverity',
+
+    # PPO tracking
+    'PPOMetricsTracker',
+    'PPOSnapshot',
 ]
 
 __version__ = '0.1.0'
