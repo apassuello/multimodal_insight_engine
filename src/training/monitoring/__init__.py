@@ -8,6 +8,7 @@ KEY COMPONENTS:
 - MetricsBuffer, MetricsStore: Efficient metrics storage
 - VerbosityLevel: Control display detail level
 - SampleComparator: Track response quality changes
+- QualityAnalyzer: Detect quality degradation and trigger early stopping
 DEPENDENCIES: See individual modules
 SPECIAL NOTES: Public API for training monitoring system
 """
@@ -32,6 +33,7 @@ from .terminal_display import TerminalDisplay
 
 # Quality monitoring
 from .sample_comparator import SampleComparator, SampleComparison
+from .quality_analyzer import QualityAnalyzer, QualityAlert, AlertSeverity
 
 __all__ = [
     # Main orchestrator
@@ -58,6 +60,9 @@ __all__ = [
     # Quality monitoring
     'SampleComparator',
     'SampleComparison',
+    'QualityAnalyzer',
+    'QualityAlert',
+    'AlertSeverity',
 ]
 
 __version__ = '0.1.0'
