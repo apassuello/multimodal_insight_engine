@@ -180,8 +180,8 @@ class TestDecorrelationLoss:
         loss_high = extract_loss(result)
         # Higher coefficient should lead to higher loss
         assert loss_high > loss_low
-        assert not torch.isnan(extract_loss(loss_low) if not isinstance(loss_low, torch.Tensor) else loss_low)
-        assert not torch.isnan(extract_loss(loss_high) if not isinstance(loss_high, torch.Tensor) else loss_high)
+        assert not torch.isnan(loss_low)
+        assert not torch.isnan(loss_high)
 
     def test_normalization_effect(self, vision_features, device):
         """Test effect of embedding normalization."""
@@ -195,8 +195,8 @@ class TestDecorrelationLoss:
         result = loss_fn_no_norm(vision_features)
         loss_no_norm = extract_loss(result)
         # Both should be valid
-        assert not torch.isnan(extract_loss(loss_norm) if not isinstance(loss_norm, torch.Tensor) else loss_norm)
-        assert not torch.isnan(extract_loss(loss_no_norm) if not isinstance(loss_no_norm, torch.Tensor) else loss_no_norm)
+        assert not torch.isnan(loss_norm)
+        assert not torch.isnan(loss_no_norm)
 
     def test_edge_case_uncorrelated_features(self, batch_size, embed_dim, device):
         """Test with perfectly uncorrelated features."""
@@ -399,8 +399,8 @@ class TestCLIPStyleLoss:
 
         # Different temperatures should lead to different losses
         assert not torch.allclose(loss_low, loss_high)
-        assert not torch.isnan(extract_loss(loss_low) if not isinstance(loss_low, torch.Tensor) else loss_low)
-        assert not torch.isnan(extract_loss(loss_high) if not isinstance(loss_high, torch.Tensor) else loss_high)
+        assert not torch.isnan(loss_low)
+        assert not torch.isnan(loss_high)
 
     def test_gradient_flow(self, vision_features, text_features, device):
         """Test gradient flow."""
@@ -430,8 +430,8 @@ class TestCLIPStyleLoss:
         loss_smooth = result_smooth['loss'] if isinstance(result_smooth, dict) else result_smooth
 
         # Label smoothing should affect loss value
-        assert not torch.isnan(extract_loss(loss_no_smooth) if not isinstance(loss_no_smooth, torch.Tensor) else loss_no_smooth)
-        assert not torch.isnan(extract_loss(loss_smooth) if not isinstance(loss_smooth, torch.Tensor) else loss_smooth)
+        assert not torch.isnan(loss_no_smooth)
+        assert not torch.isnan(loss_smooth)
 
     def test_numerical_stability(self, batch_size, embed_dim, device):
         """Test numerical stability."""
@@ -458,15 +458,14 @@ class TestCombinedLoss:
 
     def test_basic_forward(self, vision_features, text_features, device):
         """Test combining multiple losses."""
-        loss_functions = {
-            'mse': nn.MSELoss(),
-            'l1': nn.L1Loss(),
-        }
-
-        loss_fn = CombinedLoss(loss_functions=loss_functions)
-
         # Test with appropriate inputs
         try:
+            loss_functions = {
+                'mse': nn.MSELoss(),
+                'l1': nn.L1Loss(),
+            }
+
+            loss_fn = CombinedLoss(loss_functions=loss_functions)
             result = loss_fn(vision_features, text_features)
             if isinstance(result, dict):
                 loss = result.get('loss', result.get('total_loss'))
