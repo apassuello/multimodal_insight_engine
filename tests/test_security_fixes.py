@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 class TestPickleRemoval:
-    """Test that pickle is no longer used for NEW serialization (backward compatibility allowed)."""
+  """Test that pickle is no longer used for NEW serialization (backward compatibility allowed)."""
 
     def test_no_pickle_imports_in_dataset(self):
         """Verify that multimodal_dataset.py only imports pickle for backward compatibility."""
