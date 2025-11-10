@@ -103,3 +103,4 @@ multimodal_outputs/logs/history.json
 # Backup files
 *.backup
 *~
+training_outputs/
