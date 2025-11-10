@@ -54,6 +54,28 @@ except ImportError:
 # ============================================================================
 
 
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def extract_loss(result):
+    """
+    Extract loss tensor from various return types.
+
+    Handles:
+    - dict: returns result['loss'] or result['total_loss']
+    - tuple: returns first element
+    - tensor: returns as-is
+    """
+    if isinstance(result, dict):
+        return result.get('loss', result.get('total_loss', result.get('contrastive_loss')))
+    elif isinstance(result, tuple):
+        return result[0]
+    else:
+        return result
+
 @pytest.fixture
 def device():
     """Return available device."""
@@ -103,8 +125,10 @@ class TestDecorrelationLoss:
         """Test basic forward pass."""
         loss_fn = DecorrelationLoss(coef=1.0)
 
-        loss = loss_fn(vision_features)
+        result = loss_fn(vision_features)
 
+
+        loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -117,12 +141,14 @@ class TestDecorrelationLoss:
 
         # If the loss supports both modalities
         try:
-            loss = loss_fn(vision_features, text_features)
-            assert not torch.isnan(loss)
+            result = loss_fn(vision_features, text_features)
+
+            loss = extract_loss(result)            assert not torch.isnan(loss)
         except TypeError:
             # If it only takes one input
-            loss = loss_fn(vision_features)
-            assert not torch.isnan(loss)
+            result = loss_fn(vision_features)
+
+            loss = extract_loss(result)            assert not torch.isnan(loss)
 
     def test_gradient_flow(self, vision_features, device):
         """Test gradient flow through decorrelation loss."""
@@ -130,8 +156,10 @@ class TestDecorrelationLoss:
 
         loss_fn = DecorrelationLoss(coef=1.0)
 
-        loss = loss_fn(vision_features)
-        loss.backward()
+        result = loss_fn(vision_features)
+
+
+        loss = extract_loss(result)        loss.backward()
 
         assert vision_features.grad is not None
         assert not torch.all(vision_features.grad == 0)
@@ -141,25 +169,29 @@ class TestDecorrelationLoss:
         loss_fn_low = DecorrelationLoss(coef=0.1)
         loss_fn_high = DecorrelationLoss(coef=10.0)
 
-        loss_low = loss_fn_low(vision_features)
-        loss_high = loss_fn_high(vision_features)
+        result = loss_fn_low(vision_features)
 
+
+        loss_low = extract_loss(result)        result = loss_fn_high(vision_features)
+        loss_high = extract_loss(result)
         # Higher coefficient should lead to higher loss
         assert loss_high > loss_low
-        assert not torch.isnan(loss_low)
-        assert not torch.isnan(loss_high)
+        assert not torch.isnan(extract_loss(loss_low) if not isinstance(loss_low, torch.Tensor) else loss_low)
+        assert not torch.isnan(extract_loss(loss_high) if not isinstance(loss_high, torch.Tensor) else loss_high)
 
     def test_normalization_effect(self, vision_features, device):
         """Test effect of embedding normalization."""
         loss_fn_norm = DecorrelationLoss(coef=1.0, normalize_embeddings=True)
         loss_fn_no_norm = DecorrelationLoss(coef=1.0, normalize_embeddings=False)
 
-        loss_norm = loss_fn_norm(vision_features)
-        loss_no_norm = loss_fn_no_norm(vision_features)
+        result = loss_fn_norm(vision_features)
 
+
+        loss_norm = extract_loss(result)        result = loss_fn_no_norm(vision_features)
+        loss_no_norm = extract_loss(result)
         # Both should be valid
-        assert not torch.isnan(loss_norm)
-        assert not torch.isnan(loss_no_norm)
+        assert not torch.isnan(extract_loss(loss_norm) if not isinstance(loss_norm, torch.Tensor) else loss_norm)
+        assert not torch.isnan(extract_loss(loss_no_norm) if not isinstance(loss_no_norm, torch.Tensor) else loss_no_norm)
 
     def test_edge_case_uncorrelated_features(self, batch_size, embed_dim, device):
         """Test with perfectly uncorrelated features."""
@@ -169,8 +201,9 @@ class TestDecorrelationLoss:
             features = torch.cat([features, torch.randn(batch_size - embed_dim, embed_dim, device=device)])
 
         loss_fn = DecorrelationLoss(coef=1.0)
-        loss = loss_fn(features)
+        result = loss_fn(features)
 
+        loss = extract_loss(result)
         # Loss should be low for uncorrelated features
         assert not torch.isnan(loss)
 
@@ -181,8 +214,9 @@ class TestDecorrelationLoss:
         features = base.repeat(batch_size, 1) + torch.randn(batch_size, embed_dim, device=device) * 0.01
 
         loss_fn = DecorrelationLoss(coef=1.0)
-        loss = loss_fn(features)
+        result = loss_fn(features)
 
+        loss = extract_loss(result)
         # Loss should be higher for correlated features
         assert not torch.isnan(loss)
         assert loss.item() > 0
@@ -192,8 +226,9 @@ class TestDecorrelationLoss:
         features_large = torch.ones(batch_size, embed_dim, device=device) * 100
 
         loss_fn = DecorrelationLoss(coef=1.0, normalize_embeddings=True)
-        loss = loss_fn(features_large)
+        result = loss_fn(features_large)
 
+        loss = extract_loss(result)
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
@@ -359,8 +394,8 @@ class TestCLIPStyleLoss:
 
         # Different temperatures should lead to different losses
         assert not torch.allclose(loss_low, loss_high)
-        assert not torch.isnan(loss_low)
-        assert not torch.isnan(loss_high)
+        assert not torch.isnan(extract_loss(loss_low) if not isinstance(loss_low, torch.Tensor) else loss_low)
+        assert not torch.isnan(extract_loss(loss_high) if not isinstance(loss_high, torch.Tensor) else loss_high)
 
     def test_gradient_flow(self, vision_features, text_features, device):
         """Test gradient flow."""
@@ -390,8 +425,8 @@ class TestCLIPStyleLoss:
         loss_smooth = result_smooth['loss'] if isinstance(result_smooth, dict) else result_smooth
 
         # Label smoothing should affect loss value
-        assert not torch.isnan(loss_no_smooth)
-        assert not torch.isnan(loss_smooth)
+        assert not torch.isnan(extract_loss(loss_no_smooth) if not isinstance(loss_no_smooth, torch.Tensor) else loss_no_smooth)
+        assert not torch.isnan(extract_loss(loss_smooth) if not isinstance(loss_smooth, torch.Tensor) else loss_smooth)
 
     def test_numerical_stability(self, batch_size, embed_dim, device):
         """Test numerical stability."""
@@ -511,8 +546,9 @@ class TestFeatureConsistencyLoss:
         """Test basic forward pass."""
         try:
             loss_fn = FeatureConsistencyLoss()
-            loss = loss_fn(vision_features, text_features)
-            assert not torch.isnan(loss)
+            result = loss_fn(vision_features, text_features)
+
+            loss = extract_loss(result)            assert not torch.isnan(loss)
         except Exception:
             pytest.skip("FeatureConsistencyLoss has different interface")
 
@@ -523,8 +559,9 @@ class TestFeatureConsistencyLoss:
             text_features = text_features.requires_grad_(True)
 
             loss_fn = FeatureConsistencyLoss()
-            loss = loss_fn(vision_features, text_features)
-            loss.backward()
+            result = loss_fn(vision_features, text_features)
+
+            loss = extract_loss(result)            loss.backward()
 
             assert vision_features.grad is not None
             assert text_features.grad is not None
