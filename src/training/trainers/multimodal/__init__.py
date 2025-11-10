@@ -8,10 +8,12 @@ from .checkpoint_manager import CheckpointManager
 from .metrics_collector import MetricsCollector
 from .training_loop import TrainingLoop
 from .evaluation import Evaluator
+from .data_handler import DataHandler
 
 __all__ = [
     "CheckpointManager",
     "MetricsCollector",
     "TrainingLoop",
     "Evaluator",
+    "DataHandler",
 ]
