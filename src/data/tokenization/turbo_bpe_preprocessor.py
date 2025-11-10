@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from collections import Counter
 import os
+import pickle  # Used for backward compatibility with old caches
 import multiprocessing
 from functools import partial
 from .vocabulary import Vocabulary
@@ -53,22 +54,40 @@ class TurboBPEPreprocessor:
         return hashlib.md5(sample_text.encode()).hexdigest()
     
     def check_cached_preprocessed_data(self, dataset, src_lang="de", tgt_lang="en"):
-        """Check if preprocessed data exists in cache."""
+        """Check if preprocessed data exists in cache.
+        First tries JSON (secure), then falls back to pickle (legacy)."""
         cache_key = self._generate_cache_key(dataset)
-        # Replace pickle with safe JSON serialization
-        cache_file = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.json"
+        cache_file_json = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.json"
+        cache_file_pickle = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.pkl"
 
-        if os.path.exists(cache_file):
-            print(f"Found cached preprocessed data: {cache_file}")
+        # Try JSON first (secure)
+        if os.path.exists(cache_file_json):
+            print(f"Found cached preprocessed data: {cache_file_json}")
             try:
                 import json
-                with open(cache_file, 'r') as f:
+                with open(cache_file_json, 'r') as f:
                     # Load as JSON (SAFE - no code execution risk)
                     data = json.load(f)
                     # Convert back to tuple format
                     return (data['src_sequences'], data['tgt_sequences'])
             except Exception as e:
-                print(f"Error loading cache: {e}. Regenerating...")
+                print(f"Error loading JSON cache: {e}")
+                # Fall through to try pickle
+
+        # Fallback to pickle for backward compatibility (UNSAFE - migration only)
+        if os.path.exists(cache_file_pickle):
+            print(f"JSON cache not found, attempting to load legacy pickle cache: {cache_file_pickle}")
+            try:
+                with open(cache_file_pickle, 'rb') as f:
+                    data = pickle.load(f)
+                print(f"Loaded from pickle cache, converting to JSON for future use...")
+
+                # Migrate to JSON for next time
+                self.save_preprocessed_data(data, dataset, src_lang, tgt_lang)
+
+                return data
+            except Exception as e:
+                print(f"Error loading pickle cache: {e}. Regenerating...")
 
         return None
     
