@@ -9,6 +9,9 @@ KEY COMPONENTS:
 - VerbosityLevel: Control display detail level
 - SampleComparator: Track response quality changes
 - QualityAnalyzer: Detect quality degradation and trigger early stopping
+- PPOMetricsTracker: Track PPO-specific training mechanics
+- PlotManager: Generate matplotlib visualizations
+- ReportGenerator: Create markdown and JSON training reports
 DEPENDENCIES: See individual modules
 SPECIAL NOTES: Public API for training monitoring system
 """
@@ -37,6 +40,10 @@ from .quality_analyzer import QualityAnalyzer, QualityAlert, AlertSeverity
 
 # PPO-specific tracking
 from .ppo_metrics_tracker import PPOMetricsTracker, PPOSnapshot
+
+# Visualization and reporting
+from .plot_manager import PlotManager
+from .report_generator import ReportGenerator
 
 __all__ = [
     # Main orchestrator
@@ -70,6 +77,10 @@ __all__ = [
     # PPO tracking
     'PPOMetricsTracker',
     'PPOSnapshot',
+
+    # Visualization and reporting
+    'PlotManager',
+    'ReportGenerator',
 ]
 
 __version__ = '0.1.0'
