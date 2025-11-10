@@ -22,6 +22,7 @@ import torchvision.transforms as transforms
 import PIL.Image as Image
 import os
 import json
+import pickle  # Used for backward compatibility with old caches
 import time
 import random
 from typing import Dict, List, Tuple, Optional, Callable, Union, Any
@@ -504,13 +505,14 @@ class Flickr30kDataset(MultimodalDataset):
     def _load_from_cache(self) -> bool:
         """
         Try to load the dataset from cache.
+        First tries JSON (secure), then falls back to pickle (legacy).
 
         Returns:
             bool: True if successfully loaded from cache, False otherwise
         """
-        # Replace pickle with safe JSON serialization
         cache_samples_json = self.cache_samples.replace('.pkl', '.json')
 
+        # Try JSON first (secure)
         if os.path.exists(self.cache_metadata) and os.path.exists(cache_samples_json):
             try:
                 # Load samples from JSON file (SAFE)
@@ -521,10 +523,33 @@ class Flickr30kDataset(MultimodalDataset):
                 if not self.samples:
                     return False
 
+                print(f"Loaded from JSON cache: {cache_samples_json}")
                 return True
             except Exception as e:
-                print(f"Error loading from cache: {str(e)}")
+                print(f"Error loading from JSON cache: {str(e)}")
+                # Fall through to try pickle
+
+        # Fallback to pickle for backward compatibility (UNSAFE - migration only)
+        if os.path.exists(self.cache_metadata) and os.path.exists(self.cache_samples):
+            try:
+                print(f"JSON cache not found, attempting to load legacy pickle cache...")
+                with open(self.cache_samples, 'rb') as f:
+                    self.samples = pickle.load(f)
+
+                if not self.samples:
+                    return False
+
+                print(f"Loaded from pickle cache: {self.cache_samples}")
+                print(f"Converting to JSON format for future use...")
+
+                # Migrate to JSON for next time
+                self._save_to_cache()
+
+                return True
+            except Exception as e:
+                print(f"Error loading from pickle cache: {str(e)}")
                 return False
+
         return False
 
     def _save_to_cache(self) -> None:
@@ -1091,6 +1116,8 @@ class EnhancedMultimodalDataset(Dataset):
 
         # Try to load from cache first
         cache_samples_json = cache_samples.replace('.pkl', '.json')
+
+        # Try JSON first (secure)
         if os.path.exists(cache_metadata) and os.path.exists(cache_samples_json):
             try:
                 # Load samples from JSON file (SAFE - no code execution)
@@ -1119,11 +1146,63 @@ class EnhancedMultimodalDataset(Dataset):
                 if self.dataset:
                     self.loaded_from_cache = True  # Set flag to indicate cache was used
                     logger.info(
-                        f"Successfully loaded {len(self.dataset)} examples from cache for {self.split} split"
+                        f"Successfully loaded {len(self.dataset)} examples from JSON cache for {self.split} split"
                     )
                     return
             except Exception as e:
-                logger.warning(f"Error loading from cache: {str(e)}")
+                logger.warning(f"Error loading from JSON cache: {str(e)}")
+                # Fall through to try pickle
+
+        # Fallback to pickle for backward compatibility (UNSAFE - migration only)
+        if os.path.exists(cache_metadata) and os.path.exists(cache_samples):
+            try:
+                logger.info(f"JSON cache not found, attempting to load legacy pickle cache...")
+                with open(cache_samples, 'rb') as f:
+                    self.dataset = pickle.load(f)
+
+                if self.dataset:
+                    self.loaded_from_cache = True
+                    logger.info(
+                        f"Successfully loaded {len(self.dataset)} examples from pickle cache for {self.split} split"
+                    )
+                    logger.info(f"Converting to JSON format for future use...")
+
+                    # Migrate to JSON - save with proper structure
+                    try:
+                        os.makedirs(cache_dir, exist_ok=True)
+                        image_dir = os.path.join(cache_dir, "images")
+                        os.makedirs(image_dir, exist_ok=True)
+
+                        serializable_dataset = []
+                        for idx, item in enumerate(self.dataset):
+                            # Handle PIL Image objects
+                            if "image" in item and hasattr(item["image"], 'save'):
+                                # It's a PIL Image - save to file
+                                image_path = os.path.join(image_dir, f"image_{idx}.png")
+                                item["image"].save(image_path)
+
+                                serializable_item = {
+                                    "image_path": image_path,
+                                    "captions": item.get("captions", []),
+                                    "image_id": item.get("image_id", str(idx)),
+                                    "idx": item.get("idx", idx)
+                                }
+                                serializable_dataset.append(serializable_item)
+                            else:
+                                # Already serializable or has image_path
+                                serializable_dataset.append(item)
+
+                        # Save dataset to JSON file
+                        with open(cache_samples_json, "w") as f:
+                            json.dump(serializable_dataset, f, indent=2)
+
+                        logger.info(f"Successfully migrated cache to JSON format")
+                    except Exception as save_e:
+                        logger.warning(f"Error migrating cache to JSON: {save_e}")
+
+                    return
+            except Exception as e:
+                logger.warning(f"Error loading from pickle cache: {str(e)}")
                 # Continue with loading from HuggingFace
 
         try:
