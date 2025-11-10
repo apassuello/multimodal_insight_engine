@@ -432,12 +432,14 @@ class TestMemoryQueueContrastiveLoss:
         # First batch
         vision1 = torch.randn(batch_size, embed_dim, device=device)
         text1 = torch.randn(batch_size, embed_dim, device=device)
-        loss1 = loss_fn(vision1, text1, match_ids)
+        result1 = loss_fn(vision1, text1, match_ids)
+        loss1 = extract_loss(result1)
 
         # Second batch
         vision2 = torch.randn(batch_size, embed_dim, device=device)
         text2 = torch.randn(batch_size, embed_dim, device=device)
-        loss2 = loss_fn(vision2, text2, match_ids)
+        result2 = loss_fn(vision2, text2, match_ids)
+        loss2 = extract_loss(result2)
 
         # Both losses should be valid
         assert not torch.isnan(loss1)
