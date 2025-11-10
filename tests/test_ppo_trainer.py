@@ -40,8 +40,10 @@ class MockValueModel(nn.Module):
     def forward(self, input_ids, attention_mask):
         """Return mock value estimates."""
         batch_size = input_ids.shape[0]
-        # Return random values between -1 and 1
-        return torch.randn(batch_size)
+        # Create a mock hidden state and pass through linear layer
+        # This ensures gradients flow properly during training
+        hidden = torch.randn(batch_size, self.value_head.in_features, requires_grad=True)
+        return self.value_head(hidden).squeeze(-1)
 
 
 class TestComputeGAE:

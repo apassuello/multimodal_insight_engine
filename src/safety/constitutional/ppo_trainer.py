@@ -325,7 +325,7 @@ class PPOTrainer:
             responses: List of generated responses
 
         Returns:
-            rewards: Reward scores [batch_size, seq_len]
+            rewards: Reward scores [batch_size, response_len]
         """
         self.reward_model.eval()
 
@@ -333,6 +333,15 @@ class PPOTrainer:
 
         with torch.no_grad():
             for prompt, response in zip(prompts, responses):
+                # Tokenize prompt to get its length
+                prompt_inputs = self.tokenizer(
+                    prompt,
+                    return_tensors='pt',
+                    padding=True,
+                    truncation=True
+                )
+                prompt_len = prompt_inputs['input_ids'].shape[1]
+
                 # Tokenize prompt + response
                 text = prompt + response
                 inputs = self.tokenizer(
@@ -350,9 +359,9 @@ class PPOTrainer:
                     inputs['attention_mask']
                 )
 
-                # Expand reward to sequence length
-                seq_len = inputs['input_ids'].shape[1]
-                reward_seq = reward.unsqueeze(1).expand(-1, seq_len)
+                # Expand reward to RESPONSE length only (not full sequence)
+                response_len = inputs['input_ids'].shape[1] - prompt_len
+                reward_seq = reward.unsqueeze(1).expand(-1, response_len)
 
                 rewards_list.append(reward_seq)
 
@@ -373,7 +382,8 @@ class PPOTrainer:
     def compute_values(
         self,
         prompts: List[str],
-        responses: List[str]
+        responses: List[str],
+        requires_grad: bool = False
     ) -> torch.Tensor:
         """
         Compute value estimates using the value model.
@@ -381,16 +391,32 @@ class PPOTrainer:
         Args:
             prompts: List of prompts
             responses: List of generated responses
+            requires_grad: Whether to compute gradients (needed for value model training)
 
         Returns:
-            values: Value estimates [batch_size, seq_len]
+            values: Value estimates [batch_size, response_len]
         """
-        self.value_model.eval()
+        if requires_grad:
+            self.value_model.train()
+        else:
+            self.value_model.eval()
 
         values_list = []
 
-        with torch.no_grad():
+        # Use no_grad context only if gradients are not required
+        context = torch.no_grad() if not requires_grad else torch.enable_grad()
+
+        with context:
             for prompt, response in zip(prompts, responses):
+                # Tokenize prompt to get its length
+                prompt_inputs = self.tokenizer(
+                    prompt,
+                    return_tensors='pt',
+                    padding=True,
+                    truncation=True
+                )
+                prompt_len = prompt_inputs['input_ids'].shape[1]
+
                 # Tokenize prompt + response
                 text = prompt + response
                 inputs = self.tokenizer(
@@ -409,9 +435,9 @@ class PPOTrainer:
                     inputs['attention_mask']
                 )
 
-                # Expand value to sequence length
-                seq_len = inputs['input_ids'].shape[1]
-                value_seq = value.unsqueeze(1).expand(-1, seq_len)
+                # Expand value to RESPONSE length only (not full sequence)
+                response_len = inputs['input_ids'].shape[1] - prompt_len
+                value_seq = value.unsqueeze(1).expand(-1, response_len)
 
                 values_list.append(value_seq)
 
@@ -421,6 +447,7 @@ class PPOTrainer:
         for v in values_list:
             pad_len = max_len - v.shape[1]
             if pad_len > 0:
+                # Create padding without requires_grad - gradients will flow through v
                 padding = torch.zeros(v.shape[0], pad_len, device=self.device)
                 v = torch.cat([v, padding], dim=1)
             padded_values.append(v)
@@ -444,7 +471,7 @@ class PPOTrainer:
         Returns:
             log_probs: Log probabilities [batch_size, seq_len]
         """
-        self.policy_model.eval()
+        self.policy_model.train()  # Enable training mode for gradients
 
         all_logprobs = []
 
@@ -469,10 +496,9 @@ class PPOTrainer:
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-            # Get model outputs
-            with torch.no_grad():
-                outputs = self.policy_model(**inputs)
-                logits = outputs.logits
+            # Get model outputs (with gradients for backprop)
+            outputs = self.policy_model(**inputs)
+            logits = outputs.logits
 
             # Compute log probabilities for response tokens
             shift_logits = logits[:, prompt_len-1:-1, :]
@@ -654,8 +680,8 @@ class PPOTrainer:
             )
             self.policy_optimizer.step()
 
-            # Compute value function loss
-            new_values = self.compute_values(prompts, responses)
+            # Compute value function loss (with gradients for training)
+            new_values = self.compute_values(prompts, responses, requires_grad=True)
             value_loss = F.mse_loss(new_values, returns)
 
             # Update value function
@@ -799,7 +825,7 @@ class PPOTrainer:
         Args:
             checkpoint_path: Path to checkpoint file
         """
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
 
         self.policy_model.load_state_dict(checkpoint['policy_model_state_dict'])
         self.value_model.load_state_dict(checkpoint['value_model_state_dict'])
