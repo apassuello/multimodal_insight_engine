@@ -548,7 +548,7 @@ class TestDynamicTemperatureContrastiveLoss:
             result = loss_fn(vision_features, text_features)
 
             loss = extract_loss(result)
-        loss.backward()
+            loss.backward()
 
             # Temperature should have gradient if learnable
             if hasattr(loss_fn, 'temperature') and hasattr(

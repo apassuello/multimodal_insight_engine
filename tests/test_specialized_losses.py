@@ -144,13 +144,13 @@ class TestDecorrelationLoss:
             result = loss_fn(vision_features, text_features)
 
             loss = extract_loss(result)
-        assert not torch.isnan(loss)
+            assert not torch.isnan(loss)
         except TypeError:
             # If it only takes one input
             result = loss_fn(vision_features)
 
             loss = extract_loss(result)
-        assert not torch.isnan(loss)
+            assert not torch.isnan(loss)
 
     def test_gradient_flow(self, vision_features, device):
         """Test gradient flow through decorrelation loss."""
