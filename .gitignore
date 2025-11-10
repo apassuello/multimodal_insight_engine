@@ -99,3 +99,5 @@ demos/models/tokenizers/de/vocab.json
 multimodal_outputs/demo_results.json
 multimodal_outputs/test_metrics.json
 multimodal_outputs/logs/history.json
+.coverage
+coverage_html/
