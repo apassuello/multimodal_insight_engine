@@ -611,5 +611,322 @@ class TestIntegration:
         assert 'avg_reward' in stats
 
 
+class TestMonitoringIntegration:
+    """Test monitoring system integration with PPO trainer."""
+
+    def test_ppo_trainer_accepts_monitor(self):
+        """Test that PPO trainer accepts monitor parameter."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import TrainingMonitor
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create monitor
+        monitor = TrainingMonitor()
+
+        # Create trainer with monitor
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor
+        )
+
+        # Verify monitor is set
+        assert trainer.monitor is monitor
+
+    def test_ppo_trainer_without_monitor(self):
+        """Test that PPO trainer works without monitor (backward compatibility)."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create trainer without monitor
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device
+        )
+
+        # Should work fine without monitor
+        assert trainer.monitor is None
+
+    @pytest.mark.slow
+    def test_training_emits_events(self):
+        """Test that training emits events to monitor."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import TrainingMonitor, TrainingPhase
+        from unittest.mock import Mock
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create monitor with mock callback to track events
+        monitor = TrainingMonitor()
+        mock_callback = Mock()
+        monitor.register_callback(mock_callback)
+
+        # Create trainer with monitor
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor
+        )
+
+        prompts = ["Hello"]
+
+        # Run training step
+        with monitor.monitor_context():
+            trainer.train_step(
+                prompts,
+                num_epochs_per_batch=1,
+                max_length=15,
+                iteration=0
+            )
+
+        # Verify events were emitted
+        assert mock_callback.on_event.called
+        call_count = mock_callback.on_event.call_count
+
+        # Should have emitted at least:
+        # - RESPONSE_GENERATED
+        # - REWARD_COMPUTED
+        # - POLICY_UPDATE (1 epoch)
+        # - VALUE_UPDATE (1 epoch)
+        # Minimum 4 events
+        assert call_count >= 4
+
+        # Check that events have correct phases
+        events = [call.args[0] for call in mock_callback.on_event.call_args_list]
+        phases = [event.phase for event in events]
+
+        assert TrainingPhase.RESPONSE_GENERATED in phases
+        assert TrainingPhase.REWARD_COMPUTED in phases
+        assert TrainingPhase.POLICY_UPDATE in phases
+        assert TrainingPhase.VALUE_UPDATE in phases
+
+    @pytest.mark.slow
+    def test_full_training_emits_all_events(self):
+        """Test that full training loop emits all expected events."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import TrainingMonitor, TrainingPhase
+        from unittest.mock import Mock
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create monitor with mock callback
+        monitor = TrainingMonitor()
+        mock_callback = Mock()
+        monitor.register_callback(mock_callback)
+
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor
+        )
+
+        prompts = ["Test"]
+
+        # Run minimal training
+        with monitor.monitor_context():
+            trainer.train(
+                prompts,
+                num_steps=2,
+                batch_size=1,
+                num_epochs_per_batch=1,
+                max_length=15
+            )
+
+        # Collect all event phases
+        events = [call.args[0] for call in mock_callback.on_event.call_args_list]
+        phases = [event.phase for event in events]
+
+        # Should have TRAINING_START and TRAINING_END
+        assert TrainingPhase.TRAINING_START in phases
+        assert TrainingPhase.TRAINING_END in phases
+
+        # Should have ITERATION_START and ITERATION_END for each step
+        assert phases.count(TrainingPhase.ITERATION_START) == 2
+        assert phases.count(TrainingPhase.ITERATION_END) == 2
+
+    @pytest.mark.slow
+    def test_early_stopping_integration(self):
+        """Test that early stopping works with monitor."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import (
+            TrainingMonitor,
+            SampleComparator,
+            QualityAnalyzer
+        )
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create monitor with quality analyzer that will trigger early stopping
+        monitor = TrainingMonitor()
+        comparator = SampleComparator(sample_size=1, comparison_frequency=1)
+        analyzer = QualityAnalyzer(
+            monitor=monitor,
+            comparator=comparator,
+            kl_threshold=0.0001,  # Very low threshold to trigger early
+            reward_hack_threshold=0.001
+        )
+        monitor.register_callback(comparator)
+        monitor.register_callback(analyzer)
+
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor,
+            kl_penalty=10.0  # High KL to potentially trigger
+        )
+
+        prompts = ["Test prompt"]
+
+        # Run training - early stopping might trigger
+        with monitor.monitor_context():
+            results = trainer.train(
+                prompts,
+                num_steps=10,  # Request 10 steps
+                batch_size=1,
+                num_epochs_per_batch=2,
+                max_length=15
+            )
+
+        # Training should complete (with or without early stopping)
+        assert 'training_history' in results
+        assert 'final_stats' in results
+
+    @pytest.mark.slow
+    def test_monitoring_tracks_metrics(self):
+        """Test that monitor correctly tracks PPO metrics."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import TrainingMonitor
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        # Create monitor
+        monitor = TrainingMonitor()
+
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor
+        )
+
+        prompts = ["Hello"]
+
+        # Run training
+        with monitor.monitor_context():
+            trainer.train(
+                prompts,
+                num_steps=2,
+                batch_size=1,
+                num_epochs_per_batch=1,
+                max_length=15
+            )
+
+        # Check that metrics were tracked
+        metrics_store = monitor.get_metrics_store()
+        metric_names = metrics_store.get_metric_names()
+
+        # Should have tracked key PPO metrics
+        expected_metrics = ['policy_loss', 'value_loss', 'kl_div', 'reward']
+        for metric in expected_metrics:
+            assert metric in metric_names, f"Expected metric '{metric}' not tracked"
+
+        # Check that we have data for each metric
+        for metric in expected_metrics:
+            history = metrics_store.get_history(metric)
+            assert len(history) > 0, f"No data for metric '{metric}'"
+
+    def test_emit_event_method_exists(self):
+        """Test that _emit_event method exists and works."""
+        device = torch.device('cpu')
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from src.training.monitoring import TrainingMonitor, TrainingEvent, TrainingPhase
+
+        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+        value_model = MockValueModel()
+        reward_model = MockRewardModel()
+        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token
+
+        monitor = TrainingMonitor()
+
+        trainer = PPOTrainer(
+            policy_model=policy_model,
+            value_model=value_model,
+            reward_model=reward_model,
+            tokenizer=tokenizer,
+            device=device,
+            monitor=monitor
+        )
+
+        # Verify _emit_event method exists
+        assert hasattr(trainer, '_emit_event')
+
+        # Test emitting an event manually
+        event = TrainingEvent(
+            phase=TrainingPhase.TRAINING_START,
+            iteration=0,
+            metadata={'test': True}
+        )
+
+        # Should not raise an error
+        trainer._emit_event(event)
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

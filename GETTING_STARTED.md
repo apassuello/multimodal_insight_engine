@@ -53,6 +53,17 @@ make test-fast
 make test
 ```
 
+## 5. Try the Monitoring Demo (Optional, 30 seconds)
+
+```bash
+# Run the training monitoring demo
+python demos/ppo_monitoring_demo.py --quick
+
+# Check the generated reports
+ls training_outputs/
+cat training_outputs/training_report.md
+```
+
 Done! You're ready to develop.
 
 ---
@@ -109,12 +120,14 @@ multimodal_insight_engine/
 ├── src/                 # Main source code
 │   ├── models/         # Model implementations
 │   ├── data/           # Data processing
-│   ├── training/       # Training utilities
-│   ├── safety/         # Safety evaluation
+│   ├── training/       # Training utilities (including monitoring system)
+│   ├── safety/         # Safety evaluation (Constitutional AI)
 │   └── utils/          # Utility functions
-├── tests/              # Test suite
+├── tests/              # Test suite (202 monitoring tests)
 ├── docs/               # Documentation
-├── demos/              # Demo scripts
+├── demos/              # Demo scripts (including monitoring demo)
+│   ├── ppo_monitoring_demo.py           # Training monitoring demo
+│   └── MONITORING_USER_GUIDE.md         # Comprehensive monitoring guide
 ├── requirements/       # Dependency files
 ├── Makefile           # Common tasks
 └── README.md          # Full documentation
@@ -126,9 +139,10 @@ multimodal_insight_engine/
 
 1. **Read the documentation**: See `docs/ARCHITECTURE.md` for system overview
 2. **Look at examples**: Check `demos/` for usage examples
-3. **Run tests**: `make test` to ensure everything works
-4. **See code style**: Read `CONTRIBUTING.md` for development guidelines
-5. **Debug issues**: Check `docs/DEBUGGING.md` if something breaks
+3. **Try the monitoring system**: See `demos/MONITORING_USER_GUIDE.md` for training monitoring
+4. **Run tests**: `make test` to ensure everything works (202 monitoring tests included)
+5. **See code style**: Read `CONTRIBUTING.md` for development guidelines
+6. **Debug issues**: Check `docs/DEBUGGING.md` if something breaks
 
 ---
 

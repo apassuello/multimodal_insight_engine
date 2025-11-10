@@ -1,4 +1,4 @@
-.PHONY: help install lint format type-check test test-fast clean docs setup check-deps
+.PHONY: help install lint format type-check test test-fast clean docs setup check-deps demo-monitoring
 
 help:
 	@echo "MultiModal Insight Engine - Common Tasks"
@@ -18,6 +18,10 @@ help:
 	@echo "  make test           Run all tests with coverage"
 	@echo "  make test-fast      Run fast unit tests only (<30 sec)"
 	@echo "  make test-verbose   Run tests with verbose output"
+	@echo "  make test-monitoring Run monitoring system tests only"
+	@echo ""
+	@echo "Demos:"
+	@echo "  make demo-monitoring Run training monitoring demo"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean          Remove build artifacts and cache"
@@ -76,6 +80,18 @@ test-verbose:
 test-no-cov:
 	@echo "Running tests without coverage..."
 	pytest tests/ -v
+
+test-monitoring:
+	@echo "Running monitoring system tests only..."
+	pytest tests/training/monitoring/ -v --tb=short
+
+demo-monitoring:
+	@echo "Running training monitoring demo..."
+	python demos/ppo_monitoring_demo.py --quick
+	@echo ""
+	@echo "Demo complete! Check training_outputs/ for reports."
+	@echo "For verbose mode: python demos/ppo_monitoring_demo.py --verbose --num_steps 30"
+	@echo "Full user guide: demos/MONITORING_USER_GUIDE.md"
 
 clean: clean-test
 	@echo "Removing build artifacts..."
