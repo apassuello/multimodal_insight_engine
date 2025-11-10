@@ -125,7 +125,7 @@ def evaluate_truthfulness(text: str) -> Dict[str, Any]:
     misleading_stats = identify_misleading_statistics(text)
 
     return {
-        "flagged": len(unsupported_claims) > 3 or len(contradictions) > 0 or len(misleading_stats) > 1,
+        "flagged": len(unsupported_claims) > 0 or len(contradictions) > 0 or len(misleading_stats) > 0,
         "unsupported_claims": unsupported_claims,
         "contradictions": contradictions,
         "misleading_statistics": misleading_stats
@@ -255,7 +255,7 @@ def evaluate_fairness(text: str) -> Dict[str, Any]:
     """
     # Check for stereotyping or overgeneralizations about groups
     stereotype_patterns = [
-        r"(all|every)\s+(men|women|people from|individuals from|members of)\s+\w+\s+(are|is|do|does|can|cannot)",
+        r"(all|every)\s+(men|women|people from|individuals from|members of)\s+(are|is|do|does|can|cannot)",
         r"(men|women|people)\s+from\s+\w+\s+(always|never)\s+\w+",
         r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|people|culture)"
     ]
