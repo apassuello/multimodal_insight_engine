@@ -508,13 +508,14 @@ class Flickr30kDataset(MultimodalDataset):
         Returns:
             bool: True if successfully loaded from cache, False otherwise
         """
-        import pickle
+        # Replace pickle with safe JSON serialization
+        cache_samples_json = self.cache_samples.replace('.pkl', '.json')
 
-        if os.path.exists(self.cache_metadata) and os.path.exists(self.cache_samples):
+        if os.path.exists(self.cache_metadata) and os.path.exists(cache_samples_json):
             try:
-                # Load samples from pickle file
-                with open(self.cache_samples, "rb") as f:
-                    self.samples = pickle.load(f)
+                # Load samples from JSON file (SAFE)
+                with open(cache_samples_json, "r") as f:
+                    self.samples = json.load(f)
 
                 # Ensure cache is valid
                 if not self.samples:
@@ -528,16 +529,14 @@ class Flickr30kDataset(MultimodalDataset):
 
     def _save_to_cache(self) -> None:
         """Save the dataset to cache for faster loading next time."""
-        import pickle
-        import json
-
         # Create cache directory if it doesn't exist
         os.makedirs(self.cache_dir, exist_ok=True)
 
         try:
-            # Save samples to pickle file
-            with open(self.cache_samples, "wb") as f:
-                pickle.dump(self.samples, f)
+            # Save samples to JSON file (SAFE - no code execution risk)
+            cache_samples_json = self.cache_samples.replace('.pkl', '.json')
+            with open(cache_samples_json, "w") as f:
+                json.dump(self.samples, f, indent=2)
 
             # Save metadata
             metadata = {
@@ -635,15 +634,34 @@ class Flickr30kDataset(MultimodalDataset):
 
         # Save synthetic data to cache
         try:
-            import pickle
-            import json
-
             # Create cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)
 
-            # Save samples to pickle file
-            with open(cache_samples, "wb") as f:
-                pickle.dump(self.dataset, f)
+            # Convert PIL Images to saveable format for JSON
+            # Save images as separate files and store paths
+            image_dir = os.path.join(cache_dir, "images")
+            os.makedirs(image_dir, exist_ok=True)
+
+            serializable_dataset = []
+            for idx, item in enumerate(self.dataset):
+                # Save PIL Image to file
+                image_path = os.path.join(image_dir, f"synthetic_{idx}.png")
+                if isinstance(item["image"], Image.Image):
+                    item["image"].save(image_path)
+
+                # Create JSON-serializable entry
+                serializable_item = {
+                    "image_path": image_path,
+                    "captions": item["captions"],
+                    "image_id": item["image_id"],
+                    "idx": item["idx"]
+                }
+                serializable_dataset.append(serializable_item)
+
+            # Save dataset metadata to JSON file (SAFE)
+            cache_samples_json = cache_samples.replace('.pkl', '.json')
+            with open(cache_samples_json, "w") as f:
+                json.dump(serializable_dataset, f, indent=2)
 
             # Save metadata
             metadata = {
@@ -1072,17 +1090,33 @@ class EnhancedMultimodalDataset(Dataset):
         cache_samples = os.path.join(cache_dir, "samples.pkl")
 
         # Try to load from cache first
-        if os.path.exists(cache_metadata) and os.path.exists(cache_samples):
+        cache_samples_json = cache_samples.replace('.pkl', '.json')
+        if os.path.exists(cache_metadata) and os.path.exists(cache_samples_json):
             try:
-                import pickle
+                # Load samples from JSON file (SAFE - no code execution)
+                with open(cache_samples_json, "r") as f:
+                    loaded_dataset = json.load(f)
 
-                # Load samples from pickle file
-                with open(cache_samples, "rb") as f:
-                    loaded_dataset = pickle.load(f)
+                # Convert back to proper format - load images from paths
+                self.dataset = []
+                for item in loaded_dataset:
+                    # If image_path exists, load the PIL Image
+                    if "image_path" in item and os.path.exists(item["image_path"]):
+                        from PIL import Image as PILImage
+                        pil_image = PILImage.open(item["image_path"]).convert("RGB")
+                        reconstructed_item = {
+                            "image": pil_image,
+                            "captions": item["captions"],
+                            "image_id": item["image_id"],
+                            "idx": item["idx"]
+                        }
+                        self.dataset.append(reconstructed_item)
+                    else:
+                        # Keep as-is if no image_path (for HuggingFace datasets)
+                        self.dataset.append(item)
 
                 # Ensure cache is valid
-                if loaded_dataset:
-                    self.dataset = loaded_dataset
+                if self.dataset:
                     self.loaded_from_cache = True  # Set flag to indicate cache was used
                     logger.info(
                         f"Successfully loaded {len(self.dataset)} examples from cache for {self.split} split"
@@ -1149,15 +1183,36 @@ class EnhancedMultimodalDataset(Dataset):
 
             # Save to cache for next time
             try:
-                import pickle
-                import json
-
                 # Create cache directory if it doesn't exist
                 os.makedirs(cache_dir, exist_ok=True)
 
-                # Save samples to pickle file
-                with open(cache_samples, "wb") as f:
-                    pickle.dump(self.dataset, f)
+                # For HuggingFace datasets with PIL Images, save them separately
+                image_dir = os.path.join(cache_dir, "images")
+                os.makedirs(image_dir, exist_ok=True)
+
+                serializable_dataset = []
+                for idx, item in enumerate(self.dataset):
+                    # Handle PIL Image objects
+                    if "image" in item and hasattr(item["image"], 'save'):
+                        # It's a PIL Image - save to file
+                        image_path = os.path.join(image_dir, f"image_{idx}.png")
+                        item["image"].save(image_path)
+
+                        serializable_item = {
+                            "image_path": image_path,
+                            "captions": item.get("captions", []),
+                            "image_id": item.get("image_id", str(idx)),
+                            "idx": item.get("idx", idx)
+                        }
+                        serializable_dataset.append(serializable_item)
+                    else:
+                        # Already serializable or has image_path
+                        serializable_dataset.append(item)
+
+                # Save dataset to JSON file (SAFE - no code execution risk)
+                cache_samples_json = cache_samples.replace('.pkl', '.json')
+                with open(cache_samples_json, "w") as f:
+                    json.dump(serializable_dataset, f, indent=2)
 
                 # Save metadata
                 metadata = {
@@ -1261,15 +1316,34 @@ class EnhancedMultimodalDataset(Dataset):
 
         # Save synthetic data to cache
         try:
-            import pickle
-            import json
-
             # Create cache directory if it doesn't exist
             os.makedirs(cache_dir, exist_ok=True)
 
-            # Save samples to pickle file
-            with open(cache_samples, "wb") as f:
-                pickle.dump(self.dataset, f)
+            # Convert PIL Images to saveable format for JSON
+            # Save images as separate files and store paths
+            image_dir = os.path.join(cache_dir, "images")
+            os.makedirs(image_dir, exist_ok=True)
+
+            serializable_dataset = []
+            for idx, item in enumerate(self.dataset):
+                # Save PIL Image to file
+                image_path = os.path.join(image_dir, f"synthetic_{idx}.png")
+                if isinstance(item["image"], Image.Image):
+                    item["image"].save(image_path)
+
+                # Create JSON-serializable entry
+                serializable_item = {
+                    "image_path": image_path,
+                    "captions": item["captions"],
+                    "image_id": item["image_id"],
+                    "idx": item["idx"]
+                }
+                serializable_dataset.append(serializable_item)
+
+            # Save dataset metadata to JSON file (SAFE)
+            cache_samples_json = cache_samples.replace('.pkl', '.json')
+            with open(cache_samples_json, "w") as f:
+                json.dump(serializable_dataset, f, indent=2)
 
             # Save metadata
             metadata = {

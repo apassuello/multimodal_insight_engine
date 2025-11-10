@@ -798,7 +798,7 @@ class PPOTrainer:
         Args:
             checkpoint_path: Path to checkpoint file
         """
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
 
         self.policy_model.load_state_dict(checkpoint['policy_model_state_dict'])
         self.value_model.load_state_dict(checkpoint['value_model_state_dict'])

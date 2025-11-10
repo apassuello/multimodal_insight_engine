@@ -638,7 +638,7 @@ class RewardModelTrainer:
         path = Path(path)
 
         # Load model state
-        checkpoint = torch.load(str(path) + '.pt', map_location=self.device)
+        checkpoint = torch.load(str(path) + '.pt', map_location=self.device, weights_only=True)
         self.reward_model.load_state_dict(checkpoint['model_state_dict'])
         self.training_history = checkpoint.get('training_history', [])
 

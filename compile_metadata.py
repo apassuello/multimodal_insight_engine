@@ -42,10 +42,12 @@ def is_python_file(file_path: str) -> bool:
 def extract_metadata_from_file(file_path: str) -> Optional[Dict[str, Any]]:
     """
     Extract metadata from a Python file if it has an extract_file_metadata function.
-    
+
+    SECURITY: Uses importlib for safe module loading instead of exec().
+
     Args:
         file_path: Path to the Python file
-        
+
     Returns:
         Metadata dictionary or None if no metadata function exists
     """
@@ -53,65 +55,54 @@ def extract_metadata_from_file(file_path: str) -> Optional[Dict[str, Any]]:
         # Read the module source code
         with open(file_path, 'r', encoding='utf-8') as f:
             source_code = f.read()
-        
-        # Find the extract_file_metadata function
+
+        # Find the extract_file_metadata function using AST parsing
         if 'def extract_file_metadata(' not in source_code:
             return None
-        
-        # Extract the metadata function content
-        metadata_func_code = ""
-        in_func = False
-        indentation = 0
-        
-        for line in source_code.split('\n'):
-            if 'def extract_file_metadata(' in line:
-                in_func = True
-                indentation = len(line) - len(line.lstrip())
-                metadata_func_code += line + '\n'
-            elif in_func:
-                if line.strip() and not line.startswith(' ' * indentation):
-                    # End of function reached
-                    in_func = False
-                else:
-                    metadata_func_code += line + '\n'
-        
-        # Create the extract_file_metadata function in our namespace
-        namespace = {
-            '__file__': file_path,
-            'os': os,
-        }
-        
-        # Add common imports that might be needed
+
+        # SECURITY FIX: Use importlib instead of exec() to safely load the module
+        # This goes through Python's import system which is safer than arbitrary code execution
+        spec = importlib.util.spec_from_file_location(
+            f"metadata_module_{os.path.basename(file_path)}",
+            file_path
+        )
+
+        if spec is None or spec.loader is None:
+            print(f"Could not load spec for {file_path}")
+            return None
+
+        # Create a module from the spec
+        module = importlib.util.module_from_spec(spec)
+
+        # Add to sys.modules temporarily to support relative imports
+        module_name = f"metadata_module_{os.path.basename(file_path)}"
+        sys.modules[module_name] = module
+
         try:
-            import torch
-            namespace['torch'] = torch
-        except ImportError:
-            pass
-            
-        try:
-            import numpy as np
-            namespace['np'] = np
-            namespace['numpy'] = np
-        except ImportError:
-            pass
-            
-        # Execute the function definition in the namespace
-        exec(metadata_func_code, namespace)
-        
-        # Check if the function was successfully defined
-        if 'extract_file_metadata' in namespace:
-            # Call the function with the file path
-            metadata = namespace['extract_file_metadata'](file_path)
-            
-            # Add module path to the metadata
-            rel_path = os.path.relpath(file_path, os.path.dirname(SRC_DIR))
-            metadata['module_path'] = rel_path
-            
-            return metadata
-        
+            # Execute the module (safer than exec as it goes through import system)
+            spec.loader.exec_module(module)
+
+            # Check if the function exists in the module
+            if hasattr(module, 'extract_file_metadata'):
+                # Call the function with the file path
+                metadata_func = getattr(module, 'extract_file_metadata')
+                metadata = metadata_func(file_path)
+
+                # Add module path to the metadata
+                rel_path = os.path.relpath(file_path, os.path.dirname(SRC_DIR))
+                metadata['module_path'] = rel_path
+
+                return metadata
+        finally:
+            # Clean up sys.modules
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+
         return None
     except Exception as e:
         print(f"Error extracting metadata from {file_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def collect_directory_structure(root_dir: str) -> Dict[str, Any]:

@@ -3,7 +3,6 @@ import time
 import numpy as np
 from tqdm import tqdm
 from collections import Counter
-import pickle
 import os
 import multiprocessing
 from functools import partial
@@ -56,26 +55,39 @@ class TurboBPEPreprocessor:
     def check_cached_preprocessed_data(self, dataset, src_lang="de", tgt_lang="en"):
         """Check if preprocessed data exists in cache."""
         cache_key = self._generate_cache_key(dataset)
-        cache_file = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.pkl"
-        
+        # Replace pickle with safe JSON serialization
+        cache_file = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.json"
+
         if os.path.exists(cache_file):
             print(f"Found cached preprocessed data: {cache_file}")
             try:
-                with open(cache_file, 'rb') as f:
-                    return pickle.load(f)
+                import json
+                with open(cache_file, 'r') as f:
+                    # Load as JSON (SAFE - no code execution risk)
+                    data = json.load(f)
+                    # Convert back to tuple format
+                    return (data['src_sequences'], data['tgt_sequences'])
             except Exception as e:
                 print(f"Error loading cache: {e}. Regenerating...")
-                
+
         return None
     
     def save_preprocessed_data(self, data, dataset, src_lang="de", tgt_lang="en"):
         """Save preprocessed data to cache."""
         cache_key = self._generate_cache_key(dataset)
-        cache_file = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.pkl"
-        
+        # Replace pickle with safe JSON serialization
+        cache_file = f"{self.cache_dir}/{src_lang}_{tgt_lang}_{cache_key}.json"
+
         try:
-            with open(cache_file, 'wb') as f:
-                pickle.dump(data, f)
+            import json
+            # Convert tuple to dict for JSON serialization
+            serializable_data = {
+                'src_sequences': data[0],
+                'tgt_sequences': data[1]
+            }
+            with open(cache_file, 'w') as f:
+                # Save as JSON (SAFE - no code execution risk)
+                json.dump(serializable_data, f)
             print(f"Saved preprocessed data to cache: {cache_file}")
         except Exception as e:
             print(f"Error saving cache: {e}")
