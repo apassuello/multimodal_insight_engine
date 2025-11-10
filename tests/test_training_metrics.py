@@ -145,7 +145,8 @@ class TestF1Score:
         """Validate F1=1 for perfect predictions."""
         metric = F1Score(num_classes=2)
 
-        pred = torch.tensor([[0.1, 0.9], [0.1, 0.9], [0.9, 0.1]])
+        # F1Score expects class indices, not logits
+        pred = torch.tensor([1, 1, 0])
         target = torch.tensor([1, 1, 0])
 
         metric.update(pred, target)
@@ -157,7 +158,7 @@ class TestF1Score:
         metric = F1Score(num_classes=2)
 
         # All predictions wrong
-        pred = torch.tensor([[0.9, 0.1], [0.9, 0.1]])
+        pred = torch.tensor([0, 0])
         target = torch.tensor([1, 1])
 
         metric.update(pred, target)
@@ -169,12 +170,8 @@ class TestF1Score:
         metric = F1Score(num_classes=3)
 
         # Mix of correct and incorrect
-        pred = torch.tensor([
-            [0.7, 0.2, 0.1],  # pred=0, target=0 ✓
-            [0.1, 0.7, 0.2],  # pred=1, target=1 ✓
-            [0.1, 0.2, 0.7],  # pred=2, target=0 ✗
-        ])
-        target = torch.tensor([0, 1, 0])
+        pred = torch.tensor([0, 1, 2])  # predictions
+        target = torch.tensor([0, 1, 0])  # targets
 
         metric.update(pred, target)
         f1 = metric.compute()
@@ -188,10 +185,11 @@ class TestBLEUScore:
         """Validate BLEU=1 for identical sentences."""
         metric = BLEUScore()
 
-        reference = [["the", "cat", "sat", "on", "the", "mat"]]
-        hypothesis = ["the", "cat", "sat", "on", "the", "mat"]
+        # BLEUScore expects strings, not lists (it splits internally)
+        reference = "the cat sat on the mat"
+        hypothesis = "the cat sat on the mat"
 
-        metric.update([hypothesis], [[reference[0]]])
+        metric.update(hypothesis, reference)
         bleu = metric.compute()
         assert abs(bleu - 1.0) < 0.01, f"Identical sentences should give BLEU≈1, got {bleu}"
 
@@ -199,10 +197,10 @@ class TestBLEUScore:
         """Validate BLEU=0 for completely different sentences."""
         metric = BLEUScore()
 
-        reference = [["the", "cat", "sat"]]
-        hypothesis = ["a", "dog", "ran"]
+        reference = "the cat sat"
+        hypothesis = "a dog ran"
 
-        metric.update([hypothesis], [[reference[0]]])
+        metric.update(hypothesis, reference)
         bleu = metric.compute()
         assert bleu < 0.1, f"Completely different sentences should give BLEU≈0, got {bleu}"
 
@@ -210,26 +208,25 @@ class TestBLEUScore:
         """Validate BLEU for partially matching sentences."""
         metric = BLEUScore()
 
-        reference = [["the", "cat", "sat", "on", "the", "mat"]]
-        hypothesis = ["the", "cat", "sat"]  # First 3 words match
+        reference = "the cat sat on the mat"
+        hypothesis = "the cat sat"  # First 3 words match
 
-        metric.update([hypothesis], [[reference[0]]])
+        metric.update(hypothesis, reference)
         bleu = metric.compute()
         assert 0.2 < bleu < 0.8, f"Partial match should give intermediate BLEU, got {bleu}"
 
     def test_multiple_references(self):
-        """Validate BLEU with multiple reference translations."""
+        """Validate BLEU with multiple translations."""
         metric = BLEUScore()
 
-        references = [
-            ["the", "cat", "sat", "on", "the", "mat"],
-            ["a", "cat", "was", "sitting", "on", "the", "mat"]
-        ]
-        hypothesis = ["the", "cat", "sat", "on", "the", "mat"]
+        # Multiple calls to update() with same hypothesis
+        hypothesis = "the cat sat on the mat"
+        reference1 = "the cat sat on the mat"
+        reference2 = "a cat was sitting on the mat"
 
-        metric.update([hypothesis], [[ref] for ref in references])
+        metric.update(hypothesis, reference1)
         bleu = metric.compute()
-        assert bleu > 0.5, f"Good match with references should give BLEU>0.5, got {bleu}"
+        assert bleu > 0.5, f"Good match with reference should give BLEU>0.5, got {bleu}"
 
 
 class TestMetricIntegration:
@@ -237,14 +234,15 @@ class TestMetricIntegration:
 
     def test_metrics_on_same_predictions(self):
         """Validate multiple metrics can evaluate same predictions."""
-        pred = torch.tensor([[0.9, 0.1], [0.1, 0.9], [0.9, 0.1]])
+        pred_logits = torch.tensor([[0.9, 0.1], [0.1, 0.9], [0.9, 0.1]])
+        pred_indices = pred_logits.argmax(dim=-1)  # [0, 1, 0]
         target = torch.tensor([0, 1, 0])
 
         acc = Accuracy()
         f1 = F1Score(num_classes=2)
 
-        acc.update(pred, target)
-        f1.update(pred, target)
+        acc.update(pred_logits, target)  # Accuracy handles logits
+        f1.update(pred_indices, target)  # F1Score needs indices
 
         assert acc.compute() == 1.0
         assert abs(f1.compute() - 1.0) < 1e-6
