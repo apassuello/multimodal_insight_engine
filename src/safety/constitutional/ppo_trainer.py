@@ -20,6 +20,16 @@ from tqdm import tqdm
 
 from .model_utils import GenerationConfig, generate_text
 
+# Import monitoring system (lazy to avoid dependency if not used)
+try:
+    from src.training.monitoring import TrainingMonitor, TrainingEvent, TrainingPhase
+    MONITORING_AVAILABLE = True
+except ImportError:
+    MONITORING_AVAILABLE = False
+    TrainingMonitor = None
+    TrainingEvent = None
+    TrainingPhase = None
+
 
 class PPOTrainer:
     """
@@ -45,7 +55,8 @@ class PPOTrainer:
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         value_loss_coef: float = 0.5,
-        max_grad_norm: float = 1.0
+        max_grad_norm: float = 1.0,
+        monitor: Optional[Any] = None
     ):
         """
         Initialize PPO trainer.
@@ -63,6 +74,7 @@ class PPOTrainer:
             gae_lambda: GAE lambda parameter for advantage estimation
             value_loss_coef: Coefficient for value loss
             max_grad_norm: Maximum gradient norm for clipping
+            monitor: Optional TrainingMonitor for tracking training progress
         """
         self.policy_model = policy_model.to(device)
         self.value_model = value_model.to(device)
@@ -102,6 +114,19 @@ class PPOTrainer:
             'mean_rewards': [],
             'mean_advantages': []
         }
+
+        # Optional training monitor
+        self.monitor = monitor
+
+    def _emit_event(self, event: Any) -> None:
+        """
+        Emit training event to monitor if available.
+
+        Args:
+            event: TrainingEvent to emit
+        """
+        if self.monitor is not None and MONITORING_AVAILABLE:
+            self.monitor.on_event(event)
 
     def compute_gae(
         self,
@@ -604,7 +629,8 @@ class PPOTrainer:
         prompts: List[str],
         num_epochs_per_batch: int = 4,
         max_length: int = 150,
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        iteration: int = 0
     ) -> Dict[str, float]:
         """
         Single PPO training step.
@@ -621,6 +647,7 @@ class PPOTrainer:
             num_epochs_per_batch: Number of optimization epochs per batch
             max_length: Maximum response length
             temperature: Sampling temperature
+            iteration: Current training iteration
 
         Returns:
             Training metrics dictionary
@@ -634,8 +661,27 @@ class PPOTrainer:
             temperature=temperature
         )
 
+        # Emit RESPONSE_GENERATED event
+        if MONITORING_AVAILABLE and self.monitor is not None:
+            self._emit_event(TrainingEvent(
+                phase=TrainingPhase.RESPONSE_GENERATED,
+                iteration=iteration,
+                metadata={
+                    'prompts': prompts,
+                    'responses': responses
+                }
+            ))
+
         # Step 2: Compute rewards using reward model
         rewards = self.compute_rewards(prompts, responses)
+
+        # Emit REWARD_COMPUTED event
+        if MONITORING_AVAILABLE and self.monitor is not None:
+            self._emit_event(TrainingEvent(
+                phase=TrainingPhase.REWARD_COMPUTED,
+                iteration=iteration,
+                metrics={'reward': float(rewards.mean().item())}
+            ))
 
         # Step 3: Compute values
         values = self.compute_values(prompts, responses)
@@ -674,11 +720,31 @@ class PPOTrainer:
             # Update policy
             self.policy_optimizer.zero_grad()
             policy_loss.backward()
-            torch.nn.utils.clip_grad_norm_(
+            grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.policy_model.parameters(),
                 self.max_grad_norm
             )
             self.policy_optimizer.step()
+
+            # Emit POLICY_UPDATE event
+            if MONITORING_AVAILABLE and self.monitor is not None:
+                # Compute clip fraction (fraction of ratios that were clipped)
+                ratio = torch.exp(new_logprobs - old_logprobs)
+                clip_fraction = ((ratio < (1 - self.clip_epsilon)) | (ratio > (1 + self.clip_epsilon))).float().mean()
+
+                self._emit_event(TrainingEvent(
+                    phase=TrainingPhase.POLICY_UPDATE,
+                    iteration=iteration,
+                    metrics={
+                        'policy_loss': float(policy_loss.item()),
+                        'kl_div': float(kl_div.item()),
+                        'clip_fraction': float(clip_fraction.item()),
+                        'gradient_norm': float(grad_norm.item()),
+                        'learning_rate': float(self.policy_optimizer.param_groups[0]['lr']),
+                        'advantage_mean': float(advantages.mean().item()),
+                        'advantage_std': float(advantages.std().item())
+                    }
+                ))
 
             # Compute value function loss (with gradients for training)
             new_values = self.compute_values(prompts, responses, requires_grad=True)
@@ -687,11 +753,22 @@ class PPOTrainer:
             # Update value function
             self.value_optimizer.zero_grad()
             value_loss.backward()
-            torch.nn.utils.clip_grad_norm_(
+            value_grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.value_model.parameters(),
                 self.max_grad_norm
             )
             self.value_optimizer.step()
+
+            # Emit VALUE_UPDATE event
+            if MONITORING_AVAILABLE and self.monitor is not None:
+                self._emit_event(TrainingEvent(
+                    phase=TrainingPhase.VALUE_UPDATE,
+                    iteration=iteration,
+                    metrics={
+                        'value_loss': float(value_loss.item()),
+                        'gradient_norm': float(value_grad_norm.item())
+                    }
+                ))
 
             # Track metrics
             policy_losses.append(policy_loss.item())
@@ -754,7 +831,22 @@ class PPOTrainer:
             'mean_rewards': []
         }
 
+        # Emit TRAINING_START event
+        if MONITORING_AVAILABLE and self.monitor is not None:
+            self._emit_event(TrainingEvent(
+                phase=TrainingPhase.TRAINING_START,
+                iteration=0,
+                metadata={'num_steps': num_steps, 'batch_size': batch_size}
+            ))
+
         for step in tqdm(range(num_steps), desc="PPO Training"):
+            # Emit ITERATION_START event
+            if MONITORING_AVAILABLE and self.monitor is not None:
+                self._emit_event(TrainingEvent(
+                    phase=TrainingPhase.ITERATION_START,
+                    iteration=step
+                ))
+
             # Sample batch of prompts
             batch_indices = np.random.choice(
                 len(prompts),
@@ -768,7 +860,8 @@ class PPOTrainer:
                 batch_prompts,
                 num_epochs_per_batch=num_epochs_per_batch,
                 max_length=max_length,
-                temperature=temperature
+                temperature=temperature,
+                iteration=step
             )
 
             # Log metrics
@@ -776,6 +869,26 @@ class PPOTrainer:
             training_history['value_losses'].append(metrics['value_loss'])
             training_history['kl_divergences'].append(metrics['kl_divergence'])
             training_history['mean_rewards'].append(metrics['mean_reward'])
+
+            # Emit ITERATION_END event with aggregated metrics
+            if MONITORING_AVAILABLE and self.monitor is not None:
+                self._emit_event(TrainingEvent(
+                    phase=TrainingPhase.ITERATION_END,
+                    iteration=step,
+                    metrics={
+                        'policy_loss': metrics['policy_loss'],
+                        'value_loss': metrics['value_loss'],
+                        'kl_div': metrics['kl_divergence'],
+                        'reward': metrics['mean_reward']
+                    }
+                ))
+
+            # Check for early stopping
+            if self.monitor is not None and MONITORING_AVAILABLE:
+                should_stop, stop_reason = self.monitor.should_stop_early()
+                if should_stop:
+                    print(f"\n⚠️  Early stopping triggered at step {step + 1}: {stop_reason}")
+                    break
 
             # Print progress
             if (step + 1) % 10 == 0:
@@ -788,6 +901,14 @@ class PPOTrainer:
             # Checkpoint
             if checkpoint_dir and (step + 1) % checkpoint_freq == 0:
                 self.save_checkpoint(checkpoint_dir, step + 1)
+
+        # Emit TRAINING_END event
+        if MONITORING_AVAILABLE and self.monitor is not None:
+            self._emit_event(TrainingEvent(
+                phase=TrainingPhase.TRAINING_END,
+                iteration=step,
+                metadata={'completed_steps': step + 1}
+            ))
 
         return {
             'training_history': training_history,
