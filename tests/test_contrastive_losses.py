@@ -404,12 +404,12 @@ class TestMultiModalMixedContrastiveLoss:
 class TestMemoryQueueContrastiveLoss:
     """Test suite for MemoryQueueContrastiveLoss."""
 
-    def test_basic_forward(self, vision_features, text_features, device):
+    def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
         loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=128, dim=vision_features.shape[1]
         )
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -428,18 +428,18 @@ class TestMemoryQueueContrastiveLoss:
         # First batch
         vision1 = torch.randn(batch_size, embed_dim, device=device)
         text1 = torch.randn(batch_size, embed_dim, device=device)
-        loss1 = loss_fn(vision1, text1)
+        loss1 = loss_fn(vision1, text1, match_ids)
 
         # Second batch
         vision2 = torch.randn(batch_size, embed_dim, device=device)
         text2 = torch.randn(batch_size, embed_dim, device=device)
-        loss2 = loss_fn(vision2, text2)
+        loss2 = loss_fn(vision2, text2, match_ids)
 
         # Both losses should be valid
         assert not torch.isnan(loss1)
         assert not torch.isnan(loss2)
 
-    def test_gradient_flow(self, vision_features, text_features, device):
+    def test_gradient_flow(self, vision_features, text_features, match_ids, device):
         """Test gradient flow with memory queue."""
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
@@ -447,7 +447,7 @@ class TestMemoryQueueContrastiveLoss:
         loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=128, dim=vision_features.shape[1]
         )
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -465,11 +465,11 @@ class TestMemoryQueueContrastiveLoss:
 class TestHardNegativeMiningContrastiveLoss:
     """Test suite for HardNegativeMiningContrastiveLoss."""
 
-    def test_basic_forward(self, vision_features, text_features, device):
+    def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
         loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -479,26 +479,26 @@ class TestHardNegativeMiningContrastiveLoss:
         assert not torch.isinf(loss)
 
     def test_different_num_hard_negatives(
-        self, vision_features, text_features, device
+        self, vision_features, text_features, match_ids, device
     ):
         """Test with different numbers of hard negatives."""
         for num_negatives in [2, 4, 8]:
             loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
-            result = loss_fn(vision_features, text_features)
+            result = loss_fn(vision_features, text_features, match_ids)
 
 
             loss = extract_loss(result)
         assert not torch.isnan(loss)
 
-    def test_gradient_flow(self, vision_features, text_features, device):
+    def test_gradient_flow(self, vision_features, text_features, match_ids, device):
         """Test gradient flow with hard negative mining."""
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
         loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -516,12 +516,12 @@ class TestHardNegativeMiningContrastiveLoss:
 class TestDynamicTemperatureContrastiveLoss:
     """Test suite for DynamicTemperatureContrastiveLoss."""
 
-    def test_basic_forward(self, vision_features, text_features, device):
+    def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07, learnable_temperature=True
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
         )
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -531,10 +531,10 @@ class TestDynamicTemperatureContrastiveLoss:
         assert not torch.isinf(loss)
 
     def test_learnable_temperature(
-        self, vision_features, text_features, device
+        self, vision_features, text_features, match_ids, device
     ):
         """Test that temperature is learnable."""
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07, learnable_temperature=True
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
         )
 
         # Get initial temperature
@@ -545,7 +545,7 @@ class TestDynamicTemperatureContrastiveLoss:
         if initial_temp is not None:
             # Compute loss and backprop
             vision_features = vision_features.requires_grad_(True)
-            result = loss_fn(vision_features, text_features)
+            result = loss_fn(vision_features, text_features, match_ids)
 
             loss = extract_loss(result)
             loss.backward()
@@ -556,15 +556,15 @@ class TestDynamicTemperatureContrastiveLoss:
             ):
                 assert loss_fn.temperature.grad is not None
 
-    def test_gradient_flow(self, vision_features, text_features, device):
+    def test_gradient_flow(self, vision_features, text_features, match_ids, device):
         """Test gradient flow."""
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07, learnable_temperature=False
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
         )
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -582,11 +582,11 @@ class TestDynamicTemperatureContrastiveLoss:
 class TestDecoupledContrastiveLoss:
     """Test suite for DecoupledContrastiveLoss."""
 
-    def test_basic_forward(self, vision_features, text_features, device):
+    def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
         loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)
@@ -596,26 +596,26 @@ class TestDecoupledContrastiveLoss:
         assert not torch.isinf(loss)
 
     def test_different_decouple_factors(
-        self, vision_features, text_features, device
+        self, vision_features, text_features, match_ids, device
     ):
         """Test with different decouple factors."""
         for factor in [0.0, 0.5, 1.0]:
             loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
-            result = loss_fn(vision_features, text_features)
+            result = loss_fn(vision_features, text_features, match_ids)
 
 
             loss = extract_loss(result)
         assert not torch.isnan(loss)
 
-    def test_gradient_flow(self, vision_features, text_features, device):
+    def test_gradient_flow(self, vision_features, text_features, match_ids, device):
         """Test gradient flow through decoupled loss."""
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
         loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
-        result = loss_fn(vision_features, text_features)
+        result = loss_fn(vision_features, text_features, match_ids)
 
 
         loss = extract_loss(result)

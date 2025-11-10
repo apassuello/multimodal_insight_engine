@@ -614,7 +614,8 @@ class TestSpecializedLossIntegration:
         # Add decorrelation loss if available
         if DecorrelationLoss is not None:
             decorr_fn = DecorrelationLoss(coef=0.1)
-            decorr_loss = decorr_fn(z)
+            decorr_result = decorr_fn(z)
+            decorr_loss = extract_loss(decorr_result)
             total_loss += decorr_loss
             loss_count += 1
 

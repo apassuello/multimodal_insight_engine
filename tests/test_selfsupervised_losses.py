@@ -518,11 +518,12 @@ class TestSelfSupervisedLossIntegration:
 
         # Barlow Twins
         barlow = BarlowTwinsLoss(lambda_coeff=0.005, add_projection=False)
-        loss_barlow = barlow(embeddings_a, embeddings_b)
+        result_barlow = barlow(embeddings_a, embeddings_b)
+        loss_barlow = extract_loss(result_barlow)
 
         # Both should be valid but different
-        assert not torch.isnan(extract_loss(loss_vicreg) if not isinstance(loss_vicreg, torch.Tensor) else loss_vicreg)
-        assert not torch.isnan(extract_loss(loss_barlow) if not isinstance(loss_barlow, torch.Tensor) else loss_barlow)
+        assert not torch.isnan(loss_vicreg)
+        assert not torch.isnan(loss_barlow)
         # Different loss formulations should yield different values
         assert not torch.allclose(loss_vicreg, loss_barlow)
 
