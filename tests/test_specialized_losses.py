@@ -554,7 +554,7 @@ class TestFeatureConsistencyLoss:
             result = loss_fn(vision_features, text_features)
 
             loss = extract_loss(result)
-        assert not torch.isnan(loss)
+            assert not torch.isnan(loss)
         except Exception:
             pytest.skip("FeatureConsistencyLoss has different interface")
 
@@ -568,7 +568,7 @@ class TestFeatureConsistencyLoss:
             result = loss_fn(vision_features, text_features)
 
             loss = extract_loss(result)
-        loss.backward()
+            loss.backward()
 
             assert vision_features.grad is not None
             assert text_features.grad is not None
