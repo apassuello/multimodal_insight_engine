@@ -195,7 +195,7 @@ class PositionalEncoding(nn.Module):
         if self.encoding_type != "learned":
             raise ValueError("Can only load embeddings for learned positional encoding")
         
-        self.position_embeddings = torch.load(path)
+        self.position_embeddings = torch.load(path, weights_only=True)
 
 
 class RotaryPositionEncoding(nn.Module):

@@ -33,16 +33,28 @@ except ImportError as e:
 # Try to get GPU information from system
 try:
     print("\nSystem GPU Information:")
-    gpu_info = subprocess.run(['lspci', '|', 'grep', '-i', 'vga'], 
-                             shell=True, text=True, capture_output=True)
-    print(gpu_info.stdout)
+    # SECURITY FIX: Don't use shell=True - use Python filtering instead
+    lspci_result = subprocess.run(['lspci'],
+                                  capture_output=True,
+                                  text=True,
+                                  check=False,
+                                  timeout=10)
+    # Filter for VGA in Python instead of using shell pipes
+    gpu_lines = [line for line in lspci_result.stdout.splitlines()
+                 if 'vga' in line.lower()]
+    print('\n'.join(gpu_lines) if gpu_lines else "No VGA devices found")
 except Exception as e:
     print(f"Error getting GPU info: {e}")
 
 # Check ROCm installation
 try:
     print("\nROCm Information:")
-    rocm_info = subprocess.run(['rocminfo'], shell=True, text=True, capture_output=True)
+    # SECURITY FIX: Remove shell=True to prevent command injection
+    rocm_info = subprocess.run(['rocminfo'],
+                               capture_output=True,
+                               text=True,
+                               check=False,
+                               timeout=10)
     # Print just a summary to avoid overwhelming output
     if rocm_info.stdout:
         print("rocminfo available - first few lines:")
