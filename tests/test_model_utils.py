@@ -63,8 +63,8 @@ class TestGenerationConfig:
 class TestLoadModel:
     """Test load_model function."""
 
-    @patch('src.safety.constitutional.model_utils.AutoTokenizer')
-    @patch('src.safety.constitutional.model_utils.AutoModelForCausalLM')
+    @patch('transformers.AutoTokenizer')
+    @patch('transformers.AutoModelForCausalLM')
     def test_loads_model_and_tokenizer(self, mock_model_class, mock_tokenizer_class):
         """Test that model and tokenizer are loaded."""
         mock_model = Mock()
@@ -88,8 +88,8 @@ class TestLoadModel:
         mock_model_class.from_pretrained.assert_called_once_with("gpt2")
         mock_tokenizer_class.from_pretrained.assert_called_once_with("gpt2")
 
-    @patch('src.safety.constitutional.model_utils.AutoTokenizer')
-    @patch('src.safety.constitutional.model_utils.AutoModelForCausalLM')
+    @patch('transformers.AutoTokenizer')
+    @patch('transformers.AutoModelForCausalLM')
     def test_sets_pad_token_if_none(self, mock_model_class, mock_tokenizer_class):
         """Test that pad token is set if not present."""
         mock_model = Mock()
@@ -109,8 +109,8 @@ class TestLoadModel:
 
         assert tokenizer.pad_token == "[EOS]"
 
-    @patch('src.safety.constitutional.model_utils.AutoTokenizer')
-    @patch('src.safety.constitutional.model_utils.AutoModelForCausalLM')
+    @patch('transformers.AutoTokenizer')
+    @patch('transformers.AutoModelForCausalLM')
     def test_moves_model_to_device(self, mock_model_class, mock_tokenizer_class):
         """Test that model is moved to specified device."""
         mock_model = Mock()
@@ -130,8 +130,8 @@ class TestLoadModel:
 
         mock_model.to.assert_called_once_with(device)
 
-    @patch('src.safety.constitutional.model_utils.AutoTokenizer')
-    @patch('src.safety.constitutional.model_utils.AutoModelForCausalLM')
+    @patch('transformers.AutoTokenizer')
+    @patch('transformers.AutoModelForCausalLM')
     def test_8bit_loading(self, mock_model_class, mock_tokenizer_class):
         """Test 8-bit model loading."""
         mock_model = Mock()
@@ -512,8 +512,8 @@ class TestIntegrationScenarios:
     """Test integration scenarios."""
 
     @patch('torch.optim.AdamW')
-    @patch('src.safety.constitutional.model_utils.AutoTokenizer')
-    @patch('src.safety.constitutional.model_utils.AutoModelForCausalLM')
+    @patch('transformers.AutoTokenizer')
+    @patch('transformers.AutoModelForCausalLM')
     def test_load_and_prepare_for_training(self, mock_model_class, mock_tokenizer_class, mock_adamw):
         """Test loading model and preparing for training."""
         mock_model = Mock()
