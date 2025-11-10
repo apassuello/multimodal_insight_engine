@@ -300,7 +300,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn(embeddings_a, embeddings_b)
 
 
-        loss = extract_loss(result)        assert not torch.isnan(loss)
+        loss = extract_loss(result)
+        assert not torch.isnan(loss)
 
     def test_gradient_flow(self, embeddings_a, embeddings_b, device):
         """Test gradient flow through Barlow Twins loss."""
@@ -314,7 +315,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn(embeddings_a, embeddings_b)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert embeddings_a.grad is not None
         assert embeddings_b.grad is not None
@@ -338,7 +340,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn_high(embeddings_a, embeddings_b)
 
 
-        loss_high = extract_loss(result)        result = loss_fn_low(embeddings_a, embeddings_b)
+        loss_high = extract_loss(result)
+        result = loss_fn_low(embeddings_a, embeddings_b)
         loss_low = extract_loss(result)
         # Different lambdas should lead to different losses
         assert not torch.allclose(loss_high, loss_low, atol=1e-6)
@@ -357,7 +360,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn_cross(embeddings_a, embeddings_b)
 
 
-        loss_cross = extract_loss(result)        assert not torch.isnan(extract_loss(loss_cross) if not isinstance(loss_cross, torch.Tensor) else loss_cross)
+        loss_cross = extract_loss(result)
+        assert not torch.isnan(extract_loss(loss_cross) if not isinstance(loss_cross, torch.Tensor) else loss_cross)
 
     def test_edge_case_identical_embeddings(
         self, batch_size, embed_dim, device
@@ -390,7 +394,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn(embeddings_large_a, embeddings_large_b)
 
 
-        loss = extract_loss(result)        assert not torch.isnan(loss)
+        loss = extract_loss(result)
+        assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
     def test_normalization_effect(self, embeddings_a, embeddings_b, device):
@@ -412,7 +417,8 @@ class TestBarlowTwinsLoss:
         result = loss_fn_norm(embeddings_a, embeddings_b)
 
 
-        loss_norm = extract_loss(result)        result = loss_fn_no_norm(embeddings_a, embeddings_b)
+        loss_norm = extract_loss(result)
+        result = loss_fn_no_norm(embeddings_a, embeddings_b)
         loss_no_norm = extract_loss(result)
         # Both should be valid
         assert not torch.isnan(extract_loss(loss_norm) if not isinstance(loss_norm, torch.Tensor) else loss_norm)

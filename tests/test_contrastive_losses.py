@@ -175,7 +175,8 @@ class TestContrastiveLoss:
         result = loss_fn_low(vision_features, text_features)
 
 
-        loss_low = extract_loss(result)        result = loss_fn_high(vision_features, text_features)
+        loss_low = extract_loss(result)
+        result = loss_fn_high(vision_features, text_features)
         loss_high = extract_loss(result)
         # Lower temperature should generally lead to higher loss
         # (sharper distribution, harder to satisfy)
@@ -194,7 +195,8 @@ class TestContrastiveLoss:
         )
         result = loss_fn_mean(vision_features, text_features)
 
-        loss_mean = extract_loss(result)        assert loss_mean.shape == torch.Size([])
+        loss_mean = extract_loss(result)
+        assert loss_mean.shape == torch.Size([])
 
         # Sum reduction
         loss_fn_sum = ContrastiveLoss(
@@ -205,7 +207,8 @@ class TestContrastiveLoss:
         )
         result = loss_fn_sum(vision_features, text_features)
 
-        loss_sum = extract_loss(result)        assert loss_sum.shape == torch.Size([])
+        loss_sum = extract_loss(result)
+        assert loss_sum.shape == torch.Size([])
 
         # None reduction
         loss_fn_none = ContrastiveLoss(
@@ -227,7 +230,8 @@ class TestContrastiveLoss:
         )
         result = loss_fn_infonce(vision_features, text_features)
 
-        loss_infonce = extract_loss(result)        assert not torch.isnan(extract_loss(loss_infonce) if not isinstance(loss_infonce, torch.Tensor) else loss_infonce)
+        loss_infonce = extract_loss(result)
+        assert not torch.isnan(extract_loss(loss_infonce) if not isinstance(loss_infonce, torch.Tensor) else loss_infonce)
 
         # NT-Xent loss
         loss_fn_ntxent = ContrastiveLoss(
@@ -235,7 +239,8 @@ class TestContrastiveLoss:
         )
         result = loss_fn_ntxent(vision_features, text_features)
 
-        loss_ntxent = extract_loss(result)        assert not torch.isnan(extract_loss(loss_ntxent) if not isinstance(loss_ntxent, torch.Tensor) else loss_ntxent)
+        loss_ntxent = extract_loss(result)
+        assert not torch.isnan(extract_loss(loss_ntxent) if not isinstance(loss_ntxent, torch.Tensor) else loss_ntxent)
 
     def test_edge_case_single_sample(self, embed_dim, device):
         """Test with single sample batch."""
@@ -329,7 +334,6 @@ class TestMultiModalMixedContrastiveLoss:
 
 
         loss = extract_loss(result)
-
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -365,7 +369,8 @@ class TestMultiModalMixedContrastiveLoss:
         result = loss_fn(vision_features, text_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert text_features.grad is not None
@@ -408,7 +413,6 @@ class TestMemoryQueueContrastiveLoss:
 
 
         loss = extract_loss(result)
-
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -446,7 +450,8 @@ class TestMemoryQueueContrastiveLoss:
         result = loss_fn(vision_features, text_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert text_features.grad is not None
@@ -468,7 +473,6 @@ class TestHardNegativeMiningContrastiveLoss:
 
 
         loss = extract_loss(result)
-
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -485,7 +489,7 @@ class TestHardNegativeMiningContrastiveLoss:
 
 
             loss = extract_loss(result)
-            assert not torch.isnan(loss)
+        assert not torch.isnan(loss)
 
     def test_gradient_flow(self, vision_features, text_features, device):
         """Test gradient flow with hard negative mining."""
@@ -497,7 +501,8 @@ class TestHardNegativeMiningContrastiveLoss:
         result = loss_fn(vision_features, text_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert text_features.grad is not None
@@ -520,7 +525,6 @@ class TestDynamicTemperatureContrastiveLoss:
 
 
         loss = extract_loss(result)
-
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -543,7 +547,8 @@ class TestDynamicTemperatureContrastiveLoss:
             vision_features = vision_features.requires_grad_(True)
             result = loss_fn(vision_features, text_features)
 
-            loss = extract_loss(result)            loss.backward()
+            loss = extract_loss(result)
+        loss.backward()
 
             # Temperature should have gradient if learnable
             if hasattr(loss_fn, 'temperature') and hasattr(
@@ -562,7 +567,8 @@ class TestDynamicTemperatureContrastiveLoss:
         result = loss_fn(vision_features, text_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert text_features.grad is not None
@@ -584,7 +590,6 @@ class TestDecoupledContrastiveLoss:
 
 
         loss = extract_loss(result)
-
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
@@ -601,7 +606,7 @@ class TestDecoupledContrastiveLoss:
 
 
             loss = extract_loss(result)
-            assert not torch.isnan(loss)
+        assert not torch.isnan(loss)
 
     def test_gradient_flow(self, vision_features, text_features, device):
         """Test gradient flow through decoupled loss."""
@@ -613,7 +618,8 @@ class TestDecoupledContrastiveLoss:
         result = loss_fn(vision_features, text_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert text_features.grad is not None

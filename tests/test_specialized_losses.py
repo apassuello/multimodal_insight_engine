@@ -143,12 +143,14 @@ class TestDecorrelationLoss:
         try:
             result = loss_fn(vision_features, text_features)
 
-            loss = extract_loss(result)            assert not torch.isnan(loss)
+            loss = extract_loss(result)
+        assert not torch.isnan(loss)
         except TypeError:
             # If it only takes one input
             result = loss_fn(vision_features)
 
-            loss = extract_loss(result)            assert not torch.isnan(loss)
+            loss = extract_loss(result)
+        assert not torch.isnan(loss)
 
     def test_gradient_flow(self, vision_features, device):
         """Test gradient flow through decorrelation loss."""
@@ -159,7 +161,8 @@ class TestDecorrelationLoss:
         result = loss_fn(vision_features)
 
 
-        loss = extract_loss(result)        loss.backward()
+        loss = extract_loss(result)
+        loss.backward()
 
         assert vision_features.grad is not None
         assert not torch.all(vision_features.grad == 0)
@@ -172,7 +175,8 @@ class TestDecorrelationLoss:
         result = loss_fn_low(vision_features)
 
 
-        loss_low = extract_loss(result)        result = loss_fn_high(vision_features)
+        loss_low = extract_loss(result)
+        result = loss_fn_high(vision_features)
         loss_high = extract_loss(result)
         # Higher coefficient should lead to higher loss
         assert loss_high > loss_low
@@ -187,7 +191,8 @@ class TestDecorrelationLoss:
         result = loss_fn_norm(vision_features)
 
 
-        loss_norm = extract_loss(result)        result = loss_fn_no_norm(vision_features)
+        loss_norm = extract_loss(result)
+        result = loss_fn_no_norm(vision_features)
         loss_no_norm = extract_loss(result)
         # Both should be valid
         assert not torch.isnan(extract_loss(loss_norm) if not isinstance(loss_norm, torch.Tensor) else loss_norm)
@@ -548,7 +553,8 @@ class TestFeatureConsistencyLoss:
             loss_fn = FeatureConsistencyLoss()
             result = loss_fn(vision_features, text_features)
 
-            loss = extract_loss(result)            assert not torch.isnan(loss)
+            loss = extract_loss(result)
+        assert not torch.isnan(loss)
         except Exception:
             pytest.skip("FeatureConsistencyLoss has different interface")
 
@@ -561,7 +567,8 @@ class TestFeatureConsistencyLoss:
             loss_fn = FeatureConsistencyLoss()
             result = loss_fn(vision_features, text_features)
 
-            loss = extract_loss(result)            loss.backward()
+            loss = extract_loss(result)
+        loss.backward()
 
             assert vision_features.grad is not None
             assert text_features.grad is not None
