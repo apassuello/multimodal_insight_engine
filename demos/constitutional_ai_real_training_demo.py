@@ -333,8 +333,11 @@ def main():
     print("="*70)
 
     # Determine device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    from src.safety.constitutional.model_utils import get_device
+    device = get_device()
     print(f"\nDevice: {device}")
+    if device.type == "mps":
+        print("  ✓ Using Apple Silicon GPU (MPS) acceleration!")
 
     # Step 1: Load Model
     print(f"\n[Step 1] Loading pretrained model: {args.model}")

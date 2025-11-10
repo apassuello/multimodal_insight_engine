@@ -14,6 +14,26 @@ from typing import List, Optional
 import torch
 
 
+def get_device() -> torch.device:
+    """
+    Automatically detect the best available device.
+
+    Priority order:
+    1. CUDA (NVIDIA GPU)
+    2. MPS (Apple Silicon GPU)
+    3. CPU (fallback)
+
+    Returns:
+        torch.device: The best available device
+    """
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
+
+
 @dataclass
 class GenerationConfig:
     """Configuration for text generation."""
@@ -51,7 +71,7 @@ def load_model(
         )
 
     if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = get_device()
 
     print(f"Loading model: {model_name}")
     print(f"Device: {device}")
