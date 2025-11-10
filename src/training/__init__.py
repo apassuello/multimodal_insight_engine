@@ -6,39 +6,44 @@ This package contains trainer implementations, loss functions, optimizers,
 metrics, and other training utilities.
 """
 
-from .trainers.multimodal_trainer import MultimodalTrainer
+# Lazy imports to avoid pulling in heavy dependencies during testing
+_lazy_imports = {
+    "MultimodalTrainer": ".trainers.multimodal_trainer",
+    "train_model": ".trainers.trainer",
+    "TransformerTrainer": ".trainers.transformer_trainer",
+    "ConstitutionalTrainer": ".trainers.constitutional_trainer",
+    "ContrastiveLoss": ".losses",
+    "DecoupledContrastiveLoss": ".losses",
+    "DynamicTemperatureContrastiveLoss": ".losses",
+    "HardNegativeMiningContrastiveLoss": ".losses",
+    "MemoryQueueContrastiveLoss": ".losses",
+    "MultiModalMixedContrastiveLoss": ".losses",
+    "create_loss_function": ".losses.loss_factory",
+    "AdamW": ".optimizers",
+    "CosineAnnealingLR": ".optimizers",
+    "GradientClipper": ".optimizers",
+    "LinearWarmupLR": ".optimizers",
+    "OneCycleLR": ".optimizers",
+}
 
-# Import trainers
-from .trainers.trainer import train_model
-from .trainers.transformer_trainer import TransformerTrainer
+CONSTITUTIONAL_TRAINER_AVAILABLE = True  # Set optimistically, will check on access
 
-# Optional Constitutional AI trainer
-try:
-    from .trainers.constitutional_trainer import ConstitutionalTrainer
-    CONSTITUTIONAL_TRAINER_AVAILABLE = True
-except ImportError:
-    CONSTITUTIONAL_TRAINER_AVAILABLE = False
-    ConstitutionalTrainer = None
-
-# Import loss functions
-from .losses import (
-    ContrastiveLoss,
-    DecoupledContrastiveLoss,
-    DynamicTemperatureContrastiveLoss,
-    HardNegativeMiningContrastiveLoss,
-    MemoryQueueContrastiveLoss,
-    MultiModalMixedContrastiveLoss,
-)
-from .losses.loss_factory import create_loss_function
-
-# Import optimizers
-from .optimizers import (
-    AdamW,
-    CosineAnnealingLR,
-    GradientClipper,
-    LinearWarmupLR,
-    OneCycleLR,
-)
+def __getattr__(name):
+    """Lazy import on first access."""
+    if name in _lazy_imports:
+        import importlib
+        module_path = _lazy_imports[name]
+        try:
+            module = importlib.import_module(module_path, __package__)
+            obj = getattr(module, name)
+            globals()[name] = obj
+            return obj
+        except (ImportError, AttributeError):
+            if name == "ConstitutionalTrainer":
+                globals()["CONSTITUTIONAL_TRAINER_AVAILABLE"] = False
+                return None
+            raise
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "train_model",

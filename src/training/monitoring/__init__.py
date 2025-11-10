@@ -7,6 +7,7 @@ KEY COMPONENTS:
 - TrainingEvent, TrainingPhase: Event data structures
 - MetricsBuffer, MetricsStore: Efficient metrics storage
 - VerbosityLevel: Control display detail level
+- SampleComparator: Track response quality changes
 DEPENDENCIES: See individual modules
 SPECIAL NOTES: Public API for training monitoring system
 """
@@ -29,6 +30,9 @@ from .verbosity import VerbosityLevel
 # Display callbacks
 from .terminal_display import TerminalDisplay
 
+# Quality monitoring
+from .sample_comparator import SampleComparator, SampleComparison
+
 __all__ = [
     # Main orchestrator
     'TrainingMonitor',
@@ -50,6 +54,10 @@ __all__ = [
 
     # Display
     'TerminalDisplay',
+
+    # Quality monitoring
+    'SampleComparator',
+    'SampleComparison',
 ]
 
 __version__ = '0.1.0'
