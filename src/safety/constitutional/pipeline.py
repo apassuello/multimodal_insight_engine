@@ -401,13 +401,12 @@ class ConstitutionalPipeline:
             # Default fallback
             hidden_size = 768
 
-        self.reward_model = RewardModel(hidden_size=hidden_size)
+        self.reward_model = RewardModel(base_model=self.base_model, hidden_size=hidden_size)
         self.reward_model.to(self.device)
 
         # Train reward model
         reward_trainer = RewardModelTrainer(
             reward_model=self.reward_model,
-            policy_model=self.base_model,
             tokenizer=self.tokenizer,
             learning_rate=self.reward_model_learning_rate,
             device=self.device
@@ -553,7 +552,7 @@ class ConstitutionalPipeline:
 
     def _load_phase1_checkpoint(self, path: str) -> None:
         """Load Phase 1 checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
         self.base_model.load_state_dict(checkpoint["model_state_dict"])
         self.phase1_complete = checkpoint["phase1_complete"]
         self.training_history = checkpoint["training_history"]
@@ -574,7 +573,7 @@ class ConstitutionalPipeline:
 
     def _load_phase2_checkpoint(self, path: str) -> None:
         """Load Phase 2 checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
         self.base_model.load_state_dict(checkpoint["model_state_dict"])
 
         if checkpoint["reward_model_state_dict"] is not None and self.reward_model is not None:

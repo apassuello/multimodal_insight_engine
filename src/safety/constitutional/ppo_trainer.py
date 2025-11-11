@@ -64,7 +64,7 @@ class PPOTrainer:
             max_grad_norm: Maximum gradient norm for clipping
         """
         self.policy_model = policy_model.to(device)
-        self.value_model = value_model.to(device)
+        self.value_model = value_model.to(device) if value_model is not None else None
         self.reward_model = reward_model.to(device)
 
         # Create frozen reference model for KL penalty
@@ -90,7 +90,7 @@ class PPOTrainer:
         self.value_optimizer = torch.optim.AdamW(
             value_model.parameters(),
             lr=learning_rate
-        )
+        ) if value_model is not None else None
 
         # Training statistics
         self.stats = {
@@ -384,6 +384,10 @@ class PPOTrainer:
         Returns:
             values: Value estimates [batch_size, seq_len]
         """
+        # If no value model, use rewards as values (common fallback)
+        if self.value_model is None:
+            return self.compute_rewards(prompts, responses)
+
         self.value_model.eval()
 
         values_list = []
@@ -653,18 +657,21 @@ class PPOTrainer:
             )
             self.policy_optimizer.step()
 
-            # Compute value function loss
-            new_values = self.compute_values(prompts, responses)
-            value_loss = F.mse_loss(new_values, returns)
+            # Compute value function loss (only if we have a value model)
+            if self.value_model is not None:
+                new_values = self.compute_values(prompts, responses)
+                value_loss = F.mse_loss(new_values, returns)
 
-            # Update value function
-            self.value_optimizer.zero_grad()
-            value_loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                self.value_model.parameters(),
-                self.max_grad_norm
-            )
-            self.value_optimizer.step()
+                # Update value function
+                self.value_optimizer.zero_grad()
+                value_loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    self.value_model.parameters(),
+                    self.max_grad_norm
+                )
+                self.value_optimizer.step()
+            else:
+                value_loss = torch.tensor(0.0)
 
             # Track metrics
             policy_losses.append(policy_loss.item())
@@ -780,14 +787,18 @@ class PPOTrainer:
 
         checkpoint_path = os.path.join(checkpoint_dir, f"ppo_checkpoint_step_{step}.pt")
 
-        torch.save({
+        checkpoint = {
             'step': step,
             'policy_model_state_dict': self.policy_model.state_dict(),
-            'value_model_state_dict': self.value_model.state_dict(),
             'policy_optimizer_state_dict': self.policy_optimizer.state_dict(),
-            'value_optimizer_state_dict': self.value_optimizer.state_dict(),
             'stats': self.stats
-        }, checkpoint_path)
+        }
+
+        if self.value_model is not None:
+            checkpoint['value_model_state_dict'] = self.value_model.state_dict()
+            checkpoint['value_optimizer_state_dict'] = self.value_optimizer.state_dict()
+
+        torch.save(checkpoint, checkpoint_path)
 
         print(f"Checkpoint saved to {checkpoint_path}")
 
@@ -801,9 +812,12 @@ class PPOTrainer:
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
 
         self.policy_model.load_state_dict(checkpoint['policy_model_state_dict'])
-        self.value_model.load_state_dict(checkpoint['value_model_state_dict'])
         self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer_state_dict'])
-        self.value_optimizer.load_state_dict(checkpoint['value_optimizer_state_dict'])
+
+        if self.value_model is not None and 'value_model_state_dict' in checkpoint:
+            self.value_model.load_state_dict(checkpoint['value_model_state_dict'])
+            self.value_optimizer.load_state_dict(checkpoint['value_optimizer_state_dict'])
+
         self.stats = checkpoint['stats']
 
         print(f"Checkpoint loaded from {checkpoint_path}")

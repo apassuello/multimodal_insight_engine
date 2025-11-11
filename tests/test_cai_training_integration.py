@@ -29,6 +29,22 @@ from src.safety.constitutional import (
 )
 
 
+class MockConfig:
+    """Picklable config for MockLanguageModel."""
+
+    def __init__(self, hidden_size: int):
+        self.hidden_size = hidden_size
+
+
+class MockOutput:
+    """Picklable output for MockLanguageModel."""
+
+    def __init__(self, logits, loss=None, hidden_states=None):
+        self.logits = logits
+        self.loss = loss
+        self.hidden_states = hidden_states if hidden_states is not None else []
+
+
 class MockLanguageModel(nn.Module):
     """Mock language model for testing."""
 
@@ -44,7 +60,7 @@ class MockLanguageModel(nn.Module):
             batch_first=True
         )
         self.lm_head = nn.Linear(hidden_size, vocab_size)
-        self.config = type('Config', (), {'hidden_size': hidden_size})()
+        self.config = MockConfig(hidden_size)
 
     def forward(self, input_ids, **kwargs):
         embeds = self.embedding(input_ids)
@@ -59,9 +75,9 @@ class MockLanguageModel(nn.Module):
                 labels.view(-1),
                 ignore_index=-100
             )
-            return type('Output', (), {'logits': logits, 'loss': loss, 'hidden_states': [hidden]})()
+            return MockOutput(logits=logits, loss=loss, hidden_states=[hidden])
 
-        return type('Output', (), {'logits': logits, 'loss': None, 'hidden_states': [hidden]})()
+        return MockOutput(logits=logits, loss=None, hidden_states=[hidden])
 
     def generate(self, input_ids, **kwargs):
         """Mock generation method."""
@@ -325,7 +341,6 @@ class TestPhase2Training:
 
         trainer = RewardModelTrainer(
             reward_model=reward_model,
-            policy_model=mock_model,
             tokenizer=mock_tokenizer,
             learning_rate=1e-4
         )
