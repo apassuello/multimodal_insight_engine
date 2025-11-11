@@ -413,7 +413,7 @@ class ConstitutionalPipeline:
         )
 
         reward_results = reward_trainer.train(
-            preference_data=preference_data,
+            training_data=preference_data,
             num_epochs=reward_model_epochs,
             batch_size=ppo_batch_size
         )

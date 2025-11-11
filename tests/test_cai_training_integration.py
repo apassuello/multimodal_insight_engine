@@ -346,7 +346,7 @@ class TestPhase2Training:
         )
 
         results = trainer.train(
-            preference_data=preference_data,
+            training_data=preference_data,
             num_epochs=1,
             batch_size=2
         )
