@@ -378,13 +378,77 @@ class PPOTrainer:
 
         return rewards_tensor
 
+    def _compute_values_with_grad(
+        self,
+        prompts: List[str],
+        responses: List[str]
+    ) -> torch.Tensor:
+        """
+        Compute value estimates WITH gradients for training.
+
+        Args:
+            prompts: List of prompts
+            responses: List of generated responses
+
+        Returns:
+            values: Value estimates [batch_size, seq_len]
+        """
+        values_list = []
+
+        for prompt, response in zip(prompts, responses):
+            # Tokenize prompt to get prompt length
+            prompt_inputs = self.tokenizer(
+                prompt,
+                return_tensors='pt',
+                padding=True,
+                truncation=True
+            )
+            prompt_len = prompt_inputs['input_ids'].shape[1]
+
+            # Tokenize prompt + response
+            text = prompt + response
+            inputs = self.tokenizer(
+                text,
+                return_tensors='pt',
+                padding=True,
+                truncation=True,
+                max_length=512
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            # Get value estimate WITH gradients
+            value = self.value_model(
+                inputs['input_ids'],
+                inputs['attention_mask']
+            )
+
+            # Expand value to RESPONSE length only
+            response_len = inputs['input_ids'].shape[1] - prompt_len
+            value_seq = value.unsqueeze(1).expand(-1, response_len)
+
+            values_list.append(value_seq)
+
+        # Pad to same length
+        max_len = max(v.shape[1] for v in values_list)
+        padded_values = []
+        for v in values_list:
+            pad_len = max_len - v.shape[1]
+            if pad_len > 0:
+                padding = torch.zeros(v.shape[0], pad_len, device=self.device)
+                v = torch.cat([v, padding], dim=1)
+            padded_values.append(v)
+
+        values_tensor = torch.cat(padded_values, dim=0)
+
+        return values_tensor
+
     def compute_values(
         self,
         prompts: List[str],
         responses: List[str]
     ) -> torch.Tensor:
         """
-        Compute value estimates using the value model.
+        Compute value estimates using the value model (without gradients).
 
         Args:
             prompts: List of prompts
@@ -677,7 +741,9 @@ class PPOTrainer:
 
             # Compute value function loss (only if we have a value model)
             if self.value_model is not None:
-                new_values = self.compute_values(prompts, responses)
+                # Compute values WITH gradients for training
+                self.value_model.train()
+                new_values = self._compute_values_with_grad(prompts, responses)
                 value_loss = F.mse_loss(new_values, returns)
 
                 # Update value function

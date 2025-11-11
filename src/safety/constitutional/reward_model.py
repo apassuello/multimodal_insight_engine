@@ -397,6 +397,10 @@ def train_reward_model(
 
     print("Training complete!")
 
+    # Add convenience keys for final values
+    metrics['final_loss'] = metrics['losses'][-1] if metrics['losses'] else 0.0
+    metrics['final_accuracy'] = metrics['accuracy'][-1] if metrics['accuracy'] else 0.0
+
     return metrics
 
 
