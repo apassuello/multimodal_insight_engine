@@ -21,7 +21,7 @@ import torch.nn.functional as F
 import logging
 from typing import Dict, Tuple, Optional, Union, List, Any, Literal
 
-from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.losses.self_supervised import VICRegLoss
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 
 logger = logging.getLogger(__name__)

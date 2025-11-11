@@ -12,7 +12,7 @@ from src.utils.learningrate_scheduler import WarmupCosineScheduler
 from src.utils.gradient_handler import GradientHandler
 from src.utils.metrics_tracker import MetricsTracker
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
-from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.losses.self_supervised import VICRegLoss
 
 logger = logging.getLogger(__name__)
 
