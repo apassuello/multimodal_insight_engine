@@ -580,7 +580,7 @@ class PPOTrainer:
         for lp in all_logprobs:
             pad_len = max_len - lp.shape[1]
             if pad_len > 0:
-                padding = torch.zeros(lp.shape[0], pad_len, device=self.device, requires_grad=True)
+                padding = torch.zeros(lp.shape[0], pad_len, device=self.device)
                 lp = torch.cat([lp, padding], dim=1)
             padded_logprobs.append(lp)
 
@@ -889,7 +889,7 @@ class PPOTrainer:
             'policy_losses': [],
             'value_losses': [],
             'kl_divergences': [],
-            'mean_rewards': []
+            'step_avg_rewards': []
         }
 
         for step in tqdm(range(num_steps), desc="PPO Training"):
@@ -913,7 +913,7 @@ class PPOTrainer:
             training_history['policy_losses'].append(metrics['policy_loss'])
             training_history['value_losses'].append(metrics['value_loss'])
             training_history['kl_divergences'].append(metrics['kl_divergence'])
-            training_history['mean_rewards'].append(metrics['mean_reward'])
+            training_history['step_avg_rewards'].append(metrics['mean_reward'])
 
             # Print progress
             if (step + 1) % 10 == 0:
@@ -929,7 +929,9 @@ class PPOTrainer:
 
         return {
             'training_history': training_history,
-            'final_stats': self.stats
+            'final_stats': self.stats,
+            'final_avg_reward': training_history['step_avg_rewards'][-1] if training_history['step_avg_rewards'] else 0.0,
+            'final_kl_divergence': training_history['kl_divergences'][-1] if training_history['kl_divergences'] else 0.0
         }
 
     def save_checkpoint(self, checkpoint_dir: str, step: int):
