@@ -11,8 +11,7 @@ import torch.nn as nn
 import logging
 from typing import Dict, Any, Optional, Union, Callable
 
-from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss
-from .dynamic_temperature_contrastive_loss import DynamicTemperatureContrastiveLoss
+from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss, DynamicTemperatureLoss
 from .multimodal import MixedMultimodalLoss
 from .barlow_twins_loss import BarlowTwinsLoss
 from .decoupled_contrastive_loss import DecoupledContrastiveLoss
@@ -24,6 +23,7 @@ ContrastiveLoss = SimCLRLoss
 MultiModalMixedContrastiveLoss = MixedMultimodalLoss
 MemoryQueueContrastiveLoss = MoCoLoss
 HardNegativeMiningContrastiveLoss = HardNegativeLoss
+DynamicTemperatureContrastiveLoss = DynamicTemperatureLoss
 
 
 # Simple and effective InfoNCE-style contrastive loss for SimpleMultimodalModel
