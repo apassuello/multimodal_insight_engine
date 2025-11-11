@@ -332,12 +332,11 @@ Analysis:"""
                 value_model=self.value_model,
                 reward_model=self.reward_model,
                 tokenizer=tokenizer,
+                device=self.device,
                 learning_rate=self.learning_rate,
-                epsilon=self.ppo_epsilon,
-                value_coef=self.ppo_value_coef,
-                entropy_coef=self.ppo_entropy_coef,
-                kl_penalty_coef=self.kl_penalty_coef,
-                device=self.device
+                clip_epsilon=self.ppo_epsilon,
+                value_loss_coef=self.ppo_value_coef,
+                kl_penalty=self.kl_penalty_coef
             )
 
     def train(
