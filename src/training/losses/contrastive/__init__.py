@@ -9,6 +9,7 @@ from .simclr_loss import SimCLRLoss
 from .moco_loss import MoCoLoss
 from .hard_negative_loss import HardNegativeLoss
 from .dynamic_temperature_loss import DynamicTemperatureLoss
+from .decoupled_loss import DecoupledLoss
 
 __all__ = [
     "CLIPLoss",
@@ -16,4 +17,5 @@ __all__ = [
     "MoCoLoss",
     "HardNegativeLoss",
     "DynamicTemperatureLoss",
+    "DecoupledLoss",
 ]

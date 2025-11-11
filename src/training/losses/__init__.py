@@ -1,6 +1,5 @@
-from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss, DynamicTemperatureLoss
+from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss, DynamicTemperatureLoss, DecoupledLoss
 from .multimodal import MixedMultimodalLoss
-from .decoupled_contrastive_loss import DecoupledContrastiveLoss
 from .vicreg_loss import VICRegLoss
 from .barlow_twins_loss import BarlowTwinsLoss
 from .hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
@@ -20,6 +19,7 @@ MultiModalMixedContrastiveLoss = MixedMultimodalLoss
 MemoryQueueContrastiveLoss = MoCoLoss
 HardNegativeMiningContrastiveLoss = HardNegativeLoss
 DynamicTemperatureContrastiveLoss = DynamicTemperatureLoss
+DecoupledContrastiveLoss = DecoupledLoss
 
 __all__ = [
     "MemoryQueueContrastiveLoss",  # Backward compatibility alias
@@ -33,7 +33,8 @@ __all__ = [
     "CLIPLoss",
     "MultiModalMixedContrastiveLoss",  # Backward compatibility alias
     "MixedMultimodalLoss",
-    "DecoupledContrastiveLoss",
+    "DecoupledContrastiveLoss",  # Backward compatibility alias
+    "DecoupledLoss",
     "VICRegLoss",
     "BarlowTwinsLoss",
     "HybridPretrainVICRegLoss",
