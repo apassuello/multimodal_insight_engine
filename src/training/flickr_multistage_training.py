@@ -36,7 +36,7 @@ from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
 from src.training.trainers.multimodal import MultimodalTrainer
 from src.data.multimodal_dataset import MultimodalDataset
 from src.data.multimodal_data_utils import SemanticGroupBatchSampler
-from src.training.losses.vicreg_loss import VICRegLoss
+from src.training.losses.self_supervised import VICRegLoss
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss, MoCoLoss as MemoryQueueContrastiveLoss
 from src.training.losses.hard_negative_mining_contrastive_loss import (
     HardNegativeMiningContrastiveLoss,
