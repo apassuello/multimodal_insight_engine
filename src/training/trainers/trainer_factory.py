@@ -7,7 +7,7 @@ import logging
 import os
 
 # Import trainers
-from src.training.trainers.multimodal_trainer import MultimodalTrainer
+from src.training.trainers.multimodal import MultimodalTrainer
 from src.training.trainers.multistage_trainer import MultistageTrainer
 
 # Import strategies

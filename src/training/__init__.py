@@ -8,7 +8,7 @@ metrics, and other training utilities.
 
 # Import trainers
 from .trainers.trainer import train_model
-from .trainers.multimodal_trainer import MultimodalTrainer
+from .trainers.multimodal import MultimodalTrainer
 from .trainers.transformer_trainer import TransformerTrainer
 
 # Optional Constitutional AI trainer
