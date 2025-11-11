@@ -34,6 +34,8 @@ class MockLanguageModel(nn.Module):
 
     def __init__(self, vocab_size: int = 1000, hidden_size: int = 256):
         super().__init__()
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
         self.embedding = nn.Embedding(vocab_size, hidden_size)
         self.transformer = nn.TransformerEncoderLayer(
             d_model=hidden_size,
@@ -57,9 +59,16 @@ class MockLanguageModel(nn.Module):
                 labels.view(-1),
                 ignore_index=-100
             )
-            return type('Output', (), {'logits': logits, 'loss': loss})()
+            return type('Output', (), {'logits': logits, 'loss': loss, 'hidden_states': [hidden]})()
 
-        return type('Output', (), {'logits': logits, 'loss': None})()
+        return type('Output', (), {'logits': logits, 'loss': None, 'hidden_states': [hidden]})()
+
+    def generate(self, input_ids, **kwargs):
+        """Mock generation method."""
+        # Simple generation: just return input + one random token
+        batch_size = input_ids.size(0)
+        new_token = torch.randint(0, self.vocab_size, (batch_size, 1))
+        return torch.cat([input_ids, new_token], dim=1)
 
 
 class MockTokenizer:
@@ -76,6 +85,10 @@ class MockTokenizer:
         if isinstance(text, str):
             # Simple character-level tokenization
             tokens = [ord(c) % self.vocab_size for c in text[:50]]
+            # Ensure minimum length
+            if len(tokens) == 0:
+                tokens = [self.bos_token_id]
+
             tokens = tokens[:kwargs.get('max_length', 50)]
 
             # Pad if needed
@@ -94,11 +107,14 @@ class MockTokenizer:
             batch_tokens = []
             for t in text:
                 tokens = [ord(c) % self.vocab_size for c in t[:50]]
+                # Ensure minimum length
+                if len(tokens) == 0:
+                    tokens = [self.bos_token_id]
                 batch_tokens.append(tokens)
 
             if kwargs.get('return_tensors') == 'pt':
                 # Pad to same length
-                max_len = max(len(t) for t in batch_tokens)
+                max_len = max(len(t) for t in batch_tokens) if batch_tokens else 1
                 padded = [
                     t + [self.pad_token_id] * (max_len - len(t))
                     for t in batch_tokens
@@ -284,7 +300,7 @@ class TestPhase2Training:
         """Test reward model training in isolation."""
         # Create reward model
         hidden_size = 256
-        reward_model = RewardModel(hidden_size=hidden_size)
+        reward_model = RewardModel(base_model=mock_model, hidden_size=hidden_size)
 
         # Create mock preference data
         preference_data = [
@@ -429,7 +445,7 @@ class TestRLAIFTrainerIntegration:
     ):
         """Test that RLAIFTrainer properly delegates to PPOTrainer."""
         # Create reward model
-        reward_model = RewardModel(hidden_size=256)
+        reward_model = RewardModel(base_model=mock_model, hidden_size=256)
 
         # Create RLAIF trainer
         rlaif_trainer = RLAIFTrainer(
@@ -460,7 +476,7 @@ class TestRLAIFTrainerIntegration:
         test_prompts
     ):
         """Test that RLAIF trainer tracks statistics correctly."""
-        reward_model = RewardModel(hidden_size=256)
+        reward_model = RewardModel(base_model=mock_model, hidden_size=256)
 
         rlaif_trainer = RLAIFTrainer(
             policy_model=mock_model,
