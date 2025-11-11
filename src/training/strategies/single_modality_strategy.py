@@ -11,7 +11,7 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 from src.utils.gradient_handler import GradientHandler
 from src.utils.metrics_tracker import MetricsTracker
-from src.training.losses.contrastive_loss import ContrastiveLoss
+from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 from src.training.losses.vicreg_loss import VICRegLoss
 
 logger = logging.getLogger(__name__)

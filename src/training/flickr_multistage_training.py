@@ -37,7 +37,7 @@ from src.training.trainers.multimodal import MultimodalTrainer
 from src.data.multimodal_dataset import MultimodalDataset
 from src.data.multimodal_data_utils import SemanticGroupBatchSampler
 from src.training.losses.vicreg_loss import VICRegLoss
-from src.training.losses.contrastive_loss import ContrastiveLoss
+from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
 from src.training.losses.hard_negative_mining_contrastive_loss import (
     HardNegativeMiningContrastiveLoss,
