@@ -514,6 +514,80 @@ class PPOTrainer:
 
         return values_tensor
 
+    def _get_logprobs_with_grad(
+        self,
+        prompts: List[str],
+        responses: List[str]
+    ) -> torch.Tensor:
+        """
+        Compute log probabilities WITH gradients for policy training.
+
+        This method computes logprobs for policy updates and backpropagation.
+        Use get_logprobs() for evaluation without gradients.
+
+        Args:
+            prompts: List of prompts
+            responses: List of responses
+
+        Returns:
+            log_probs: Log probabilities [batch_size, response_len] WITH gradients
+        """
+        self.policy_model.train()
+
+        all_logprobs = []
+
+        for prompt, response in zip(prompts, responses):
+            # Tokenize prompt
+            prompt_inputs = self.tokenizer(
+                prompt,
+                return_tensors='pt',
+                padding=True,
+                truncation=True
+            )
+            prompt_len = prompt_inputs['input_ids'].shape[1]
+
+            # Tokenize full text
+            full_text = prompt + response
+            inputs = self.tokenizer(
+                full_text,
+                return_tensors='pt',
+                padding=True,
+                truncation=True,
+                max_length=512
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            # Get model outputs WITH gradients (no torch.no_grad())
+            outputs = self.policy_model(**inputs)
+            logits = outputs.logits
+
+            # Compute log probabilities for response tokens
+            shift_logits = logits[:, prompt_len-1:-1, :]
+            shift_labels = inputs['input_ids'][:, prompt_len:]
+
+            log_probs = F.log_softmax(shift_logits, dim=-1)
+            token_log_probs = torch.gather(
+                log_probs,
+                dim=-1,
+                index=shift_labels.unsqueeze(-1)
+            ).squeeze(-1)
+
+            all_logprobs.append(token_log_probs)
+
+        # Pad to same length
+        max_len = max(lp.shape[1] for lp in all_logprobs)
+        padded_logprobs = []
+        for lp in all_logprobs:
+            pad_len = max_len - lp.shape[1]
+            if pad_len > 0:
+                padding = torch.zeros(lp.shape[0], pad_len, device=self.device, requires_grad=True)
+                lp = torch.cat([lp, padding], dim=1)
+            padded_logprobs.append(lp)
+
+        log_probs_tensor = torch.cat(padded_logprobs, dim=0)
+
+        return log_probs_tensor
+
     def get_logprobs(
         self,
         prompts: List[str],
@@ -717,8 +791,8 @@ class PPOTrainer:
         kl_divs = []
 
         for epoch in range(num_epochs_per_batch):
-            # Get current log probabilities
-            new_logprobs = self.get_logprobs(prompts, responses)
+            # Get current log probabilities WITH gradients for training
+            new_logprobs = self._get_logprobs_with_grad(prompts, responses)
 
             # Compute PPO loss
             ppo_loss = self.compute_ppo_loss(old_logprobs, new_logprobs, advantages)
