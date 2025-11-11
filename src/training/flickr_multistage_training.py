@@ -33,7 +33,7 @@ from torch.optim.adamw import AdamW
 
 # Local imports
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.training.trainers.multimodal_trainer import MultimodalTrainer
+from src.training.trainers.multimodal import MultimodalTrainer
 from src.data.multimodal_dataset import MultimodalDataset
 from src.data.multimodal_data_utils import SemanticGroupBatchSampler
 from src.training.losses.vicreg_loss import VICRegLoss
