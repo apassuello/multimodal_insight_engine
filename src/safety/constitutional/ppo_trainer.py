@@ -332,6 +332,15 @@ class PPOTrainer:
 
         with torch.no_grad():
             for prompt, response in zip(prompts, responses):
+                # Tokenize prompt to get prompt length
+                prompt_inputs = self.tokenizer(
+                    prompt,
+                    return_tensors='pt',
+                    padding=True,
+                    truncation=True
+                )
+                prompt_len = prompt_inputs['input_ids'].shape[1]
+
                 # Tokenize prompt + response
                 text = prompt + response
                 inputs = self.tokenizer(
@@ -349,9 +358,9 @@ class PPOTrainer:
                     inputs['attention_mask']
                 )
 
-                # Expand reward to sequence length
-                seq_len = inputs['input_ids'].shape[1]
-                reward_seq = reward.unsqueeze(1).expand(-1, seq_len)
+                # Expand reward to RESPONSE length only (not full sequence)
+                response_len = inputs['input_ids'].shape[1] - prompt_len
+                reward_seq = reward.unsqueeze(1).expand(-1, response_len)
 
                 rewards_list.append(reward_seq)
 
@@ -394,6 +403,15 @@ class PPOTrainer:
 
         with torch.no_grad():
             for prompt, response in zip(prompts, responses):
+                # Tokenize prompt to get prompt length
+                prompt_inputs = self.tokenizer(
+                    prompt,
+                    return_tensors='pt',
+                    padding=True,
+                    truncation=True
+                )
+                prompt_len = prompt_inputs['input_ids'].shape[1]
+
                 # Tokenize prompt + response
                 text = prompt + response
                 inputs = self.tokenizer(
@@ -412,9 +430,9 @@ class PPOTrainer:
                     inputs['attention_mask']
                 )
 
-                # Expand value to sequence length
-                seq_len = inputs['input_ids'].shape[1]
-                value_seq = value.unsqueeze(1).expand(-1, seq_len)
+                # Expand value to RESPONSE length only (not full sequence)
+                response_len = inputs['input_ids'].shape[1] - prompt_len
+                value_seq = value.unsqueeze(1).expand(-1, response_len)
 
                 values_list.append(value_seq)
 
