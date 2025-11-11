@@ -342,6 +342,9 @@ class ConstitutionalPipeline:
             print(f"Validation Score: {validation_results['avg_score']:.4f}")
             print(f"Violation Rate: {validation_results['violation_rate']:.2%}")
 
+        # Mark Phase 1 as complete
+        self.phase1_complete = True
+
         return {
             "training_data_size": len(training_data),
             "sft_results": sft_results,
