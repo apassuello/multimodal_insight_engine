@@ -342,13 +342,13 @@ class TestPhase2Training:
         trainer = RewardModelTrainer(
             reward_model=reward_model,
             tokenizer=mock_tokenizer,
-            learning_rate=1e-4
+            learning_rate=1e-4,
+            batch_size=2
         )
 
         results = trainer.train(
             training_data=preference_data,
-            num_epochs=1,
-            batch_size=2
+            num_epochs=1
         )
 
         # Verify training completed

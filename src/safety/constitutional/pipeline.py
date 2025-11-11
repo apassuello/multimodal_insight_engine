@@ -412,13 +412,13 @@ class ConstitutionalPipeline:
             reward_model=self.reward_model,
             tokenizer=self.tokenizer,
             learning_rate=self.reward_model_learning_rate,
-            device=self.device
+            device=self.device,
+            batch_size=ppo_batch_size
         )
 
         reward_results = reward_trainer.train(
             training_data=preference_data,
-            num_epochs=reward_model_epochs,
-            batch_size=ppo_batch_size
+            num_epochs=reward_model_epochs
         )
 
         print(f"Reward model training complete")
