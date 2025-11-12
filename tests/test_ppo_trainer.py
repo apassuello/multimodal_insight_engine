@@ -42,8 +42,13 @@ class MockValueModel(nn.Module):
     def forward(self, input_ids, attention_mask):
         """Return mock value estimates."""
         batch_size = input_ids.shape[0]
-        # Return random values between -1 and 1
-        return torch.randn(batch_size)
+        # Create dummy hidden states from input_ids to establish gradient connection
+        # Use mean of input_ids as a simple feature, ensuring float type
+        hidden = input_ids.float().mean(dim=1, keepdim=True)
+        hidden = hidden.expand(batch_size, self.value_head.in_features)
+        # Pass through value_head to connect to model parameters
+        values = self.value_head(hidden).squeeze(-1)
+        return values
 
 
 class TestComputeGAE:
