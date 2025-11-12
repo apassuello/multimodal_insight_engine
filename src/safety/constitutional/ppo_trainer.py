@@ -907,7 +907,8 @@ class PPOTrainer:
             'policy_losses': [],
             'value_losses': [],
             'kl_divergences': [],
-            'step_avg_rewards': []
+            'step_avg_rewards': [],
+            'mean_rewards': []  # Alias for step_avg_rewards for backwards compatibility
         }
 
         for step in tqdm(range(num_steps), desc="PPO Training"):
@@ -932,6 +933,7 @@ class PPOTrainer:
             training_history['value_losses'].append(metrics['value_loss'])
             training_history['kl_divergences'].append(metrics['kl_divergence'])
             training_history['step_avg_rewards'].append(metrics['mean_reward'])
+            training_history['mean_rewards'].append(metrics['mean_reward'])  # Alias for backwards compatibility
 
             # Print progress
             if (step + 1) % 10 == 0:

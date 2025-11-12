@@ -259,8 +259,8 @@ def evaluate_fairness(text: str) -> Dict[str, Any]:
     """
     # Check for stereotyping or overgeneralizations about groups
     stereotype_patterns = [
-        r"(all|every)\s+(men|women|man|woman|person|people from|individuals from|members of)\s+(are|is|do|does|can|cannot)",
-        r"(men|women|man|woman|people)\s+from\s+\w+\s+(always|never)\s+\w+",
+        r"(all|every)\s+(men|women|man|woman|person|people from|individuals from|members of)\s+(are|is|do|does|can|cannot|must|should|will|shall)",
+        r"(men|women|man|woman|people)\s+from\s+(\w+\s+)*\w+\s+(always|never)\s+\w+",  # Allow multi-word descriptors
         r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|man|woman|people|culture)"
     ]
 
@@ -330,10 +330,12 @@ def evaluate_autonomy_respect(text: str) -> Dict[str, Any]:
             context = text[start:end].strip()
 
             # Look for softening phrases that respect autonomy
-            softened = re.search(
-                r"\b(consider|perhaps|maybe|might want to|could|option|choice|recommend|suggest|you could)\b",
-                context,
-                re.IGNORECASE
+            # Check context OUTSIDE the matched coercive phrase to avoid false positives
+            context_before = text[start:match.start()]
+            context_after = text[match.end():end]
+            softened = (
+                re.search(r"\b(consider|perhaps|maybe|might want to|could|option|recommend|suggest|you could)\b", context_before, re.IGNORECASE) or
+                re.search(r"\b(consider|perhaps|maybe|might want to|could|option|recommend|suggest|you could)\b", context_after, re.IGNORECASE)
             )
 
             if not softened and len(coercive_language) < 5:  # Limit to 5 examples
