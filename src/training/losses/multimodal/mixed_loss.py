@@ -40,7 +40,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         reduction: str = "mean",
         input_dim: Optional[int] = None,
         projection_dim: int = 256,
-        add_projection: bool = False,
+        use_projection: bool = False,
         **kwargs
     ):
         """
@@ -53,16 +53,15 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
             reduction: Loss reduction method
             input_dim: Input feature dimension
             projection_dim: Projection space dimension
-            add_projection: Whether to add MLP projection
+            use_projection: Whether to use MLP projection
         """
         # Initialize base class with all mixins
         super().__init__(
             temperature=temperature,
             normalize_features=True,
-            use_projection=add_projection,
-            projection_input_dim=input_dim,
-            projection_hidden_dim=input_dim if input_dim else projection_dim,
-            projection_output_dim=projection_dim,
+            use_projection=use_projection,
+            input_dim=input_dim,
+            projection_dim=projection_dim,
             reduction=reduction,
             **kwargs
         )
@@ -134,12 +133,9 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         loss_infonce = (loss_v2t + loss_t2v) / 2
 
         # Compute NT-Xent loss (uses base class method)
-        loss_nt_xent = self.nt_xent_loss(
-            vision_features,
-            text_features,
-            temperature=self.temp,
-            reduction=self.reduction
-        )
+        # Concatenate vision and text features for NT-Xent
+        combined_features = torch.cat([vision_features, text_features], dim=0)
+        loss_nt_xent = self.nt_xent_loss(combined_features)
 
         # Compute supervised contrastive loss if labels provided
         if labels is not None:

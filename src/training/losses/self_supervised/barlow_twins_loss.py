@@ -26,22 +26,22 @@ class BarlowTwinsLoss(nn.Module):
         self,
         lambda_coeff: float = 0.005,
         batch_norm_last_layer: bool = True,
-        correlation_mode: str = "cross_modal", 
-        add_projection: bool = False,
+        correlation_mode: str = "cross_modal",
+        use_projection: bool = False,
         projection_dim: int = 8192,
         input_dim: Optional[int] = None,
         normalize_embeddings: bool = True,
     ):
         """
         Initialize the Barlow Twins loss module.
-        
+
         Args:
             lambda_coeff: Coefficient for the off-diagonal terms in the loss
             batch_norm_last_layer: Whether to use batch normalization in the final projection layer
             correlation_mode: How to compute correlations ('cross_modal' or 'within_batch')
-            add_projection: Whether to add MLP projection heads for embeddings
-            projection_dim: Dimension of projection space (if add_projection is True)
-            input_dim: Input dimension for projection heads (required if add_projection is True)
+            use_projection: Whether to use MLP projection heads for embeddings
+            projection_dim: Dimension of projection space (if use_projection is True)
+            input_dim: Input dimension for projection heads (required if use_projection is True)
             normalize_embeddings: Whether to L2-normalize embeddings before computing loss
         """
         super().__init__()
@@ -49,11 +49,11 @@ class BarlowTwinsLoss(nn.Module):
         self.normalize_embeddings = normalize_embeddings
         self.correlation_mode = correlation_mode
         self.batch_norm_last_layer = batch_norm_last_layer
-        
+
         # Create projection heads if specified
-        self.add_projection = add_projection
-        if add_projection:
-            assert input_dim is not None, "input_dim must be specified when add_projection=True"
+        self.use_projection = use_projection
+        if use_projection:
+            assert input_dim is not None, "input_dim must be specified when use_projection=True"
             
             # Vision projection head - follows the paper's recommendation for a 3-layer MLP
             # with batch normalization at each layer and no ReLU after the final layer
@@ -109,7 +109,7 @@ class BarlowTwinsLoss(nn.Module):
         Returns:
             Tuple of (projected_vision_features, projected_text_features)
         """
-        if self.add_projection:
+        if self.use_projection:
             # Make sure projection heads are on the same device as the input tensors
             device = vision_features.device
             if list(self.vision_projection.parameters()) and next(self.vision_projection.parameters()).device != device:
@@ -199,7 +199,7 @@ class BarlowTwinsLoss(nn.Module):
         Returns:
             self
         """
-        if self.add_projection:
+        if self.use_projection:
             self.vision_projection.train(mode)
             self.text_projection.train(mode)
         return super().train(mode)
@@ -226,7 +226,7 @@ def extract_file_metadata(file_path=__file__):
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', add_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
+                        "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', use_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
                         "brief_description": "Initialize the Barlow Twins loss module with configurable parameters"
                     },
                     {
