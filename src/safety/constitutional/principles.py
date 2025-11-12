@@ -214,6 +214,7 @@ def identify_misleading_statistics(text: str) -> List[str]:
     """
     stat_patterns = [
         r"\d+\s*%\s*(of|increase|decrease|more|less|higher|lower)",
+        r"(increased|decreased|grew|declined|rose|fell)\s+by\s+\d+\s*%",
         r"\b(doubled|tripled|quadrupled|increased by \d+x)\b",
         r"\b(significant|substantial|dramatic|massive)\s+(increase|decrease|change|growth|decline)\b"
     ]
