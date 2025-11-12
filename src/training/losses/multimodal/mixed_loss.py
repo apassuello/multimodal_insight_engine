@@ -137,7 +137,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         loss_nt_xent = self.nt_xent_loss(
             vision_features,
             text_features,
-            temperature=self.temperature,
+            temperature=self.temp,
             reduction=self.reduction
         )
 
@@ -259,7 +259,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         mask = mask - identity_mask
 
         # Compute similarity (with temperature)
-        similarity = torch.matmul(features, features.T) / self.temperature
+        similarity = torch.matmul(features, features.T) / self.temp
 
         # Mask for non-self samples
         non_self_mask = 1 - identity_mask
