@@ -332,25 +332,32 @@ class PPOTrainer:
 
         with torch.no_grad():
             for prompt, response in zip(prompts, responses):
-                # Tokenize prompt to get prompt length
-                prompt_inputs = self.tokenizer(
-                    prompt,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True
-                )
-                prompt_len = prompt_inputs['input_ids'].shape[1]
+                # Tokenize prompt and response separately then concatenate
+                # This ensures exact boundary alignment
+                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
+                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
 
-                # Tokenize prompt + response
-                text = prompt + response
-                inputs = self.tokenizer(
-                    text,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True,
-                    max_length=512
-                )
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                prompt_len = prompt_tokens['input_ids'].shape[1]
+                response_len = response_tokens['input_ids'].shape[1]
+
+                # Concatenate token IDs
+                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                attention_mask = torch.ones_like(input_ids)
+
+                # Truncate if needed
+                if input_ids.shape[1] > 512:
+                    input_ids = input_ids[:, :512]
+                    attention_mask = attention_mask[:, :512]
+                    # Adjust response_len if truncated
+                    if prompt_len < 512:
+                        response_len = 512 - prompt_len
+                    else:
+                        response_len = 0
+
+                inputs = {
+                    'input_ids': input_ids.to(self.device),
+                    'attention_mask': attention_mask.to(self.device)
+                }
 
                 # Get reward from reward model
                 reward = self.reward_model(
@@ -358,8 +365,7 @@ class PPOTrainer:
                     inputs['attention_mask']
                 )
 
-                # Expand reward to RESPONSE length only (not full sequence)
-                response_len = inputs['input_ids'].shape[1] - prompt_len
+                # Expand reward to response length
                 reward_seq = reward.unsqueeze(1).expand(-1, response_len)
 
                 rewards_list.append(reward_seq)
@@ -396,25 +402,32 @@ class PPOTrainer:
         values_list = []
 
         for prompt, response in zip(prompts, responses):
-            # Tokenize prompt to get prompt length
-            prompt_inputs = self.tokenizer(
-                prompt,
-                return_tensors='pt',
-                padding=True,
-                truncation=True
-            )
-            prompt_len = prompt_inputs['input_ids'].shape[1]
+            # Tokenize prompt and response separately then concatenate
+            # This ensures exact boundary alignment
+            prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
+            response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
 
-            # Tokenize prompt + response
-            text = prompt + response
-            inputs = self.tokenizer(
-                text,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=512
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            prompt_len = prompt_tokens['input_ids'].shape[1]
+            response_len = response_tokens['input_ids'].shape[1]
+
+            # Concatenate token IDs
+            input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+            attention_mask = torch.ones_like(input_ids)
+
+            # Truncate if needed
+            if input_ids.shape[1] > 512:
+                input_ids = input_ids[:, :512]
+                attention_mask = attention_mask[:, :512]
+                # Adjust response_len if truncated
+                if prompt_len < 512:
+                    response_len = 512 - prompt_len
+                else:
+                    response_len = 0
+
+            inputs = {
+                'input_ids': input_ids.to(self.device),
+                'attention_mask': attention_mask.to(self.device)
+            }
 
             # Get value estimate WITH gradients
             value = self.value_model(
@@ -422,19 +435,19 @@ class PPOTrainer:
                 inputs['attention_mask']
             )
 
-            # Expand value to RESPONSE length only
-            response_len = inputs['input_ids'].shape[1] - prompt_len
-            value_seq = value.unsqueeze(1).expand(-1, response_len)
+            # Repeat value to response length (use repeat not expand for gradient flow)
+            value_seq = value.unsqueeze(1).repeat(1, response_len)
 
             values_list.append(value_seq)
 
-        # Pad to same length
+        # Pad to same length (preserve gradients)
         max_len = max(v.shape[1] for v in values_list)
         padded_values = []
         for v in values_list:
             pad_len = max_len - v.shape[1]
             if pad_len > 0:
-                padding = torch.zeros(v.shape[0], pad_len, device=self.device)
+                # Create padding with requires_grad to preserve gradient flow
+                padding = torch.zeros(v.shape[0], pad_len, device=self.device, requires_grad=True)
                 v = torch.cat([v, padding], dim=1)
             padded_values.append(v)
 
@@ -537,25 +550,26 @@ class PPOTrainer:
         all_logprobs = []
 
         for prompt, response in zip(prompts, responses):
-            # Tokenize prompt
-            prompt_inputs = self.tokenizer(
-                prompt,
-                return_tensors='pt',
-                padding=True,
-                truncation=True
-            )
-            prompt_len = prompt_inputs['input_ids'].shape[1]
+            # Tokenize prompt and response separately then concatenate
+            # This ensures exact boundary alignment
+            prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
+            response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
 
-            # Tokenize full text
-            full_text = prompt + response
-            inputs = self.tokenizer(
-                full_text,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=512
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            prompt_len = prompt_tokens['input_ids'].shape[1]
+
+            # Concatenate token IDs
+            input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+            attention_mask = torch.ones_like(input_ids)
+
+            # Truncate if needed
+            if input_ids.shape[1] > 512:
+                input_ids = input_ids[:, :512]
+                attention_mask = attention_mask[:, :512]
+
+            inputs = {
+                'input_ids': input_ids.to(self.device),
+                'attention_mask': attention_mask.to(self.device)
+            }
 
             # Get model outputs WITH gradients (no torch.no_grad())
             outputs = self.policy_model(**inputs)
@@ -574,13 +588,14 @@ class PPOTrainer:
 
             all_logprobs.append(token_log_probs)
 
-        # Pad to same length
+        # Pad to same length (preserve gradients)
         max_len = max(lp.shape[1] for lp in all_logprobs)
         padded_logprobs = []
         for lp in all_logprobs:
             pad_len = max_len - lp.shape[1]
             if pad_len > 0:
-                padding = torch.zeros(lp.shape[0], pad_len, device=self.device)
+                # Create padding with requires_grad to preserve gradient flow
+                padding = torch.zeros(lp.shape[0], pad_len, device=self.device, requires_grad=True)
                 lp = torch.cat([lp, padding], dim=1)
             padded_logprobs.append(lp)
 
@@ -607,44 +622,46 @@ class PPOTrainer:
 
         all_logprobs = []
 
-        for prompt, response in zip(prompts, responses):
-            # Tokenize prompt
-            prompt_inputs = self.tokenizer(
-                prompt,
-                return_tensors='pt',
-                padding=True,
-                truncation=True
-            )
-            prompt_len = prompt_inputs['input_ids'].shape[1]
+        with torch.no_grad():
+            for prompt, response in zip(prompts, responses):
+                # Tokenize prompt and response separately then concatenate
+                # This ensures exact boundary alignment
+                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
+                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
 
-            # Tokenize full text
-            full_text = prompt + response
-            inputs = self.tokenizer(
-                full_text,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=512
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                prompt_len = prompt_tokens['input_ids'].shape[1]
 
-            # Get model outputs
-            with torch.no_grad():
+                # Concatenate token IDs
+                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                attention_mask = torch.ones_like(input_ids)
+
+                # Truncate if needed
+                if input_ids.shape[1] > 512:
+                    input_ids = input_ids[:, :512]
+                    attention_mask = attention_mask[:, :512]
+
+                inputs = {
+                    'input_ids': input_ids.to(self.device),
+                    'attention_mask': attention_mask.to(self.device)
+                }
+
+                # Get model outputs
                 outputs = self.policy_model(**inputs)
                 logits = outputs.logits
 
-            # Compute log probabilities for response tokens
-            shift_logits = logits[:, prompt_len-1:-1, :]
-            shift_labels = inputs['input_ids'][:, prompt_len:]
+                # Compute log probabilities for response tokens
+                # shift by 1 for autoregressive prediction
+                shift_logits = logits[:, prompt_len-1:-1, :]
+                shift_labels = inputs['input_ids'][:, prompt_len:]
 
-            log_probs = F.log_softmax(shift_logits, dim=-1)
-            token_log_probs = torch.gather(
-                log_probs,
-                dim=-1,
-                index=shift_labels.unsqueeze(-1)
-            ).squeeze(-1)
+                log_probs = F.log_softmax(shift_logits, dim=-1)
+                token_log_probs = torch.gather(
+                    log_probs,
+                    dim=-1,
+                    index=shift_labels.unsqueeze(-1)
+                ).squeeze(-1)
 
-            all_logprobs.append(token_log_probs)
+                all_logprobs.append(token_log_probs)
 
         # Pad to same length
         max_len = max(lp.shape[1] for lp in all_logprobs)
@@ -681,25 +698,26 @@ class PPOTrainer:
 
         with torch.no_grad():
             for prompt, response in zip(prompts, responses):
-                # Tokenize prompt
-                prompt_inputs = self.tokenizer(
-                    prompt,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True
-                )
-                prompt_len = prompt_inputs['input_ids'].shape[1]
+                # Tokenize prompt and response separately then concatenate
+                # This ensures exact boundary alignment
+                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
+                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
 
-                # Tokenize full text
-                full_text = prompt + response
-                inputs = self.tokenizer(
-                    full_text,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True,
-                    max_length=512
-                )
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                prompt_len = prompt_tokens['input_ids'].shape[1]
+
+                # Concatenate token IDs
+                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                attention_mask = torch.ones_like(input_ids)
+
+                # Truncate if needed
+                if input_ids.shape[1] > 512:
+                    input_ids = input_ids[:, :512]
+                    attention_mask = attention_mask[:, :512]
+
+                inputs = {
+                    'input_ids': input_ids.to(self.device),
+                    'attention_mask': attention_mask.to(self.device)
+                }
 
                 # Get reference model outputs
                 outputs = self.reference_model(**inputs)

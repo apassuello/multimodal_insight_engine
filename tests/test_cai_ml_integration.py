@@ -18,6 +18,40 @@ from src.safety.constitutional.reward_model import RewardModel
 from src.safety.constitutional.principles import setup_default_framework
 
 
+# Mock classes matching the pattern from test_cai_training_integration.py
+class MockConfig:
+    def __init__(self, hidden_size=768):
+        self.hidden_size = hidden_size
+
+
+class MockOutput:
+    def __init__(self, logits=None, loss=None, hidden_states=None):
+        self.logits = logits
+        self.loss = loss
+        self.hidden_states = hidden_states or []
+
+
+class MockLanguageModel(nn.Module):
+    """Mock language model that properly implements forward() with hidden states."""
+    def __init__(self, vocab_size=1000, hidden_size=768):
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
+        self.embedding = nn.Embedding(vocab_size, hidden_size)
+        self.lm_head = nn.Linear(hidden_size, vocab_size)
+        self.config = MockConfig(hidden_size)
+
+    def forward(self, input_ids, attention_mask=None, output_hidden_states=False, **kwargs):
+        embeds = self.embedding(input_ids)
+        # Simple passthrough for hidden states
+        hidden = embeds
+        logits = self.lm_head(hidden)
+
+        if output_hidden_states:
+            return MockOutput(logits=logits, hidden_states=[hidden])
+        return MockOutput(logits=logits)
+
+
 class TestMLModelIntegration:
     """Test that ML models can be integrated into CAI evaluation."""
 
@@ -72,12 +106,8 @@ class TestMLModelIntegration:
 
     def test_reward_model_architecture(self):
         """Validate RewardModel has correct architecture."""
-        # Mock base model
-        mock_base_model = Mock()
-        mock_base_model.return_value = Mock(
-            hidden_states=[torch.randn(2, 10, 768)]  # Mock hidden states
-        )
-
+        # Use proper mock model
+        mock_base_model = MockLanguageModel(vocab_size=1000, hidden_size=768)
         reward_model = RewardModel(mock_base_model, hidden_size=768)
 
         # Check reward head exists
@@ -94,18 +124,13 @@ class TestMLModelIntegration:
 
     def test_reward_model_forward_pass(self):
         """Validate RewardModel forward pass produces scalar rewards."""
-        # Mock base model with proper structure
-        mock_base_model = Mock()
-        mock_hidden = torch.randn(2, 10, 768)  # [batch, seq, hidden]
-        mock_output = Mock()
-        mock_output.hidden_states = [mock_hidden]
-        mock_base_model.return_value = mock_output
-
+        # Use proper mock model
+        mock_base_model = MockLanguageModel(vocab_size=1000, hidden_size=768)
         reward_model = RewardModel(mock_base_model, hidden_size=768)
 
-        # Forward pass
-        input_ids = torch.randint(0, 1000, (2, 10))
-        attention_mask = torch.ones(2, 10)
+        # Forward pass with proper tensor types
+        input_ids = torch.randint(0, 1000, (2, 10), dtype=torch.long)
+        attention_mask = torch.ones(2, 10, dtype=torch.long)
 
         rewards = reward_model(input_ids, attention_mask)
 

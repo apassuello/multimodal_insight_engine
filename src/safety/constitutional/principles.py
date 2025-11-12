@@ -35,6 +35,7 @@ def evaluate_harm_potential(text: str) -> Dict[str, Any]:
     # Check for explicit harm instructions
     harm_patterns = [
         r"how to (harm|hurt|injure|kill|damage|attack)",
+        r"how to\b.{0,50}\b(hurt|harm|injure|kill|damage|attack)",  # Simple keyword proximity
         r"ways to (harm|hurt|injure|kill|damage|attack)",
         r"instructions for (harming|hurting|injuring|killing|attacking|damaging)",
         r"(guide|tutorial|method) (on|for|to) (harm|hurt|injure|kill|attack|damage)",
@@ -87,13 +88,15 @@ def analyze_potential_consequences(text: str) -> str:
         if any(word in text_lower for word in ["manipulate", "deceive", "trick"]):
             return "Could enable social manipulation or deception"
 
-    if any(word in text_lower for word in ["bomb", "explosive", "detonate"]):
+    # Check for explosives/bombs (use substring matching to catch plurals/variations)
+    if any(word in text_lower for word in ["bomb", "explosiv", "detonat"]):
         return "Could enable creation of dangerous devices"
 
     if "poison" in text_lower or "toxic substance" in text_lower:
         return "Could enable harm to living beings"
 
-    if any(word in text_lower for word in ["exploit", "vulnerability", "backdoor"]):
+    # Check for security issues (use substring matching to catch plurals/variations)
+    if any(word in text_lower for word in ["exploit", "vulnerabilit", "backdoor"]):
         return "Could enable security breaches"
 
     # Default reasoning
@@ -143,9 +146,9 @@ def identify_unsupported_claims(text: str) -> List[str]:
         List of unsupported claims (with context)
     """
     claim_patterns = [
-        r"(all|every|no|none)\s+\w+\s+(is|are|do|does|can|cannot)",
+        r"(all|every|no|none)\s+(?:\w+\s+)+?(is|are|do|does|can|cannot|will|would)",
         r"(always|never)\s+\w+",
-        r"(proven|definitely|certainly|undoubtedly)\s+(that\s+)?\w+"
+        r"(proven|definitely|certainly|undoubtedly)\s+(that\s+)?[\w\s]+"
     ]
 
     unsupported_claims = []
@@ -181,11 +184,11 @@ def identify_logical_contradictions(text: str) -> List[str]:
         List of contradictions found
     """
     contradicting_pairs = [
-        (r"\balways\b", r"\b(sometimes not|not always|occasionally|rarely)\b"),
-        (r"\bnever\b", r"\b(sometimes|occasionally|at times)\b"),
-        (r"\ball\b", r"\b(some are not|not all|many are not)\b"),
-        (r"\bnone\b", r"\b(some are|a few)\b"),
-        (r"\bimpossible\b", r"\b(possible|can happen|has occurred)\b")
+        (r"\balways\b", r"\b(sometimes|not always|occasionally|rarely|doesn't|don't)\b"),
+        (r"\bnever\b", r"\b(sometimes|occasionally|at times|does|do)\b"),
+        (r"\ball\b", r"\b(some are not|not all|many are not|not every)\b"),
+        (r"\bnone\b", r"\b(some|a few|at least one)\b"),
+        (r"\bimpossible\b", r"\b(possible|can happen|has occurred|can)\b")
     ]
 
     contradictions = []
@@ -213,6 +216,7 @@ def identify_misleading_statistics(text: str) -> List[str]:
     """
     stat_patterns = [
         r"\d+\s*%\s*(of|increase|decrease|more|less|higher|lower)",
+        r"(increased|decreased|grew|declined|rose|fell)\s+by\s+\d+\s*%",
         r"\b(doubled|tripled|quadrupled|increased by \d+x)\b",
         r"\b(significant|substantial|dramatic|massive)\s+(increase|decrease|change|growth|decline)\b"
     ]
@@ -255,9 +259,9 @@ def evaluate_fairness(text: str) -> Dict[str, Any]:
     """
     # Check for stereotyping or overgeneralizations about groups
     stereotype_patterns = [
-        r"(all|every)\s+(men|women|people from|individuals from|members of)\s+(are|is|do|does|can|cannot)",
-        r"(men|women|people)\s+from\s+\w+\s+(always|never)\s+\w+",
-        r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|people|culture)"
+        r"(all|every)\s+(men|women|man|woman|person|people from|individuals from|members of)\s+(are|is|do|does|can|cannot)",
+        r"(men|women|man|woman|people)\s+from\s+\w+\s+(always|never)\s+\w+",
+        r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|man|woman|people|culture)"
     ]
 
     stereotypes = []

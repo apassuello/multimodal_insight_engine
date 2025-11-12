@@ -165,10 +165,10 @@ def extract_preference(comparison_text: str) -> str:
     if re.search(r'\bb\s+(is|seems|appears).{0,30}\b(better|superior|preferred)', text):
         return 'B'
     
-    # Pattern 4: Direct statements like "A better" or "prefer B"
-    if re.search(r'\bprefer\s+a\b', text):
+    # Pattern 4: Direct statements like "A better" or "prefer B" (allow words in between)
+    if re.search(r'\bprefer.{0,50}\ba\b', text):
         return 'A'
-    if re.search(r'\bprefer\s+b\b', text):
+    if re.search(r'\bprefer.{0,50}\bb\b', text):
         return 'B'
     
     # Pattern 5: "choose A" or "select B"

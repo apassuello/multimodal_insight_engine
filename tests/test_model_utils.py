@@ -79,7 +79,9 @@ class TestLoadModel:
         mock_param = Mock()
         mock_param.numel.return_value = 1000
         # parameters() should return an iterable - use side_effect to return fresh list each time
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
+        # CRITICAL: Make to() return the same mock (doesn't create new Mock)
+        mock_model.to.return_value = mock_model
 
         model, tokenizer = load_model("gpt2")
 
@@ -103,7 +105,8 @@ class TestLoadModel:
         # Mock parameters
         mock_param = Mock()
         mock_param.numel.return_value = 1000
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
+        mock_model.to.return_value = mock_model
 
         model, tokenizer = load_model()
 
@@ -123,7 +126,8 @@ class TestLoadModel:
         # Mock parameters
         mock_param = Mock()
         mock_param.numel.return_value = 1000
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
+        mock_model.to.return_value = mock_model
 
         device = torch.device("cpu")
         model, tokenizer = load_model(device=device)
@@ -144,7 +148,7 @@ class TestLoadModel:
         # Mock parameters
         mock_param = Mock()
         mock_param.numel.return_value = 1000
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         device = torch.device("cuda")
         with patch('torch.cuda.is_available', return_value=True):
@@ -174,7 +178,7 @@ class TestGenerateText:
         # Setup device
         mock_param = Mock()
         mock_param.device = torch.device("cpu")
-        self.mock_model.parameters = lambda: iter([mock_param])
+        self.mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
     def test_generates_text(self):
         """Test basic text generation."""
@@ -281,7 +285,7 @@ class TestBatchGenerate:
         # Setup device
         mock_param = Mock()
         mock_param.device = torch.device("cpu")
-        self.mock_model.parameters = lambda: iter([mock_param])
+        self.mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
     def test_batch_generate_multiple_prompts(self):
         """Test generating for multiple prompts."""
@@ -415,7 +419,7 @@ class TestPrepareModelForTraining:
         """Test that model is set to training mode."""
         mock_model = Mock()
         mock_param = Mock()
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW'):
             prepare_model_for_training(mock_model)
@@ -427,7 +431,7 @@ class TestPrepareModelForTraining:
         mock_model = Mock()
         mock_param = Mock()
         mock_param.requires_grad = False
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW'):
             prepare_model_for_training(mock_model)
@@ -438,7 +442,7 @@ class TestPrepareModelForTraining:
         """Test that AdamW optimizer is created."""
         mock_model = Mock()
         mock_param = Mock()
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW') as mock_adamw:
             prepare_model_for_training(mock_model)
@@ -449,7 +453,7 @@ class TestPrepareModelForTraining:
         """Test that custom learning rate is used."""
         mock_model = Mock()
         mock_param = Mock()
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW') as mock_adamw:
             prepare_model_for_training(mock_model, learning_rate=1e-4)
@@ -461,7 +465,7 @@ class TestPrepareModelForTraining:
         """Test that custom weight decay is used."""
         mock_model = Mock()
         mock_param = Mock()
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW') as mock_adamw:
             prepare_model_for_training(mock_model, weight_decay=0.05)
@@ -473,7 +477,7 @@ class TestPrepareModelForTraining:
         """Test that optimizer is returned."""
         mock_model = Mock()
         mock_param = Mock()
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         with patch('torch.optim.AdamW') as mock_adamw:
             mock_adamw.return_value = Mock()  # Return a mock optimizer
@@ -490,7 +494,7 @@ class TestGetModelDevice:
         mock_model = Mock()
         mock_param = Mock()
         mock_param.device = torch.device("cuda")
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         device = get_model_device(mock_model)
 
@@ -501,7 +505,7 @@ class TestGetModelDevice:
         mock_model = Mock()
         mock_param = Mock()
         mock_param.device = torch.device("cpu")
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         device = get_model_device(mock_model)
 
@@ -528,7 +532,9 @@ class TestIntegrationScenarios:
         mock_param = Mock()
         mock_param.numel.return_value = 1000
         mock_param.requires_grad = False
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
+        mock_model.to.return_value = mock_model
+        mock_model.train.return_value = None
 
         # Load model
         model, tokenizer = load_model("gpt2")
@@ -551,7 +557,7 @@ class TestIntegrationScenarios:
         # Setup device
         mock_param = Mock()
         mock_param.device = torch.device("cpu")
-        mock_model.parameters = lambda: iter([mock_param])
+        mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         # Setup mocks
         mock_tokenizer.return_value = {
