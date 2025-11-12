@@ -1042,16 +1042,16 @@ class ModelBenchmarkSuite:
                 df_norm = benchmark_df.copy()
                 df_norm['time_norm'] = (df_norm['avg_time'] - df_norm['avg_time'].min()) / (df_norm['avg_time'].max() - df_norm['avg_time'].min())
                 df_norm['memory_norm'] = (df_norm['memory_used_mb'] - df_norm['memory_used_mb'].min()) / (df_norm['memory_used_mb'].max() - df_norm['memory_used_mb'].min())
-                
+
                 # Calculate balanced score (lower is better)
                 df_norm['balanced_score'] = df_norm['time_norm'] + df_norm['memory_norm']
                 best_config = df_norm.loc[df_norm['balanced_score'].idxmin()]
-                
+
                 recommendations += f"- Best balanced configuration (speed vs memory):\n"
                 recommendations += f"  - Batch size: **{best_config['batch_size']}**\n"
                 recommendations += f"  - Sequence length: **{best_config['sequence_length']}**\n"
-            except:
-                # If any error occurs, skip this recommendation
+            except (ValueError, KeyError, IndexError, ZeroDivisionError) as e:
+                # If any error occurs (empty data, missing columns, division by zero), skip this recommendation
                 pass
         
         # PyTorch profiler recommendations
