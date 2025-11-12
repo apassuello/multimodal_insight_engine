@@ -124,7 +124,7 @@ class TestGenerateComparison:
         device = torch.device('cpu')
         
         # Mock generate_text to return a comparison
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             mock_gen.return_value = "Response B is better because it is more accurate."
             
             result = generate_comparison(
@@ -150,7 +150,7 @@ class TestGenerateComparison:
         mock_tokenizer = Mock()
         device = torch.device('cpu')
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             mock_gen.return_value = "Response A is better."
             
             result = generate_comparison(
@@ -173,7 +173,7 @@ class TestGenerateComparison:
         mock_tokenizer = Mock()
         device = torch.device('cpu')
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             mock_gen.return_value = "Response B is superior."
             
             result = generate_comparison(
@@ -198,7 +198,7 @@ class TestGenerateComparison:
         
         principles = ["Be accurate", "Be helpful", "Prevent harm"]
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             mock_gen.return_value = "Response A is better."
             
             generate_comparison(
@@ -235,7 +235,7 @@ class TestGeneratePreferencePairs:
         mock_principle.description = "Be helpful"
         mock_framework.principles = {'helpful': mock_principle}
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             # Mock responses and comparisons
             mock_gen.side_effect = ["Response 1", "Response 2", "Response A is better"]
             
@@ -261,7 +261,7 @@ class TestGeneratePreferencePairs:
         mock_principle.description = "Be helpful"
         mock_framework.principles = {'helpful': mock_principle}
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             mock_gen.side_effect = ["Response 1", "Response 2", "Response A is better"]
             
             result = generate_preference_pairs(
@@ -290,7 +290,7 @@ class TestGeneratePreferencePairs:
         mock_principle.description = "Be helpful"
         mock_framework.principles = {'helpful': mock_principle}
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             # 2 prompts x 2 responses each + 2 comparisons = 6 calls
             mock_gen.side_effect = [
                 "R1", "R2", "A is better",  # Prompt 1
@@ -319,7 +319,7 @@ class TestGeneratePreferencePairs:
         mock_principle.description = "Be helpful"
         mock_framework.principles = {'helpful': mock_principle}
         
-        with patch('src.safety.constitutional.preference_comparison.generate_text') as mock_gen:
+        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
             # First prompt succeeds, second fails, third succeeds
             mock_gen.side_effect = [
                 "R1", "R2", "A is better",  # Prompt 1 - success

@@ -1,6 +1,14 @@
 # Constitutional AI Development Archive
 
-This directory contains historical and interim documentation from the Constitutional AI implementation process. These files document the development journey but have been archived to reduce root directory clutter.
+⚠️ **ARCHIVED DOCUMENTATION** ⚠️
+
+**Archive Date**: 2025-11-12
+**Status**: Historical reference only
+**Current as of**: November 2025
+
+This directory contains historical and interim documentation from the Constitutional AI implementation process (October-November 2025). These files document the development journey but may contain outdated information.
+
+**DO NOT rely on these for current implementation details.** See the current documentation links at the bottom of this file.
 
 ## Archived Files
 

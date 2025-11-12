@@ -1,11 +1,12 @@
 """MODULE: trainer.py
 PURPOSE: RLAIF (Reinforcement Learning from AI Feedback) trainer for Constitutional AI
 KEY COMPONENTS:
-- RLAIFTrainer: Trainer implementing RL from AI Feedback with constitutional principles
+- RLAIFTrainer: Orchestrates RL from AI Feedback with constitutional principles
 - Constitutional feedback generation and scoring
-- Actual training implementation with policy gradient
-DEPENDENCIES: torch, typing, framework, evaluator, model_utils
-SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning
+- Delegates actual RL optimization to PPOTrainer
+DEPENDENCIES: torch, typing, framework, evaluator, model_utils, ppo_trainer
+SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning by combining
+constitutional evaluation with PPO-based reinforcement learning
 """
 
 import torch
@@ -18,6 +19,8 @@ from tqdm import tqdm
 from .framework import ConstitutionalFramework
 from .evaluator import ConstitutionalSafetyEvaluator
 from .principles import setup_default_framework
+from .ppo_trainer import PPOTrainer
+from .reward_model import RewardModel
 
 
 class RLAIFTrainer:
@@ -33,8 +36,14 @@ class RLAIFTrainer:
         policy_model: nn.Module,
         constitutional_framework: Optional[ConstitutionalFramework] = None,
         critique_model: Optional[nn.Module] = None,
-        learning_rate: float = 1e-5,
+        reward_model: Optional[RewardModel] = None,
+        value_model: Optional[nn.Module] = None,
+        learning_rate: float = 1e-6,
         temperature: float = 1.0,
+        ppo_epsilon: float = 0.2,
+        ppo_value_coef: float = 0.5,
+        ppo_entropy_coef: float = 0.01,
+        kl_penalty_coef: float = 0.02,
         device: Optional[torch.device] = None
     ):
         """
@@ -44,8 +53,14 @@ class RLAIFTrainer:
             policy_model: The model being trained
             constitutional_framework: Framework for evaluation (uses default if None)
             critique_model: Optional separate model for critique (uses policy_model if None)
-            learning_rate: Learning rate for policy updates
+            reward_model: Optional reward model for scoring responses
+            value_model: Optional value model for PPO (shares policy if None)
+            learning_rate: Learning rate for PPO optimization
             temperature: Sampling temperature for response generation
+            ppo_epsilon: PPO clipping parameter
+            ppo_value_coef: PPO value loss coefficient
+            ppo_entropy_coef: PPO entropy bonus coefficient
+            kl_penalty_coef: KL divergence penalty coefficient
             device: Device for training
         """
         self.policy_model = policy_model
@@ -54,8 +69,16 @@ class RLAIFTrainer:
             else setup_default_framework()
         )
         self.critique_model = critique_model if critique_model is not None else policy_model
+        self.reward_model = reward_model
+        self.value_model = value_model
         self.learning_rate = learning_rate
         self.temperature = temperature
+
+        # PPO parameters
+        self.ppo_epsilon = ppo_epsilon
+        self.ppo_value_coef = ppo_value_coef
+        self.ppo_entropy_coef = ppo_entropy_coef
+        self.kl_penalty_coef = kl_penalty_coef
 
         # Setup device
         if device is None:
@@ -70,11 +93,8 @@ class RLAIFTrainer:
             use_self_critique=True
         )
 
-        # Create optimizer
-        self.optimizer = torch.optim.AdamW(
-            self.policy_model.parameters(),
-            lr=learning_rate
-        )
+        # PPO trainer (initialized lazily in train())
+        self.ppo_trainer: Optional[PPOTrainer] = None
 
         # Training statistics
         self.stats = {
@@ -299,102 +319,50 @@ Analysis:"""
         scores = [eval_dict["combined_score"] for eval_dict in evaluations]
         return int(np.argmin(scores))
 
-    def train_step(
-        self,
-        prompt: str,
-        responses: List[str],
-        rewards: List[float],
-        tokenizer: Any
-    ) -> Dict[str, float]:
+    def _initialize_ppo_trainer(self, tokenizer: Any) -> None:
         """
-        Perform a single training step with constitutional feedback using policy gradient.
+        Initialize PPO trainer for RL optimization.
 
         Args:
-            prompt: Input prompt
-            responses: List of generated responses
-            rewards: Reward for each response (based on constitutional compliance)
-            tokenizer: Tokenizer
-
-        Returns:
-            Dictionary with training metrics
+            tokenizer: Tokenizer for the model
         """
-        self.policy_model.train()
-        self.optimizer.zero_grad()
-
-        # Tokenize prompt
-        prompt_ids = tokenizer(prompt, return_tensors="pt", padding=True)
-        prompt_ids = {k: v.to(self.device) for k, v in prompt_ids.items()}
-
-        total_loss = 0.0
-        valid_samples = 0
-
-        # Compute policy gradient loss
-        for response, reward in zip(responses, rewards):
-            # Tokenize response
-            full_text = prompt + response
-            full_ids = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-            full_ids = {k: v.to(self.device) for k, v in full_ids.items()}
-
-            # Get model outputs
-            outputs = self.policy_model(**full_ids, labels=full_ids["input_ids"])
-
-            # Extract loss for this response
-            response_loss = outputs.loss
-
-            # Weight by reward (inverse - lower score is better)
-            # Convert score to reward: reward = -score (higher reward for lower violations)
-            advantage = -reward
-
-            # Policy gradient: maximize reward = minimize -reward * log_prob
-            weighted_loss = response_loss * advantage
-
-            total_loss += weighted_loss
-            valid_samples += 1
-
-        if valid_samples > 0:
-            # Average loss
-            loss = total_loss / valid_samples
-
-            # Backward pass
-            loss.backward()
-
-            # Clip gradients
-            torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), 1.0)
-
-            # Update parameters
-            self.optimizer.step()
-
-            self.stats["training_iterations"] += 1
-
-            return {
-                "loss": loss.item(),
-                "avg_reward": float(np.mean([-r for r in rewards])),  # Flip back for reporting
-                "learning_rate": self.optimizer.param_groups[0]["lr"]
-            }
-        else:
-            return {
-                "loss": 0.0,
-                "avg_reward": 0.0,
-                "learning_rate": self.optimizer.param_groups[0]["lr"]
-            }
+        if self.ppo_trainer is None:
+            self.ppo_trainer = PPOTrainer(
+                policy_model=self.policy_model,
+                value_model=self.value_model,
+                reward_model=self.reward_model,
+                tokenizer=tokenizer,
+                device=self.device,
+                learning_rate=self.learning_rate,
+                clip_epsilon=self.ppo_epsilon,
+                value_loss_coef=self.ppo_value_coef,
+                kl_penalty=self.kl_penalty_coef
+            )
 
     def train(
         self,
         prompts: List[str],
-        num_epochs: int = 3,
-        num_responses_per_prompt: int = 5,
-        batch_size: int = 8,
+        num_steps: int = 100,
+        batch_size: int = 16,
+        num_epochs_per_batch: int = 4,
+        max_length: int = 150,
         tokenizer: Optional[Any] = None,
         validation_prompts: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Train the policy model using constitutional AI feedback.
+        Train the policy model using constitutional AI feedback with PPO.
+
+        This method orchestrates RLAIF training by:
+        1. Initializing PPO trainer with reward model
+        2. Delegating RL optimization to PPOTrainer
+        3. Tracking constitutional compliance metrics
 
         Args:
             prompts: Training prompts
-            num_epochs: Number of training epochs
-            num_responses_per_prompt: Response candidates per prompt
-            batch_size: Training batch size (for prompt batching)
+            num_steps: Number of PPO training steps
+            batch_size: Batch size for PPO training
+            num_epochs_per_batch: PPO epochs per batch
+            max_length: Maximum generation length
             tokenizer: Tokenizer for the model
             validation_prompts: Optional validation prompts
 
@@ -408,71 +376,62 @@ Analysis:"""
             else:
                 raise ValueError("Tokenizer required for training")
 
-        print(f"Starting Constitutional AI training for {num_epochs} epochs...")
-        print(f"Training on {len(prompts)} prompts")
-        print(f"Generating {num_responses_per_prompt} responses per prompt")
+        print("=" * 80)
+        print("RLAIF TRAINING WITH CONSTITUTIONAL AI")
+        print("=" * 80)
+        print(f"Training prompts: {len(prompts)}")
+        print(f"PPO steps: {num_steps}")
+        print(f"Batch size: {batch_size}")
+        print(f"PPO epochs per batch: {num_epochs_per_batch}")
+        print(f"Device: {self.device}")
+        print()
 
-        training_history = {
-            "epoch_losses": [],
-            "epoch_rewards": [],
-            "validation_scores": []
-        }
+        # Initialize PPO trainer
+        self._initialize_ppo_trainer(tokenizer)
 
-        for epoch in range(num_epochs):
-            print(f"\nEpoch {epoch + 1}/{num_epochs}")
+        # Run PPO training
+        print("Starting PPO optimization with constitutional reward model...")
+        ppo_results = self.ppo_trainer.train(
+            prompts=prompts,
+            num_steps=num_steps,
+            batch_size=batch_size,
+            num_epochs_per_batch=num_epochs_per_batch,
+            max_length=max_length,
+            temperature=self.temperature
+        )
 
-            # Generate training data
-            print("Generating responses and evaluating...")
-            training_data = self.generate_training_data(
-                prompts,
-                num_responses_per_prompt,
-                tokenizer
+        # Update statistics
+        self.stats["training_iterations"] = num_steps
+        self.stats["total_prompts_processed"] = len(prompts)
+
+        # Track rewards
+        if ppo_results["training_history"]["step_avg_rewards"]:
+            self.stats["avg_constitutional_score"] = float(
+                np.mean(ppo_results["training_history"]["step_avg_rewards"])
             )
 
-            # Training loop
-            epoch_losses = []
-            epoch_rewards = []
-
-            print("Training on generated data...")
-            for batch_data in tqdm(training_data, desc="Training"):
-                prompt = batch_data["prompt"]
-                responses = batch_data["responses"]
-                evaluations = batch_data["evaluations"]
-
-                # Extract rewards (use combined scores)
-                rewards = [eval_dict["combined_score"] for eval_dict in evaluations]
-
-                # Training step
-                metrics = self.train_step(prompt, responses, rewards, tokenizer)
-
-                epoch_losses.append(metrics["loss"])
-                epoch_rewards.append(metrics["avg_reward"])
-
-            # Compute epoch metrics
-            avg_loss = np.mean(epoch_losses)
-            avg_reward = np.mean(epoch_rewards)
-
-            training_history["epoch_losses"].append(avg_loss)
-            training_history["epoch_rewards"].append(avg_reward)
-
-            print(f"Epoch {epoch + 1} - Avg Loss: {avg_loss:.4f}, Avg Reward: {avg_reward:.4f}")
-
-            # Validation if prompts provided
-            if validation_prompts:
-                val_score = self.validate(validation_prompts, tokenizer)
-                training_history["validation_scores"].append(val_score)
-                print(f"Validation Constitutional Score: {val_score:.4f}")
-
-        # Update final statistics
-        if training_history["epoch_rewards"]:
-            self.stats["avg_constitutional_score"] = float(np.mean(training_history["epoch_rewards"]))
-
-            if len(training_history["epoch_rewards"]) > 1:
-                improvement = training_history["epoch_rewards"][0] - training_history["epoch_rewards"][-1]
+            if len(ppo_results["training_history"]["step_avg_rewards"]) > 1:
+                improvement = (
+                    ppo_results["training_history"]["step_avg_rewards"][-1] -
+                    ppo_results["training_history"]["step_avg_rewards"][0]
+                )
                 self.stats["improvement_rate"] = float(improvement)
 
+        print(f"\nPPO Training Complete")
+        print(f"Final Average Reward: {ppo_results['final_avg_reward']:.4f}")
+        print(f"Final KL Divergence: {ppo_results['final_kl_divergence']:.4f}")
+
+        # Validation
+        validation_results = {}
+        if validation_prompts:
+            print("\nRunning validation...")
+            val_score = self.validate(validation_prompts, tokenizer)
+            validation_results["constitutional_score"] = val_score
+            print(f"Validation Constitutional Score: {val_score:.4f}")
+
         return {
-            "training_history": training_history,
+            "ppo_results": ppo_results,
+            "validation_results": validation_results,
             "final_stats": self.stats
         }
 

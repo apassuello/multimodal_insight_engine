@@ -1,6 +1,6 @@
 import torch
 import pytest
-from src.training.trainer import train_model
+from src.training.trainers.trainer import train_model
 from src.models.base_model import BaseModel
 from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import _LRScheduler

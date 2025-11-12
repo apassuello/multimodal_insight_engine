@@ -1,6 +1,6 @@
 # ⚠️ CRITICAL: READ THIS FIRST
 
-**Last Updated**: 2025-11-06 (After Independent Audit)
+**Last Updated**: 2025-11-12 (After CAI Integration Fixes)
 
 ---
 
@@ -49,7 +49,8 @@ An independent code audit was performed after concerns were raised. Key findings
 
 2. **Training Loops**: Real backpropagation confirmed
    - Line 352 reward_model.py: `loss.backward()`
-   - Line 649 ppo_trainer.py: `policy_loss.backward()`
+   - Line 809 ppo_trainer.py: `policy_loss.backward()`
+   - Line 825 ppo_trainer.py: `value_loss.backward()`
    - Real optimizers and gradient updates
 
 3. **Test Suite**: 48 comprehensive tests
@@ -190,6 +191,16 @@ from src.safety.constitutional import (
 ---
 
 ## 📝 Changelog
+
+**2025-11-12**: Updated after CAI integration fixes
+- Fixed gradient computation in PPO training (commits e7c45c0, 442b78a, efafb7b)
+- Added `_get_logprobs_with_grad()` method for policy training (line 517)
+- Added `_compute_values_with_grad()` method for value training (line 381)
+- Fixed PPO return values to match caller expectations
+- Fixed MockValueModel in tests to enable gradient flow
+- Attempted pattern matching fixes for constitutional principles (needs further investigation)
+- Updated line numbers: policy_loss.backward() now at line 809 (was 649)
+- Moved temporary fix scripts to debug_scripts/archived_fixes/
 
 **2025-11-06**: Created after independent audit identified demo script limitations
 

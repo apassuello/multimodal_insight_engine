@@ -17,7 +17,7 @@ from src.data.tokenization import (
 
 # Import the transformer and training components
 from src.models.transformer import EncoderDecoderTransformer
-from src.training.transformer_trainer import TransformerTrainer
+from src.training.trainers.transformer_trainer import TransformerTrainer
 from src.training.transformer_utils import create_padding_mask, create_causal_mask
 
 
