@@ -20,8 +20,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from src.utils.argument_configs import get_multimodal_training_args
 from src.training.multimodal_trainer import MultimodalTrainer
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.training.loss.vicreg_loss import VICRegLoss
-from src.training.loss.loss_factory import create_loss_function
+from src.training.losses.self_supervised import VICRegLoss
+from src.training.losses.loss_factory import create_loss_function
 from src.data.tokenization.bert_tokenizer_adapter import (
     BertTokenizerAdapter,
 )  # Use exactly matching tokenizer

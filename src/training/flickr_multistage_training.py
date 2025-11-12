@@ -38,9 +38,7 @@ from src.data.multimodal_dataset import MultimodalDataset
 from src.data.multimodal_data_utils import SemanticGroupBatchSampler
 from src.training.losses.self_supervised import VICRegLoss
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss, MoCoLoss as MemoryQueueContrastiveLoss
-from src.training.losses.hard_negative_mining_contrastive_loss import (
-    HardNegativeMiningContrastiveLoss,
-)
+from src.training.losses import HardNegativeMiningContrastiveLoss
 from src.models.pretrained import (
     VisionTransformerWrapper,
     HuggingFaceTextModelWrapper,

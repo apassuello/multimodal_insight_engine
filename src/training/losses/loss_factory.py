@@ -358,9 +358,7 @@ def create_loss_function(
             logger.info(f"Gradual transition steps: {gradual_transition_steps}")
 
             # Create a hybrid loss that starts with contrastive loss then switches to VICReg
-            from src.training.loss.hybrid_pretrain_vicreg_loss import (
-                HybridPretrainVICRegLoss,
-            )
+            from .hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
 
             # Get model dimension from args - the most reliable source
             fusion_dim = model_dim
