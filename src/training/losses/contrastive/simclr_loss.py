@@ -141,8 +141,8 @@ class SimCLRLoss(BaseContrastiveLoss):
             )
 
         # Project and normalize features (uses mixins from base class)
-        vision_features = self.project_vision(vision_features)
-        text_features = self.project_text(text_features)
+        vision_features = self.project(vision_features)
+        text_features = self.project(text_features)
         vision_features = self.normalize(vision_features)
         text_features = self.normalize(text_features)
 
