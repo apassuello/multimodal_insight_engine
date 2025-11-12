@@ -7,6 +7,7 @@ model training and evaluation. Based on Anthropic's Constitutional AI research.
 Components:
 - ConstitutionalPrinciple: Individual principle with evaluation logic
 - ConstitutionalFramework: Collection of principles for comprehensive evaluation
+- AI Evaluators: LLM-based evaluation (proper CAI) with regex fallback for fast checks
 - ConstitutionalSafetyEvaluator: Two-stage evaluator with self-critique
 - ConstitutionalSafetyFilter: Input/output filtering with constitutional principles
 - ConstitutionalPipeline: End-to-end orchestration of Phase 1 (SL) and Phase 2 (RLAIF)
@@ -16,6 +17,7 @@ Components:
 - RewardModelTrainer: Complete pipeline for training reward models with validation
 
 Key Features:
+- Proper CAI implementation using LLM-based principle evaluation (with regex fallback)
 - Complete two-phase Constitutional AI pipeline (Critique→Revision→SFT→Preferences→Reward→PPO)
 - Four core principles: harm prevention, truthfulness, fairness, autonomy respect
 - Two-stage evaluation: direct checks + model self-critique
