@@ -41,7 +41,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         reduction: str = "mean",
         input_dim: Optional[int] = None,
         projection_dim: int = 256,
-        add_projection: bool = True,
+        use_projection: bool = True,
         sampling_strategy: str = "auto",
         memory_bank_size: int = 4096,
         dataset_size: Optional[int] = None,
@@ -56,7 +56,7 @@ class SimCLRLoss(BaseContrastiveLoss):
             reduction: Loss reduction method
             input_dim: Input feature dimension
             projection_dim: Projection space dimension
-            add_projection: Whether to add MLP projection
+            use_projection: Whether to use MLP projection
             sampling_strategy: "in-batch", "memory-bank", "global", or "auto"
             memory_bank_size: Size of memory bank
             dataset_size: Total dataset size (for auto strategy)
@@ -74,10 +74,9 @@ class SimCLRLoss(BaseContrastiveLoss):
         super().__init__(
             temperature=temperature,
             normalize_features=True,
-            use_projection=add_projection,
-            projection_input_dim=input_dim,
-            projection_hidden_dim=input_dim if input_dim else projection_dim,
-            projection_output_dim=projection_dim,
+            use_projection=use_projection,
+            input_dim=input_dim,
+            projection_dim=projection_dim,
             reduction=reduction,
             **kwargs
         )

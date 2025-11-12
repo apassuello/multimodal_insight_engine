@@ -272,7 +272,7 @@ class TestBarlowTwinsLoss:
     def test_basic_forward(self, embeddings_a, embeddings_b, device):
         """Test basic forward pass."""
         loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, add_projection=False
+            lambda_coeff=0.005, use_projection=False
         )
 
         result = loss_fn(embeddings_a, embeddings_b)
@@ -292,7 +292,7 @@ class TestBarlowTwinsLoss:
 
         loss_fn = BarlowTwinsLoss(
             lambda_coeff=0.005,
-            add_projection=True,
+            use_projection=True,
             input_dim=embed_dim,
             projection_dim=512,
         )
@@ -309,7 +309,7 @@ class TestBarlowTwinsLoss:
         embeddings_b = embeddings_b.requires_grad_(True)
 
         loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, add_projection=False
+            lambda_coeff=0.005, use_projection=False
         )
 
         result = loss_fn(embeddings_a, embeddings_b)
@@ -329,12 +329,12 @@ class TestBarlowTwinsLoss:
         """Test that lambda coefficient affects off-diagonal terms."""
         # High lambda (penalize off-diagonal more)
         loss_fn_high = BarlowTwinsLoss(
-            lambda_coeff=0.05, add_projection=False
+            lambda_coeff=0.05, use_projection=False
         )
 
         # Low lambda (penalize off-diagonal less)
         loss_fn_low = BarlowTwinsLoss(
-            lambda_coeff=0.001, add_projection=False
+            lambda_coeff=0.001, use_projection=False
         )
 
         result = loss_fn_high(embeddings_a, embeddings_b)
@@ -355,7 +355,7 @@ class TestBarlowTwinsLoss:
         loss_fn_cross = BarlowTwinsLoss(
             lambda_coeff=0.005,
             correlation_mode="cross_modal",
-            add_projection=False,
+            use_projection=False,
         )
 
         result = loss_fn_cross(embeddings_a, embeddings_b)
@@ -371,7 +371,7 @@ class TestBarlowTwinsLoss:
         embeddings = torch.randn(batch_size, embed_dim, device=device)
 
         loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, add_projection=False
+            lambda_coeff=0.005, use_projection=False
         )
 
         result = loss_fn(embeddings, embeddings.clone())
@@ -389,7 +389,7 @@ class TestBarlowTwinsLoss:
         embeddings_large_b = torch.ones(batch_size, embed_dim, device=device) * 50
 
         loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, add_projection=False, normalize_embeddings=True
+            lambda_coeff=0.005, use_projection=False, normalize_embeddings=True
         )
 
         result = loss_fn(embeddings_large_a, embeddings_large_b)
@@ -404,14 +404,14 @@ class TestBarlowTwinsLoss:
         # With normalization
         loss_fn_norm = BarlowTwinsLoss(
             lambda_coeff=0.005,
-            add_projection=False,
+            use_projection=False,
             normalize_embeddings=True,
         )
 
         # Without normalization
         loss_fn_no_norm = BarlowTwinsLoss(
             lambda_coeff=0.005,
-            add_projection=False,
+            use_projection=False,
             normalize_embeddings=False,
         )
 
@@ -518,7 +518,7 @@ class TestSelfSupervisedLossIntegration:
         loss_vicreg = result_vicreg['loss'] if isinstance(result_vicreg, dict) else result_vicreg
 
         # Barlow Twins
-        barlow = BarlowTwinsLoss(lambda_coeff=0.005, add_projection=False)
+        barlow = BarlowTwinsLoss(lambda_coeff=0.005, use_projection=False)
         result_barlow = barlow(embeddings_a, embeddings_b)
         loss_barlow = extract_loss(result_barlow)
 
