@@ -102,7 +102,7 @@ class TestContrastiveLoss:
     ):
         """Test basic forward pass without projection heads."""
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         # Compute loss
@@ -125,7 +125,7 @@ class TestContrastiveLoss:
 
         loss_fn = ContrastiveLoss(
             temperature=0.07,
-            add_projection=True,
+            use_projection=True,
             input_dim=embed_dim,
             projection_dim=256,
             loss_type="infonce",
@@ -147,7 +147,7 @@ class TestContrastiveLoss:
         text_features = text_features.requires_grad_(True)
 
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         # Compute loss and backpropagate
@@ -166,10 +166,10 @@ class TestContrastiveLoss:
     ):
         """Test that temperature parameter affects loss value."""
         loss_fn_low = ContrastiveLoss(
-            temperature=0.01, add_projection=False, loss_type="infonce"
+            temperature=0.01, use_projection=False, loss_type="infonce"
         )
         loss_fn_high = ContrastiveLoss(
-            temperature=1.0, add_projection=False, loss_type="infonce"
+            temperature=1.0, use_projection=False, loss_type="infonce"
         )
 
         result = loss_fn_low(vision_features, text_features)
@@ -189,7 +189,7 @@ class TestContrastiveLoss:
         # Mean reduction (default)
         loss_fn_mean = ContrastiveLoss(
             temperature=0.07,
-            add_projection=False,
+            use_projection=False,
             reduction="mean",
             loss_type="infonce",
         )
@@ -201,7 +201,7 @@ class TestContrastiveLoss:
         # Sum reduction
         loss_fn_sum = ContrastiveLoss(
             temperature=0.07,
-            add_projection=False,
+            use_projection=False,
             reduction="sum",
             loss_type="infonce",
         )
@@ -214,7 +214,7 @@ class TestContrastiveLoss:
         try:
             loss_fn_none = ContrastiveLoss(
                 temperature=0.07,
-                add_projection=False,
+                use_projection=False,
                 reduction="none",
                 loss_type="infonce",
             )
@@ -230,7 +230,7 @@ class TestContrastiveLoss:
         """Test different loss type formulations."""
         # InfoNCE loss
         loss_fn_infonce = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
         result = loss_fn_infonce(vision_features, text_features)
 
@@ -239,7 +239,7 @@ class TestContrastiveLoss:
 
         # NT-Xent loss
         loss_fn_ntxent = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="nt_xent"
+            temperature=0.07, use_projection=False, loss_type="nt_xent"
         )
         result = loss_fn_ntxent(vision_features, text_features)
 
@@ -252,7 +252,7 @@ class TestContrastiveLoss:
         text_features = torch.randn(1, embed_dim, device=device)
 
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         # Should handle single sample gracefully
@@ -267,7 +267,7 @@ class TestContrastiveLoss:
         features = torch.randn(batch_size, embed_dim, device=device)
 
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         # Loss should be low (perfect alignment)
@@ -287,7 +287,7 @@ class TestContrastiveLoss:
         text_large = torch.ones(batch_size, embed_dim, device=device) * 100
 
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         result = loss_fn(vision_large, text_large)
@@ -300,7 +300,7 @@ class TestContrastiveLoss:
     def test_batch_size_invariance(self, embed_dim, device):
         """Test that loss scales appropriately with batch size."""
         loss_fn = ContrastiveLoss(
-            temperature=0.07, add_projection=False, loss_type="infonce"
+            temperature=0.07, use_projection=False, loss_type="infonce"
         )
 
         # Small batch
@@ -331,7 +331,7 @@ class TestMultiModalMixedContrastiveLoss:
     def test_basic_forward(self, vision_features, text_features, device):
         """Test basic forward pass."""
         loss_fn = MultiModalMixedContrastiveLoss(
-            temperature=0.07, add_projection=False
+            temperature=0.07, use_projection=False
         )
 
         result = loss_fn(vision_features, text_features)
@@ -352,7 +352,7 @@ class TestMultiModalMixedContrastiveLoss:
         }
 
         loss_fn = MultiModalMixedContrastiveLoss(
-            temperature=0.07, loss_weights=loss_weights, add_projection=False
+            temperature=0.07, loss_weights=loss_weights, use_projection=False
         )
 
         result = loss_fn(vision_features, text_features)
@@ -367,7 +367,7 @@ class TestMultiModalMixedContrastiveLoss:
         text_features = text_features.requires_grad_(True)
 
         loss_fn = MultiModalMixedContrastiveLoss(
-            temperature=0.07, add_projection=False
+            temperature=0.07, use_projection=False
         )
 
         result = loss_fn(vision_features, text_features)
@@ -388,7 +388,7 @@ class TestMultiModalMixedContrastiveLoss:
 
         loss_fn = MultiModalMixedContrastiveLoss(
             temperature=0.07,
-            add_projection=True,
+            use_projection=True,
             input_dim=embed_dim,
             projection_dim=256,
         )
