@@ -88,7 +88,7 @@ class SimCLRLoss(BaseContrastiveLoss):
 
         # Initialize memory banks if needed
         if self.sampling_strategy == "memory-bank":
-            bank_dim = projection_dim if add_projection else (input_dim or 768)
+            bank_dim = projection_dim if use_projection else (input_dim or 768)
             self.register_buffer("vision_bank", torch.zeros(memory_bank_size, bank_dim))
             self.register_buffer("text_bank", torch.zeros(memory_bank_size, bank_dim))
             self.register_buffer("bank_ptr", torch.zeros(1, dtype=torch.long))
@@ -97,7 +97,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         # Initialize global embeddings if needed
         if self.sampling_strategy == "global":
             self.dataset_size = dataset_size or 1000
-            embedding_dim = projection_dim if add_projection else (input_dim or 768)
+            embedding_dim = projection_dim if use_projection else (input_dim or 768)
             self.register_buffer("global_vision_embeddings", torch.zeros(self.dataset_size, embedding_dim))
             self.register_buffer("global_text_embeddings", torch.zeros(self.dataset_size, embedding_dim))
             self.register_buffer("global_indices", torch.zeros(self.dataset_size, dtype=torch.long))
@@ -204,16 +204,16 @@ class SimCLRLoss(BaseContrastiveLoss):
         # Convert to strings for consistent comparison
         string_match_ids = [str(mid) for mid in match_ids]
 
-        # Create match matrix
-        match_matrix = torch.zeros(
-            (batch_size, batch_size),
-            dtype=torch.bool,
+        # Create match matrix using vectorized operations (O(B) instead of O(B²))
+        # Create unique integer mapping for efficient comparison
+        unique_ids = {mid: idx for idx, mid in enumerate(set(string_match_ids))}
+        match_ids_tensor = torch.tensor(
+            [unique_ids[mid] for mid in string_match_ids],
             device=device
         )
 
-        for i in range(batch_size):
-            for j in range(batch_size):
-                match_matrix[i, j] = string_match_ids[i] == string_match_ids[j]
+        # Use broadcasting to create match matrix efficiently
+        match_matrix = match_ids_tensor.unsqueeze(1) == match_ids_tensor.unsqueeze(0)
 
         # Create v2t targets
         v2t_targets = torch.zeros(batch_size, dtype=torch.long, device=device)
