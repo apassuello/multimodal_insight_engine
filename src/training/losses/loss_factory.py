@@ -85,14 +85,21 @@ class SimpleContrastiveLoss(nn.Module):
             targets = torch.arange(batch_size, device=logits.device)
             positive_mask = torch.eye(batch_size, device=logits.device).bool()
         else:
-            # Create mask where pairs with same match_id are positives
-            positive_mask = torch.zeros(
-                (batch_size, batch_size), dtype=torch.bool, device=logits.device
-            )
-            for i in range(batch_size):
-                for j in range(batch_size):
-                    if match_ids[i] == match_ids[j]:
-                        positive_mask[i, j] = True
+            # Create mask where pairs with same match_id are positives (vectorized)
+            # Convert match_ids to comparable format for efficient comparison
+            if isinstance(match_ids[0], str):
+                # For string IDs, create a unique integer mapping
+                unique_ids = {mid: idx for idx, mid in enumerate(set(match_ids))}
+                match_ids_tensor = torch.tensor(
+                    [unique_ids[mid] for mid in match_ids],
+                    device=logits.device
+                )
+            else:
+                # For numeric IDs, convert directly
+                match_ids_tensor = torch.tensor(match_ids, device=logits.device)
+
+            # Use broadcasting to create positive mask in O(B) instead of O(B²)
+            positive_mask = match_ids_tensor.unsqueeze(1) == match_ids_tensor.unsqueeze(0)
 
         # Create matrix of positive pair masks
         # For InfoNCE, each row should sum to at least 1 (need at least one positive)
