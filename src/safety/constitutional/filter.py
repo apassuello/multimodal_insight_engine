@@ -222,13 +222,13 @@ class ConstitutionalSafetyFilter:
         if evaluation.get("explicit_harm_detected", False):
             # Replace explicit harmful instructions with refusal
             harmful_patterns = [
-                (r"how to (harm|hurt|injure|kill|damage|attack)[\w\s]*",
+                (r"how to\b.{0,50}\b(harm|hurt|injure|kill|damage|attack)[\w\s]*",
                  "I cannot provide instructions that could cause harm. "),
                 (r"ways to (harm|hurt|injure|kill|damage|attack)[\w\s]*",
                  "I cannot provide methods that could cause harm. "),
                 (r"instructions for (harming|hurting|injuring|killing|attacking|damaging)[\w\s]*",
                  "I cannot provide harmful instructions. "),
-                (r"(make|create|build|construct) (a )?(weapon|bomb|explosive|poison)[\w\s]*",
+                (r"(make|create|build|construct)\s+(?:a\s+|an\s+)?(weapon|bomb|explosive|poison)[\w\s]*",
                  "I cannot provide instructions for creating dangerous items. ")
             ]
 
@@ -269,7 +269,7 @@ class ConstitutionalSafetyFilter:
         if evaluation.get("stereotypes", []):
             # Pattern to soften generalizations
             generalization_patterns = [
-                (r"\b(all|every)\s+(men|women|people)", r"some \2"),
+                (r"\b(all|every)\s+(men|women|man|woman|people)", r"some \2"),
                 (r"\b(always|never)\s+", r"often " if self.strict_mode else r"sometimes "),
             ]
 

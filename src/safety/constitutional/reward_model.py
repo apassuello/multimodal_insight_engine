@@ -98,7 +98,7 @@ class RewardModel(nn.Module):
 
         # Get hidden state of last token for each sequence in batch
         # We find the last non-padding token for each sequence
-        sequence_lengths = attention_mask.sum(dim=1) - 1  # -1 for 0-indexing
+        sequence_lengths = (attention_mask.sum(dim=1) - 1).long()  # -1 for 0-indexing, cast to long for indexing
         batch_size = hidden_states.shape[0]
 
         # Index to get last token hidden state for each sequence
@@ -396,6 +396,10 @@ def train_reward_model(
             print(f'  Validation - Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}')
 
     print("Training complete!")
+
+    # Add convenience keys for final values
+    metrics['final_loss'] = metrics['losses'][-1] if metrics['losses'] else 0.0
+    metrics['final_accuracy'] = metrics['accuracy'][-1] if metrics['accuracy'] else 0.0
 
     return metrics
 

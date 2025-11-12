@@ -297,13 +297,16 @@ class TestSupervisedFinetune:
     def setup_method(self):
         """Setup mock model and training data."""
         self.mock_model = Mock()
-        self.mock_model.parameters.return_value = [torch.nn.Parameter(torch.randn(2, 2))]
+        # Create parameter with requires_grad=True
+        param = torch.nn.Parameter(torch.randn(2, 2, requires_grad=True))
+        self.mock_model.parameters = Mock(side_effect=lambda: iter([param]))
+        # CRITICAL: Make to() return the same mock to preserve parameters
         self.mock_model.to.return_value = self.mock_model
         self.mock_model.train.return_value = None
 
-        # Mock forward pass
+        # Mock forward pass - loss must require grad for backward()
         mock_output = Mock()
-        mock_output.loss = torch.tensor(0.5)
+        mock_output.loss = torch.tensor(0.5, requires_grad=True)
         self.mock_model.return_value = mock_output
 
         self.mock_tokenizer = Mock()

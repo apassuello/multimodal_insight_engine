@@ -9,12 +9,14 @@ Components:
 - ConstitutionalFramework: Collection of principles for comprehensive evaluation
 - ConstitutionalSafetyEvaluator: Two-stage evaluator with self-critique
 - ConstitutionalSafetyFilter: Input/output filtering with constitutional principles
+- ConstitutionalPipeline: End-to-end orchestration of Phase 1 (SL) and Phase 2 (RLAIF)
 - RLAIFTrainer: Reinforcement Learning from AI Feedback trainer (simple policy gradient)
 - PPOTrainer: Proximal Policy Optimization trainer (advanced RL with clipping and GAE)
 - RewardModel: Neural network for scoring responses based on constitutional compliance
 - RewardModelTrainer: Complete pipeline for training reward models with validation
 
 Key Features:
+- Complete two-phase Constitutional AI pipeline (Critique→Revision→SFT→Preferences→Reward→PPO)
 - Four core principles: harm prevention, truthfulness, fairness, autonomy respect
 - Two-stage evaluation: direct checks + model self-critique
 - RLAIF: Scalable training with AI-generated feedback
@@ -33,6 +35,7 @@ from .principles import (
 )
 from .evaluator import ConstitutionalSafetyEvaluator, critique_indicates_issues
 from .filter import ConstitutionalSafetyFilter
+from .pipeline import ConstitutionalPipeline
 from .trainer import RLAIFTrainer
 from .ppo_trainer import PPOTrainer
 from .reward_model import (
@@ -66,7 +69,8 @@ __all__ = [
     "ConstitutionalSafetyFilter",
     "critique_indicates_issues",
 
-    # Training
+    # Pipeline and Training
+    "ConstitutionalPipeline",
     "RLAIFTrainer",
     "PPOTrainer",
 

@@ -157,11 +157,11 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         lm_loss = self._compute_language_modeling_loss(batch)
 
         # Constitutional loss (if using RLAIF)
+        # Compute constitutional loss periodically to balance computation cost
         constitutional_loss = torch.tensor(0.0, device=self.device)
-        if self.use_rlaif and self.rlaif_trainer is not None:
-            # Placeholder for RLAIF loss computation
-            # Real implementation would compute rewards based on constitutional compliance
-            pass
+        if self.use_rlaif and self.rlaif_trainer is not None and step % 10 == 0:
+            # Extract prompts from batch and generate responses for evaluation
+            constitutional_loss = self._compute_constitutional_loss(batch)
 
         # Combined loss
         total_loss = lm_loss + (self.constitutional_weight * constitutional_loss)
@@ -223,6 +223,178 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             )
 
         return loss
+
+    def _compute_constitutional_loss(
+        self,
+        batch: Dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Compute constitutional loss by evaluating generated responses.
+
+        This method:
+        1. Extracts prompts from the batch
+        2. Generates responses using the current model
+        3. Evaluates responses with constitutional evaluator
+        4. Returns loss based on constitutional violations
+
+        Args:
+            batch: Training batch
+
+        Returns:
+            Constitutional loss tensor
+        """
+        try:
+            # Extract prompts from batch
+            prompts = self._extract_prompts_from_batch(batch, max_samples=4)
+
+            if not prompts:
+                return torch.tensor(0.0, device=self.device)
+
+            # Generate responses for evaluation
+            responses = []
+            with torch.no_grad():
+                for prompt in prompts:
+                    response = self._generate_response_for_evaluation(prompt)
+                    responses.append(response)
+
+            # Evaluate responses
+            violation_scores = []
+            for prompt, response in zip(prompts, responses):
+                eval_result = self.constitutional_evaluator.evaluate(response)
+
+                # Extract violation score (weighted_score from direct evaluation)
+                direct_eval = eval_result.get("direct_evaluation", {})
+                score = direct_eval.get("weighted_score", 0.0)
+                violation_scores.append(score)
+
+            # Convert to loss (higher violations = higher loss)
+            if violation_scores:
+                avg_violation = float(np.mean(violation_scores))
+                constitutional_loss = torch.tensor(avg_violation, device=self.device)
+            else:
+                constitutional_loss = torch.tensor(0.0, device=self.device)
+
+            return constitutional_loss
+
+        except Exception as e:
+            # If constitutional loss computation fails, return zero loss
+            # and continue training
+            print(f"Warning: Constitutional loss computation failed: {e}")
+            return torch.tensor(0.0, device=self.device)
+
+    def _extract_prompts_from_batch(
+        self,
+        batch: Dict[str, torch.Tensor],
+        max_samples: int = 4
+    ) -> List[str]:
+        """
+        Extract prompts from training batch for constitutional evaluation.
+
+        Args:
+            batch: Training batch
+            max_samples: Maximum number of prompts to extract
+
+        Returns:
+            List of prompt strings
+        """
+        try:
+            # Check if model has tokenizer
+            if not hasattr(self.model, 'tokenizer'):
+                return []
+
+            tokenizer = self.model.tokenizer
+
+            # Extract input_ids
+            if isinstance(batch, dict):
+                input_ids = batch.get("input_ids", batch.get("inputs", None))
+            else:
+                input_ids = batch
+
+            if input_ids is None:
+                return []
+
+            # Move to CPU for decoding
+            input_ids = input_ids.cpu()
+
+            # Decode prompts (take first max_samples)
+            prompts = []
+            num_samples = min(max_samples, input_ids.size(0))
+
+            for i in range(num_samples):
+                # Take first half of sequence as prompt
+                seq_len = input_ids.size(1)
+                prompt_len = seq_len // 2
+                prompt_ids = input_ids[i, :prompt_len]
+
+                # Decode to text
+                prompt_text = tokenizer.decode(prompt_ids, skip_special_tokens=True)
+                prompts.append(prompt_text)
+
+            return prompts
+
+        except Exception as e:
+            print(f"Warning: Failed to extract prompts from batch: {e}")
+            return []
+
+    def _generate_response_for_evaluation(
+        self,
+        prompt: str,
+        max_length: int = 100
+    ) -> str:
+        """
+        Generate a response for constitutional evaluation.
+
+        Args:
+            prompt: Input prompt
+            max_length: Maximum generation length
+
+        Returns:
+            Generated response text
+        """
+        try:
+            # Check if model has tokenizer and generation capability
+            if not hasattr(self.model, 'tokenizer'):
+                return ""
+
+            tokenizer = self.model.tokenizer
+
+            # Tokenize prompt
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            # Generate response
+            self.model.eval()
+            with torch.no_grad():
+                if hasattr(self.model, 'generate'):
+                    # Use model's generate method if available
+                    output_ids = self.model.generate(
+                        **inputs,
+                        max_length=max_length,
+                        do_sample=True,
+                        temperature=0.9,
+                        top_p=0.9,
+                        pad_token_id=tokenizer.pad_token_id if hasattr(tokenizer, 'pad_token_id') else 0
+                    )
+                else:
+                    # Fallback: use forward pass for one token
+                    outputs = self.model(**inputs)
+                    logits = outputs.logits if hasattr(outputs, 'logits') else outputs
+                    output_ids = inputs['input_ids']
+
+            self.model.train()
+
+            # Decode response
+            response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+            # Remove prompt from response
+            if response.startswith(prompt):
+                response = response[len(prompt):].strip()
+
+            return response
+
+        except Exception as e:
+            print(f"Warning: Failed to generate response for evaluation: {e}")
+            return ""
 
     def evaluate_constitutional_compliance(
         self,
