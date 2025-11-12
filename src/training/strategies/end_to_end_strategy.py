@@ -203,7 +203,7 @@ class EndToEndStrategy(TrainingStrategy):
                 if hasattr(cross_attn, "embed_dim"):
                     return cross_attn.embed_dim
 
-        except:
+        except (AttributeError, TypeError, IndexError) as e:
             pass  # Silently fail and use default
 
         # Default to 512 as a common projection dimension

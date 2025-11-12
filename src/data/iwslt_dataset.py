@@ -253,7 +253,7 @@ class IWSLTDataset:
                                     available_configs = get_dataset_config_names(
                                         "iwslt2017"
                                     )
-                                except:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
                                     available_configs = []
 
                             matching_configs = [
@@ -276,7 +276,7 @@ class IWSLTDataset:
                                         dataset_config,
                                         split=self.split,
                                     )
-                                except:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
                                     dataset = load_dataset(
                                         "iwslt2017", dataset_config, split=self.split
                                     )
@@ -311,7 +311,7 @@ class IWSLTDataset:
                                         )
                                     else:
                                         return False
-                                except:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
                                     return False
             else:
                 swap_languages = False

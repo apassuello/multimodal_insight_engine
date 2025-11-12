@@ -193,7 +193,7 @@ class SingleModalityStrategy(TrainingStrategy):
                     text_proj[-1], "out_features"
                 ):
                     return text_proj[-1].out_features
-        except:
+        except (AttributeError, TypeError, IndexError) as e:
             pass  # Silently fail and use default
 
         # Default to 512 as a common projection dimension
