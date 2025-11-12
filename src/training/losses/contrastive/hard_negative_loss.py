@@ -158,8 +158,8 @@ class HardNegativeLoss(BaseContrastiveLoss):
             )
 
             # Compute weighted InfoNCE loss
-            pos_exp = torch.exp(pos_sims / self.temperature)
-            weighted_neg_exp = torch.exp(neg_sims / self.temperature) * hard_weights
+            pos_exp = torch.exp(pos_sims / self.temp)
+            weighted_neg_exp = torch.exp(neg_sims / self.temp) * hard_weights
 
             # Loss for each positive
             for pos_idx in range(len(pos_sims)):
