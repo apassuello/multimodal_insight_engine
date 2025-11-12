@@ -205,7 +205,7 @@ class DecoupledLoss(BaseContrastiveLoss):
         batch_size = features.shape[0]
 
         # Self-similarity with temperature
-        similarity = torch.matmul(features, features.T) / self.temperature
+        similarity = torch.matmul(features, features.T) / self.temp
 
         inst_loss = 0.0
         for i in range(batch_size):
