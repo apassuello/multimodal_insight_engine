@@ -13,9 +13,7 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 from src.utils.gradient_handler import GradientHandler
 from src.utils.metrics_tracker import MetricsTracker
-from src.training.losses.hard_negative_mining_contrastive_loss import (
-    HardNegativeMiningContrastiveLoss,
-)
+from src.training.losses import HardNegativeMiningContrastiveLoss
 from src.training.losses.feature_consistency_loss import FeatureConsistencyLoss
 
 logger = logging.getLogger(__name__)

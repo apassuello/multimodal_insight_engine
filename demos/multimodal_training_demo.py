@@ -63,7 +63,7 @@ from src.utils.model_utils import (
 )
 from src.models.model_factory import create_multimodal_model
 from src.data.multimodal_data_utils import create_data_loaders
-from src.training.loss.loss_factory import create_loss_function
+from src.training.losses.loss_factory import create_loss_function
 from src.evaluation.inference_demo import run_inference_demo
 
 

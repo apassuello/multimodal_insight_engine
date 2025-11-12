@@ -12,7 +12,7 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 from src.utils.gradient_handler import GradientHandler
 from src.utils.metrics_tracker import MetricsTracker
-from src.training.losses.memory_queue_contrastive_loss import MemoryQueueContrastiveLoss
+from src.training.losses import MemoryQueueContrastiveLoss
 
 logger = logging.getLogger(__name__)
 
