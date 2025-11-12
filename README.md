@@ -165,8 +165,8 @@ The test suite follows a pyramid approach:
 - 5 critical bugs fixed during testing
 
 For detailed testing documentation, see:
-- [Test Documentation](/Users/apa/ml_projects/multimodal_insight_engine/doc/test_documentation.md)
-- [Constitutional AI Test Coverage](/Users/apa/ml_projects/multimodal_insight_engine/docs/CONSTITUTIONAL_AI_TEST_COVERAGE.md)
+- [Test Documentation](doc/test_documentation.md)
+- [Constitutional AI Test Coverage](docs/constitutional-ai/CONSTITUTIONAL_AI_TEST_COVERAGE.md)
 
 ## 📊 Current Status and Implementation Details
 
