@@ -780,15 +780,46 @@ def evaluate_autonomy_respect(
         return _evaluate_autonomy_with_regex(text)
 
 
-def setup_default_framework() -> ConstitutionalFramework:
+def setup_default_framework(
+    model: Optional[Any] = None,
+    tokenizer: Optional[Any] = None,
+    device: Optional[torch.device] = None
+) -> ConstitutionalFramework:
     """
     Setup a constitutional framework with all four core principles.
+
+    Supports AI-based evaluation when model and tokenizer are provided.
+    Falls back to regex-based evaluation when no model is provided.
+
+    Args:
+        model: Optional AI model for AI-based principle evaluation
+        tokenizer: Optional tokenizer for AI-based evaluation
+        device: Optional device for computation (defaults to CPU)
 
     Returns:
         ConstitutionalFramework with harm prevention, truthfulness,
         fairness, and autonomy respect principles
+
+    Examples:
+        # AI-based evaluation (recommended)
+        >>> from transformers import AutoModelForCausalLM, AutoTokenizer
+        >>> model = AutoModelForCausalLM.from_pretrained("gpt2")
+        >>> tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        >>> framework = setup_default_framework(model=model, tokenizer=tokenizer)
+        >>> result = framework.evaluate_text("Test text")
+        >>> result["evaluation_method"]  # "ai_evaluation"
+
+        # Regex-based evaluation (fast fallback)
+        >>> framework = setup_default_framework()
+        >>> result = framework.evaluate_text("Test text")
+        >>> result["evaluation_method"]  # "regex_heuristic"
     """
-    framework = ConstitutionalFramework(name="default_constitutional_framework")
+    framework = ConstitutionalFramework(
+        name="default_constitutional_framework",
+        model=model,
+        tokenizer=tokenizer,
+        device=device
+    )
 
     # Add core principles inspired by Anthropic's Constitutional AI
     framework.add_principle(

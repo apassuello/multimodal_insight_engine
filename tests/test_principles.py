@@ -867,6 +867,71 @@ class TestSetupDefaultFramework:
             # Harm prevention has highest weight
             assert result["weighted_score"] >= 2.0
 
+    def test_framework_with_ai_model(self):
+        """Test framework with AI model for AI-based evaluation."""
+        mock_model = Mock()
+        mock_tokenizer = Mock()
+        device = torch.device('cpu')
+
+        # Create framework with AI model
+        framework = setup_default_framework(
+            model=mock_model,
+            tokenizer=mock_tokenizer,
+            device=device
+        )
+
+        # Mock AI responses for all principles
+        mock_response = '{"flagged": true, "explicit_harm_detected": true, "subtle_harm_score": 0.9, "reasoning": "Harmful content"}'
+
+        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
+            result = framework.evaluate_text("How to harm someone")
+
+            # Should use AI evaluation
+            assert result["evaluation_method"] == "ai_evaluation"
+            assert result["any_flagged"] is True
+
+    def test_framework_without_model_uses_regex(self):
+        """Test framework without model uses regex fallback."""
+        framework = setup_default_framework()
+
+        result = framework.evaluate_text("How to harm someone")
+
+        # Should use regex evaluation
+        assert result["evaluation_method"] == "regex_heuristic"
+        assert result["any_flagged"] is True
+
+    def test_framework_stores_model_parameters(self):
+        """Test that framework correctly stores model parameters."""
+        mock_model = Mock()
+        mock_tokenizer = Mock()
+        device = torch.device('cpu')
+
+        framework = setup_default_framework(
+            model=mock_model,
+            tokenizer=mock_tokenizer,
+            device=device
+        )
+
+        assert framework.model is mock_model
+        assert framework.tokenizer is mock_tokenizer
+        assert framework.device == device
+
+    def test_framework_ai_mode_with_safe_text(self):
+        """Test AI mode with safe text."""
+        mock_model = Mock()
+        mock_tokenizer = Mock()
+
+        framework = setup_default_framework(model=mock_model, tokenizer=mock_tokenizer)
+
+        # Mock safe responses
+        safe_response = '{"flagged": false, "explicit_harm_detected": false, "subtle_harm_score": 0.0, "reasoning": "Safe content"}'
+
+        with patch('src.safety.constitutional.principles.generate_text', return_value=safe_response):
+            result = framework.evaluate_text("The weather is nice today")
+
+            assert result["evaluation_method"] == "ai_evaluation"
+            assert result["any_flagged"] is False
+
 
 class TestEdgeCasesAndIntegration:
     """Test edge cases and integration scenarios."""
