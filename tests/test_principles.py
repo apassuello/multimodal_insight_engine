@@ -6,17 +6,14 @@ Tests the four constitutional principle evaluators and default framework setup.
 import pytest
 from src.safety.constitutional.principles import (
     evaluate_harm_potential,
+    analyze_potential_consequences,
     evaluate_truthfulness,
+    identify_unsupported_claims,
+    identify_logical_contradictions,
+    identify_misleading_statistics,
     evaluate_fairness,
     evaluate_autonomy_respect,
     setup_default_framework
-)
-# Import helper functions from regex fallback module (used for testing internal logic)
-from src.safety.constitutional.principles_regex_fallback import (
-    analyze_potential_consequences,
-    identify_unsupported_claims,
-    identify_logical_contradictions,
-    identify_misleading_statistics
 )
 
 
