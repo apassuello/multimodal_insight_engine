@@ -3,11 +3,16 @@ PURPOSE: Core Constitutional AI framework classes for principle-based evaluation
 KEY COMPONENTS:
 - ConstitutionalPrinciple: Single principle with evaluation logic
 - ConstitutionalFramework: Collection of principles for comprehensive evaluation
-DEPENDENCIES: typing
-SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's research
+DEPENDENCIES: typing, torch
+SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's research.
+             Supports AI-based evaluation when model/tokenizer are provided to framework.
 """
 
 from typing import Callable, Dict, Any, List, Optional
+try:
+    import torch
+except ImportError:
+    torch = None  # Allow framework to work without torch for testing
 
 
 class ConstitutionalPrinciple:
@@ -43,17 +48,27 @@ class ConstitutionalPrinciple:
         self.weight = weight
         self.enabled = enabled
 
-    def evaluate(self, text: str) -> Dict[str, Any]:
+    def evaluate(
+        self,
+        text: str,
+        model: Optional[Any] = None,
+        tokenizer: Optional[Any] = None,
+        device: Optional[Any] = None
+    ) -> Dict[str, Any]:
         """
         Evaluate text against this principle.
 
         Args:
             text: Text to evaluate
+            model: Optional AI model for AI-based evaluation
+            tokenizer: Optional tokenizer for AI-based evaluation
+            device: Optional device for computation (e.g., torch.device)
 
         Returns:
             Dictionary containing evaluation results with at least:
             - flagged: bool indicating if principle was violated
             - Additional details specific to the principle
+            - method: "ai_evaluation" or "regex_heuristic"
         """
         if not self.enabled:
             return {
@@ -64,7 +79,13 @@ class ConstitutionalPrinciple:
                 "weight": self.weight
             }
 
-        result = self.evaluation_fn(text)
+        # Call evaluation function with model parameters
+        result = self.evaluation_fn(
+            text,
+            model=model,
+            tokenizer=tokenizer,
+            device=device
+        )
         result["principle_name"] = self.name
         result["weight"] = self.weight
         return result
@@ -82,16 +103,39 @@ class ConstitutionalFramework:
     This framework manages multiple constitutional principles and provides
     methods to evaluate text against all principles, track violations, and
     generate reports.
+
+    Supports AI-based evaluation when model and tokenizer are provided at initialization.
+    Falls back to regex-based evaluation when no model is provided.
     """
 
-    def __init__(self, name: str = "default_framework"):
+    def __init__(
+        self,
+        name: str = "default_framework",
+        model: Optional[Any] = None,
+        tokenizer: Optional[Any] = None,
+        device: Optional[Any] = None
+    ):
         """
         Initialize the constitutional framework.
 
         Args:
             name: Name for this framework configuration
+            model: Optional AI model for AI-based principle evaluation
+            tokenizer: Optional tokenizer for AI-based evaluation
+            device: Optional device for computation (defaults to CPU if torch available)
         """
         self.name = name
+        self.model = model
+        self.tokenizer = tokenizer
+
+        # Set device: use provided, or default to CPU if torch is available
+        if device is not None:
+            self.device = device
+        elif torch is not None and model is not None:
+            self.device = torch.device('cpu')
+        else:
+            self.device = None
+
         self.principles: Dict[str, ConstitutionalPrinciple] = {}
         self.evaluation_history: List[Dict[str, Any]] = []
 
@@ -134,6 +178,9 @@ class ConstitutionalFramework:
         """
         Evaluate text against all constitutional principles.
 
+        Uses AI-based evaluation if model and tokenizer were provided to framework,
+        otherwise falls back to regex-based evaluation.
+
         Args:
             text: Text to evaluate
             track_history: Whether to add this evaluation to history
@@ -144,6 +191,7 @@ class ConstitutionalFramework:
             - any_flagged: Whether any principle was violated
             - flagged_principles: List of violated principle names
             - weighted_score: Weighted sum of violations
+            - evaluation_method: "ai_evaluation" or "regex_heuristic" (based on first principle)
         """
         principle_results = {}
         flagged_principles = []
@@ -153,12 +201,24 @@ class ConstitutionalFramework:
             if not principle.enabled:
                 continue
 
-            result = principle.evaluate(text)
+            # Pass framework's model/tokenizer/device to principle evaluation
+            result = principle.evaluate(
+                text,
+                model=self.model,
+                tokenizer=self.tokenizer,
+                device=self.device
+            )
             principle_results[name] = result
 
             if result.get("flagged", False):
                 flagged_principles.append(name)
                 weighted_score += principle.weight
+
+        # Determine evaluation method from first principle result
+        evaluation_method = "regex_heuristic"
+        if principle_results:
+            first_result = next(iter(principle_results.values()))
+            evaluation_method = first_result.get("method", "regex_heuristic")
 
         evaluation = {
             "principle_results": principle_results,
@@ -166,7 +226,8 @@ class ConstitutionalFramework:
             "flagged_principles": flagged_principles,
             "weighted_score": weighted_score,
             "num_principles_evaluated": len([p for p in self.principles.values() if p.enabled]),
-            "text_length": len(text)
+            "text_length": len(text),
+            "evaluation_method": evaluation_method
         }
 
         if track_history:

@@ -151,19 +151,9 @@ def evaluate_harm_potential(
 
 ## Usage Examples
 
-### Example 1: Regex Mode (Fast, No Model Required)
+### Example 1: AI-First with Framework (Recommended - Natural & Seamless)
 ```python
-from src.safety.constitutional.principles import evaluate_harm_potential
-
-# Call without model - uses regex fallback
-result = evaluate_harm_potential("How to harm someone")
-print(f"Flagged: {result['flagged']}")
-print(f"Method: {result['method']}")  # Output: "regex_heuristic"
-```
-
-### Example 2: AI Mode (Accurate, Context-Aware)
-```python
-from src.safety.constitutional.principles import evaluate_fairness
+from src.safety.constitutional.principles import setup_default_framework
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -172,28 +162,68 @@ model = AutoModelForCausalLM.from_pretrained("gpt2")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Call with model - uses AI evaluation
+# Create framework with AI model - this is the PRIMARY way to use it
+framework = setup_default_framework(
+    model=model,
+    tokenizer=tokenizer,
+    device=device
+)
+
+# Evaluate text - automatically uses AI evaluation
+result = framework.evaluate_text("All members of that group are the same")
+print(f"Evaluation method: {result['evaluation_method']}")  # "ai_evaluation"
+print(f"Any violations: {result['any_flagged']}")
+print(f"Flagged principles: {result['flagged_principles']}")
+```
+
+### Example 2: Direct Function Calls with AI
+```python
+from src.safety.constitutional.principles import evaluate_fairness
+
+# Direct function call with model (alternative approach)
 result = evaluate_fairness(
     "All members of that group are the same",
     model=model,
     tokenizer=tokenizer,
     device=device
 )
-print(f"Flagged: {result['flagged']}")
-print(f"Method: {result['method']}")  # Output: "ai_evaluation"
+print(f"Method: {result['method']}")  # "ai_evaluation"
 print(f"Stereotypes: {result['stereotypes']}")
 ```
 
-### Example 3: Explicit Regex Mode
+### Example 3: Regex Fallback Mode (Fast, No Model Required)
 ```python
-# Force regex mode even if model is available
-result = evaluate_harm_potential(
-    "Test text",
-    model=model,
-    tokenizer=tokenizer,
-    use_ai=False
+# Without model - uses regex fallback automatically
+framework = setup_default_framework()  # No model provided
+result = framework.evaluate_text("How to harm someone")
+print(f"Method: {result['evaluation_method']}")  # "regex_heuristic"
+print(f"Flagged: {result['any_flagged']}")
+
+# Or with direct function call
+from src.safety.constitutional.principles import evaluate_harm_potential
+result = evaluate_harm_potential("How to harm someone")
+print(f"Method: {result['method']}")  # "regex_heuristic"
+```
+
+### Example 4: Testing with Mocks
+```python
+from unittest.mock import Mock, patch
+
+# Create mocks for testing
+mock_model = Mock()
+mock_tokenizer = Mock()
+
+# Framework works seamlessly with mocks
+framework = setup_default_framework(
+    model=mock_model,
+    tokenizer=mock_tokenizer
 )
-print(f"Method: {result['method']}")  # Output: "regex_heuristic"
+
+# Mock AI response
+with patch('src.safety.constitutional.principles.generate_text',
+           return_value='{"flagged": true, "reasoning": "Test"}'):
+    result = framework.evaluate_text("Test")
+    assert result["evaluation_method"] == "ai_evaluation"
 ```
 
 ---
@@ -234,3 +264,49 @@ The Constitutional AI implementation is now **fully complete** and follows Anthr
 - All existing code continues to work
 - Old API signature still supported (model parameters are optional)
 - Regex mode provides same behavior as before when no model provided
+
+---
+
+## Latest Update: AI-First Architecture ✅
+
+**Date:** 2025-11-13
+
+### What Changed
+
+Refactored the architecture to make AI evaluation the **natural, seamless primary use case**:
+
+**1. Framework-Level Model Support**
+   - `ConstitutionalFramework` now accepts `model`, `tokenizer`, `device` parameters
+   - Model is stored in framework and automatically passed to all principles
+   - Users create framework once with model, then evaluate naturally
+
+**2. Updated Components**
+   - ✅ `ConstitutionalFramework.__init__()` - Accepts and stores model parameters
+   - ✅ `ConstitutionalFramework.evaluate_text()` - Passes model to all principles
+   - ✅ `ConstitutionalPrinciple.evaluate()` - Accepts and forwards model parameters
+   - ✅ `setup_default_framework()` - Accepts model parameters with examples
+
+**3. Natural Usage Pattern**
+```python
+# AI-first (recommended) - seamless!
+framework = setup_default_framework(model=my_model, tokenizer=my_tokenizer)
+result = framework.evaluate_text("text")  # Uses AI automatically
+
+# Fallback (no model) - still works!
+framework = setup_default_framework()
+result = framework.evaluate_text("text")  # Uses regex automatically
+```
+
+**4. Benefits**
+   - ✅ **AI is now the primary, natural way** to use the system
+   - ✅ **Seamless:** No need to pass model on every call
+   - ✅ **Testable:** Works perfectly with mocks
+   - ✅ **Backward Compatible:** Existing code unchanged
+   - ✅ **Flexible:** Regex fallback when no model provided
+
+**5. Additional Files Modified**
+   - `src/safety/constitutional/framework.py` - Framework-level model support
+   - `tests/test_principles.py` - New tests for AI-first pattern
+   - `TODO_CAI_IMPLEMENTATION.md` - Updated usage examples
+
+**Architecture Now Correct:** AI evaluation is the primary, recommended approach with regex as the fallback, not the other way around.
