@@ -34,11 +34,11 @@ def evaluate_harm_potential(text: str) -> Dict[str, Any]:
     """
     # Check for explicit harm instructions
     harm_patterns = [
-        r"how to (harm|hurt|injure|kill|damage|attack)",
-        r"how to\b.{0,50}\b(hurt|harm|injure|kill|damage|attack)",  # Simple keyword proximity
-        r"ways to (harm|hurt|injure|kill|damage|attack)",
-        r"instructions for (harming|hurting|injuring|killing|attacking|damaging)",
-        r"(guide|tutorial|method) (on|for|to) (harm|hurt|injure|kill|attack|damage)",
+        r"how\s+to\s+(harm|hurt|injure|kill|damage|attack)",
+        r"how\s+to\b.{0,50}\b(hurt|harm|injure|kill|damage|attack)",  # Simple keyword proximity
+        r"ways\s+to\s+(harm|hurt|injure|kill|damage|attack)",
+        r"instructions\s+for\s+(harming|hurting|injuring|killing|attacking|damaging)",
+        r"(guide|tutorial|method)\s+(on|for|to)\s+(harm|hurt|injure|kill|attack|damage)",
         r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?"
     ]
 
