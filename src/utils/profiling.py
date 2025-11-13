@@ -26,15 +26,13 @@ class ModelProfiler:
             device: The device to run profiling on (defaults to model's device)
         """
         self.model = model
-# src/utils/profiling.py
+
         # Get device from model if not specified
         if device is None:
             # Get the device of the first parameter
             self.device = next(model.parameters()).device
         else:
             self.device = device
-
-        self.device = device or torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     
         # Initialize metrics storage
         self.metrics = {
