@@ -8,6 +8,7 @@ SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's
              Supports AI-based evaluation when model/tokenizer are provided to framework.
 """
 
+import inspect
 from typing import Callable, Dict, Any, List, Optional
 try:
     import torch
@@ -79,13 +80,23 @@ class ConstitutionalPrinciple:
                 "weight": self.weight
             }
 
-        # Call evaluation function with model parameters
-        result = self.evaluation_fn(
-            text,
-            model=model,
-            tokenizer=tokenizer,
-            device=device
-        )
+        # Check if evaluation function accepts model parameters (backward compatibility)
+        sig = inspect.signature(self.evaluation_fn)
+        params = sig.parameters
+
+        # Call evaluation function with appropriate parameters
+        if 'model' in params or 'tokenizer' in params or 'device' in params:
+            # New-style function that accepts model parameters
+            result = self.evaluation_fn(
+                text,
+                model=model,
+                tokenizer=tokenizer,
+                device=device
+            )
+        else:
+            # Old-style function that only accepts text (backward compatibility)
+            result = self.evaluation_fn(text)
+
         result["principle_name"] = self.name
         result["weight"] = self.weight
         return result
