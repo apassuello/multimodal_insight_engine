@@ -328,9 +328,9 @@ def create_loss_function(
         var_weight = getattr(args, "var_weight", 5.0)  # Default to 5.0 for stability
         cov_weight = getattr(args, "cov_weight", 1.0)
 
-        # Print values to confirm they're being applied
-        print(
-            f"ACTUAL VICREG WEIGHTS: sim={sim_weight}, var={var_weight}, cov={cov_weight}"
+        # Log values to confirm they're being applied
+        logger.debug(
+            f"VICReg weights: sim={sim_weight}, var={var_weight}, cov={cov_weight}"
         )
 
         # Get curriculum and warmup parameters
@@ -374,18 +374,16 @@ def create_loss_function(
             if hasattr(args, "vision_model") and "vit-base" in args.vision_model:
                 # ViT-base has 768 dimension
                 if fusion_dim != 768:
-                    print(
-                        f"WARNING: Potential dimension mismatch! fusion_dim={fusion_dim} but vision_model={args.vision_model} has dim=768"
-                    )
-                    print(
-                        f"If you encounter dimension errors, manually adjust fusion_dim in the command to 768"
+                    logger.warning(
+                        f"Potential dimension mismatch! fusion_dim={fusion_dim} but vision_model={args.vision_model} has dim=768. "
+                        f"If you encounter dimension errors, manually adjust fusion_dim to 768."
                     )
 
             # ViT-base has 768 dimension, make sure we explicitly handle this
             if hasattr(args, "vision_model") and "vit-base" in args.vision_model:
                 # Just for this model, use the correct dimension directly
                 vision_dim = 768
-                print(f"Using vision_dim={vision_dim} for {args.vision_model}")
+                logger.debug(f"Using vision_dim={vision_dim} for {args.vision_model}")
             else:
                 # For other models, use fusion_dim
                 vision_dim = fusion_dim
@@ -396,7 +394,7 @@ def create_loss_function(
             ):
                 # BERT-base has 768 dimension
                 text_dim = 768
-                print(f"Using text_dim={text_dim} for {args.text_model}")
+                logger.debug(f"Using text_dim={text_dim} for {args.text_model}")
             else:
                 # For other models, use fusion_dim
                 text_dim = fusion_dim
@@ -702,8 +700,8 @@ def create_loss_function(
         # ALWAYS USE PROJECTION FOR ALL LOSSES
         # This ensures we have trainable parameters in stage 1
         add_projection = True
-        print(
-            "CRITICAL: Always using projection to ensure trainable parameters in early stages"
+        logger.info(
+            "Using projection to ensure trainable parameters in early training stages"
         )
 
         return ContrastiveLoss(

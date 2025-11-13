@@ -148,7 +148,7 @@ class EndToEndStrategy(TrainingStrategy):
         temperature = self.config.get("temperature", 0.05)  # Slightly lower temperature
 
         # Log message about the loss setup
-        print(
+        logger.debug(
             f"HardNegativeMiningContrastiveLoss initialized with dimension: {model_dim}"
         )
 

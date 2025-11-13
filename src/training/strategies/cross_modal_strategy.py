@@ -140,7 +140,6 @@ class CrossModalStrategy(TrainingStrategy):
             temperature=temperature,
             queue_size=queue_size,
             dim=model_dim,
-            # momentum=self.config.get("queue_momentum", 0.99),
         )
 
         logger.info(
