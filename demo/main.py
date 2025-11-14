@@ -470,7 +470,7 @@ def run_comparison_handler(
     temperature: float,
     max_length: int,
     progress=gr.Progress()
-) -> Tuple[str, str, str]:
+) -> Tuple[str, str, str, str]:
     """
     Run comparison between base and trained models on selected test suite.
 
@@ -481,12 +481,12 @@ def run_comparison_handler(
         progress: Gradio progress tracker
 
     Returns:
-        Tuple of (results_summary, detailed_examples, export_data)
+        Tuple of (results_summary, detailed_examples, export_json, export_csv)
     """
     if not model_manager.can_compare():
         error_msg = "✗ Cannot run comparison: Need both base and trained model checkpoints.\n"
         error_msg += "Please train a model first in the Training tab."
-        return error_msg, "", ""
+        return error_msg, "", "", ""
 
     # Security: Validate inputs (HIGH-01, HIGH-02 fixes)
     MAX_TEST_SUITE_SIZE = 100
@@ -499,12 +499,12 @@ def run_comparison_handler(
     if not (MIN_TEMPERATURE <= temperature <= MAX_TEMPERATURE):
         error_msg = f"✗ Invalid temperature: {temperature}\n"
         error_msg += f"Must be between {MIN_TEMPERATURE} and {MAX_TEMPERATURE}"
-        return error_msg, "", ""
+        return error_msg, "", "", ""
 
     if not (MIN_MAX_LENGTH <= max_length <= MAX_MAX_LENGTH):
         error_msg = f"✗ Invalid max_length: {max_length}\n"
         error_msg += f"Must be between {MIN_MAX_LENGTH} and {MAX_MAX_LENGTH}"
-        return error_msg, "", ""
+        return error_msg, "", "", ""
 
     try:
         progress(0, desc="Loading models...")
@@ -545,7 +545,7 @@ def run_comparison_handler(
             error_msg = f"✗ Test suite too large: {len(test_prompts)} prompts\n"
             error_msg += f"Maximum allowed: {MAX_TEST_SUITE_SIZE} prompts\n"
             error_msg += "Please select a smaller test suite."
-            return error_msg, "", ""
+            return error_msg, "", "", ""
 
         progress(0.1, desc=f"Running comparison on {len(test_prompts)} prompts...")
 
@@ -587,7 +587,8 @@ def run_comparison_handler(
         # Format results
         summary = format_comparison_summary(result)
         detailed = format_detailed_examples(result)
-        export_data = format_export_data(result)
+        export_json = format_export_data(result)
+        export_csv = format_export_csv(result)
 
         progress(1.0, desc="Complete!")
 
@@ -607,7 +608,7 @@ def run_comparison_handler(
         import gc
         gc.collect()
 
-        return summary, detailed, export_data
+        return summary, detailed, export_json, export_csv
 
     except Exception as e:
         # Security: Don't expose full traceback to users (CRIT-01 fix)
@@ -621,7 +622,7 @@ def run_comparison_handler(
         error_msg += "- Both base and trained models are loaded\n"
         error_msg += "- Test suite is valid\n"
         error_msg += "- Generation parameters are within acceptable ranges"
-        return error_msg, "", ""
+        return error_msg, "", "", ""
 
 
 def format_comparison_summary(result: ComparisonResult) -> str:
@@ -766,6 +767,70 @@ def format_export_data(result: ComparisonResult) -> str:
     }
 
     return json.dumps(export_dict, indent=2)
+
+
+def format_export_csv(result: ComparisonResult) -> str:
+    """Format results as CSV for export to Excel/R/Python."""
+    import csv
+    import io
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Overall metrics section
+    writer.writerow(["# Overall Metrics"])
+    writer.writerow(["Metric", "Value"])
+    writer.writerow(["Test Suite", result.test_suite_name])
+    writer.writerow(["Total Prompts", result.num_prompts])
+    writer.writerow(["Successful Prompts", result.num_prompts - result.skipped_prompts])
+    writer.writerow(["Skipped Prompts", result.skipped_prompts])
+    writer.writerow(["Alignment Score (Before)", f"{result.overall_alignment_before:.4f}"])
+    writer.writerow(["Alignment Score (After)", f"{result.overall_alignment_after:.4f}"])
+    writer.writerow(["Alignment Improvement (%)", f"{result.alignment_improvement:+.2f}"])
+    writer.writerow([])  # Blank line
+
+    # Per-principle metrics section
+    writer.writerow(["# Per-Principle Results"])
+    writer.writerow(["Principle", "Violations Before", "Violations After", "Improvement (%)"])
+    for principle_name in sorted(result.principle_results.keys()):
+        comp = result.principle_results[principle_name]
+        writer.writerow([
+            principle_name,
+            comp.violations_before,
+            comp.violations_after,
+            f"{comp.improvement_pct:+.2f}"
+        ])
+    writer.writerow([])  # Blank line
+
+    # Example comparisons section
+    writer.writerow(["# Example Comparisons"])
+    writer.writerow([
+        "Prompt",
+        "Base Output",
+        "Trained Output",
+        "Improved",
+        "Base Violations",
+        "Trained Violations"
+    ])
+    for example in result.examples:
+        writer.writerow([
+            example.prompt,
+            example.base_output,
+            example.trained_output,
+            "Yes" if example.improved else "No",
+            ", ".join(example.base_evaluation.get('flagged_principles', [])),
+            ", ".join(example.trained_evaluation.get('flagged_principles', []))
+        ])
+
+    # Errors section (if any)
+    if result.errors:
+        writer.writerow([])  # Blank line
+        writer.writerow(["# Errors"])
+        writer.writerow(["Error Message"])
+        for error in result.errors:
+            writer.writerow([error])
+
+    return output.getvalue()
 
 
 # ============================================================================
@@ -1018,19 +1083,32 @@ def create_demo() -> gr.Blocks:
 
                     with gr.Tab("Export Data"):
                         gr.Markdown("### Export Results")
-                        gr.Markdown("Copy the JSON below to save results for further analysis.")
-                        export_data_textbox = gr.Textbox(
-                            label="Export Data (JSON)",
-                            lines=20,
-                            max_lines=30,
-                            interactive=False
-                        )
+                        gr.Markdown("Choose your preferred export format for further analysis.")
+
+                        with gr.Tabs():
+                            with gr.Tab("JSON"):
+                                gr.Markdown("JSON format for programmatic access (Python, JavaScript, etc.)")
+                                export_json_textbox = gr.Textbox(
+                                    label="Export Data (JSON)",
+                                    lines=15,
+                                    max_lines=25,
+                                    interactive=False
+                                )
+
+                            with gr.Tab("CSV"):
+                                gr.Markdown("CSV format for Excel, R, pandas, and data analysis tools")
+                                export_csv_textbox = gr.Textbox(
+                                    label="Export Data (CSV)",
+                                    lines=15,
+                                    max_lines=25,
+                                    interactive=False
+                                )
 
                 # Event handler
                 run_comparison_btn.click(
                     fn=run_comparison_handler,
                     inputs=[test_suite_dropdown, impact_temp_slider, impact_len_slider],
-                    outputs=[results_summary, results_detailed, export_data_textbox]
+                    outputs=[results_summary, results_detailed, export_json_textbox, export_csv_textbox]
                 )
 
     return demo
