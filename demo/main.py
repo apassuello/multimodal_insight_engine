@@ -354,6 +354,9 @@ def generate_comparison_handler(
         error_msg = "✗ Need both base and trained checkpoints for comparison"
         return error_msg, error_msg, "", ""
 
+    base_model = None
+    base_tokenizer = None
+
     try:
         # Load base model
         base_model, base_tokenizer, success, msg = model_manager.load_checkpoint(
@@ -410,6 +413,27 @@ def generate_comparison_handler(
     except Exception as e:
         error_msg = f"✗ Generation failed: {str(e)}"
         return error_msg, error_msg, "", ""
+
+    finally:
+        # Cleanup base model to free memory
+        if base_model is not None:
+            del base_model
+        if base_tokenizer is not None:
+            del base_tokenizer
+
+        # Clear GPU cache if available
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            # Also try MPS cache clear (if available in PyTorch version)
+            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        except:
+            pass  # Ignore cache clear errors
+
+        import gc
+        gc.collect()
 
 
 def format_generation_evaluation(eval_result: Dict[str, Any], model_type: str) -> str:
