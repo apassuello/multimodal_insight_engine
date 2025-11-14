@@ -209,13 +209,15 @@ class ModelManager:
 
     def load_checkpoint(
         self,
-        checkpoint_path: Path
+        checkpoint_path: Path,
+        device: Optional[torch.device] = None
     ) -> Tuple[Optional[Any], Optional[Any], bool, str]:
         """
         Load model and tokenizer from checkpoint.
 
         Args:
             checkpoint_path: Path to checkpoint directory
+            device: Optional device to load model onto (defaults to self.device or CPU)
 
         Returns:
             Tuple of (model, tokenizer, success: bool, message: str)
@@ -232,9 +234,9 @@ class ModelManager:
             # Load model
             model = AutoModelForCausalLM.from_pretrained(checkpoint_path)
 
-            # Move to device
-            if self.device:
-                model = model.to(self.device)
+            # Move to device (use provided device, or self.device, or default to CPU)
+            target_device = device or self.device or torch.device("cpu")
+            model = model.to(target_device)
 
             return model, tokenizer, True, f"✓ Checkpoint loaded from {checkpoint_path}"
 
