@@ -840,7 +840,33 @@ def format_export_csv(result: ComparisonResult) -> str:
 def create_demo() -> gr.Blocks:
     """Create the Gradio demo interface."""
 
-    with gr.Blocks(title="Constitutional AI Interactive Demo", theme=gr.themes.Soft()) as demo:
+    # Custom theme for professional appearance
+    custom_theme = gr.themes.Soft(
+        primary_hue="blue",
+        secondary_hue="cyan",
+        neutral_hue="slate",
+        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
+    ).set(
+        body_background_fill="*neutral_50",
+        body_background_fill_dark="*neutral_900",
+        button_primary_background_fill="*primary_600",
+        button_primary_background_fill_hover="*primary_700",
+        button_primary_text_color="white",
+        block_title_text_weight="600",
+        block_label_text_weight="600",
+        block_label_text_size="*text_md",
+        checkbox_label_text_size="*text_sm",
+    )
+
+    with gr.Blocks(
+        title="Constitutional AI Interactive Demo",
+        theme=custom_theme,
+        css="""
+        .gradio-container {
+            max-width: 1400px !important;
+        }
+        """
+    ) as demo:
         gr.Markdown("# Constitutional AI Interactive Demo")
         gr.Markdown("Demonstration of AI-based constitutional principle evaluation and training")
 
@@ -1110,6 +1136,161 @@ def create_demo() -> gr.Blocks:
                     inputs=[test_suite_dropdown, impact_temp_slider, impact_len_slider],
                     outputs=[results_summary, results_detailed, export_json_textbox, export_csv_textbox]
                 )
+
+            # ================================================================
+            # Tab 5: Architecture & Documentation
+            # ================================================================
+            with gr.Tab("📚 Architecture"):
+                gr.Markdown("## Constitutional AI Demo Architecture")
+
+                with gr.Tabs():
+                    with gr.Tab("Overview"):
+                        gr.Markdown("""
+                        ### System Overview
+
+                        This demo implements Constitutional AI (CAI) for training language models
+                        to adhere to human values encoded as principles.
+
+                        **Core Components:**
+                        - **ConstitutionalFramework**: Defines and evaluates principles
+                        - **ModelManager**: Handles model loading and checkpointing
+                        - **TrainingManager**: Orchestrates CAI training pipeline
+                        - **EvaluationManager**: AI-based principle evaluation
+                        - **ComparisonEngine**: Quantifies training improvements
+
+                        **Training Pipeline:**
+                        1. Generate responses from base model
+                        2. Critique responses using constitutional principles
+                        3. Revise responses to align with principles
+                        4. Fine-tune model on critique-revised data
+                        5. Evaluate improvement via before/after comparison
+
+                        **Key Features:**
+                        - AI-first evaluation (with regex fallback)
+                        - Real model training (GPT-2 family)
+                        - Quantitative impact analysis
+                        - M4-Pro MPS acceleration support
+                        - Export to JSON and CSV
+                        """)
+
+                    with gr.Tab("API Examples"):
+                        gr.Markdown("""
+                        ### Quick Start Examples
+
+                        **Evaluate Text:**
+                        ```python
+                        from src.safety.constitutional.principles import setup_default_framework
+
+                        # Setup framework with AI evaluation
+                        framework = setup_default_framework(
+                            model=model,
+                            tokenizer=tokenizer,
+                            device=device
+                        )
+
+                        # Evaluate text
+                        result = framework.evaluate_text("Your text here")
+                        print(f"Flagged: {result['any_flagged']}")
+                        print(f"Violations: {result['flagged_principles']}")
+                        ```
+
+                        **Train Model:**
+                        ```python
+                        from demo.managers import TrainingManager, TrainingConfig
+
+                        manager = TrainingManager()
+                        config = TrainingConfig(
+                            num_epochs=2,
+                            num_examples=20,
+                            batch_size=4
+                        )
+
+                        result = manager.train_model(
+                            model, tokenizer, framework, device, config
+                        )
+                        ```
+
+                        **Compare Models:**
+                        ```python
+                        from demo.managers import ComparisonEngine
+
+                        engine = ComparisonEngine(framework)
+                        result = engine.compare_models(
+                            base_model, base_tokenizer,
+                            trained_model, trained_tokenizer,
+                            test_suite=prompts,
+                            device=device,
+                            generation_config=gen_config
+                        )
+
+                        print(f"Improvement: {result.alignment_improvement:.1f}%")
+                        ```
+                        """)
+
+                    with gr.Tab("Configuration"):
+                        gr.Markdown("""
+                        ### Configuration Options
+
+                        **Model Selection:**
+                        - `gpt2` (124M params) - Fast, good for testing
+                        - `gpt2-medium` (355M params) - Better quality
+                        - `distilgpt2` (82M params) - Fastest, lower quality
+
+                        **Device Options:**
+                        - `auto` - Automatically select best device (recommended)
+                        - `mps` - Apple Silicon GPU (M4-Pro)
+                        - `cuda` - NVIDIA GPU
+                        - `cpu` - CPU fallback (slower)
+
+                        **Training Modes:**
+                        - **Quick Demo**: 2 epochs, 20 examples (~5-10 min)
+                        - **Standard**: 3 epochs, 50 examples (~15-25 min)
+
+                        **Evaluation Modes:**
+                        - **AI**: Uses language model for nuanced detection (default)
+                        - **Regex**: Fast pattern matching (backward compatible)
+
+                        **Export Formats:**
+                        - **JSON**: For programmatic access (Python, JavaScript)
+                        - **CSV**: For Excel, R, pandas, data analysis tools
+
+                        **Security Limits:**
+                        - Max test suite size: 100 prompts
+                        - Temperature range: 0.1 - 2.0
+                        - Max length range: 10 - 1000 tokens
+                        """)
+
+                    with gr.Tab("Resources"):
+                        gr.Markdown("""
+                        ### Documentation & Resources
+
+                        **Project Documentation:**
+                        - `DEMO_ARCHITECTURE.md` - Complete specification
+                        - `IMPLEMENTATION_SUMMARY.md` - Technical details
+                        - `SECURITY_AUDIT_PHASE2.md` - Security analysis
+                        - `README.md` - Project overview
+
+                        **Constitutional AI Papers:**
+                        - [Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/abs/2212.08073)
+                        - [Training a Helpful and Harmless Assistant with RLHF](https://arxiv.org/abs/2204.05862)
+
+                        **Key Concepts:**
+                        - **Constitutional Principles**: Human values encoded as rules
+                        - **Critique-Revision**: Generate → Critique → Revise
+                        - **Alignment Score**: Quantitative adherence metric (0-1)
+                        - **Weighted Violations**: Principle violations × weights
+
+                        **Technical Stack:**
+                        - PyTorch 2.x
+                        - Transformers (Hugging Face)
+                        - Gradio 4.x
+                        - Python 3.10+
+
+                        **Hardware Requirements:**
+                        - Minimum: 8GB RAM, CPU
+                        - Recommended: 16GB+ RAM, M4-Pro/CUDA GPU
+                        - Training time: ~5-25 min (depending on mode)
+                        """)
 
     return demo
 
