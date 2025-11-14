@@ -1,12 +1,12 @@
 """MODULE: main.py
 PURPOSE: Constitutional AI Interactive Demo - Gradio Application
 KEY COMPONENTS:
-- Gradio web interface with 3 tabs (Evaluation, Training, Generation)
-- Integration with ModelManager, EvaluationManager, TrainingManager
+- Gradio web interface with 4 tabs (Evaluation, Training, Generation, Impact)
+- Integration with ModelManager, EvaluationManager, TrainingManager, ComparisonEngine
 - Real-time progress tracking and status updates
-- Before/after model comparison
+- Before/after model comparison with quantitative impact analysis
 DEPENDENCIES: gradio, torch, typing, demo.managers, demo.data
-SPECIAL NOTES: Phase 1 MVP implementation with essential features
+SPECIAL NOTES: Phase 2 implementation with Impact Analysis tab (VR6)
 """
 
 import gradio as gr
@@ -16,11 +16,13 @@ from typing import Dict, List, Any, Tuple, Optional
 from demo.managers.model_manager import ModelManager, ModelStatus
 from demo.managers.evaluation_manager import EvaluationManager
 from demo.managers.training_manager import TrainingManager, TrainingConfig
+from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
 from demo.data.test_examples import (
     EVALUATION_EXAMPLES,
     get_training_prompts,
     get_adversarial_prompts,
-    TRAINING_CONFIGS
+    TRAINING_CONFIGS,
+    TEST_SUITES
 )
 
 from src.safety.constitutional.principles import setup_default_framework
@@ -460,6 +462,280 @@ def load_adversarial_prompt_handler() -> str:
 
 
 # ============================================================================
+# Impact Tab Functions
+# ============================================================================
+
+def run_comparison_handler(
+    test_suite_name: str,
+    temperature: float,
+    max_length: int,
+    progress=gr.Progress()
+) -> Tuple[str, str, str]:
+    """
+    Run comparison between base and trained models on selected test suite.
+
+    Args:
+        test_suite_name: Name of test suite to run
+        temperature: Generation temperature
+        max_length: Maximum generation length
+        progress: Gradio progress tracker
+
+    Returns:
+        Tuple of (results_summary, detailed_examples, export_data)
+    """
+    if not model_manager.can_compare():
+        error_msg = "✗ Cannot run comparison: Need both base and trained model checkpoints.\n"
+        error_msg += "Please train a model first in the Training tab."
+        return error_msg, "", ""
+
+    try:
+        progress(0, desc="Loading models...")
+
+        # Load base model
+        base_model, base_tokenizer, success, msg = model_manager.load_checkpoint(
+            model_manager.base_checkpoint_path
+        )
+        if not success:
+            return f"✗ Failed to load base model: {msg}", "", ""
+
+        # Trained model is current model
+        trained_model = model_manager.model
+        trained_tokenizer = model_manager.tokenizer
+
+        # Get test suite prompts
+        if test_suite_name == "Comprehensive (All)":
+            # Combine all test suites
+            test_prompts = []
+            for prompts in TEST_SUITES.values():
+                test_prompts.extend(prompts)
+        else:
+            # Map display name to key
+            suite_key_map = {
+                "Harmful Content": "harmful_content",
+                "Stereotyping & Bias": "stereotyping",
+                "Truthfulness": "truthfulness",
+                "Autonomy & Manipulation": "autonomy_manipulation"
+            }
+            suite_key = suite_key_map.get(test_suite_name)
+            if not suite_key:
+                return f"✗ Unknown test suite: {test_suite_name}", "", ""
+
+            test_prompts = TEST_SUITES[suite_key]
+
+        progress(0.1, desc=f"Running comparison on {len(test_prompts)} prompts...")
+
+        # Setup framework
+        framework = setup_default_framework(
+            model=model_manager.model,
+            tokenizer=model_manager.tokenizer,
+            device=model_manager.device
+        )
+
+        # Create comparison engine
+        engine = ComparisonEngine(framework)
+
+        # Progress callback
+        def progress_callback(current, total, message):
+            progress((0.1 + (current / total) * 0.8), desc=message)
+
+        # Run comparison
+        gen_config = GenerationConfig(
+            max_length=max_length,
+            temperature=temperature,
+            do_sample=True
+        )
+
+        result = engine.compare_models(
+            base_model=base_model,
+            base_tokenizer=base_tokenizer,
+            trained_model=trained_model,
+            trained_tokenizer=trained_tokenizer,
+            test_suite=test_prompts,
+            device=model_manager.device,
+            generation_config=gen_config,
+            test_suite_name=test_suite_name,
+            progress_callback=progress_callback
+        )
+
+        progress(0.95, desc="Formatting results...")
+
+        # Format results
+        summary = format_comparison_summary(result)
+        detailed = format_detailed_examples(result)
+        export_data = format_export_data(result)
+
+        progress(1.0, desc="Complete!")
+
+        # Cleanup base model
+        del base_model
+        del base_tokenizer
+
+        # Clear cache
+        try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+        except:
+            pass
+
+        import gc
+        gc.collect()
+
+        return summary, detailed, export_data
+
+    except Exception as e:
+        error_msg = f"✗ Comparison failed: {str(e)}"
+        import traceback
+        error_msg += f"\n\nTraceback:\n{traceback.format_exc()}"
+        return error_msg, "", ""
+
+
+def format_comparison_summary(result: ComparisonResult) -> str:
+    """Format comparison results as summary markdown."""
+    output = f"# 🎯 {result.test_suite_name} - Impact Analysis\n\n"
+
+    # Overall metrics
+    output += "## 📊 Overall Performance\n\n"
+    output += f"**Prompts Tested:** {result.num_prompts}\n"
+    output += f"**Prompts Successful:** {result.num_prompts - result.skipped_prompts}\n"
+    output += f"**Prompts Skipped:** {result.skipped_prompts}\n\n"
+
+    output += f"**Alignment Score (Before):** `{result.overall_alignment_before:.3f}`\n"
+    output += f"**Alignment Score (After):** `{result.overall_alignment_after:.3f}`\n"
+
+    # Color code improvement
+    improvement = result.alignment_improvement
+    if improvement > 20:
+        indicator = "✅"
+    elif improvement > 10:
+        indicator = "⚠️"
+    else:
+        indicator = "❌"
+
+    output += f"**Alignment Improvement:** `{improvement:+.1f}%` {indicator}\n\n"
+
+    # Per-principle results
+    if result.principle_results:
+        output += "## 📈 Per-Principle Results\n\n"
+        output += "| Principle | Violations Before | Violations After | Improvement | Status |\n"
+        output += "|-----------|-------------------|------------------|-------------|--------|\n"
+
+        for principle_name, comparison in sorted(result.principle_results.items()):
+            # Determine indicator
+            improvement_pct = comparison.improvement_pct
+            if improvement_pct > 20:
+                status = "✅"
+            elif improvement_pct > 10:
+                status = "⚠️"
+            elif improvement_pct >= 0:
+                status = "➖"
+            else:
+                status = "❌"
+
+            output += f"| {principle_name} | {comparison.violations_before} | "
+            output += f"{comparison.violations_after} | {improvement_pct:+.1f}% | {status} |\n"
+
+    # Errors if any
+    if result.errors:
+        output += f"\n## ⚠️ Errors ({len(result.errors)})\n\n"
+        for i, error in enumerate(result.errors[:3], 1):
+            output += f"{i}. {error}\n"
+        if len(result.errors) > 3:
+            output += f"\n... and {len(result.errors) - 3} more errors\n"
+
+    return output
+
+
+def format_detailed_examples(result: ComparisonResult) -> str:
+    """Format detailed examples as expandable markdown."""
+    if not result.examples:
+        return "No examples available."
+
+    output = f"# 📝 Detailed Examples ({len(result.examples)} total)\n\n"
+
+    # Show first 10 examples
+    for idx, example in enumerate(result.examples[:10], 1):
+        output += f"## Example {idx}\n\n"
+
+        # Improvement indicator
+        if example.improved:
+            output += "**Status:** ✅ Improved\n\n"
+        else:
+            base_score = example.base_evaluation.get('weighted_score', 0)
+            trained_score = example.trained_evaluation.get('weighted_score', 0)
+            if trained_score > base_score:
+                output += "**Status:** ❌ Degraded\n\n"
+            else:
+                output += "**Status:** ➖ No change\n\n"
+
+        output += f"**Prompt:** {example.prompt}\n\n"
+
+        # Base output
+        output += "**Base Model Output:**\n"
+        output += f"> {example.base_output}\n\n"
+        base_flagged = example.base_evaluation.get('flagged_principles', [])
+        if base_flagged:
+            output += f"⚠️ Violations: {', '.join(base_flagged)}\n\n"
+        else:
+            output += "✓ No violations\n\n"
+
+        # Trained output
+        output += "**Trained Model Output:**\n"
+        output += f"> {example.trained_output}\n\n"
+        trained_flagged = example.trained_evaluation.get('flagged_principles', [])
+        if trained_flagged:
+            output += f"⚠️ Violations: {', '.join(trained_flagged)}\n\n"
+        else:
+            output += "✓ No violations\n\n"
+
+        output += "---\n\n"
+
+    if len(result.examples) > 10:
+        output += f"\n*Showing 10 of {len(result.examples)} examples. Use export to see all.*\n"
+
+    return output
+
+
+def format_export_data(result: ComparisonResult) -> str:
+    """Format results as JSON for export."""
+    import json
+
+    export_dict = {
+        "test_suite": result.test_suite_name,
+        "num_prompts": result.num_prompts,
+        "skipped_prompts": result.skipped_prompts,
+        "overall_metrics": {
+            "alignment_before": result.overall_alignment_before,
+            "alignment_after": result.overall_alignment_after,
+            "improvement_pct": result.alignment_improvement
+        },
+        "principle_results": {
+            name: {
+                "violations_before": comp.violations_before,
+                "violations_after": comp.violations_after,
+                "improvement_pct": comp.improvement_pct
+            }
+            for name, comp in result.principle_results.items()
+        },
+        "examples": [
+            {
+                "prompt": ex.prompt,
+                "base_output": ex.base_output,
+                "trained_output": ex.trained_output,
+                "improved": ex.improved,
+                "base_violations": ex.base_evaluation.get('flagged_principles', []),
+                "trained_violations": ex.trained_evaluation.get('flagged_principles', [])
+            }
+            for ex in result.examples
+        ],
+        "errors": result.errors
+    }
+
+    return json.dumps(export_dict, indent=2)
+
+
+# ============================================================================
 # Gradio Interface
 # ============================================================================
 
@@ -637,6 +913,91 @@ def create_demo() -> gr.Blocks:
                     fn=generate_comparison_handler,
                     inputs=[gen_prompt, temperature_slider, max_length_slider],
                     outputs=[base_output, trained_output, base_eval, trained_eval]
+                )
+
+            # ================================================================
+            # Tab 4: Impact Analysis
+            # ================================================================
+            with gr.Tab("📊 Impact"):
+                gr.Markdown("## Model Training Impact Analysis")
+                gr.Markdown("Compare base and trained models on standardized test suites to measure improvement.")
+
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        # Test suite selection
+                        test_suite_dropdown = gr.Dropdown(
+                            choices=[
+                                "Harmful Content",
+                                "Stereotyping & Bias",
+                                "Truthfulness",
+                                "Autonomy & Manipulation",
+                                "Comprehensive (All)"
+                            ],
+                            value="Harmful Content",
+                            label="Test Suite Selection"
+                        )
+
+                        # Generation parameters
+                        with gr.Row():
+                            impact_temp_slider = gr.Slider(
+                                minimum=0.1,
+                                maximum=2.0,
+                                value=0.7,
+                                step=0.1,
+                                label="Temperature"
+                            )
+                            impact_len_slider = gr.Slider(
+                                minimum=50,
+                                maximum=300,
+                                value=100,
+                                step=50,
+                                label="Max Length"
+                            )
+
+                        run_comparison_btn = gr.Button("Run Comparison", variant="primary", size="lg")
+
+                    with gr.Column(scale=1):
+                        gr.Markdown("### Test Suite Details")
+                        gr.Markdown("""
+                        - **Harmful Content**: 20 prompts testing harm prevention
+                        - **Stereotyping & Bias**: 20 prompts testing fairness
+                        - **Truthfulness**: 15 prompts testing accuracy
+                        - **Autonomy & Manipulation**: 15 prompts testing respect for autonomy
+                        - **Comprehensive**: All 70 prompts combined
+
+                        *Note: Comparison requires both base and trained models. Train a model first in the Training tab.*
+                        """)
+
+                # Results section
+                gr.Markdown("---")
+                gr.Markdown("## Results")
+
+                with gr.Tabs():
+                    with gr.Tab("Summary"):
+                        results_summary = gr.Markdown(
+                            value="*Run a comparison to see results*"
+                        )
+
+                    with gr.Tab("Detailed Examples"):
+                        results_detailed = gr.Markdown(
+                            value="*Run a comparison to see detailed examples*"
+                        )
+
+                    with gr.Tab("Export Data"):
+                        gr.Markdown("### Export Results")
+                        gr.Markdown("Copy the JSON below to save results for further analysis.")
+                        export_data_textbox = gr.Textbox(
+                            label="Export Data (JSON)",
+                            lines=20,
+                            max_lines=30,
+                            interactive=False
+                        )
+
+                # Event handler
+                run_comparison_btn.click(
+                    fn=run_comparison_handler,
+                    inputs=[test_suite_dropdown, impact_temp_slider, impact_len_slider],
+                    outputs=[results_summary, results_detailed, export_data_textbox]
                 )
 
     return demo
