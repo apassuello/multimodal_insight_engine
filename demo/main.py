@@ -488,6 +488,24 @@ def run_comparison_handler(
         error_msg += "Please train a model first in the Training tab."
         return error_msg, "", ""
 
+    # Security: Validate inputs (HIGH-01, HIGH-02 fixes)
+    MAX_TEST_SUITE_SIZE = 100
+    MIN_TEMPERATURE = 0.1
+    MAX_TEMPERATURE = 2.0
+    MIN_MAX_LENGTH = 10
+    MAX_MAX_LENGTH = 1000
+
+    # Validate generation parameters
+    if not (MIN_TEMPERATURE <= temperature <= MAX_TEMPERATURE):
+        error_msg = f"✗ Invalid temperature: {temperature}\n"
+        error_msg += f"Must be between {MIN_TEMPERATURE} and {MAX_TEMPERATURE}"
+        return error_msg, "", ""
+
+    if not (MIN_MAX_LENGTH <= max_length <= MAX_MAX_LENGTH):
+        error_msg = f"✗ Invalid max_length: {max_length}\n"
+        error_msg += f"Must be between {MIN_MAX_LENGTH} and {MAX_MAX_LENGTH}"
+        return error_msg, "", ""
+
     try:
         progress(0, desc="Loading models...")
 
@@ -521,6 +539,13 @@ def run_comparison_handler(
                 return f"✗ Unknown test suite: {test_suite_name}", "", ""
 
             test_prompts = TEST_SUITES[suite_key]
+
+        # Validate test suite size (Security: HIGH-01 fix - DoS protection)
+        if len(test_prompts) > MAX_TEST_SUITE_SIZE:
+            error_msg = f"✗ Test suite too large: {len(test_prompts)} prompts\n"
+            error_msg += f"Maximum allowed: {MAX_TEST_SUITE_SIZE} prompts\n"
+            error_msg += "Please select a smaller test suite."
+            return error_msg, "", ""
 
         progress(0.1, desc=f"Running comparison on {len(test_prompts)} prompts...")
 
@@ -585,9 +610,17 @@ def run_comparison_handler(
         return summary, detailed, export_data
 
     except Exception as e:
-        error_msg = f"✗ Comparison failed: {str(e)}"
+        # Security: Don't expose full traceback to users (CRIT-01 fix)
+        # Log the full error for debugging but show user-friendly message
         import traceback
-        error_msg += f"\n\nTraceback:\n{traceback.format_exc()}"
+        import logging
+        logging.error(f"Comparison failed: {traceback.format_exc()}")
+
+        error_msg = f"✗ Comparison failed: {str(e)}\n\n"
+        error_msg += "Please check that:\n"
+        error_msg += "- Both base and trained models are loaded\n"
+        error_msg += "- Test suite is valid\n"
+        error_msg += "- Generation parameters are within acceptable ranges"
         return error_msg, "", ""
 
 
