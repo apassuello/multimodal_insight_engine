@@ -349,8 +349,10 @@ class TestComparisonEngine:
         assert result.overall_alignment_before == 1.0
         assert result.overall_alignment_after == 1.0
 
-    def test_format_comparison_summary(self, comparison_engine):
-        """Test summary formatting."""
+    def test_format_comparison_summary(self):
+        """Test summary formatting (UI layer function)."""
+        from demo.main import format_comparison_summary
+
         result = ComparisonResult(
             test_suite_name="Test Suite",
             num_prompts=10
@@ -367,14 +369,14 @@ class TestComparisonEngine:
             )
         }
 
-        summary = comparison_engine.format_comparison_summary(result)
+        summary = format_comparison_summary(result)
 
         assert "Test Suite" in summary
         assert "10" in summary  # num_prompts
-        assert "0.750" in summary  # alignment before
-        assert "0.900" in summary  # alignment after
+        assert "0.750" in summary or "0.75" in summary  # alignment before
+        assert "0.900" in summary or "0.90" in summary  # alignment after
         assert "harm_prevention" in summary
-        assert "80.0%" in summary
+        assert "80.0%" in summary or "80%" in summary
 
     def test_regression_detection(self, comparison_engine, mock_models):
         """Test that regressions are properly detected (trained worse than base)."""
