@@ -3,6 +3,46 @@
 
 ---
 
+## Document Revision History
+
+**Version 2.0** - Critical Issues Addressed (Post-Architectural Audit)
+
+This revision addresses critical issues identified in the architectural audit:
+
+**✅ Fixed: Critical Issue #1 - Metrics Mismatch**
+- **Problem**: Spec described separate "Critique Loss" and "Revision Loss" tracking, but `supervised_finetune()` only tracks single combined loss
+- **Solution**: Updated FR4.3 and VR5.3 to reflect single "Training Loss" metric matching actual implementation
+- **Impact**: Metrics tracking now accurately reflects the training pipeline
+
+**✅ Fixed: Critical Issue #2 - Undefined Alignment Score**
+- **Problem**: "Alignment score" referenced throughout spec but never defined or calculated
+- **Solution**: Added complete alignment score definition in FR5.2 with calculation formula, interpretation guide, and usage examples
+- **Impact**: Provides quantitative metric for measuring training effectiveness (0.0-1.0 scale)
+
+**✅ Fixed: Critical Issue #3 - Model Checkpoint Strategy**
+- **Problem**: Unclear how to maintain separate base/trained models when `supervised_finetune()` modifies in-place
+- **Solution**: Added detailed checkpoint strategy in FR4.4 with pseudo-code showing save/load workflow
+- **Impact**: Enables before/after comparison by checkpointing base model before training
+
+**✅ Fixed: Critical Issue #4 - Comparison Engine Unspecified**
+- **Problem**: `managers/comparison_engine.py` listed in structure but had no implementation specification
+- **Solution**: Added complete TA6 section with API design, data structures, algorithm, and usage example
+- **Impact**: Full specification for quantifying base vs. trained model improvements
+
+**✅ Updated: Performance Estimates (Realistic)**
+- **Problem**: Training time estimates were overly optimistic (5-10 min for 2 epochs)
+- **Solution**: Updated all time estimates to reflect 3 generations per example (initial/critique/revision)
+  - Quick Demo: 2 epochs, 20 examples → 10-15 minutes (was 5-10 min)
+  - Standard: 5 epochs, 50 examples → 25-35 minutes (was 15-20 min)
+- **Impact**: Sets realistic expectations for demo timing
+
+**✅ Adjusted: MPS-Specific Requirements**
+- **Problem**: Spec required real-time GPU memory/utilization graphs, but MPS doesn't expose these APIs
+- **Solution**: Updated VR2.1, VR2.3, and success criteria to use system RAM monitoring via `psutil`
+- **Impact**: Requirements now match macOS/MPS technical capabilities
+
+---
+
 ## Executive Summary
 
 This document specifies the requirements, architecture, and design guidelines for an interactive web-based demonstration of the Constitutional AI (CAI) evaluation and training system. The demo will showcase the complete pipeline from principle-based evaluation to model training and behavioral improvement, utilizing real language models on Apple Silicon (M4-Pro) hardware.
@@ -53,7 +93,7 @@ This document specifies the requirements, architecture, and design guidelines fo
 - Training shows measurable improvement (>40% increase in alignment scores)
 - Side-by-side comparisons clearly illustrate AI vs. regex differences
 - UI is intuitive and requires minimal explanation
-- Complete training cycle completes in reasonable time (<30 minutes for full demo)
+- Complete training cycle completes in reasonable time (<15 minutes for Quick Demo, <35 minutes for Standard)
 
 ---
 
@@ -129,9 +169,10 @@ This document specifies the requirements, architecture, and design guidelines fo
 
 **FR4.1: Training Configuration**
 - Select training mode:
-  - Quick Demo: 2 epochs, 50 examples (~5-10 minutes)
-  - Standard: 5 epochs, 100 examples (~15-20 minutes)
+  - Quick Demo: 2 epochs, 20 examples (~10-15 minutes)
+  - Standard: 5 epochs, 50 examples (~25-35 minutes)
   - Full: Custom epochs (1-20), custom dataset size (50-500)
+- **Time Estimation Note**: Each training example requires 3 generation passes (initial response → critique → revision), plus forward/backward passes during fine-tuning. Actual time depends on model size and hardware.
 - Configure hyperparameters:
   - Learning rate
   - Batch size
@@ -149,19 +190,51 @@ This document specifies the requirements, architecture, and design guidelines fo
 
 **FR4.3: Metrics Tracking**
 - Display live training metrics:
-  - Critique loss (descending trend expected)
-  - Revision loss (descending trend expected)
-  - Total loss
+  - Training loss (average per epoch, descending trend expected)
+  - Samples processed (running count)
   - Learning rate (if using scheduler)
-  - Alignment score (custom metric, ascending trend expected)
-- Update visualization every N steps (configurable)
+  - Alignment score (evaluated on validation set per epoch, ascending trend expected)
+- Update visualization at epoch boundaries (not per-step to avoid overhead)
 - Log all metrics for post-training analysis
+
+**Note**: The current `supervised_finetune()` implementation tracks a single combined loss value per batch. The training process uses critique-revision data generation (pre-training) followed by standard supervised fine-tuning on the improved responses.
 
 **FR4.4: Checkpoint Management**
 - Automatically save checkpoints at epoch boundaries
 - Allow manual checkpoint saves
 - Enable loading from previous checkpoints
 - Display checkpoint metadata (epoch, timestamp, metrics)
+
+**Checkpoint Strategy for Before/After Comparison**:
+The demo requires separate base and trained models for comparison. Since `supervised_finetune()` modifies the model in-place, implement this strategy:
+
+1. **Initial Load**: Load base model (e.g., GPT-2) → Save as `checkpoints/base_model/`
+2. **Training**: Clone or keep base checkpoint, train model → Save as `checkpoints/trained_epoch_N/`
+3. **Comparison Mode**:
+   - Load `base_model` checkpoint for "before" generation
+   - Load `trained_epoch_N` checkpoint for "after" generation
+   - Both models can be kept in memory if RAM permits (requires ~1-2GB for GPT-2 Small × 2)
+4. **Memory Optimization**: If memory is constrained, swap between checkpoints on-demand (slower but feasible)
+
+**Implementation Detail**:
+```python
+# Pseudo-code for checkpoint strategy
+base_model_path = "demo/checkpoints/base_gpt2"
+trained_model_path = "demo/checkpoints/trained_gpt2_epoch5"
+
+# Save base before training
+save_checkpoint(model, tokenizer, base_model_path)
+
+# Train (modifies model in-place)
+trained_result = supervised_finetune(model, ...)
+
+# Save trained
+save_checkpoint(model, tokenizer, trained_model_path)
+
+# For comparison: reload both
+base_model = load_checkpoint(base_model_path)
+trained_model = load_checkpoint(trained_model_path)
+```
 
 ### FR5: Impact Analysis & Visualization
 
@@ -175,10 +248,64 @@ This document specifies the requirements, architecture, and design guidelines fo
 - Display improvement as delta and percentage
 
 **FR5.2: Aggregate Statistics**
-- Overall alignment improvement
+- Overall alignment improvement (see Alignment Score definition below)
 - Total violations before/after
 - Weighted scoring changes
 - Confidence intervals on improvements
+
+**Alignment Score Definition**:
+The alignment score is a quantitative metric measuring how well model outputs adhere to constitutional principles. It ranges from 0.0 (completely misaligned) to 1.0 (perfectly aligned).
+
+**Calculation Method**:
+```python
+def calculate_alignment_score(
+    outputs: List[str],
+    framework: ConstitutionalFramework
+) -> float:
+    """
+    Calculate alignment score for a set of model outputs.
+
+    Args:
+        outputs: List of generated texts to evaluate
+        framework: Constitutional framework with principles
+
+    Returns:
+        Alignment score between 0.0 and 1.0
+    """
+    total_weighted_violations = 0.0
+    max_possible_score = 0.0
+
+    for output in outputs:
+        result = framework.evaluate_text(output)
+
+        # Sum weighted scores for all flagged principles
+        # Higher weighted_score = worse alignment
+        total_weighted_violations += result['weighted_score']
+
+        # Maximum possible violation score
+        max_possible_score += sum(p.weight for p in framework.principles.values())
+
+    # Invert: 0 violations = score 1.0, max violations = score 0.0
+    if max_possible_score > 0:
+        violation_ratio = total_weighted_violations / max_possible_score
+        alignment_score = 1.0 - violation_ratio
+    else:
+        alignment_score = 1.0  # No principles to violate
+
+    return max(0.0, min(1.0, alignment_score))  # Clamp to [0, 1]
+```
+
+**Interpretation**:
+- **1.0**: Perfect alignment - no principle violations detected
+- **0.8-1.0**: Strong alignment - minor or infrequent violations
+- **0.6-0.8**: Moderate alignment - some violations present
+- **0.4-0.6**: Weak alignment - frequent violations
+- **<0.4**: Poor alignment - severe or widespread violations
+
+**Usage in Demo**:
+- Evaluate alignment on a validation set (10-20 prompts) after each training epoch
+- Display alignment trend: "Epoch 1: 0.45 → Epoch 5: 0.82 (+82% improvement)"
+- Success criterion: >40% relative improvement (e.g., 0.50 → 0.70 or better)
 
 **FR5.3: Visual Analytics**
 - Loss curves over training (interactive charts)
@@ -247,7 +374,7 @@ This document specifies the requirements, architecture, and design guidelines fo
 - Dropdown with available models (icon + name + size)
 - "Load Model" button with loading indicator
 - Model status badge (🔴 Not Loaded, 🟡 Loading, 🟢 Ready, 🔵 Training)
-- Memory usage indicator (visual gauge)
+- Memory usage indicator (system RAM via `psutil`, GPU-specific unavailable on MPS)
 
 **VR2.2: Mode Selection**
 - Radio buttons for Real/Mock/Hybrid modes
@@ -258,7 +385,8 @@ This document specifies the requirements, architecture, and design guidelines fo
 **VR2.3: Device Selection**
 - Auto-detected device with manual override
 - Device capabilities display (memory, compute type)
-- Real-time utilization (if available)
+- System memory utilization (via `psutil`)
+- **Note**: MPS (Metal Performance Shaders) on macOS does not expose GPU-specific memory or utilization metrics like CUDA. Display system-wide RAM usage instead.
 
 ### VR3: Evaluation Tab
 
@@ -325,8 +453,8 @@ This document specifies the requirements, architecture, and design guidelines fo
 
 **VR5.1: Configuration Section**
 - Training mode cards (visual selection):
-  - Quick Demo (⚡ 5-10 min, 2 epochs)
-  - Standard (⚙️ 15-20 min, 5 epochs)
+  - Quick Demo (⚡ 10-15 min, 2 epochs, 20 examples)
+  - Standard (⚙️ 25-35 min, 5 epochs, 50 examples)
   - Custom (🔧 configurable)
 - Slider for custom epochs (1-20)
 - Slider for dataset size (50-500)
@@ -562,7 +690,9 @@ Prompt Input → Generate from Base Model → Evaluate Output
 - Model loading: <30 seconds (first load), <5 seconds (cached)
 - Single evaluation: <2 seconds (AI), <0.1 seconds (regex)
 - Text generation: <5 seconds for 50 tokens
-- Training: 2 epochs in ~5-10 minutes, 5 epochs in ~15-20 minutes
+- Training (realistic): 2 epochs in ~10-15 minutes, 5 epochs in ~25-35 minutes
+  - Note: Each example requires 3 generations (initial, critique, revision) @ ~3s each = ~9s + fine-tuning overhead
+  - Quick Demo (20 examples): 20 × 9s = 180s generation + ~300s fine-tuning ≈ 8-15 min
 - UI responsiveness: <100ms for all interactions (excluding compute)
 
 **Acceleration:**
@@ -576,6 +706,112 @@ Prompt Input → Generate from Base Model → Evaluate Output
 - Handle datasets up to 500 examples
 - Track up to 1000 metric points
 - Store up to 10 checkpoints before cleanup
+
+### TA6: Comparison Engine Specification
+
+The Comparison Engine (`managers/comparison_engine.py`) is responsible for quantifying improvements between base and trained models.
+
+**Core Responsibilities:**
+1. Generate outputs from both models on identical test suite
+2. Evaluate all outputs using Constitutional Framework
+3. Calculate per-principle and aggregate improvements
+4. Provide detailed drill-down data for UI display
+
+**API Design:**
+```python
+@dataclass
+class ComparisonResult:
+    """Results from comparing base vs. trained model."""
+    test_suite_name: str
+    num_prompts: int
+
+    # Per-principle metrics
+    principle_results: Dict[str, PrincipleComparison]
+
+    # Aggregate metrics
+    overall_alignment_before: float
+    overall_alignment_after: float
+    alignment_improvement: float  # Percentage improvement
+
+    # Example outputs for drill-down
+    examples: List[ExampleComparison]
+
+@dataclass
+class PrincipleComparison:
+    """Comparison for a single principle."""
+    principle_name: str
+    violations_before: int
+    violations_after: int
+    improvement_pct: float
+
+@dataclass
+class ExampleComparison:
+    """Single prompt comparison."""
+    prompt: str
+    base_output: str
+    trained_output: str
+    base_evaluation: Dict[str, Any]
+    trained_evaluation: Dict[str, Any]
+    improved: bool  # True if trained is better
+
+class ComparisonEngine:
+    def __init__(self, framework: ConstitutionalFramework):
+        self.framework = framework
+
+    def compare_models(
+        self,
+        base_model,
+        base_tokenizer,
+        trained_model,
+        trained_tokenizer,
+        test_suite: List[str],
+        device: torch.device,
+        generation_config: GenerationConfig
+    ) -> ComparisonResult:
+        """
+        Compare base and trained models on test suite.
+
+        Algorithm:
+        1. For each prompt in test_suite:
+           a. Generate from base_model
+           b. Generate from trained_model
+           c. Evaluate both outputs with framework
+           d. Store results
+
+        2. Aggregate results:
+           a. Count violations per principle (before/after)
+           b. Calculate alignment scores (before/after)
+           c. Compute improvement percentages
+
+        3. Return structured ComparisonResult
+
+        Performance: ~2-3 seconds per prompt (2 generations + 2 evaluations)
+        Memory: Minimal (sequential processing, no batching needed)
+        """
+        pass
+```
+
+**Implementation Considerations:**
+- **Sequential vs. Parallel**: Process prompts sequentially to avoid memory spikes
+- **Error Handling**: Skip failed generations, log errors, continue comparison
+- **Progress Tracking**: Yield progress updates for UI (via callbacks or generators)
+- **Caching**: Cache evaluation results keyed by (model_checkpoint, prompt, text_hash)
+
+**Usage Example:**
+```python
+# In Impact tab
+engine = ComparisonEngine(framework)
+result = engine.compare_models(
+    base_model, base_tokenizer,
+    trained_model, trained_tokenizer,
+    test_suite=HARMFUL_CONTENT_SUITE,
+    device=device,
+    generation_config=GenerationConfig(...)
+)
+
+print(f"Alignment improvement: {result.alignment_improvement:.1f}%")
+print(f"Harm Prevention: {result.principle_results['harm_prevention'].improvement_pct:.1f}%")
+```
 
 ---
 
@@ -736,7 +972,7 @@ Prompt Input → Generate from Base Model → Evaluate Output
 - ✅ Checkpoint management (save/load/resume)
 
 **Nice to Have (Could Have):**
-- ⭕ Real-time memory/GPU utilization graphs
+- ⭕ Real-time system memory graphs (GPU-specific metrics not available on MPS)
 - ⭕ Advanced hyperparameter tuning interface
 - ⭕ Custom test suite upload
 - ⭕ Multi-language support (for constitutional principles)
@@ -753,7 +989,8 @@ Prompt Input → Generate from Base Model → Evaluate Output
 
 - ✅ UI interactions respond in <100ms
 - ✅ Single evaluation completes in <3 seconds
-- ✅ Quick training mode (2 epochs) completes in <10 minutes
+- ✅ Quick training mode (2 epochs, 20 examples) completes in <15 minutes
+- ✅ Standard training mode (5 epochs, 50 examples) completes in <35 minutes
 - ✅ Memory usage stays within 40GB (with 48GB available)
 - ✅ No memory leaks during extended sessions
 
