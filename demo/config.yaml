@@ -1,0 +1,33 @@
+models:
+  default: "gpt2"
+  options:
+    - name: "gpt2"
+      size: "124M"
+      hf_path: "gpt2"
+    - name: "gpt2-medium"
+      size: "355M"
+      hf_path: "gpt2-medium"
+    - name: "distilgpt2"
+      size: "82M"
+      hf_path: "distilgpt2"
+
+training:
+  quick_demo:
+    epochs: 2
+    dataset_size: 20
+    batch_size: 4
+    learning_rate: 5e-5
+  standard:
+    epochs: 5
+    dataset_size: 50
+    batch_size: 4
+    learning_rate: 5e-5
+
+devices:
+  prefer: "mps"  # mps, cuda, cpu
+  fallback: true
+
+paths:
+  checkpoints: "demo/checkpoints"
+  logs: "demo/logs"
+  exports: "demo/exports"
