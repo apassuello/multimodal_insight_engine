@@ -9,6 +9,10 @@ DEPENDENCIES: gradio, torch, typing, demo.managers, demo.data
 SPECIAL NOTES: Phase 2 implementation with Impact Analysis tab (VR6)
 """
 
+import argparse
+import os
+import yaml
+from pathlib import Path
 import gradio as gr
 import torch
 from typing import Dict, List, Any, Tuple, Optional
@@ -1296,13 +1300,179 @@ def create_demo() -> gr.Blocks:
 
 
 # ============================================================================
+# Configuration Loading
+# ============================================================================
+
+def load_config(config_path: str = "demo/config.yaml") -> Dict[str, Any]:
+    """
+    Load configuration from YAML file.
+
+    Args:
+        config_path: Path to config.yaml
+
+    Returns:
+        Configuration dictionary
+    """
+    config_file = Path(config_path)
+    if config_file.exists():
+        with open(config_file, 'r') as f:
+            return yaml.safe_load(f)
+    return {}
+
+
+def get_config_value(key: str, default: Any = None, config: Dict[str, Any] = None) -> Any:
+    """
+    Get configuration value with priority: ENV > config.yaml > default.
+
+    Priority order:
+    1. Environment variable (uppercase with prefix)
+    2. config.yaml value
+    3. Default value
+
+    Args:
+        key: Configuration key (e.g., "server_name")
+        default: Default value if not found
+        config: Loaded config dictionary
+
+    Returns:
+        Configuration value
+    """
+    # Convert key to uppercase environment variable name
+    env_key = key.upper()
+    if not env_key.startswith("GRADIO_"):
+        env_key = f"GRADIO_{env_key}"
+
+    # Check environment variable first
+    env_value = os.getenv(env_key)
+    if env_value is not None:
+        # Convert string booleans to actual booleans
+        if env_value.lower() in ('true', '1', 'yes'):
+            return True
+        elif env_value.lower() in ('false', '0', 'no'):
+            return False
+        # Convert string numbers to integers
+        try:
+            if '.' not in env_value:
+                return int(env_value)
+        except ValueError:
+            pass
+        return env_value
+
+    # Check config.yaml next
+    if config and key in config:
+        return config[key]
+
+    # Return default
+    return default
+
+
+# ============================================================================
+# Health Check Endpoint
+# ============================================================================
+
+def create_health_check_app():
+    """
+    Create a simple Gradio app with health check endpoint.
+
+    Returns:
+        Gradio Blocks app with /health endpoint
+    """
+    with gr.Blocks() as health_app:
+        gr.Markdown("# Health Check")
+        status_output = gr.JSON(value={"status": "healthy", "service": "Constitutional AI Demo"})
+
+    return health_app
+
+
+# ============================================================================
 # Main Entry Point
 # ============================================================================
 
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Constitutional AI Interactive Demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Environment Variables:
+  GRADIO_SERVER_NAME     Server hostname (default: 0.0.0.0)
+  GRADIO_SERVER_PORT     Server port (default: 7860)
+  GRADIO_SHARE           Enable public URL via Gradio share (default: false)
+  DEFAULT_MODEL          Default model to use (default: gpt2)
+  DEVICE_PREFERENCE      Device preference: auto, mps, cuda, cpu (default: auto)
+
+Examples:
+  # Run with default settings
+  python -m demo.main
+
+  # Run on specific port
+  python -m demo.main --server-port 8080
+
+  # Run with public URL
+  python -m demo.main --share
+
+  # Use environment variables
+  GRADIO_SERVER_PORT=8080 python -m demo.main
+        """
+    )
+
+    parser.add_argument(
+        "--server-name",
+        type=str,
+        default=None,
+        help="Server hostname (default: 0.0.0.0, env: GRADIO_SERVER_NAME)"
+    )
+
+    parser.add_argument(
+        "--server-port",
+        type=int,
+        default=None,
+        help="Server port (default: 7860, env: GRADIO_SERVER_PORT)"
+    )
+
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        default=None,
+        help="Enable public URL via Gradio share (env: GRADIO_SHARE)"
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="demo/config.yaml",
+        help="Path to config.yaml file (default: demo/config.yaml)"
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    # Parse command-line arguments
+    args = parse_args()
+
+    # Load configuration from YAML
+    config = load_config(args.config)
+
+    # Get configuration values with priority: CLI > ENV > config.yaml > default
+    server_name = args.server_name or get_config_value("server_name", "0.0.0.0", config)
+    server_port = args.server_port or get_config_value("server_port", 7860, config)
+    share = args.share if args.share is not None else get_config_value("share", False, config)
+
+    # Print startup configuration
+    print("=" * 60)
+    print("Constitutional AI Interactive Demo")
+    print("=" * 60)
+    print(f"Server: {server_name}:{server_port}")
+    print(f"Share: {share}")
+    print(f"Config: {args.config}")
+    print("=" * 60)
+    print()
+
+    # Create and launch demo
     demo = create_demo()
     demo.launch(
-        share=False,
-        server_name="0.0.0.0",
-        server_port=7860
+        share=share,
+        server_name=server_name,
+        server_port=server_port
     )

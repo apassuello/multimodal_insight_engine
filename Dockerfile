@@ -64,5 +64,5 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:7860/ || exit 1
 
-# Run the application
-CMD ["python", "-m", "demo.main", "--server-name", "0.0.0.0", "--server-port", "7860"]
+# Run the application (configuration via environment variables)
+CMD ["python", "-m", "demo.main"]
