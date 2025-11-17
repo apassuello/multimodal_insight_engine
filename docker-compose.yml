@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  cai-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: constitutional-ai-demo
+    ports:
+      - "7860:7860"
+    volumes:
+      # Persist checkpoints
+      - ./demo/checkpoints:/app/demo/checkpoints
+      # Persist logs
+      - ./demo/logs:/app/demo/logs
+      # Persist exports
+      - ./demo/exports:/app/demo/exports
+      # Cache HuggingFace models (optional, saves re-downloads)
+      - huggingface-cache:/root/.cache/huggingface
+    environment:
+      # Gradio configuration
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - GRADIO_SERVER_PORT=7860
+      # Optional: Set device preference
+      - DEVICE_PREFERENCE=auto
+      # Optional: Default model
+      - DEFAULT_MODEL=gpt2
+    restart: unless-stopped
+    # Resource limits (adjust based on your hardware)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+volumes:
+  huggingface-cache:
+    driver: local

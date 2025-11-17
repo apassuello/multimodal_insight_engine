@@ -1,0 +1,91 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+!DEMO_ARCHITECTURE.md
+
+# Tests
+tests/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Demo artifacts (mount as volumes instead)
+demo/checkpoints/*
+demo/logs/*
+demo/exports/*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment configs
+.env
+.env.local
+docker-compose.override.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Examples and demos (not needed for main demo)
+examples/
+demos/
+
+# Archived documentation
+doc/
+docs/archive/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Model weights (will be downloaded at runtime)
+*.pth
+*.pt
+*.bin
+*.onnx
+
+# Large data files
+*.tar.gz
+*.zip
+outputs/
+debug_outputs/
