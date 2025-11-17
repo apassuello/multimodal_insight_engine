@@ -19,7 +19,7 @@ Please **do not** open a public GitHub issue for security vulnerabilities. Publi
 
 ### 2. Report Privately
 
-Send an email to the project maintainers with:
+Send an email to the project maintainers at **security@[your-domain]** with:
 
 - **Subject**: `[SECURITY] Brief description of the vulnerability`
 - **Description**: Detailed description of the vulnerability

@@ -256,7 +256,7 @@ Located in [docs/assessments/](assessments/):
 | **[VERIFICATION_REPORT.md](assessments/VERIFICATION_REPORT.md)** | Verification report | Nov 2025 |
 | **[DOCUMENTATION_UPDATE_SUMMARY.md](assessments/DOCUMENTATION_UPDATE_SUMMARY.md)** | Docs update summary | Nov 2025 |
 | **[COMPONENT_2_VERIFICATION_CHECKLIST.md](assessments/COMPONENT_2_VERIFICATION_CHECKLIST.md)** | Component checklist | Nov 2025 |
-| **[REFACTORING_ASSESSMENT.md](assessment/REFACTORING_ASSESSMENT.md)** | Refactoring assessment | Nov 2025 |
+| **[REFACTORING_ASSESSMENT.md](assessments/REFACTORING_ASSESSMENT.md)** | Refactoring assessment | Nov 2025 |
 
 ---
 

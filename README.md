@@ -38,9 +38,9 @@ The codebase is organized into several key components:
    - Language modeling datasets ([src/data/language_modeling.py](src/data/language_modeling.py))
 
 3. **Training**: Trainers with metrics tracking
-   - Language model trainer ([src/training/language_model_trainer.py](src/training/language_model_trainer.py))
-   - Transformer training utilities ([src/training/transformer_trainer.py](src/training/transformer_trainer.py))
-   - Loss functions and metrics tracking ([src/training/losses.py](src/training/losses.py), [src/training/metrics.py](src/training/metrics.py))
+   - Language model trainer ([src/training/trainers/language_model_trainer.py](src/training/trainers/language_model_trainer.py))
+   - Transformer training utilities ([src/training/trainers/transformer_trainer.py](src/training/trainers/transformer_trainer.py))
+   - Loss functions and metrics tracking ([src/training/losses/](src/training/losses/), [src/training/metrics.py](src/training/metrics.py))
 
 4. **Optimization**: Model efficiency techniques
    - Mixed precision training ([src/optimization/mixed_precision.py](src/optimization/mixed_precision.py))
