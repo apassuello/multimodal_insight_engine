@@ -317,7 +317,8 @@ def _evaluate_truthfulness_with_ai(
     text: str,
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate truthfulness using AI-based evaluation (Constitutional AI approach).
@@ -327,11 +328,18 @@ def _evaluate_truthfulness_with_ai(
         model: Language model for evaluation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for transparency
 
     Returns:
         Dictionary with truthfulness evaluation results
     """
+    if logger:
+        logger.log_stage("EVAL-INPUT-TRUTH", text)
+
     prompt = TRUTHFULNESS_EVALUATION_PROMPT.format(text=text)
+
+    if logger:
+        logger.log_stage("EVAL-PROMPT-TRUTH", prompt, truncate=300)
 
     config = GenerationConfig(
         max_length=512,
@@ -341,6 +349,9 @@ def _evaluate_truthfulness_with_ai(
 
     try:
         response = generate_text(model, tokenizer, prompt, config, device)
+
+        if logger:
+            logger.log_stage("EVAL-RAW-OUTPUT-TRUTH", response)
 
         default_structure = {
             "flagged": False,
@@ -353,9 +364,21 @@ def _evaluate_truthfulness_with_ai(
         result = _parse_json_response(response, default_structure)
         result["method"] = "ai_evaluation"
 
+        if logger:
+            logger.log_stage(
+                "EVAL-PARSED-TRUTH",
+                f"Flagged: {result.get('flagged', False)}",
+                metadata=result
+            )
+
         return result
-    except Exception:
+    except Exception as e:
         # Fallback to regex if AI evaluation fails
+        if logger:
+            logger.log_stage(
+                "EVAL-ERROR-TRUTH",
+                f"AI evaluation failed: {e}, falling back to regex"
+            )
         return _evaluate_truthfulness_with_regex(text)
 
 
@@ -418,7 +441,7 @@ def evaluate_truthfulness(
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
-        return _evaluate_truthfulness_with_ai(text, model, tokenizer, device)
+        return _evaluate_truthfulness_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_truthfulness_with_regex(text)
 
@@ -535,7 +558,8 @@ def _evaluate_fairness_with_ai(
     text: str,
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate fairness using AI-based evaluation (Constitutional AI approach).
@@ -545,11 +569,18 @@ def _evaluate_fairness_with_ai(
         model: Language model for evaluation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Dictionary with fairness evaluation results
     """
+    if logger:
+        logger.log_stage("EVAL-INPUT-FAIRNESS", text)
+
     prompt = FAIRNESS_EVALUATION_PROMPT.format(text=text)
+
+    if logger:
+        logger.log_stage("EVAL-PROMPT-FAIRNESS", prompt, truncate=300)
 
     config = GenerationConfig(
         max_length=512,
@@ -559,6 +590,9 @@ def _evaluate_fairness_with_ai(
 
     try:
         response = generate_text(model, tokenizer, prompt, config, device)
+
+        if logger:
+            logger.log_stage("EVAL-RAW-OUTPUT-FAIRNESS", response)
 
         default_structure = {
             "flagged": False,
@@ -570,8 +604,20 @@ def _evaluate_fairness_with_ai(
         result = _parse_json_response(response, default_structure)
         result["method"] = "ai_evaluation"
 
+        if logger:
+            logger.log_stage(
+                "EVAL-PARSED-FAIRNESS",
+                f"Flagged: {result.get('flagged', False)}",
+                metadata=result
+            )
+
         return result
-    except Exception:
+    except Exception as e:
+        if logger:
+            logger.log_stage(
+                "EVAL-ERROR-FAIRNESS",
+                f"AI evaluation failed: {e}, falling back to regex"
+            )
         # Fallback to regex if AI evaluation fails
         return _evaluate_fairness_with_regex(text)
 
@@ -660,7 +706,7 @@ def evaluate_fairness(
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
-        return _evaluate_fairness_with_ai(text, model, tokenizer, device)
+        return _evaluate_fairness_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_fairness_with_regex(text)
 
@@ -669,7 +715,8 @@ def _evaluate_autonomy_with_ai(
     text: str,
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate autonomy respect using AI-based evaluation (Constitutional AI approach).
@@ -679,11 +726,18 @@ def _evaluate_autonomy_with_ai(
         model: Language model for evaluation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Dictionary with autonomy evaluation results
     """
+    if logger:
+        logger.log_stage("EVAL-INPUT-AUTONOMY", text)
+
     prompt = AUTONOMY_EVALUATION_PROMPT.format(text=text)
+
+    if logger:
+        logger.log_stage("EVAL-PROMPT-AUTONOMY", prompt, truncate=300)
 
     config = GenerationConfig(
         max_length=512,
@@ -693,6 +747,9 @@ def _evaluate_autonomy_with_ai(
 
     try:
         response = generate_text(model, tokenizer, prompt, config, device)
+
+        if logger:
+            logger.log_stage("EVAL-RAW-OUTPUT-AUTONOMY", response)
 
         default_structure = {
             "flagged": False,
@@ -704,8 +761,20 @@ def _evaluate_autonomy_with_ai(
         result = _parse_json_response(response, default_structure)
         result["method"] = "ai_evaluation"
 
+        if logger:
+            logger.log_stage(
+                "EVAL-PARSED-AUTONOMY",
+                f"Flagged: {result.get('flagged', False)}",
+                metadata=result
+            )
+
         return result
-    except Exception:
+    except Exception as e:
+        if logger:
+            logger.log_stage(
+                "EVAL-ERROR-AUTONOMY",
+                f"AI evaluation failed: {e}, falling back to regex"
+            )
         # Fallback to regex if AI evaluation fails
         return _evaluate_autonomy_with_regex(text)
 
@@ -803,7 +872,7 @@ def evaluate_autonomy_respect(
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
-        return _evaluate_autonomy_with_ai(text, model, tokenizer, device)
+        return _evaluate_autonomy_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_autonomy_with_regex(text)
 
