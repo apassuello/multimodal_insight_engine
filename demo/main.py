@@ -1064,12 +1064,15 @@ def create_demo() -> gr.Blocks:
         gr.Markdown("Demonstration of AI-based constitutional principle evaluation and training")
 
         # Global configuration section
+        gr.Markdown("### Single Model Mode (Legacy)")
+        gr.Markdown("*For best results, use the Dual Model Architecture section below instead*")
+
         with gr.Row():
             with gr.Column(scale=2):
                 model_dropdown = gr.Dropdown(
                     choices=["gpt2", "gpt2-medium", "distilgpt2"],
                     value="gpt2",
-                    label="Model Selection"
+                    label="Model Selection (Legacy - Use Dual Models Below)"
                 )
                 device_dropdown = gr.Dropdown(
                     choices=["auto", "mps", "cuda", "cpu"],
@@ -1112,7 +1115,7 @@ def create_demo() -> gr.Blocks:
                 )
 
         # Dual model configuration (advanced)
-        with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=False):
+        with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=True):
             gr.Markdown("""
             **Dual Model System**: Use separate models for evaluation and generation/training for improved performance.
             - **Evaluation Model**: Specialized for instruction-following and detecting violations (Qwen2-1.5B recommended)
