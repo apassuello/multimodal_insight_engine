@@ -392,7 +392,8 @@ def evaluate_truthfulness(
     model: Optional[Any] = None,
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
-    use_ai: bool = True
+    use_ai: bool = True,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content is misleading or deceptive.
@@ -634,7 +635,8 @@ def evaluate_fairness(
     model: Optional[Any] = None,
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
-    use_ai: bool = True
+    use_ai: bool = True,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content treats individuals and groups fairly.
@@ -776,7 +778,8 @@ def evaluate_autonomy_respect(
     model: Optional[Any] = None,
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
-    use_ai: bool = True
+    use_ai: bool = True,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content respects human autonomy and decision-making.
