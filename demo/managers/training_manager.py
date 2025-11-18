@@ -60,7 +60,8 @@ class TrainingManager:
         training_prompts: List[str],
         config: TrainingConfig,
         progress_callback: Optional[Callable[[str, float], None]] = None,
-        checkpoint_callback: Optional[Callable[[int, Dict[str, Any]], None]] = None
+        checkpoint_callback: Optional[Callable[[int, Dict[str, Any]], None]] = None,
+        logger=None  # type: ignore
     ) -> Tuple[Dict[str, Any], bool, str]:
         """
         Execute complete Constitutional AI training pipeline.
@@ -74,6 +75,7 @@ class TrainingManager:
             config: Training configuration
             progress_callback: Optional callback for progress updates (status, progress)
             checkpoint_callback: Optional callback for checkpointing (epoch, metrics)
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             Tuple of (metrics: dict, success: bool, message: str)
@@ -102,7 +104,8 @@ class TrainingManager:
                 tokenizer=tokenizer,
                 framework=framework,
                 device=device,
-                num_revisions=config.num_revisions
+                num_revisions=config.num_revisions,
+                logger=logger
             )
 
             data_gen_time = time.time() - data_start_time

@@ -54,7 +54,8 @@ def generate_critique(
     principles: List[str],
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> str:
     """
     Generate constitutional critique of a response.
@@ -66,6 +67,7 @@ def generate_critique(
         model: Language model for generation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Critique text identifying violations
@@ -82,6 +84,9 @@ def generate_critique(
         principles_text=principles_text
     )
 
+    if logger:
+        logger.log_stage("CRITIQUE-PROMPT", critique_prompt, truncate=400)
+
     # Generate critique using model
     config = GenerationConfig(
         max_length=256,
@@ -94,8 +99,14 @@ def generate_critique(
         # Handle empty responses
         if not critique or critique.strip() == '':
             critique = "No specific issues identified."
+
+        if logger:
+            logger.log_stage("CRITIQUE-GENERATION", critique)
+
         return critique
     except Exception as e:
+        if logger:
+            logger.log_stage("CRITIQUE-ERROR", f"Critique generation failed: {e}")
         print(f"Warning: Critique generation failed: {e}")
         return "Error generating critique."
 
@@ -107,7 +118,8 @@ def generate_revision(
     principles: List[str],
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> str:
     """
     Generate revised response based on critique.
@@ -120,6 +132,7 @@ def generate_revision(
         model: Language model for generation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Revised response addressing critique
@@ -129,6 +142,9 @@ def generate_revision(
         response=response,
         critique=critique
     )
+
+    if logger:
+        logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400)
 
     config = GenerationConfig(
         max_length=256,
@@ -141,8 +157,14 @@ def generate_revision(
         # Handle empty responses - fall back to original
         if not revision or revision.strip() == '':
             revision = response
+
+        if logger:
+            logger.log_stage("REVISION-GENERATION", revision)
+
         return revision
     except Exception as e:
+        if logger:
+            logger.log_stage("REVISION-ERROR", f"Revision generation failed: {e}, using original")
         print(f"Warning: Revision generation failed: {e}")
         return response  # Fall back to original
 
@@ -153,7 +175,8 @@ def critique_revision_pipeline(
     tokenizer,
     framework: ConstitutionalFramework,
     device: torch.device,
-    num_revisions: int = 1
+    num_revisions: int = 1,
+    logger=None  # type: ignore
 ) -> List[Dict[str, Any]]:
     """
     Complete critique-revision pipeline for dataset generation.
@@ -165,6 +188,7 @@ def critique_revision_pipeline(
         framework: Constitutional framework with principles
         device: Computation device
         num_revisions: Number of critique-revision iterations
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         List of training examples with revised responses
@@ -172,17 +196,80 @@ def critique_revision_pipeline(
     training_data = []
     principles = [p.description for p in framework.principles.values()]
 
-    for prompt in tqdm(prompts, desc='Generating revised responses'):
+    for idx, prompt in enumerate(tqdm(prompts, desc='Generating revised responses')):
+        if logger:
+            logger.log_stage(
+                f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}",
+                f"Prompt: {prompt}"
+            )
+
         # Generate initial response
         config = GenerationConfig(max_length=150, temperature=1.0, do_sample=True)
 
         try:
             response = generate_text(model, tokenizer, prompt, config, device)
 
+            if logger:
+                logger.log_stage("INITIAL-GENERATION", response)
+
+            # Evaluate initial response
+            initial_score = framework.evaluate_text(response)
+
+            if logger:
+                violations = [
+                    p for p, v in initial_score.items()
+                    if isinstance(v, dict) and v.get('flagged', False)
+                ]
+                weighted_score = initial_score.get('weighted_score', 0.0)
+                logger.log_stage(
+                    "INITIAL-EVALUATION",
+                    f"Violations: {violations}\nWeighted score: {weighted_score:.2f}",
+                    metadata={"violations": violations, "score": weighted_score}
+                )
+
             # Iterative critique and revision
             for iteration in range(num_revisions):
-                critique = generate_critique(prompt, response, principles, model, tokenizer, device)
-                response = generate_revision(prompt, response, critique, principles, model, tokenizer, device)
+                critique = generate_critique(
+                    prompt, response, principles, model, tokenizer, device, logger=logger
+                )
+                response = generate_revision(
+                    prompt, response, critique, principles, model, tokenizer, device, logger=logger
+                )
+
+            # Evaluate revised response
+            revised_score = framework.evaluate_text(response)
+
+            if logger:
+                revised_violations = [
+                    p for p, v in revised_score.items()
+                    if isinstance(v, dict) and v.get('flagged', False)
+                ]
+                revised_weighted_score = revised_score.get('weighted_score', 0.0)
+                improvement = initial_score.get('weighted_score', 0.0) - revised_weighted_score
+                logger.log_stage(
+                    "REVISION-EVALUATION",
+                    f"Violations: {revised_violations if revised_violations else 'NONE'}\n"
+                    f"Weighted score: {revised_weighted_score:.2f}",
+                    metadata={
+                        "violations": revised_violations,
+                        "score": revised_weighted_score,
+                        "improvement": improvement
+                    }
+                )
+
+                # Log training pair summary
+                if improvement > 0:
+                    logger.log_stage(
+                        "TRAINING-PAIR-CREATED",
+                        f"✓ Training example generated\n"
+                        f"  Improvement: {initial_score.get('weighted_score', 0.0):.2f} → "
+                        f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)"
+                    )
+                else:
+                    logger.log_stage(
+                        "TRAINING-PAIR-CREATED",
+                        f"⚠ Training example generated (no improvement)"
+                    )
 
             # Store training example
             training_data.append({
@@ -191,6 +278,8 @@ def critique_revision_pipeline(
                 'num_revisions': num_revisions
             })
         except Exception as e:
+            if logger:
+                logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
             print(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
             continue
 
