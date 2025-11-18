@@ -21,6 +21,7 @@ from demo.managers.model_manager import ModelManager, ModelStatus
 from demo.managers.evaluation_manager import EvaluationManager
 from demo.managers.training_manager import TrainingManager, TrainingConfig
 from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
+from demo.managers.multi_model_manager import MultiModelManager, RECOMMENDED_CONFIGS
 from demo.data.test_examples import (
     EVALUATION_EXAMPLES,
     get_training_prompts,
@@ -38,6 +39,7 @@ from src.safety.constitutional.model_utils import generate_text, GenerationConfi
 model_manager = ModelManager()
 evaluation_manager = EvaluationManager()
 training_manager = TrainingManager()
+multi_model_manager = MultiModelManager()
 
 # Global content logger (verbosity level 2 by default)
 content_logger = ContentLogger(verbosity=2)
@@ -141,6 +143,89 @@ def export_logs_handler() -> Tuple[str, str]:
     summary += content_logger.get_summary()
 
     return f"✓ Logs exported to {filepath}", summary
+
+
+# ============================================================================
+# Dual Model Management Functions
+# ============================================================================
+
+def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
+    """
+    Load evaluation model using MultiModelManager.
+
+    Args:
+        model_key: Model identifier from RECOMMENDED_CONFIGS
+
+    Returns:
+        Tuple of (status_message, model_info)
+    """
+    global multi_model_manager
+
+    success, message = multi_model_manager.load_evaluation_model(model_key)
+
+    if success:
+        # Initialize evaluation framework with new model
+        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+        eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+            model=eval_model,
+            tokenizer=eval_tokenizer,
+            device=multi_model_manager.device
+        )
+
+        if not eval_success:
+            message += f"\n\nWarning: {eval_msg}"
+
+        # Get model info
+        status = multi_model_manager.get_status_info()
+        model_info = ""
+        if status["evaluation_model"]:
+            model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+            model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+            model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+        if status["generation_model"]:
+            model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+            model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+            model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+        model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+        model_info += f"Device: {status['device']}"
+
+        return message, model_info
+    else:
+        return message, "Failed to load evaluation model"
+
+
+def load_generation_model_handler(model_key: str) -> Tuple[str, str]:
+    """
+    Load generation model using MultiModelManager.
+
+    Args:
+        model_key: Model identifier from RECOMMENDED_CONFIGS
+
+    Returns:
+        Tuple of (status_message, model_info)
+    """
+    global multi_model_manager
+
+    success, message = multi_model_manager.load_generation_model(model_key)
+
+    if success:
+        # Get model info
+        status = multi_model_manager.get_status_info()
+        model_info = ""
+        if status["evaluation_model"]:
+            model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+            model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+            model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+        if status["generation_model"]:
+            model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+            model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+            model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+        model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+        model_info += f"Device: {status['device']}"
+
+        return message, model_info
+    else:
+        return message, "Failed to load generation model"
 
 
 # ============================================================================
@@ -289,8 +374,11 @@ def start_training_handler(
     Returns:
         Tuple of (status_message, metrics_display, checkpoint_info)
     """
-    if not model_manager.is_ready():
-        return "✗ Please load a model first", "", ""
+    # Check if we have dual models loaded
+    use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+
+    if not use_dual_models and not model_manager.is_ready():
+        return "✗ Please load models first (either single model or dual models)", "", ""
 
     if training_manager.is_training:
         return "✗ Training already in progress", "", ""
@@ -314,12 +402,33 @@ def start_training_handler(
     # Get training prompts
     training_prompts = config_dict["prompts"]
 
-    # Setup constitutional framework
-    framework = setup_default_framework(
-        model=model_manager.model,
-        tokenizer=model_manager.tokenizer,
-        device=model_manager.device
-    )
+    # Select models based on what's available
+    if use_dual_models:
+        # Use dual model architecture: evaluation model for critique, generation model for training
+        gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
+        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+        device = multi_model_manager.device
+
+        # Setup framework with evaluation model
+        framework = setup_default_framework(
+            model=eval_model,
+            tokenizer=eval_tokenizer,
+            device=device
+        )
+
+        # Train the generation model
+        train_model = gen_model
+        train_tokenizer = gen_tokenizer
+    else:
+        # Use single model for everything
+        framework = setup_default_framework(
+            model=model_manager.model,
+            tokenizer=model_manager.tokenizer,
+            device=model_manager.device
+        )
+        train_model = model_manager.model
+        train_tokenizer = model_manager.tokenizer
+        device = model_manager.device
 
     # Progress callback
     def progress_callback(status: str, progress_pct: float):
@@ -327,17 +436,19 @@ def start_training_handler(
 
     # Checkpoint callback
     def checkpoint_callback(epoch: int, metrics: Dict[str, Any]):
-        model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
+        if not use_dual_models:
+            model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
 
     # Set model to training status
-    model_manager.set_status(ModelStatus.TRAINING)
+    if not use_dual_models:
+        model_manager.set_status(ModelStatus.TRAINING)
 
     # Execute training
     result, success, message = training_manager.train_model(
-        model=model_manager.model,
-        tokenizer=model_manager.tokenizer,
+        model=train_model,
+        tokenizer=train_tokenizer,
         framework=framework,
-        device=model_manager.device,
+        device=device,
         training_prompts=training_prompts,
         config=config,
         progress_callback=progress_callback,
@@ -346,7 +457,8 @@ def start_training_handler(
     )
 
     # Reset model status
-    model_manager.set_status(ModelStatus.READY)
+    if not use_dual_models:
+        model_manager.set_status(ModelStatus.READY)
 
     if success:
         # Save final trained checkpoint
@@ -985,6 +1097,54 @@ def create_demo() -> gr.Blocks:
                     lines=3
                 )
 
+        # Dual model configuration (advanced)
+        with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=False):
+            gr.Markdown("""
+            **Dual Model System**: Use separate models for evaluation and generation/training for improved performance.
+            - **Evaluation Model**: Specialized for instruction-following and detecting violations (Qwen2-1.5B recommended)
+            - **Generation Model**: Specialized for learning and training (Phi-2 recommended)
+            """)
+
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("### Evaluation Model")
+                    eval_model_dropdown = gr.Dropdown(
+                        choices=["qwen2-1.5b-instruct", "phi-2", "gpt2"],
+                        value="qwen2-1.5b-instruct",
+                        label="Select Evaluation Model",
+                        info="Used for critiquing and detecting violations"
+                    )
+                    load_eval_model_btn = gr.Button("Load Evaluation Model", variant="primary")
+                    eval_load_status = gr.Textbox(
+                        label="Status",
+                        value="No evaluation model loaded",
+                        interactive=False,
+                        lines=2
+                    )
+
+                with gr.Column():
+                    gr.Markdown("### Generation Model")
+                    gen_model_dropdown = gr.Dropdown(
+                        choices=["phi-2", "qwen2-1.5b-instruct", "gpt2"],
+                        value="phi-2",
+                        label="Select Generation Model",
+                        info="Used for training and text generation"
+                    )
+                    load_gen_model_btn = gr.Button("Load Generation Model", variant="primary")
+                    gen_load_status = gr.Textbox(
+                        label="Status",
+                        value="No generation model loaded",
+                        interactive=False,
+                        lines=2
+                    )
+
+            dual_model_status = gr.Textbox(
+                label="Dual Model System Status",
+                value="No dual models loaded. Using single model system.",
+                interactive=False,
+                lines=4
+            )
+
         load_status = gr.Textbox(label="Status Messages", interactive=False)
 
         # Load model handler
@@ -1005,6 +1165,19 @@ def create_demo() -> gr.Blocks:
             fn=export_logs_handler,
             inputs=[],
             outputs=[verbosity_status, export_status]
+        )
+
+        # Dual model handlers
+        load_eval_model_btn.click(
+            fn=load_evaluation_model_handler,
+            inputs=[eval_model_dropdown],
+            outputs=[eval_load_status, dual_model_status]
+        )
+
+        load_gen_model_btn.click(
+            fn=load_generation_model_handler,
+            inputs=[gen_model_dropdown],
+            outputs=[gen_load_status, dual_model_status]
         )
 
         # Tabs
