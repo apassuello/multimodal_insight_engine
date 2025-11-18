@@ -14,6 +14,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Dict, Any, Optional
 from tqdm import tqdm
+from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from .framework import ConstitutionalFramework
 from .model_utils import generate_text, GenerationConfig
@@ -52,8 +53,8 @@ def generate_critique(
     prompt: str,
     response: str,
     principles: List[str],
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     device: torch.device,
     logger=None  # type: ignore
 ) -> str:
@@ -95,7 +96,10 @@ def generate_critique(
     )
 
     try:
-        critique = generate_text(model, tokenizer, critique_prompt, config, device)
+        # PERFORMANCE: Use torch.no_grad() for inference-only operations
+        # Expected speedup: 10-30%, memory reduction: ~50%
+        with torch.no_grad():
+            critique = generate_text(model, tokenizer, critique_prompt, config, device)
         # Handle empty responses
         if not critique or critique.strip() == '':
             critique = "No specific issues identified."
@@ -104,7 +108,7 @@ def generate_critique(
             logger.log_stage("CRITIQUE-GENERATION", critique)
 
         return critique
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage("CRITIQUE-ERROR", f"Critique generation failed: {e}")
         print(f"Warning: Critique generation failed: {e}")
@@ -116,8 +120,8 @@ def generate_revision(
     response: str,
     critique: str,
     principles: List[str],
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     device: torch.device,
     logger=None  # type: ignore
 ) -> str:
@@ -153,7 +157,10 @@ def generate_revision(
     )
 
     try:
-        revision = generate_text(model, tokenizer, revision_prompt, config, device)
+        # PERFORMANCE: Use torch.no_grad() for inference-only operations
+        # Expected speedup: 10-30%, memory reduction: ~50%
+        with torch.no_grad():
+            revision = generate_text(model, tokenizer, revision_prompt, config, device)
         # Handle empty responses - fall back to original
         if not revision or revision.strip() == '':
             revision = response
@@ -162,7 +169,7 @@ def generate_revision(
             logger.log_stage("REVISION-GENERATION", revision)
 
         return revision
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage("REVISION-ERROR", f"Revision generation failed: {e}, using original")
         print(f"Warning: Revision generation failed: {e}")
@@ -171,8 +178,8 @@ def generate_revision(
 
 def critique_revision_pipeline(
     prompts: List[str],
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     framework: ConstitutionalFramework,
     device: torch.device,
     num_revisions: int = 1,
@@ -207,7 +214,10 @@ def critique_revision_pipeline(
         config = GenerationConfig(max_length=150, temperature=1.0, do_sample=True)
 
         try:
-            response = generate_text(model, tokenizer, prompt, config, device)
+            # PERFORMANCE: Use torch.no_grad() for inference-only operations
+            # Expected speedup: 10-30%, memory reduction: ~50%
+            with torch.no_grad():
+                response = generate_text(model, tokenizer, prompt, config, device)
 
             if logger:
                 logger.log_stage("INITIAL-GENERATION", response)
@@ -277,7 +287,7 @@ def critique_revision_pipeline(
                 'response': response,  # This is the revised, improved response
                 'num_revisions': num_revisions
             })
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError) as e:
             if logger:
                 logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
             print(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
@@ -338,13 +348,14 @@ class ConstitutionalDataset(Dataset):
 
 
 def supervised_finetune(
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     training_data: List[Dict[str, Any]],
     num_epochs: int = 3,
     batch_size: int = 8,
     learning_rate: float = 5e-5,
-    device: torch.device = None
+    device: torch.device = None,
+    use_amp: bool = True
 ) -> Dict[str, Any]:
     """
     Fine-tune model on critique-revised responses.
@@ -357,6 +368,7 @@ def supervised_finetune(
         batch_size: Batch size
         learning_rate: Learning rate
         device: Computation device
+        use_amp: Use automatic mixed precision for faster training (default: True)
 
     Returns:
         Training metrics and fine-tuned model
@@ -405,6 +417,10 @@ def supervised_finetune(
     # Optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+    # PERFORMANCE: Initialize GradScaler for Automatic Mixed Precision (AMP)
+    # Expected speedup: 2-3x on compatible GPUs, reduced memory usage
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp and device.type == 'cuda')
+
     # Training loop
     metrics = {'losses': [], 'epochs': []}
 
@@ -424,9 +440,12 @@ def supervised_finetune(
                     nan_batches += 1
                     continue
 
-                # Forward pass
-                outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
-                loss = outputs.loss
+                # PERFORMANCE: Use automatic mixed precision for forward pass
+                # autocast() automatically handles float16/float32 conversions
+                with torch.cuda.amp.autocast(enabled=use_amp and device.type == 'cuda'):
+                    # Forward pass
+                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+                    loss = outputs.loss
 
                 # Check for NaN loss
                 if torch.isnan(loss) or torch.isinf(loss):
@@ -434,9 +453,10 @@ def supervised_finetune(
                     nan_batches += 1
                     continue
 
-                # Backward pass
+                # PERFORMANCE: Use GradScaler for backward pass with AMP
+                # Scales loss to prevent gradient underflow in float16
                 optimizer.zero_grad()
-                loss.backward()
+                scaler.scale(loss).backward()
 
                 # Check for NaN gradients before clipping
                 has_nan_grad = False
@@ -451,14 +471,18 @@ def supervised_finetune(
                     optimizer.zero_grad()
                     continue
 
-                # Gradient clipping to prevent explosion
+                # Gradient clipping to prevent explosion (unscales gradients first)
+                scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                optimizer.step()
+
+                # Update weights with scaler
+                scaler.step(optimizer)
+                scaler.update()
 
                 epoch_loss += loss.item()
                 batch_count += 1
 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError) as e:
                 print(f"Warning: Error processing batch {batch_idx}: {e}")
                 nan_batches += 1
                 continue

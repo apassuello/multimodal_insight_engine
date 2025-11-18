@@ -5,12 +5,13 @@ KEY COMPONENTS:
 - Qwen2-1.5B-Instruct for evaluation (best instruction-following)
 - Phi-2 for generation/training (best fine-tuning performance)
 - Optimized memory usage with model unloading
+- Security: Model whitelist to prevent arbitrary code execution
 DEPENDENCIES: torch, transformers, typing
 SPECIAL NOTES: Supports dual model architecture for improved performance
 """
 
 import torch
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, Set
 from dataclasses import dataclass
 from enum import Enum
 
@@ -59,6 +60,75 @@ RECOMMENDED_CONFIGS = {
         max_memory_gb=0.5
     )
 }
+
+
+# ============================================================================
+# SECURITY: Model Whitelist for trust_remote_code
+# ============================================================================
+# CRITICAL SECURITY CONTROL: Whitelist of trusted models
+# Models not in this list will load with trust_remote_code=False
+# This prevents arbitrary code execution from malicious models
+TRUSTED_MODEL_IDS: Set[str] = {
+    # Qwen models - verified safe, official Alibaba Cloud models
+    "Qwen/Qwen2-1.5B-Instruct",
+    "Qwen/Qwen2-1.5B",
+    # Microsoft Phi models - verified safe, official Microsoft models
+    "microsoft/phi-2",
+    "microsoft/phi-1_5",
+    "microsoft/phi-1",
+    # OpenAI GPT models - standard transformers library, no remote code needed
+    "gpt2",
+    "gpt2-medium",
+    "gpt2-large",
+    "gpt2-xl",
+    "distilgpt2",
+}
+
+
+def _is_model_trusted(model_id: str) -> bool:
+    """
+    Check if a model is in the trusted whitelist.
+
+    Security: This prevents arbitrary code execution from malicious models.
+    Only models in TRUSTED_MODEL_IDS can use trust_remote_code=True.
+
+    Args:
+        model_id: Hugging Face model identifier
+
+    Returns:
+        True if model is trusted, False otherwise
+    """
+    return model_id in TRUSTED_MODEL_IDS
+
+
+def _get_trust_remote_code(model_id: str) -> bool:
+    """
+    Determine trust_remote_code setting based on model whitelist.
+
+    Security: CRITICAL - This prevents arbitrary code execution.
+    - Whitelisted models: trust_remote_code=True (verified safe)
+    - Non-whitelisted models: trust_remote_code=False (security first)
+
+    Args:
+        model_id: Hugging Face model identifier
+
+    Returns:
+        True if model is whitelisted, False otherwise
+    """
+    is_trusted = _is_model_trusted(model_id)
+
+    # Log security decision
+    if not is_trusted:
+        import warnings
+        warnings.warn(
+            f"Security: Model '{model_id}' is not in the trusted whitelist. "
+            f"Loading with trust_remote_code=False for security. "
+            f"If you trust this model, add it to TRUSTED_MODEL_IDS.",
+            UserWarning,
+            stacklevel=3
+        )
+
+    return is_trusted
 
 
 class MultiModelManager:
@@ -118,10 +188,13 @@ class MultiModelManager:
         try:
             print(f"Loading evaluation model: {config.name} ({config.hf_model_id})...")
 
+            # Security: Check if model is trusted before loading
+            trust_code = _get_trust_remote_code(config.hf_model_id)
+
             # Load tokenizer
             self.eval_tokenizer = AutoTokenizer.from_pretrained(
                 config.hf_model_id,
-                trust_remote_code=True
+                trust_remote_code=trust_code
             )
 
             # Set padding token if not set
@@ -129,14 +202,18 @@ class MultiModelManager:
                 self.eval_tokenizer.pad_token = self.eval_tokenizer.eos_token
 
             # Load model
+            # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
+            # For MPS/CPU, we must manually move model to device instead
+            device_map_arg = "auto" if self.device.type == 'cuda' else None
             self.eval_model = AutoModelForCausalLM.from_pretrained(
                 config.hf_model_id,
                 torch_dtype=torch.float16 if self.device.type != 'cpu' else torch.float32,
-                trust_remote_code=True,
-                device_map="auto" if self.device.type in ['cuda', 'mps'] else None
+                trust_remote_code=trust_code,
+                device_map=device_map_arg
             )
 
-            if self.device.type == 'cpu':
+            # Manually move to device for MPS/CPU (not supported by device_map="auto")
+            if self.device.type in ['mps', 'cpu']:
                 self.eval_model = self.eval_model.to(self.device)
 
             self.eval_model.eval()  # Set to evaluation mode
@@ -153,7 +230,15 @@ class MultiModelManager:
 
             return True, message
 
-        except Exception as e:
+        except torch.cuda.OutOfMemoryError as e:
+            return False, (
+                f"✗ Out of memory loading evaluation model. Try:\n"
+                f"  1. Restart the demo to clear memory\n"
+                f"  2. Use a smaller model\n"
+                f"  3. Close other GPU applications\n"
+                f"  Error: {e}"
+            )
+        except (RuntimeError, ValueError, TypeError) as e:
             return False, f"✗ Failed to load evaluation model: {e}"
 
     def load_generation_model(
@@ -177,10 +262,13 @@ class MultiModelManager:
         try:
             print(f"Loading generation model: {config.name} ({config.hf_model_id})...")
 
+            # Security: Check if model is trusted before loading
+            trust_code = _get_trust_remote_code(config.hf_model_id)
+
             # Load tokenizer
             self.gen_tokenizer = AutoTokenizer.from_pretrained(
                 config.hf_model_id,
-                trust_remote_code=True
+                trust_remote_code=trust_code
             )
 
             # Set padding token if not set
@@ -188,14 +276,18 @@ class MultiModelManager:
                 self.gen_tokenizer.pad_token = self.gen_tokenizer.eos_token
 
             # Load model
+            # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
+            # For MPS/CPU, we must manually move model to device instead
+            device_map_arg = "auto" if self.device.type == 'cuda' else None
             self.gen_model = AutoModelForCausalLM.from_pretrained(
                 config.hf_model_id,
                 torch_dtype=torch.float16 if self.device.type != 'cpu' else torch.float32,
-                trust_remote_code=True,
-                device_map="auto" if self.device.type in ['cuda', 'mps'] else None
+                trust_remote_code=trust_code,
+                device_map=device_map_arg
             )
 
-            if self.device.type == 'cpu':
+            # Manually move to device for MPS/CPU (not supported by device_map="auto")
+            if self.device.type in ['mps', 'cpu']:
                 self.gen_model = self.gen_model.to(self.device)
 
             self.gen_model.eval()  # Start in eval mode, switch to train later
@@ -212,7 +304,15 @@ class MultiModelManager:
 
             return True, message
 
-        except Exception as e:
+        except torch.cuda.OutOfMemoryError as e:
+            return False, (
+                f"✗ Out of memory loading generation model. Try:\n"
+                f"  1. Restart the demo to clear memory\n"
+                f"  2. Unload the evaluation model first\n"
+                f"  3. Use a smaller model (e.g., gpt2)\n"
+                f"  Error: {e}"
+            )
+        except (RuntimeError, ValueError, TypeError) as e:
             return False, f"✗ Failed to load generation model: {e}"
 
     def unload_evaluation_model(self) -> None:
