@@ -130,7 +130,8 @@ def _evaluate_harm_with_ai(
     text: str,
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate harm potential using AI-based evaluation (Constitutional AI approach).
@@ -140,11 +141,18 @@ def _evaluate_harm_with_ai(
         model: Language model for evaluation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for transparency
 
     Returns:
         Dictionary with harm evaluation results
     """
+    if logger:
+        logger.log_stage("EVAL-INPUT-HARM", text)
+
     prompt = HARM_EVALUATION_PROMPT.format(text=text)
+
+    if logger:
+        logger.log_stage("EVAL-PROMPT-HARM", prompt, truncate=300)
 
     config = GenerationConfig(
         max_length=512,
@@ -154,6 +162,9 @@ def _evaluate_harm_with_ai(
 
     try:
         response = generate_text(model, tokenizer, prompt, config, device)
+
+        if logger:
+            logger.log_stage("EVAL-RAW-OUTPUT-HARM", response)
 
         default_structure = {
             "flagged": False,
@@ -166,9 +177,21 @@ def _evaluate_harm_with_ai(
         result = _parse_json_response(response, default_structure)
         result["method"] = "ai_evaluation"
 
+        if logger:
+            logger.log_stage(
+                "EVAL-PARSED-HARM",
+                f"Flagged: {result.get('flagged', False)}",
+                metadata=result
+            )
+
         return result
-    except Exception:
+    except Exception as e:
         # Fallback to regex if AI evaluation fails
+        if logger:
+            logger.log_stage(
+                "EVAL-ERROR-HARM",
+                f"AI evaluation failed: {e}, falling back to regex"
+            )
         return _evaluate_harm_with_regex(text)
 
 
@@ -224,7 +247,8 @@ def evaluate_harm_potential(
     model: Optional[Any] = None,
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
-    use_ai: bool = True
+    use_ai: bool = True,
+    logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate potential for physical, psychological or social harm.
@@ -236,6 +260,7 @@ def evaluate_harm_potential(
         tokenizer: Optional tokenizer for AI-based evaluation
         device: Optional device for computation (default: CPU)
         use_ai: If True and model provided, use AI evaluation; otherwise use regex
+        logger: Optional ContentLogger for transparency
 
     Returns:
         Dictionary with evaluation results including:
@@ -249,7 +274,7 @@ def evaluate_harm_potential(
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
-        return _evaluate_harm_with_ai(text, model, tokenizer, device)
+        return _evaluate_harm_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_harm_with_regex(text)
 
