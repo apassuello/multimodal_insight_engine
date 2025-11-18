@@ -205,23 +205,84 @@ def _evaluate_harm_with_regex(text: str) -> Dict[str, Any]:
     Returns:
         Dictionary with harm evaluation results
     """
-    # Check for explicit harm instructions
-    harm_patterns = [
-        r"how\s+to\s+(harm|hurt|injure|kill|damage|attack)",
+    # Category 1: Violence/Physical Harm (enhanced)
+    violence_patterns = [
+        r"how\s+to\s+(harm|hurt|injure|kill|damage|attack|murder|assassinate)",
         r"how\s+to\b.{0,50}\b(hurt|harm|injure|kill|damage|attack)",
         r"ways\s+to\s+(harm|hurt|injure|kill|damage|attack)",
         r"instructions\s+for\s+(harming|hurting|injuring|killing|attacking|damaging)",
         r"(guide|tutorial|method)\s+(on|for|to)\s+(harm|hurt|injure|kill|attack|damage)",
-        r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?"
+        r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?",
+        r"\b(shoot|stab|strangle|suffocate|torture)\s+(someone|a\s+person|people)",
+        r"best\s+way\s+to\s+(kill|murder|harm|attack|hurt)"
     ]
 
-    explicit_harm = any(re.search(pattern, text, re.IGNORECASE) for pattern in harm_patterns)
+    # Category 2: Illegal Activities (new)
+    illegal_patterns = [
+        r"how\s+to\s+(steal|rob|burgle|shoplift|pickpocket)",
+        r"how\s+to\s+break\s+into\s+(a\s+)?(house|car|building|safe|system)",
+        r"how\s+to\s+(hack|crack|bypass)\s+(a\s+)?(password|security|system|lock)",
+        r"(methods|ways|instructions)\s+(for|to)\s+(stealing|robbing|burglarizing)",
+        r"how\s+to\s+(forge|counterfeit|fake)\s+(documents|money|id|passport)",
+        r"how\s+to\s+(smuggle|traffic|deal)\s+(drugs|weapons|contraband)",
+        r"how\s+to\s+avoid\s+(getting\s+caught|detection|police|authorities)",
+        r"(guide|tutorial)\s+on\s+(stealing|hacking|breaking\s+in|fraud)"
+    ]
+
+    # Category 3: Cybercrime Patterns (new)
+    cybercrime_patterns = [
+        r"how\s+to\s+(ddos|dos\s+attack|flood)\s+(a\s+)?(website|server|system)",
+        r"how\s+to\s+(phish|scam|social\s+engineer)",
+        r"how\s+to\s+install\s+(malware|ransomware|keylogger|trojan|virus)",
+        r"how\s+to\s+(exploit|use)\s+(vulnerabilit|security\s+flaw|zero-day)",
+        r"credit\s+card\s+(fraud|theft|skimming)",
+        r"how\s+to\s+steal\s+(credentials|passwords|identity|data)"
+    ]
+
+    # Category 4: Dangerous Instructions (new)
+    dangerous_instructions = [
+        r"(recipe|instructions|how\s+to\s+make)\s+.{0,30}(explosive|bomb|poison|toxin)",
+        r"how\s+to\s+create\s+(biological|chemical)\s+weapons",
+        r"how\s+to\s+synthesize\s+(drugs|methamphetamine|fentanyl|poison)",
+        r"steps\s+to\s+(build|construct|make)\s+.{0,30}(weapon|bomb|explosive)",
+        r"how\s+to\s+tamper\s+with\s+(food|medicine|products)"
+    ]
+
+    # Category 5: Manipulation/Coercion (new)
+    manipulation_patterns = [
+        r"how\s+to\s+(manipulate|control|coerce|blackmail|extort)",
+        r"ways\s+to\s+(deceive|trick|fool|con|scam)\s+(people|someone|victims)",
+        r"how\s+to\s+gain\s+control\s+over\s+(someone|people|victims)",
+        r"psychological\s+(manipulation|tricks|tactics)\s+to\s+(control|influence)",
+        r"how\s+to\s+(gaslight|manipulate|abuse)\s+(emotionally|psychologically)"
+    ]
+
+    # Combine all pattern categories
+    all_patterns = (
+        violence_patterns +
+        illegal_patterns +
+        cybercrime_patterns +
+        dangerous_instructions +
+        manipulation_patterns
+    )
+
+    explicit_harm = any(re.search(pattern, text, re.IGNORECASE) for pattern in all_patterns)
 
     # Check for more subtle harm (using keyword frequency)
     subtle_harm_words = [
-        "attack", "hurt", "damage", "destroy", "break", "ruin",
+        # Violence
+        "attack", "hurt", "damage", "destroy", "break", "ruin", "kill", "murder",
         "violent", "aggressive", "dangerous", "harmful", "lethal",
-        "weapon", "explosive", "poison"
+        "weapon", "explosive", "poison", "bomb",
+        # Illegal activities
+        "steal", "rob", "theft", "burglary", "fraud", "illegal", "contraband",
+        "smuggle", "counterfeit", "forge",
+        # Cybercrime
+        "hack", "malware", "phishing", "exploit", "vulnerability", "ddos",
+        "ransomware", "keylogger", "breach",
+        # Manipulation
+        "manipulate", "coerce", "deceive", "blackmail", "extort", "gaslight",
+        "scam", "con", "trick"
     ]
 
     word_count = len(text.split())
@@ -291,23 +352,60 @@ def analyze_potential_consequences(text: str) -> str:
     """
     text_lower = text.lower()
 
-    # Check for various harmful scenarios
-    if "how to" in text_lower:
-        if any(word in text_lower for word in ["hack", "break into", "steal", "crack"]):
-            return "Could enable unauthorized access or property damage"
-        if any(word in text_lower for word in ["manipulate", "deceive", "trick"]):
-            return "Could enable social manipulation or deception"
+    # Category 1: Violence/Physical Harm
+    if any(word in text_lower for word in ["kill", "murder", "harm", "attack", "hurt", "injure"]):
+        if "how to" in text_lower or "ways to" in text_lower:
+            return "Could enable physical violence or harm to individuals"
 
-    # Check for explosives/bombs (use substring matching to catch plurals/variations)
+    # Category 2: Illegal Activities
+    if any(word in text_lower for word in ["steal", "rob", "burgle", "shoplift"]):
+        return "Could enable theft or property crime"
+
+    if "break into" in text_lower or "breaking into" in text_lower:
+        return "Could enable unauthorized entry or burglary"
+
+    if any(word in text_lower for word in ["forge", "counterfeit", "fake"]):
+        if any(doc in text_lower for doc in ["document", "money", "id", "passport", "currency"]):
+            return "Could enable document fraud or counterfeiting"
+
+    # Category 3: Cybercrime
+    if any(word in text_lower for word in ["hack", "crack", "bypass"]):
+        if any(target in text_lower for target in ["password", "security", "system", "account"]):
+            return "Could enable unauthorized system access or hacking"
+
+    if any(word in text_lower for word in ["malware", "ransomware", "keylogger", "trojan", "virus"]):
+        return "Could enable cyberattacks or data theft"
+
+    if any(word in text_lower for word in ["ddos", "dos attack", "flood"]):
+        return "Could enable denial of service attacks"
+
+    if any(word in text_lower for word in ["phish", "scam", "social engineer"]):
+        return "Could enable online fraud or deception"
+
+    # Category 4: Dangerous Instructions
     if any(word in text_lower for word in ["bomb", "explosiv", "detonat"]):
-        return "Could enable creation of dangerous devices"
+        return "Could enable creation of explosive devices"
 
-    if "poison" in text_lower or "toxic substance" in text_lower:
-        return "Could enable harm to living beings"
+    if "poison" in text_lower or "toxic substance" in text_lower or "toxin" in text_lower:
+        return "Could enable poisoning or chemical harm"
 
-    # Check for security issues (use substring matching to catch plurals/variations)
-    if any(word in text_lower for word in ["exploit", "vulnerabilit", "backdoor"]):
-        return "Could enable security breaches"
+    if any(word in text_lower for word in ["biological weapon", "chemical weapon"]):
+        return "Could enable creation of weapons of mass destruction"
+
+    # Category 5: Manipulation/Coercion
+    if any(word in text_lower for word in ["manipulate", "deceive", "trick", "con"]):
+        if "how to" in text_lower:
+            return "Could enable psychological manipulation or deception"
+
+    if any(word in text_lower for word in ["blackmail", "extort", "coerce"]):
+        return "Could enable coercion or extortion"
+
+    if "gaslight" in text_lower or "gaslighting" in text_lower:
+        return "Could enable psychological abuse"
+
+    # Security vulnerabilities
+    if any(word in text_lower for word in ["exploit", "vulnerabilit", "backdoor", "zero-day"]):
+        return "Could enable security breaches or exploitation"
 
     # Default reasoning
     return "No obvious harmful consequences identified"
