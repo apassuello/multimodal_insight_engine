@@ -12,6 +12,9 @@ import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 
+# Maximum number of log entries to prevent unbounded memory growth
+MAX_LOGS = 1000
+
 
 @dataclass
 class ContentLog:
@@ -40,14 +43,16 @@ class ContentLogger:
     - 3: Full pipeline (every generation, every critique, every revision)
     """
 
-    def __init__(self, verbosity: int = 2):
+    def __init__(self, verbosity: int = 2, max_logs: int = MAX_LOGS):
         """
         Initialize content logger.
 
         Args:
             verbosity: 0=off, 1=summary, 2=key stages (default), 3=full pipeline
+            max_logs: Maximum number of logs to keep (default: 1000)
         """
         self.verbosity = verbosity
+        self.max_logs = max_logs
         self.logs: List[ContentLog] = []
 
     def log_stage(
@@ -76,6 +81,11 @@ class ContentLogger:
             metadata=metadata or {},
             timestamp=time.time()
         ))
+        
+        # Trim oldest entries if we exceed max_logs to prevent memory growth
+        if len(self.logs) > self.max_logs:
+            excess = len(self.logs) - self.max_logs
+            self.logs = self.logs[excess:]
 
         # Display with formatting (may be truncated)
         separator = "=" * 60
@@ -152,6 +162,11 @@ class ContentLogger:
             metadata=metadata or {},
             timestamp=time.time()
         ))
+        
+        # Trim oldest entries if we exceed max_logs to prevent memory growth
+        if len(self.logs) > self.max_logs:
+            excess = len(self.logs) - self.max_logs
+            self.logs = self.logs[excess:]
 
     def _highlight_differences(self, text1: str, text2: str):
         """
@@ -253,9 +268,25 @@ class ContentLogger:
                 "timestamp": log.timestamp
             })
 
-        # Write to file
-        with open(filepath, 'w') as f:
-            json.dump(logs_data, f, indent=2)
+        # Write to file with error handling for non-serializable objects
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(logs_data, f, indent=2, default=str)
+        except (TypeError, ValueError) as e:
+            # If serialization fails, try again with more aggressive fallback
+            print(f"Warning: JSON serialization issue: {e}")
+            with open(filepath, 'w') as f:
+                # Convert all values to strings as last resort
+                safe_logs_data = []
+                for log in logs_data:
+                    safe_log = {
+                        "stage": str(log["stage"]),
+                        "content": str(log["content"]),
+                        "metadata": {k: str(v) for k, v in log["metadata"].items()},
+                        "timestamp": log["timestamp"]
+                    }
+                    safe_logs_data.append(safe_log)
+                json.dump(safe_logs_data, f, indent=2)
 
         print(f"\n{'='*60}")
         print(f"✓ Logs exported to: {filepath}")

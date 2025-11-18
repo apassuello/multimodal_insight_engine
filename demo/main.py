@@ -15,6 +15,8 @@ import yaml
 from pathlib import Path
 import gradio as gr
 import torch
+import threading
+import time
 from typing import Dict, List, Any, Tuple, Optional
 
 from demo.managers.model_manager import ModelManager, ModelStatus
@@ -35,6 +37,20 @@ from src.safety.constitutional.principles import setup_default_framework
 from src.safety.constitutional.model_utils import generate_text, GenerationConfig
 
 
+# ============================================================================
+# Security Configuration
+# ============================================================================
+# Input validation limits to prevent DoS attacks
+MAX_INPUT_LENGTH = 10000  # Maximum characters for text/prompt input
+MAX_PROMPT_LENGTH = 5000  # Maximum characters for generation prompts
+MIN_INPUT_LENGTH = 1      # Minimum characters for valid input
+
+# Rate limiting configuration
+RATE_LIMIT_TRAINING_SECONDS = 60      # Minimum seconds between training requests
+RATE_LIMIT_COMPARISON_SECONDS = 30    # Minimum seconds between comparison requests
+MAX_CONCURRENT_OPERATIONS = 1         # Maximum concurrent expensive operations
+
+
 # Global managers
 model_manager = ModelManager()
 evaluation_manager = EvaluationManager()
@@ -43,6 +59,101 @@ multi_model_manager = MultiModelManager()
 
 # Global content logger (verbosity level 2 by default)
 content_logger = ContentLogger(verbosity=2)
+
+# Security: Rate limiting state
+_rate_limit_state: Dict[str, float] = {}  # operation_name -> last_execution_timestamp
+_rate_limit_lock = threading.Lock()
+_operation_semaphore = threading.Semaphore(MAX_CONCURRENT_OPERATIONS)
+
+# Security: Thread safety locks for global managers
+_model_manager_lock = threading.Lock()       # Protects model_manager operations
+_multi_model_manager_lock = threading.Lock() # Protects multi_model_manager operations
+
+
+# ============================================================================
+# Security Helper Functions
+# ============================================================================
+
+def validate_input_length(
+    text: str,
+    max_length: int = MAX_INPUT_LENGTH,
+    input_name: str = "Input"
+) -> Tuple[bool, str]:
+    """
+    Validate input text length to prevent DoS attacks.
+
+    Security: This prevents resource exhaustion from extremely long inputs.
+
+    Args:
+        text: Input text to validate
+        max_length: Maximum allowed length
+        input_name: Name of the input field for error messages
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not text or len(text) < MIN_INPUT_LENGTH:
+        return False, f"✗ Security: {input_name} is empty or too short (minimum {MIN_INPUT_LENGTH} characters)"
+
+    if len(text) > max_length:
+        return False, (
+            f"✗ Security: {input_name} exceeds maximum length\n"
+            f"Length: {len(text):,} characters\n"
+            f"Maximum: {max_length:,} characters\n"
+            f"This limit prevents resource exhaustion attacks."
+        )
+
+    return True, ""
+
+
+def check_rate_limit(operation_name: str, cooldown_seconds: int) -> Tuple[bool, str]:
+    """
+    Check if an operation can be executed based on rate limits.
+
+    Security: This prevents DoS attacks via repeated expensive operations.
+
+    Args:
+        operation_name: Name of the operation (for tracking)
+        cooldown_seconds: Minimum seconds between executions
+
+    Returns:
+        Tuple of (can_execute, error_message)
+    """
+    global _rate_limit_state, _rate_limit_lock
+
+    with _rate_limit_lock:
+        current_time = time.time()
+        last_execution = _rate_limit_state.get(operation_name, 0)
+        time_since_last = current_time - last_execution
+
+        if time_since_last < cooldown_seconds:
+            remaining = cooldown_seconds - time_since_last
+            return False, (
+                f"✗ Security: Rate limit exceeded for {operation_name}\n"
+                f"Please wait {remaining:.0f} seconds before trying again.\n"
+                f"This prevents system overload from repeated requests."
+            )
+
+        # Update last execution time
+        _rate_limit_state[operation_name] = current_time
+        return True, ""
+
+
+def acquire_operation_slot() -> bool:
+    """
+    Try to acquire a slot for expensive operations.
+
+    Security: This prevents multiple expensive operations from running concurrently.
+
+    Returns:
+        True if slot acquired, False otherwise
+    """
+    return _operation_semaphore.acquire(blocking=False)
+
+
+def release_operation_slot() -> None:
+    """Release a slot for expensive operations."""
+    _operation_semaphore.release()
 
 
 # ============================================================================
@@ -60,32 +171,34 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
     Returns:
         Tuple of (status_message, model_info)
     """
-    success, message = model_manager.load_model_from_pretrained(
-        model_name=model_name,
-        prefer_device=device_preference if device_preference != "auto" else None
-    )
-
-    if success:
-        # Initialize evaluation frameworks
-        eval_success, eval_msg = evaluation_manager.initialize_frameworks(
-            model=model_manager.model,
-            tokenizer=model_manager.tokenizer,
-            device=model_manager.device
+    # Security: Thread safety for global model_manager
+    with _model_manager_lock:
+        success, message = model_manager.load_model_from_pretrained(
+            model_name=model_name,
+            prefer_device=device_preference if device_preference != "auto" else None
         )
 
-        if not eval_success:
-            message += f"\n\nWarning: {eval_msg}"
+        if success:
+            # Initialize evaluation frameworks
+            eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
 
-        # Get model info
-        info = model_manager.get_status_info()
-        model_info = f"Model: {info['model_name']}\n"
-        model_info += f"Device: {info['device']}\n"
-        model_info += f"Parameters: {info.get('parameters', 0):,}\n"
-        model_info += f"Status: {info['status']}"
+            if not eval_success:
+                message += f"\n\nWarning: {eval_msg}"
 
-        return message, model_info
-    else:
-        return message, "No model loaded"
+            # Get model info
+            info = model_manager.get_status_info()
+            model_info = f"Model: {info['model_name']}\n"
+            model_info += f"Device: {info['device']}\n"
+            model_info += f"Parameters: {info.get('parameters', 0):,}\n"
+            model_info += f"Status: {info['status']}"
+
+            return message, model_info
+        else:
+            return message, "No model loaded"
 
 
 # ============================================================================
@@ -161,37 +274,39 @@ def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
     """
     global multi_model_manager
 
-    success, message = multi_model_manager.load_evaluation_model(model_key)
+    # Security: Thread safety for global multi_model_manager
+    with _multi_model_manager_lock:
+        success, message = multi_model_manager.load_evaluation_model(model_key)
 
-    if success:
-        # Initialize evaluation framework with new model
-        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
-        eval_success, eval_msg = evaluation_manager.initialize_frameworks(
-            model=eval_model,
-            tokenizer=eval_tokenizer,
-            device=multi_model_manager.device
-        )
+        if success:
+            # Initialize evaluation framework with new model
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=multi_model_manager.device
+            )
 
-        if not eval_success:
-            message += f"\n\nWarning: {eval_msg}"
+            if not eval_success:
+                message += f"\n\nWarning: {eval_msg}"
 
-        # Get model info
-        status = multi_model_manager.get_status_info()
-        model_info = ""
-        if status["evaluation_model"]:
-            model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
-            model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
-            model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
-        if status["generation_model"]:
-            model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
-            model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
-            model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
-        model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
-        model_info += f"Device: {status['device']}"
+            # Get model info
+            status = multi_model_manager.get_status_info()
+            model_info = ""
+            if status["evaluation_model"]:
+                model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+                model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+            if status["generation_model"]:
+                model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+                model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+            model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+            model_info += f"Device: {status['device']}"
 
-        return message, model_info
-    else:
-        return message, "Failed to load evaluation model"
+            return message, model_info
+        else:
+            return message, "Failed to load evaluation model"
 
 
 def load_generation_model_handler(model_key: str) -> Tuple[str, str]:
@@ -206,26 +321,28 @@ def load_generation_model_handler(model_key: str) -> Tuple[str, str]:
     """
     global multi_model_manager
 
-    success, message = multi_model_manager.load_generation_model(model_key)
+    # Security: Thread safety for global multi_model_manager
+    with _multi_model_manager_lock:
+        success, message = multi_model_manager.load_generation_model(model_key)
 
-    if success:
-        # Get model info
-        status = multi_model_manager.get_status_info()
-        model_info = ""
-        if status["evaluation_model"]:
-            model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
-            model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
-            model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
-        if status["generation_model"]:
-            model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
-            model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
-            model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
-        model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
-        model_info += f"Device: {status['device']}"
+        if success:
+            # Get model info
+            status = multi_model_manager.get_status_info()
+            model_info = ""
+            if status["evaluation_model"]:
+                model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+                model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+            if status["generation_model"]:
+                model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+                model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+            model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+            model_info += f"Device: {status['device']}"
 
-        return message, model_info
-    else:
-        return message, "Failed to load generation model"
+            return message, model_info
+        else:
+            return message, "Failed to load generation model"
 
 
 # ============================================================================
@@ -246,6 +363,11 @@ def evaluate_text_handler(
     Returns:
         Tuple of (status_message, results_display)
     """
+    # Security: Validate input length to prevent DoS
+    is_valid, error_msg = validate_input_length(text, MAX_INPUT_LENGTH, "Text input")
+    if not is_valid:
+        return error_msg, ""
+
     # Check if models are available
     has_dual_eval = multi_model_manager.eval_model is not None
     has_single = model_manager.is_ready()
@@ -255,13 +377,18 @@ def evaluate_text_handler(
 
     # Use dual model if available
     if has_dual_eval and mode == "AI Evaluation":
+        # FIX (BUG #4): Add error handling for evaluation manager re-initialization
         # Re-initialize evaluation manager with dual model
         eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
-        evaluation_manager.initialize_frameworks(
+        init_success, init_msg = evaluation_manager.initialize_frameworks(
             model=eval_model,
             tokenizer=eval_tokenizer,
             device=multi_model_manager.device
         )
+
+        # If initialization fails, fall back to regex evaluation or return error
+        if not init_success:
+            return f"✗ Failed to initialize evaluation manager: {init_msg}", ""
 
     # Map display names to internal modes
     mode_map = {
@@ -388,109 +515,135 @@ def start_training_handler(
     Returns:
         Tuple of (status_message, metrics_display, checkpoint_info)
     """
-    # Check if we have dual models loaded
-    use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("training", RATE_LIMIT_TRAINING_SECONDS)
+    if not can_execute:
+        return rate_error, "", ""
 
-    if not use_dual_models and not model_manager.is_ready():
-        return "✗ Please load models first (either single model or dual models)", "", ""
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", "", ""
 
-    if training_manager.is_training:
-        return "✗ Training already in progress", "", ""
+    try:
+        # Check if we have dual models loaded
+        use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
 
-    # Get training configuration
-    mode_map = {
-        "Quick Demo (2 epochs, 20 examples, ~10-15 min)": "quick_demo",
-        "Standard (5 epochs, 50 examples, ~25-35 min)": "standard"
-    }
-    mode_key = mode_map.get(training_mode, "quick_demo")
-    config_dict = TRAINING_CONFIGS[mode_key]
+        if not use_dual_models and not model_manager.is_ready():
+            return "✗ Please load models first (either single model or dual models)", "", ""
 
-    config = TrainingConfig(
-        num_epochs=config_dict["num_epochs"],
-        num_examples=config_dict["num_examples"],
-        batch_size=config_dict["batch_size"],
-        learning_rate=config_dict["learning_rate"],
-        mode=mode_key
-    )
+        if training_manager.is_training:
+            return "✗ Training already in progress", "", ""
 
-    # Get training prompts
-    training_prompts = config_dict["prompts"]
+        # Get training configuration
+        mode_map = {
+            "Quick Demo (2 epochs, 20 examples, ~10-15 min)": "quick_demo",
+            "Standard (5 epochs, 50 examples, ~25-35 min)": "standard"
+        }
+        mode_key = mode_map.get(training_mode, "quick_demo")
+        config_dict = TRAINING_CONFIGS[mode_key]
 
-    # Select models based on what's available
-    if use_dual_models:
-        # Use dual model architecture: evaluation model for critique, generation model for training
-        gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
-        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
-        device = multi_model_manager.device
-
-        # Setup framework with evaluation model
-        framework = setup_default_framework(
-            model=eval_model,
-            tokenizer=eval_tokenizer,
-            device=device
+        config = TrainingConfig(
+            num_epochs=config_dict["num_epochs"],
+            num_examples=config_dict["num_examples"],
+            batch_size=config_dict["batch_size"],
+            learning_rate=config_dict["learning_rate"],
+            mode=mode_key
         )
 
-        # Train the generation model
-        train_model = gen_model
-        train_tokenizer = gen_tokenizer
-    else:
-        # Use single model for everything
-        framework = setup_default_framework(
-            model=model_manager.model,
-            tokenizer=model_manager.tokenizer,
-            device=model_manager.device
-        )
-        train_model = model_manager.model
-        train_tokenizer = model_manager.tokenizer
-        device = model_manager.device
+        # Get training prompts
+        training_prompts = config_dict["prompts"]
 
-    # Progress callback
-    def progress_callback(status: str, progress_pct: float):
-        progress(progress_pct, desc=status)
+        # Select models based on what's available
+        if use_dual_models:
+            # Use dual model architecture: evaluation model for critique, generation model for training
+            gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            device = multi_model_manager.device
 
-    # Checkpoint callback
-    def checkpoint_callback(epoch: int, metrics: Dict[str, Any]):
+            # Setup framework with evaluation model
+            framework = setup_default_framework(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=device
+            )
+
+            # Train the generation model
+            train_model = gen_model
+            train_tokenizer = gen_tokenizer
+        else:
+            # Use single model for everything
+            framework = setup_default_framework(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
+            train_model = model_manager.model
+            train_tokenizer = model_manager.tokenizer
+            device = model_manager.device
+
+        # Progress callback
+        def progress_callback(status: str, progress_pct: float):
+            progress(progress_pct, desc=status)
+
+        # Checkpoint callback
+        def checkpoint_callback(epoch: int, metrics: Dict[str, Any]):
+            if not use_dual_models:
+                model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
+
+        # Set model to training status
         if not use_dual_models:
-            model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
+            model_manager.set_status(ModelStatus.TRAINING)
 
-    # Set model to training status
-    if not use_dual_models:
-        model_manager.set_status(ModelStatus.TRAINING)
-
-    # Execute training
-    result, success, message = training_manager.train_model(
-        model=train_model,
-        tokenizer=train_tokenizer,
-        framework=framework,
-        device=device,
-        training_prompts=training_prompts,
-        config=config,
-        progress_callback=progress_callback,
-        checkpoint_callback=checkpoint_callback,
-        logger=content_logger
-    )
-
-    # Reset model status
-    if not use_dual_models:
-        model_manager.set_status(ModelStatus.READY)
-
-    if success:
-        # Save final trained checkpoint
-        model_manager.save_trained_checkpoint(
-            epoch=config.num_epochs,
-            metrics=result.get("metrics", {})
+        # Execute training
+        result, success, message = training_manager.train_model(
+            model=train_model,
+            tokenizer=train_tokenizer,
+            framework=framework,
+            device=device,
+            training_prompts=training_prompts,
+            config=config,
+            progress_callback=progress_callback,
+            checkpoint_callback=checkpoint_callback,
+            logger=content_logger
         )
 
-        # Format metrics
-        metrics_display = format_training_metrics(result)
+        # Reset model status
+        if not use_dual_models:
+            model_manager.set_status(ModelStatus.READY)
 
-        # Checkpoint info
-        checkpoint_info = f"Base checkpoint: {model_manager.base_checkpoint_path}\n"
-        checkpoint_info += f"Trained checkpoint: {model_manager.trained_checkpoint_path}"
+        if success:
+            # FIX (CRITICAL - BUG #1): Only save checkpoint for single model mode
+            # When using dual models, the trained model is in multi_model_manager, not model_manager
+            if not use_dual_models:
+                model_manager.save_trained_checkpoint(
+                    epoch=config.num_epochs,
+                    metrics=result.get("metrics", {})
+                )
 
-        return message, metrics_display, checkpoint_info
-    else:
-        return message, "", ""
+            # Format metrics
+            metrics_display = format_training_metrics(result)
+
+            # Checkpoint info
+            if use_dual_models:
+                # For dual models, provide dual model information
+                checkpoint_info = "Dual model architecture active:\n"
+                status = multi_model_manager.get_status_info()
+                if status["evaluation_model"]:
+                    checkpoint_info += f"- Evaluation: {status['evaluation_model']['name']}\n"
+                if status["generation_model"]:
+                    checkpoint_info += f"- Generation: {status['generation_model']['name']}"
+            else:
+                # For single model, show checkpoint paths
+                checkpoint_info = f"Base checkpoint: {model_manager.base_checkpoint_path}\n"
+                checkpoint_info += f"Trained checkpoint: {model_manager.trained_checkpoint_path}"
+
+            return message, metrics_display, checkpoint_info
+        else:
+            return message, "", ""
+
+    finally:
+        # Security: Always release operation slot
+        release_operation_slot()
 
 
 def format_training_metrics(result: Dict[str, Any]) -> str:
@@ -544,6 +697,11 @@ def generate_comparison_handler(
     Returns:
         Tuple of (base_output, trained_output, base_eval, trained_eval)
     """
+    # Security: Validate prompt length to prevent DoS
+    is_valid, error_msg = validate_input_length(prompt, MAX_PROMPT_LENGTH, "Prompt")
+    if not is_valid:
+        return error_msg, error_msg, "", ""
+
     if not model_manager.can_compare():
         error_msg = "✗ Need both base and trained checkpoints for comparison"
         return error_msg, error_msg, "", ""
@@ -609,13 +767,24 @@ def generate_comparison_handler(
         return error_msg, error_msg, "", ""
 
     finally:
-        # Cleanup base model to free memory
-        if base_model is not None:
-            del base_model
-        if base_tokenizer is not None:
-            del base_tokenizer
+        # FIX (BUG #5): Robust cleanup with error handling to prevent memory leaks
+        # Even if cleanup fails, ensure all cleanup steps are attempted
+        cleanup_errors = []
 
-        # Clear GPU cache if available
+        try:
+            # Cleanup base model to free memory
+            if base_model is not None:
+                del base_model
+        except Exception as e:
+            cleanup_errors.append(f"Failed to delete base_model: {e}")
+
+        try:
+            if base_tokenizer is not None:
+                del base_tokenizer
+        except Exception as e:
+            cleanup_errors.append(f"Failed to delete base_tokenizer: {e}")
+
+        # Clear GPU/MPS cache if available
         try:
             import torch
             if torch.cuda.is_available():
@@ -623,11 +792,21 @@ def generate_comparison_handler(
             # Also try MPS cache clear (if available in PyTorch version)
             if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
                 torch.mps.empty_cache()
-        except:
-            pass  # Ignore cache clear errors
+        except Exception as e:
+            cleanup_errors.append(f"Failed to clear cache: {e}")
 
-        import gc
-        gc.collect()
+        # Garbage collection
+        try:
+            import gc
+            gc.collect()
+        except Exception as e:
+            cleanup_errors.append(f"Failed to run garbage collection: {e}")
+
+        # Log any cleanup errors for debugging (but don't raise them)
+        if cleanup_errors:
+            import logging
+            for error in cleanup_errors:
+                logging.warning(f"Cleanup issue: {error}")
 
 
 def format_generation_evaluation(eval_result: Dict[str, Any], model_type: str) -> str:
@@ -675,9 +854,19 @@ def run_comparison_handler(
     Returns:
         Tuple of (results_summary, detailed_examples, export_json, export_csv)
     """
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("comparison", RATE_LIMIT_COMPARISON_SECONDS)
+    if not can_execute:
+        return rate_error, "", "", ""
+
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", "", "", ""
+
     if not model_manager.can_compare():
         error_msg = "✗ Cannot run comparison: Need both base and trained model checkpoints.\n"
         error_msg += "Please train a model first in the Training tab."
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     # Security: Validate inputs (HIGH-01, HIGH-02 fixes)
@@ -691,11 +880,13 @@ def run_comparison_handler(
     if not (MIN_TEMPERATURE <= temperature <= MAX_TEMPERATURE):
         error_msg = f"✗ Invalid temperature: {temperature}\n"
         error_msg += f"Must be between {MIN_TEMPERATURE} and {MAX_TEMPERATURE}"
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     if not (MIN_MAX_LENGTH <= max_length <= MAX_MAX_LENGTH):
         error_msg = f"✗ Invalid max_length: {max_length}\n"
         error_msg += f"Must be between {MIN_MAX_LENGTH} and {MAX_MAX_LENGTH}"
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     try:
@@ -706,7 +897,8 @@ def run_comparison_handler(
             model_manager.base_checkpoint_path
         )
         if not success:
-            return f"✗ Failed to load base model: {msg}", "", ""
+            # FIX (BUG #3): Return 4 values to match function signature
+            return f"✗ Failed to load base model: {msg}", "", "", ""
 
         # Trained model is current model
         trained_model = model_manager.model
@@ -816,6 +1008,10 @@ def run_comparison_handler(
         error_msg += "- Test suite is valid\n"
         error_msg += "- Generation parameters are within acceptable ranges"
         return error_msg, "", "", ""
+
+    finally:
+        # Security: Always release operation slot
+        release_operation_slot()
 
 
 def format_comparison_summary(result: ComparisonResult) -> str:
