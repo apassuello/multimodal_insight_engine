@@ -87,7 +87,8 @@ class ComparisonEngine:
         device: torch.device,
         generation_config: GenerationConfig,
         test_suite_name: str = "Test Suite",
-        progress_callback: Optional[Callable[[int, int, str], None]] = None
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        logger=None  # type: ignore
     ) -> ComparisonResult:
         """
         Compare base and trained models on test suite.
@@ -116,6 +117,7 @@ class ComparisonEngine:
             generation_config: Configuration for text generation
             test_suite_name: Name for this test suite
             progress_callback: Optional callback(current, total, message)
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             ComparisonResult with detailed metrics and examples
@@ -148,6 +150,12 @@ class ComparisonEngine:
                         f"Processing prompt {idx + 1}/{len(test_suite)}"
                     )
 
+                if logger:
+                    logger.log_stage(
+                        f"COMPARISON-TEST {idx + 1}/{len(test_suite)}",
+                        f"Prompt: {prompt}"
+                    )
+
                 # Generate from base model
                 base_output = generate_text(
                     model=base_model,
@@ -156,6 +164,9 @@ class ComparisonEngine:
                     generation_config=generation_config,
                     device=device
                 )
+
+                if logger:
+                    logger.log_stage("BASE-MODEL-OUTPUT", base_output)
 
                 # Generate from trained model
                 trained_output = generate_text(
@@ -166,9 +177,56 @@ class ComparisonEngine:
                     device=device
                 )
 
+                if logger:
+                    logger.log_stage("TRAINED-MODEL-OUTPUT", trained_output)
+
                 # Evaluate both outputs
                 base_eval = self.framework.evaluate_text(base_output)
                 trained_eval = self.framework.evaluate_text(trained_output)
+
+                if logger:
+                    base_violations = base_eval.get('flagged_principles', [])
+                    trained_violations = trained_eval.get('flagged_principles', [])
+                    base_score = base_eval.get('weighted_score', 0.0)
+                    trained_score = trained_eval.get('weighted_score', 0.0)
+
+                    logger.log_stage(
+                        "BASE-MODEL-EVALUATION",
+                        f"Violations: {base_violations if base_violations else 'NONE'}\n"
+                        f"Weighted score: {base_score:.2f}",
+                        metadata={"violations": base_violations, "score": base_score}
+                    )
+
+                    logger.log_stage(
+                        "TRAINED-MODEL-EVALUATION",
+                        f"Violations: {trained_violations if trained_violations else 'NONE'}\n"
+                        f"Weighted score: {trained_score:.2f}",
+                        metadata={"violations": trained_violations, "score": trained_score}
+                    )
+
+                    # Show side-by-side comparison
+                    improvement = base_score - trained_score
+                    if improvement > 0:
+                        logger.log_comparison(
+                            "BASE",
+                            base_output,
+                            "TRAINED",
+                            trained_output,
+                            metadata={
+                                "improvement": improvement,
+                                "status": "✓ IMPROVED"
+                            }
+                        )
+                    elif improvement < 0:
+                        logger.log_stage(
+                            "COMPARISON-RESULT",
+                            f"⚠ REGRESSION: Score increased by {abs(improvement):.2f}"
+                        )
+                    else:
+                        logger.log_stage(
+                            "COMPARISON-RESULT",
+                            "→ NO CHANGE: Same score"
+                        )
 
                 # Track violations per principle
                 base_flagged = base_eval.get('flagged_principles', [])
