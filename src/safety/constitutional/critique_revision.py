@@ -364,11 +364,42 @@ def supervised_finetune(
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    # Validate training data
+    if not training_data or len(training_data) == 0:
+        raise ValueError("Training data is empty. Cannot train model.")
+
+    # Filter out invalid training examples
+    valid_data = []
+    for idx, item in enumerate(training_data):
+        # Check if required fields exist and are non-empty
+        if 'prompt' not in item or 'response' not in item:
+            print(f"Warning: Skipping training example {idx}: missing prompt or response")
+            continue
+
+        prompt = item.get('prompt', '').strip()
+        response = item.get('response', '').strip()
+
+        if not prompt or not response:
+            print(f"Warning: Skipping training example {idx}: empty prompt or response")
+            continue
+
+        # Check for NaN or None values
+        if prompt == 'nan' or response == 'nan' or prompt == 'None' or response == 'None':
+            print(f"Warning: Skipping training example {idx}: NaN or None value detected")
+            continue
+
+        valid_data.append(item)
+
+    if not valid_data:
+        raise ValueError(f"All {len(training_data)} training examples are invalid. Cannot train.")
+
+    print(f"Using {len(valid_data)}/{len(training_data)} valid training examples")
+
     model = model.to(device)
     model.train()
 
     # Create dataset and dataloader
-    dataset = ConstitutionalDataset(training_data, tokenizer)
+    dataset = ConstitutionalDataset(valid_data, tokenizer)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Optimizer
@@ -380,28 +411,68 @@ def supervised_finetune(
     for epoch in range(num_epochs):
         epoch_loss = 0
         batch_count = 0
+        nan_batches = 0
 
-        for batch in tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}'):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}')):
+            try:
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
 
-            # Forward pass
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
-            loss = outputs.loss
+                # Check for NaN in input tensors
+                if torch.isnan(input_ids.float()).any() or torch.isnan(attention_mask.float()).any():
+                    print(f"Warning: NaN detected in batch {batch_idx} input tensors, skipping")
+                    nan_batches += 1
+                    continue
 
-            # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+                # Forward pass
+                outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+                loss = outputs.loss
 
-            epoch_loss += loss.item()
-            batch_count += 1
+                # Check for NaN loss
+                if torch.isnan(loss) or torch.isinf(loss):
+                    print(f"Warning: NaN/Inf loss detected in batch {batch_idx}, skipping")
+                    nan_batches += 1
+                    continue
 
-        avg_loss = epoch_loss / batch_count if batch_count > 0 else 0.0
-        metrics['losses'].append(avg_loss)
-        metrics['epochs'].append(epoch + 1)
-        print(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f}')
+                # Backward pass
+                optimizer.zero_grad()
+                loss.backward()
+
+                # Check for NaN gradients before clipping
+                has_nan_grad = False
+                for param in model.parameters():
+                    if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                        has_nan_grad = True
+                        break
+
+                if has_nan_grad:
+                    print(f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping")
+                    nan_batches += 1
+                    optimizer.zero_grad()
+                    continue
+
+                # Gradient clipping to prevent explosion
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+
+                epoch_loss += loss.item()
+                batch_count += 1
+
+            except Exception as e:
+                print(f"Warning: Error processing batch {batch_idx}: {e}")
+                nan_batches += 1
+                continue
+
+        if batch_count == 0:
+            print(f"ERROR: Epoch {epoch+1} - All batches were invalid or produced NaN")
+            # Still record the epoch with 0 loss
+            metrics['losses'].append(0.0)
+            metrics['epochs'].append(epoch + 1)
+        else:
+            avg_loss = epoch_loss / batch_count
+            metrics['losses'].append(avg_loss)
+            metrics['epochs'].append(epoch + 1)
+            print(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)')
 
     return {
         'model': model,
