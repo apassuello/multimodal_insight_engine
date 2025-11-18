@@ -54,7 +54,8 @@ class ConstitutionalPrinciple:
         text: str,
         model: Optional[Any] = None,
         tokenizer: Optional[Any] = None,
-        device: Optional[Any] = None
+        device: Optional[Any] = None,
+        logger=None  # type: ignore
     ) -> Dict[str, Any]:
         """
         Evaluate text against this principle.
@@ -64,6 +65,7 @@ class ConstitutionalPrinciple:
             model: Optional AI model for AI-based evaluation
             tokenizer: Optional tokenizer for AI-based evaluation
             device: Optional device for computation (e.g., torch.device)
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             Dictionary containing evaluation results with at least:
@@ -85,8 +87,17 @@ class ConstitutionalPrinciple:
         params = sig.parameters
 
         # Call evaluation function with appropriate parameters
-        if 'model' in params or 'tokenizer' in params or 'device' in params:
-            # New-style function that accepts model parameters
+        if 'logger' in params:
+            # Function supports content logging
+            result = self.evaluation_fn(
+                text,
+                model=model,
+                tokenizer=tokenizer,
+                device=device,
+                logger=logger
+            )
+        elif 'model' in params or 'tokenizer' in params or 'device' in params:
+            # New-style function that accepts model parameters (without logger)
             result = self.evaluation_fn(
                 text,
                 model=model,
@@ -185,7 +196,7 @@ class ConstitutionalFramework:
         if name in self.principles:
             self.principles[name].enabled = False
 
-    def evaluate_text(self, text: str, track_history: bool = False) -> Dict[str, Any]:
+    def evaluate_text(self, text: str, track_history: bool = False, logger=None) -> Dict[str, Any]:  # type: ignore
         """
         Evaluate text against all constitutional principles.
 
@@ -195,6 +206,7 @@ class ConstitutionalFramework:
         Args:
             text: Text to evaluate
             track_history: Whether to add this evaluation to history
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             Dictionary containing:
@@ -212,12 +224,13 @@ class ConstitutionalFramework:
             if not principle.enabled:
                 continue
 
-            # Pass framework's model/tokenizer/device to principle evaluation
+            # Pass framework's model/tokenizer/device/logger to principle evaluation
             result = principle.evaluate(
                 text,
                 model=self.model,
                 tokenizer=self.tokenizer,
-                device=self.device
+                device=self.device,
+                logger=logger
             )
             principle_results[name] = result
 

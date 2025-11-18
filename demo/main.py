@@ -28,6 +28,7 @@ from demo.data.test_examples import (
     TRAINING_CONFIGS,
     TEST_SUITES
 )
+from demo.utils.content_logger import ContentLogger
 
 from src.safety.constitutional.principles import setup_default_framework
 from src.safety.constitutional.model_utils import generate_text, GenerationConfig
@@ -37,6 +38,9 @@ from src.safety.constitutional.model_utils import generate_text, GenerationConfi
 model_manager = ModelManager()
 evaluation_manager = EvaluationManager()
 training_manager = TrainingManager()
+
+# Global content logger (verbosity level 2 by default)
+content_logger = ContentLogger(verbosity=2)
 
 
 # ============================================================================
@@ -80,6 +84,63 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
         return message, model_info
     else:
         return message, "No model loaded"
+
+
+# ============================================================================
+# Logger Control Functions
+# ============================================================================
+
+def update_logger_verbosity(verbosity: int) -> str:
+    """
+    Update content logger verbosity level.
+
+    Args:
+        verbosity: Logging level (0=off, 1=summary, 2=key stages, 3=full pipeline)
+
+    Returns:
+        Status message
+    """
+    global content_logger
+    content_logger.verbosity = int(verbosity)
+
+    levels = {
+        0: "Off (no logging)",
+        1: "Summary only",
+        2: "Key stages (default)",
+        3: "Full pipeline"
+    }
+
+    return f"✓ Logging verbosity set to level {verbosity}: {levels.get(verbosity, 'Unknown')}"
+
+
+def export_logs_handler() -> Tuple[str, str]:
+    """
+    Export content logs to JSON file.
+
+    Returns:
+        Tuple of (status_message, log_summary)
+    """
+    global content_logger
+
+    if not content_logger.logs:
+        return "⚠ No logs to export", "No logs recorded yet. Run training or evaluation first."
+
+    # Export to file
+    import tempfile
+    import json
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"content_logs_{timestamp}.json"
+    filepath = os.path.join(tempfile.gettempdir(), filename)
+
+    content_logger.export_logs(filepath)
+
+    # Generate summary
+    summary = f"✓ Exported {len(content_logger.logs)} log entries to:\n{filepath}\n\n"
+    summary += content_logger.get_summary()
+
+    return f"✓ Logs exported to {filepath}", summary
 
 
 # ============================================================================
@@ -280,7 +341,8 @@ def start_training_handler(
         training_prompts=training_prompts,
         config=config,
         progress_callback=progress_callback,
-        checkpoint_callback=checkpoint_callback
+        checkpoint_callback=checkpoint_callback,
+        logger=content_logger
     )
 
     # Reset model status
@@ -583,7 +645,8 @@ def run_comparison_handler(
             device=model_manager.device,
             generation_config=gen_config,
             test_suite_name=test_suite_name,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            logger=content_logger
         )
 
         progress(0.95, desc="Formatting results...")
@@ -896,6 +959,32 @@ def create_demo() -> gr.Blocks:
                     interactive=False
                 )
 
+        # Logging controls
+        with gr.Row():
+            with gr.Column(scale=2):
+                verbosity_slider = gr.Slider(
+                    minimum=0,
+                    maximum=3,
+                    value=2,
+                    step=1,
+                    label="Content Logging Verbosity (0=off, 1=summary, 2=key stages, 3=full pipeline)",
+                    info="Controls how much detail is logged to the terminal during evaluation and training"
+                )
+                verbosity_status = gr.Textbox(
+                    label="Logging Status",
+                    value="✓ Logging verbosity set to level 2: Key stages (default)",
+                    interactive=False
+                )
+
+            with gr.Column(scale=1):
+                export_logs_btn = gr.Button("📥 Export Logs", variant="secondary")
+                export_status = gr.Textbox(
+                    label="Export Status",
+                    value="No logs to export yet",
+                    interactive=False,
+                    lines=3
+                )
+
         load_status = gr.Textbox(label="Status Messages", interactive=False)
 
         # Load model handler
@@ -903,6 +992,19 @@ def create_demo() -> gr.Blocks:
             fn=load_model_handler,
             inputs=[model_dropdown, device_dropdown],
             outputs=[load_status, model_status]
+        )
+
+        # Logger control handlers
+        verbosity_slider.change(
+            fn=update_logger_verbosity,
+            inputs=[verbosity_slider],
+            outputs=[verbosity_status]
+        )
+
+        export_logs_btn.click(
+            fn=export_logs_handler,
+            inputs=[],
+            outputs=[verbosity_status, export_status]
         )
 
         # Tabs
