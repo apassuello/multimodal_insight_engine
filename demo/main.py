@@ -246,8 +246,22 @@ def evaluate_text_handler(
     Returns:
         Tuple of (status_message, results_display)
     """
-    if not model_manager.is_ready() and mode == "AI Evaluation":
-        return "✗ Please load a model first", ""
+    # Check if models are available
+    has_dual_eval = multi_model_manager.eval_model is not None
+    has_single = model_manager.is_ready()
+
+    if mode == "AI Evaluation" and not has_dual_eval and not has_single:
+        return "✗ Please load a model first (single model or evaluation model in dual mode)", ""
+
+    # Use dual model if available
+    if has_dual_eval and mode == "AI Evaluation":
+        # Re-initialize evaluation manager with dual model
+        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+        evaluation_manager.initialize_frameworks(
+            model=eval_model,
+            tokenizer=eval_tokenizer,
+            device=multi_model_manager.device
+        )
 
     # Map display names to internal modes
     mode_map = {
