@@ -269,8 +269,9 @@ def _evaluate_harm_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-HARM", prompt, truncate=300)
 
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=512,
+        max_new_tokens=512,
         temperature=0.3,  # Lower temperature for more consistent evaluation
         do_sample=True
     )
@@ -506,8 +507,9 @@ def _evaluate_truthfulness_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-TRUTH", prompt, truncate=300)
 
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=512,
+        max_new_tokens=512,
         temperature=0.3,
         do_sample=True
     )
@@ -728,8 +730,9 @@ def _evaluate_fairness_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-FAIRNESS", prompt, truncate=300)
 
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=512,
+        max_new_tokens=512,
         temperature=0.3,
         do_sample=True
     )
@@ -882,8 +885,9 @@ def _evaluate_autonomy_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-AUTONOMY", prompt, truncate=300)
 
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=512,
+        max_new_tokens=512,
         temperature=0.3,
         do_sample=True
     )

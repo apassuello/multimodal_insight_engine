@@ -16,7 +16,8 @@ from dataclasses import dataclass
 @dataclass
 class GenerationConfig:
     """Configuration for text generation."""
-    max_length: int = 100
+    max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
+    max_length: Optional[int] = None  # Deprecated, kept for compatibility
     temperature: float = 1.0
     top_p: float = 0.9
     top_k: int = 50
@@ -24,6 +25,7 @@ class GenerationConfig:
     do_sample: bool = True
     pad_token_id: Optional[int] = None
     eos_token_id: Optional[int] = None
+    min_new_tokens: Optional[int] = None  # Minimum tokens to generate
 
 
 def load_model(
@@ -115,18 +117,30 @@ def generate_text(
         pad_token_id = tokenizer.pad_token_id
 
     # Generate
+    # FIX: Use max_new_tokens to avoid probability tensor errors with long prompts
+    gen_kwargs = {
+        "temperature": generation_config.temperature,
+        "top_p": generation_config.top_p,
+        "top_k": generation_config.top_k,
+        "num_return_sequences": generation_config.num_return_sequences,
+        "do_sample": generation_config.do_sample,
+        "pad_token_id": pad_token_id,
+        "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+    }
+
+    # Use max_new_tokens (preferred) or fall back to max_length for compatibility
+    if generation_config.max_new_tokens is not None:
+        gen_kwargs["max_new_tokens"] = generation_config.max_new_tokens
+    elif generation_config.max_length is not None:
+        gen_kwargs["max_length"] = generation_config.max_length
+    else:
+        gen_kwargs["max_new_tokens"] = 100  # Default
+
+    if generation_config.min_new_tokens is not None:
+        gen_kwargs["min_new_tokens"] = generation_config.min_new_tokens
+
     with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_length=generation_config.max_length,
-            temperature=generation_config.temperature,
-            top_p=generation_config.top_p,
-            top_k=generation_config.top_k,
-            num_return_sequences=generation_config.num_return_sequences,
-            do_sample=generation_config.do_sample,
-            pad_token_id=pad_token_id,
-            eos_token_id=generation_config.eos_token_id or tokenizer.eos_token_id,
-        )
+        outputs = model.generate(**inputs, **gen_kwargs)
 
     # Decode output
     prompt_length = inputs["input_ids"].shape[1]
@@ -196,17 +210,28 @@ def batch_generate(
             pad_token_id = tokenizer.pad_token_id
 
         # Generate
+        # FIX: Use max_new_tokens for batch generation too
+        gen_kwargs = {
+            "temperature": generation_config.temperature,
+            "top_p": generation_config.top_p,
+            "top_k": generation_config.top_k,
+            "do_sample": generation_config.do_sample,
+            "pad_token_id": pad_token_id,
+            "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+        }
+
+        if generation_config.max_new_tokens is not None:
+            gen_kwargs["max_new_tokens"] = generation_config.max_new_tokens
+        elif generation_config.max_length is not None:
+            gen_kwargs["max_length"] = generation_config.max_length
+        else:
+            gen_kwargs["max_new_tokens"] = 100
+
+        if generation_config.min_new_tokens is not None:
+            gen_kwargs["min_new_tokens"] = generation_config.min_new_tokens
+
         with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_length=generation_config.max_length,
-                temperature=generation_config.temperature,
-                top_p=generation_config.top_p,
-                top_k=generation_config.top_k,
-                do_sample=generation_config.do_sample,
-                pad_token_id=pad_token_id,
-                eos_token_id=generation_config.eos_token_id or tokenizer.eos_token_id,
-            )
+            outputs = model.generate(**inputs, **gen_kwargs)
 
         # Decode outputs
         prompt_lengths = inputs["input_ids"].ne(pad_token_id).sum(dim=1)
