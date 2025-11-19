@@ -227,18 +227,56 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
         # Try to extract JSON from response (might have extra text)
         response = response.strip()
 
-        # Find JSON object boundaries
+        # Find first JSON object by tracking brace depth
+        # FIX: Don't use rfind - Phi-2 often generates multiple JSON objects in "Exercise 2", etc.
         start_idx = response.find('{')
-        end_idx = response.rfind('}')
 
-        print(f"[JSON-PARSE-DEBUG] Found '{{' at index: {start_idx}")
-        print(f"[JSON-PARSE-DEBUG] Found '}}' at index: {end_idx}")
+        print(f"[JSON-PARSE-DEBUG] Found first '{{' at index: {start_idx}")
 
-        if start_idx != -1 and end_idx != -1:
-            json_str = response[start_idx:end_idx+1]
-            print(f"[JSON-PARSE-DEBUG] Extracted JSON string:")
-            print(f"[JSON-PARSE-DEBUG] {json_str}")
-            print("-"*80)
+        if start_idx != -1:
+            # Track brace depth to find the matching closing brace
+            brace_depth = 0
+            end_idx = -1
+            in_string = False
+            escape_next = False
+
+            for i in range(start_idx, len(response)):
+                char = response[i]
+
+                # Handle string escaping (to ignore { and } inside strings)
+                if escape_next:
+                    escape_next = False
+                    continue
+                if char == '\\':
+                    escape_next = True
+                    continue
+                if char == '"':
+                    in_string = not in_string
+                    continue
+
+                # Only count braces outside of strings
+                if not in_string:
+                    if char == '{':
+                        brace_depth += 1
+                    elif char == '}':
+                        brace_depth -= 1
+                        if brace_depth == 0:
+                            # Found the matching closing brace for the first JSON object!
+                            end_idx = i
+                            break
+
+            print(f"[JSON-PARSE-DEBUG] Found matching '}}' at index: {end_idx}")
+
+            if end_idx != -1:
+                json_str = response[start_idx:end_idx+1]
+                print(f"[JSON-PARSE-DEBUG] Extracted JSON string:")
+                print(f"[JSON-PARSE-DEBUG] {json_str}")
+                print("-"*80)
+            else:
+                print(f"[JSON-PARSE-DEBUG] ✗ No matching '}}' found")
+                print(f"[JSON-PARSE-DEBUG] Returning default structure: {default_structure}")
+                print("="*80 + "\n")
+                return default_structure
 
             parsed = json.loads(json_str)
             print(f"[JSON-PARSE-DEBUG] ✓ Successfully parsed JSON:")
