@@ -252,13 +252,16 @@ def critique_revision_pipeline(
             # Evaluate revised response
             revised_score = framework.evaluate_text(response)
 
+            # Calculate improvement (lower score is better, so positive improvement = better)
+            initial_weighted_score = initial_score.get('weighted_score', 0.0)
+            revised_weighted_score = revised_score.get('weighted_score', 0.0)
+            improvement = initial_weighted_score - revised_weighted_score
+
             if logger:
                 revised_violations = [
                     p for p, v in revised_score.items()
                     if isinstance(v, dict) and v.get('flagged', False)
                 ]
-                revised_weighted_score = revised_score.get('weighted_score', 0.0)
-                improvement = initial_score.get('weighted_score', 0.0) - revised_weighted_score
                 logger.log_stage(
                     "REVISION-EVALUATION",
                     f"Violations: {revised_violations if revised_violations else 'NONE'}\n"
@@ -270,26 +273,32 @@ def critique_revision_pipeline(
                     }
                 )
 
-                # Log training pair summary
-                if improvement > 0:
+            # CRITICAL FIX: Only train on examples that actually improved
+            # Positive improvement means revision made response better (lower violation score)
+            if improvement > 0:
+                # Store training example
+                training_data.append({
+                    'prompt': prompt,
+                    'response': response,  # This is the revised, improved response
+                    'num_revisions': num_revisions,
+                    'improvement': improvement
+                })
+
+                if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-CREATED",
-                        f"✓ Training example generated\n"
-                        f"  Improvement: {initial_score.get('weighted_score', 0.0):.2f} → "
+                        f"✓ Training example added\n"
+                        f"  Improvement: {initial_weighted_score:.2f} → "
                         f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)"
                     )
-                else:
+            else:
+                # Skip examples that didn't improve or got worse
+                if logger:
                     logger.log_stage(
-                        "TRAINING-PAIR-CREATED",
-                        f"⚠ Training example generated (no improvement)"
+                        "TRAINING-PAIR-SKIPPED",
+                        f"✗ Training example skipped (improvement: {improvement:+.2f})\n"
+                        f"  Score: {initial_weighted_score:.2f} → {revised_weighted_score:.2f}"
                     )
-
-            # Store training example
-            training_data.append({
-                'prompt': prompt,
-                'response': response,  # This is the revised, improved response
-                'num_revisions': num_revisions
-            })
         except (RuntimeError, ValueError, TypeError) as e:
             if logger:
                 logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
