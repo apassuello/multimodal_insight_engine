@@ -205,9 +205,11 @@ class MultiModelManager:
             # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
             # For MPS/CPU, we must manually move model to device instead
             device_map_arg = "auto" if self.device.type == 'cuda' else None
+            # FIX: Use float32 to avoid numerical precision issues during sampling
+            # Float16 causes "probability tensor contains inf/nan" errors with Qwen2/Phi-2
             self.eval_model = AutoModelForCausalLM.from_pretrained(
                 config.hf_model_id,
-                torch_dtype=torch.float16 if self.device.type != 'cpu' else torch.float32,
+                torch_dtype=torch.float32,  # Force float32 for stable generation
                 trust_remote_code=trust_code,
                 device_map=device_map_arg
             )
@@ -279,9 +281,11 @@ class MultiModelManager:
             # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
             # For MPS/CPU, we must manually move model to device instead
             device_map_arg = "auto" if self.device.type == 'cuda' else None
+            # FIX: Use float32 to avoid numerical precision issues during sampling
+            # Float16 causes "probability tensor contains inf/nan" errors with Qwen2/Phi-2
             self.gen_model = AutoModelForCausalLM.from_pretrained(
                 config.hf_model_id,
-                torch_dtype=torch.float16 if self.device.type != 'cpu' else torch.float32,
+                torch_dtype=torch.float32,  # Force float32 for stable generation
                 trust_remote_code=trust_code,
                 device_map=device_map_arg
             )
