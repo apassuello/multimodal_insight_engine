@@ -19,8 +19,8 @@ class GenerationConfig:
     max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
     max_length: Optional[int] = None  # Deprecated, kept for compatibility
     temperature: float = 1.0
-    top_p: float = 0.9
-    top_k: int = 50
+    top_p: float = 1.0  # FIX: Disable top_p filtering (1.0 = no filtering)
+    top_k: int = 0  # FIX: Disable top_k filtering (0 = no filtering)
     num_return_sequences: int = 1
     do_sample: bool = True
     pad_token_id: Optional[int] = None
