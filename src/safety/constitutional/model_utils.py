@@ -117,16 +117,23 @@ def generate_text(
         pad_token_id = tokenizer.pad_token_id
 
     # Generate
-    # FIX: Use max_new_tokens to avoid probability tensor errors with long prompts
+    # FIX: Build generation kwargs, only passing parameters that are actually needed
     gen_kwargs = {
         "temperature": generation_config.temperature,
-        "top_p": generation_config.top_p,
-        "top_k": generation_config.top_k,
         "num_return_sequences": generation_config.num_return_sequences,
         "do_sample": generation_config.do_sample,
         "pad_token_id": pad_token_id,
         "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
     }
+
+    # Only pass top_p if it's actually doing filtering (< 1.0)
+    if generation_config.top_p < 1.0:
+        gen_kwargs["top_p"] = generation_config.top_p
+
+    # Only pass top_k if it's actually doing filtering (> 0)
+    # CRITICAL: Don't pass top_k=0 as some models interpret it as "use 0 tokens"!
+    if generation_config.top_k > 0:
+        gen_kwargs["top_k"] = generation_config.top_k
 
     # Use max_new_tokens (preferred) or fall back to max_length for compatibility
     if generation_config.max_new_tokens is not None:
@@ -210,15 +217,22 @@ def batch_generate(
             pad_token_id = tokenizer.pad_token_id
 
         # Generate
-        # FIX: Use max_new_tokens for batch generation too
+        # FIX: Build generation kwargs, only passing parameters that are actually needed
         gen_kwargs = {
             "temperature": generation_config.temperature,
-            "top_p": generation_config.top_p,
-            "top_k": generation_config.top_k,
             "do_sample": generation_config.do_sample,
             "pad_token_id": pad_token_id,
             "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
         }
+
+        # Only pass top_p if it's actually doing filtering (< 1.0)
+        if generation_config.top_p < 1.0:
+            gen_kwargs["top_p"] = generation_config.top_p
+
+        # Only pass top_k if it's actually doing filtering (> 0)
+        # CRITICAL: Don't pass top_k=0 as some models interpret it as "use 0 tokens"!
+        if generation_config.top_k > 0:
+            gen_kwargs["top_k"] = generation_config.top_k
 
         if generation_config.max_new_tokens is not None:
             gen_kwargs["max_new_tokens"] = generation_config.max_new_tokens
