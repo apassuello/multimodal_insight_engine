@@ -146,20 +146,8 @@ def generate_text(
     if generation_config.min_new_tokens is not None:
         gen_kwargs["min_new_tokens"] = generation_config.min_new_tokens
 
-    # DEBUG: Log what we're actually passing to the model
-    print(f"[DEBUG] generate_text() called")
-    print(f"[DEBUG] Prompt length: {inputs['input_ids'].shape[1]} tokens")
-    print(f"[DEBUG] Generation config being used:")
-    for key, value in gen_kwargs.items():
-        print(f"[DEBUG]   {key}: {value}")
-
     with torch.no_grad():
-        try:
-            outputs = model.generate(**inputs, **gen_kwargs)
-        except Exception as e:
-            print(f"[DEBUG] model.generate() failed with error: {type(e).__name__}: {e}")
-            print(f"[DEBUG] Full gen_kwargs: {gen_kwargs}")
-            raise
+        outputs = model.generate(**inputs, **gen_kwargs)
 
     # Decode output
     prompt_length = inputs["input_ids"].shape[1]
