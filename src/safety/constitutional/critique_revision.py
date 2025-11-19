@@ -229,10 +229,8 @@ def critique_revision_pipeline(
             initial_score = framework.evaluate_text(response)
 
             if logger:
-                violations = [
-                    p for p, v in initial_score.items()
-                    if isinstance(v, dict) and v.get('flagged', False)
-                ]
+                # Use the already-computed flagged_principles list from framework
+                violations = initial_score.get('flagged_principles', [])
                 weighted_score = initial_score.get('weighted_score', 0.0)
                 logger.log_stage(
                     "INITIAL-EVALUATION",
@@ -258,10 +256,8 @@ def critique_revision_pipeline(
             improvement = initial_weighted_score - revised_weighted_score
 
             if logger:
-                revised_violations = [
-                    p for p, v in revised_score.items()
-                    if isinstance(v, dict) and v.get('flagged', False)
-                ]
+                # Use the already-computed flagged_principles list from framework
+                revised_violations = revised_score.get('flagged_principles', [])
                 logger.log_stage(
                     "REVISION-EVALUATION",
                     f"Violations: {revised_violations if revised_violations else 'NONE'}\n"
