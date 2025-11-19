@@ -89,8 +89,9 @@ def generate_critique(
         logger.log_stage("CRITIQUE-PROMPT", critique_prompt, truncate=400)
 
     # Generate critique using model
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=256,
+        max_new_tokens=256,
         temperature=0.7,
         do_sample=True
     )
@@ -150,8 +151,9 @@ def generate_revision(
     if logger:
         logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400)
 
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=256,
+        max_new_tokens=256,
         temperature=0.7,
         do_sample=True
     )
@@ -211,7 +213,8 @@ def critique_revision_pipeline(
             )
 
         # Generate initial response
-        config = GenerationConfig(max_length=150, temperature=1.0, do_sample=True)
+        # FIX: Use max_new_tokens to avoid probability tensor errors
+        config = GenerationConfig(max_new_tokens=150, temperature=1.0, do_sample=True)
 
         try:
             # PERFORMANCE: Use torch.no_grad() for inference-only operations

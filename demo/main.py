@@ -722,8 +722,9 @@ def generate_comparison_handler(
         trained_tokenizer = model_manager.tokenizer
 
         # Generation config
+        # FIX: Use max_new_tokens so max_length parameter means "new tokens to generate"
         gen_config = GenerationConfig(
-            max_length=max_length,
+            max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
             do_sample=True
         )
@@ -948,8 +949,9 @@ def run_comparison_handler(
             progress((0.1 + (current / total) * 0.8), desc=message)
 
         # Run comparison
+        # FIX: Use max_new_tokens so max_length parameter means "new tokens to generate"
         gen_config = GenerationConfig(
-            max_length=max_length,
+            max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
             do_sample=True
         )
