@@ -467,6 +467,7 @@ def evaluate_harm_potential(
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
     use_ai: bool = True,
+    hybrid_mode: bool = True,  # NEW: Use regex as safety net
     logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -479,6 +480,7 @@ def evaluate_harm_potential(
         tokenizer: Optional tokenizer for AI-based evaluation
         device: Optional device for computation (default: CPU)
         use_ai: If True and model provided, use AI evaluation; otherwise use regex
+        hybrid_mode: If True, always run regex first as safety net (recommended)
         logger: Optional ContentLogger for transparency
 
     Returns:
@@ -487,9 +489,39 @@ def evaluate_harm_potential(
         - explicit_harm_detected: Whether explicit harm instructions found
         - subtle_harm_score: Score for subtle harmful content (0-1)
         - reasoning: Explanation of the evaluation
-        - method: "ai_evaluation" or "regex_heuristic"
+        - method: "ai_evaluation", "regex_heuristic", or "hybrid_*"
     """
-    # Use AI evaluation if requested and model is available
+    # HYBRID MODE: Always run regex first as safety net
+    # This catches obvious cases that unreliable AI models might miss
+    if hybrid_mode:
+        regex_result = _evaluate_harm_with_regex(text)
+
+        # If regex finds explicit harm, trust it immediately
+        if regex_result.get("explicit_harm_detected") or regex_result.get("flagged"):
+            _debug_print("Regex detected harm - trusting regex", level=1, prefix="HARM")
+            regex_result["method"] = "hybrid_regex"
+            return regex_result
+
+        # If regex found nothing but AI is available, check for subtle issues
+        if use_ai and model is not None and tokenizer is not None:
+            if device is None:
+                device = torch.device('cpu')
+            ai_result = _evaluate_harm_with_ai(text, model, tokenizer, device, logger=logger)
+
+            # If AI finds something regex missed, use AI result
+            if ai_result.get("flagged"):
+                _debug_print("AI found subtle harm (regex missed)", level=1, prefix="HARM")
+                ai_result["method"] = "hybrid_ai"
+                return ai_result
+
+            # Both agree: no harm
+            regex_result["method"] = "hybrid_clear"
+            return regex_result
+
+        # No AI available, return regex result
+        return regex_result
+
+    # NON-HYBRID MODE: Original behavior (AI or regex, not both)
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
@@ -676,6 +708,7 @@ def evaluate_truthfulness(
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
     use_ai: bool = True,
+    hybrid_mode: bool = True,
     logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -688,6 +721,7 @@ def evaluate_truthfulness(
         tokenizer: Optional tokenizer for AI-based evaluation
         device: Optional device for computation (default: CPU)
         use_ai: If True and model provided, use AI evaluation; otherwise use regex
+        hybrid_mode: If True, always run regex first as safety net
 
     Returns:
         Dictionary with evaluation results including:
@@ -695,9 +729,33 @@ def evaluate_truthfulness(
         - unsupported_claims: List of claims without evidence
         - contradictions: List of logical contradictions
         - misleading_statistics: List of potentially misleading stats
-        - method: "ai_evaluation" or "regex_heuristic"
+        - method: "ai_evaluation", "regex_heuristic", or "hybrid_*"
     """
-    # Use AI evaluation if requested and model is available
+    # HYBRID MODE: Run regex first as safety net
+    if hybrid_mode:
+        regex_result = _evaluate_truthfulness_with_regex(text)
+
+        if regex_result.get("flagged"):
+            _debug_print("Regex detected truthfulness issue - trusting regex", level=1, prefix="TRUTH")
+            regex_result["method"] = "hybrid_regex"
+            return regex_result
+
+        if use_ai and model is not None and tokenizer is not None:
+            if device is None:
+                device = torch.device('cpu')
+            ai_result = _evaluate_truthfulness_with_ai(text, model, tokenizer, device, logger=logger)
+
+            if ai_result.get("flagged"):
+                _debug_print("AI found truthfulness issue (regex missed)", level=1, prefix="TRUTH")
+                ai_result["method"] = "hybrid_ai"
+                return ai_result
+
+            regex_result["method"] = "hybrid_clear"
+            return regex_result
+
+        return regex_result
+
+    # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
@@ -918,6 +976,7 @@ def evaluate_fairness(
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
     use_ai: bool = True,
+    hybrid_mode: bool = True,
     logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -930,15 +989,40 @@ def evaluate_fairness(
         tokenizer: Optional tokenizer for AI-based evaluation
         device: Optional device for computation (default: CPU)
         use_ai: If True and model provided, use AI evaluation; otherwise use regex
+        hybrid_mode: If True, always run regex first as safety net
 
     Returns:
         Dictionary with evaluation results including:
         - flagged: Whether fairness issues detected
         - stereotypes: List of stereotyping language found
         - biased_language: List of biased terms found
-        - method: "ai_evaluation" or "regex_heuristic"
+        - method: "ai_evaluation", "regex_heuristic", or "hybrid_*"
     """
-    # Use AI evaluation if requested and model is available
+    # HYBRID MODE: Run regex first as safety net
+    if hybrid_mode:
+        regex_result = _evaluate_fairness_with_regex(text)
+
+        if regex_result.get("flagged"):
+            _debug_print("Regex detected fairness issue - trusting regex", level=1, prefix="FAIR")
+            regex_result["method"] = "hybrid_regex"
+            return regex_result
+
+        if use_ai and model is not None and tokenizer is not None:
+            if device is None:
+                device = torch.device('cpu')
+            ai_result = _evaluate_fairness_with_ai(text, model, tokenizer, device, logger=logger)
+
+            if ai_result.get("flagged"):
+                _debug_print("AI found fairness issue (regex missed)", level=1, prefix="FAIR")
+                ai_result["method"] = "hybrid_ai"
+                return ai_result
+
+            regex_result["method"] = "hybrid_clear"
+            return regex_result
+
+        return regex_result
+
+    # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
@@ -1076,6 +1160,7 @@ def evaluate_autonomy_respect(
     tokenizer: Optional[Any] = None,
     device: Optional[torch.device] = None,
     use_ai: bool = True,
+    hybrid_mode: bool = True,
     logger=None  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -1088,15 +1173,40 @@ def evaluate_autonomy_respect(
         tokenizer: Optional tokenizer for AI-based evaluation
         device: Optional device for computation (default: CPU)
         use_ai: If True and model provided, use AI evaluation; otherwise use regex
+        hybrid_mode: If True, always run regex first as safety net
 
     Returns:
         Dictionary with evaluation results including:
         - flagged: Whether autonomy violations detected
         - coercive_language: List of coercive phrases found
         - manipulative_language: List of manipulative phrases found
-        - method: "ai_evaluation" or "regex_heuristic"
+        - method: "ai_evaluation", "regex_heuristic", or "hybrid_*"
     """
-    # Use AI evaluation if requested and model is available
+    # HYBRID MODE: Run regex first as safety net
+    if hybrid_mode:
+        regex_result = _evaluate_autonomy_with_regex(text)
+
+        if regex_result.get("flagged"):
+            _debug_print("Regex detected autonomy issue - trusting regex", level=1, prefix="AUTO")
+            regex_result["method"] = "hybrid_regex"
+            return regex_result
+
+        if use_ai and model is not None and tokenizer is not None:
+            if device is None:
+                device = torch.device('cpu')
+            ai_result = _evaluate_autonomy_with_ai(text, model, tokenizer, device, logger=logger)
+
+            if ai_result.get("flagged"):
+                _debug_print("AI found autonomy issue (regex missed)", level=1, prefix="AUTO")
+                ai_result["method"] = "hybrid_ai"
+                return ai_result
+
+            regex_result["method"] = "hybrid_clear"
+            return regex_result
+
+        return regex_result
+
+    # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
             device = torch.device('cpu')
