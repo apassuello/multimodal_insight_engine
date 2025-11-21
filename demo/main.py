@@ -23,7 +23,13 @@ from demo.managers.model_manager import ModelManager, ModelStatus
 from demo.managers.evaluation_manager import EvaluationManager
 from demo.managers.training_manager import TrainingManager, TrainingConfig
 from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
-from demo.managers.multi_model_manager import MultiModelManager, RECOMMENDED_CONFIGS
+from demo.managers.multi_model_manager import (
+    MultiModelManager,
+    RECOMMENDED_CONFIGS,
+    get_evaluation_model_choices,
+    get_generation_model_choices,
+    get_all_model_choices
+)
 from demo.data.test_examples import (
     EVALUATION_EXAMPLES,
     get_training_prompts,
@@ -1268,14 +1274,7 @@ def create_demo() -> gr.Blocks:
         with gr.Row():
             with gr.Column(scale=2):
                 model_dropdown = gr.Dropdown(
-                    choices=[
-                        "phi-3-mini-instruct",  # Recommended
-                        "qwen2.5-3b-instruct",  # Recommended
-                        "phi-2",
-                        "gpt2",
-                        "gpt2-medium",
-                        "distilgpt2"
-                    ],
+                    choices=get_all_model_choices(),
                     value="phi-3-mini-instruct",
                     label="Model Selection (Legacy - Use Dual Models Below)"
                 )
@@ -1336,21 +1335,7 @@ def create_demo() -> gr.Blocks:
                 with gr.Column():
                     gr.Markdown("### Evaluation Model")
                     eval_model_dropdown = gr.Dropdown(
-                        choices=[
-                            # Tier 1 - Recommended
-                            "phi-3-mini-instruct",
-                            "qwen2.5-3b-instruct",
-                            # Tier 2 - More capable
-                            "mistral-7b-instruct",
-                            "qwen2.5-7b-instruct",
-                            # Tier 3 - Smaller
-                            "qwen2.5-1.5b-instruct",
-                            "qwen2-1.5b-instruct",
-                            "tinyllama-chat",
-                            # Legacy
-                            "phi-2",
-                            "gpt2"
-                        ],
+                        choices=get_evaluation_model_choices(),
                         value="phi-3-mini-instruct",
                         label="Select Evaluation Model",
                         info="Instruction-tuned models recommended for reliable JSON output"
@@ -1366,14 +1351,7 @@ def create_demo() -> gr.Blocks:
                 with gr.Column():
                     gr.Markdown("### Generation Model")
                     gen_model_dropdown = gr.Dropdown(
-                        choices=[
-                            # Tier 1 - Recommended
-                            "phi-3-mini-gen",
-                            "qwen2.5-3b-gen",
-                            # Legacy
-                            "phi-2",
-                            "gpt2"
-                        ],
+                        choices=get_generation_model_choices(),
                         value="phi-3-mini-gen",
                         label="Select Generation Model",
                         info="Used for training and text generation"
