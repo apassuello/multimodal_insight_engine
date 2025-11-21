@@ -19,6 +19,47 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 from .framework import ConstitutionalFramework
 from .model_utils import generate_text, GenerationConfig
 
+
+def _get_model_name(model: PreTrainedModel) -> str:
+    """Extract model name from model config if available."""
+    try:
+        if hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
+            name = model.config.name_or_path
+            # Shorten common model names
+            if 'phi-2' in name.lower():
+                return 'Phi-2'
+            if 'gpt2' in name.lower():
+                return 'GPT-2'
+            if 'qwen' in name.lower():
+                return 'Qwen'
+            return name.split('/')[-1][:20]  # Last part, truncated
+    except Exception:
+        pass
+    return "Model"
+
+
+def _print_pipeline_step(step: str, content: str, model_name: str = "", truncate: int = 200) -> None:
+    """Print a clean pipeline step with optional model attribution."""
+    print(f"\n{'─' * 70}")
+    if model_name:
+        print(f"│ {step} [{model_name}]")
+    else:
+        print(f"│ {step}")
+    print(f"{'─' * 70}")
+    if len(content) > truncate:
+        print(f"{content[:truncate]}...")
+    else:
+        print(content)
+
+
+def _print_evaluation_result(violations: List[str], score: float, is_initial: bool = True) -> None:
+    """Print evaluation result in a clean format."""
+    phase = "INITIAL" if is_initial else "REVISED"
+    status = "✓ CLEAN" if not violations else f"⚠ {len(violations)} violation(s)"
+    print(f"\n  [{phase} EVAL] {status} | Score: {score:.2f}")
+    if violations:
+        print(f"    Violations: {', '.join(violations)}")
+
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:
 Human: {prompt}
@@ -204,34 +245,45 @@ def critique_revision_pipeline(
     """
     training_data = []
     principles = [p.description for p in framework.principles.values()]
+    gen_model_name = _get_model_name(model)
+    eval_model_name = _get_model_name(framework.model) if framework.model else "Regex"
+
+    # Print pipeline configuration
+    print(f"\n{'═' * 70}")
+    print(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
+    print(f"{'═' * 70}")
+    print(f"  Generation Model: {gen_model_name}")
+    print(f"  Evaluation Model: {eval_model_name}")
+    print(f"  Prompts: {len(prompts)} | Revisions per prompt: {num_revisions}")
+    print(f"{'═' * 70}\n")
 
     for idx, prompt in enumerate(tqdm(prompts, desc='Generating revised responses')):
-        if logger:
-            logger.log_stage(
-                f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}",
-                f"Prompt: {prompt}"
-            )
+        # Print example header
+        print(f"\n{'━' * 70}")
+        print(f"  EXAMPLE {idx + 1}/{len(prompts)}")
+        print(f"{'━' * 70}")
+        print(f"  Prompt: {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
 
-        # Generate initial response
-        # FIX: Use max_new_tokens to avoid probability tensor errors
+        if logger:
+            logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}")
+
         config = GenerationConfig(max_new_tokens=150, temperature=1.0, do_sample=True)
 
         try:
-            # PERFORMANCE: Use torch.no_grad() for inference-only operations
-            # Expected speedup: 10-30%, memory reduction: ~50%
             with torch.no_grad():
                 response = generate_text(model, tokenizer, prompt, config, device)
 
+            _print_pipeline_step("1. INITIAL RESPONSE", response, gen_model_name)
             if logger:
                 logger.log_stage("INITIAL-GENERATION", response)
 
             # Evaluate initial response
             initial_score = framework.evaluate_text(response)
+            violations = initial_score.get('flagged_principles', [])
+            weighted_score = initial_score.get('weighted_score', 0.0)
+            _print_evaluation_result(violations, weighted_score, is_initial=True)
 
             if logger:
-                # Use the already-computed flagged_principles list from framework
-                violations = initial_score.get('flagged_principles', [])
-                weighted_score = initial_score.get('weighted_score', 0.0)
                 logger.log_stage(
                     "INITIAL-EVALUATION",
                     f"Violations: {violations}\nWeighted score: {weighted_score:.2f}",
@@ -243,21 +295,23 @@ def critique_revision_pipeline(
                 critique = generate_critique(
                     prompt, response, principles, model, tokenizer, device, logger=logger
                 )
+                _print_pipeline_step("2. CRITIQUE", critique, gen_model_name, truncate=300)
+
                 response = generate_revision(
                     prompt, response, critique, principles, model, tokenizer, device, logger=logger
                 )
+                _print_pipeline_step("3. REVISED RESPONSE", response, gen_model_name)
 
             # Evaluate revised response
             revised_score = framework.evaluate_text(response)
-
-            # Calculate improvement (lower score is better, so positive improvement = better)
             initial_weighted_score = initial_score.get('weighted_score', 0.0)
             revised_weighted_score = revised_score.get('weighted_score', 0.0)
             improvement = initial_weighted_score - revised_weighted_score
+            revised_violations = revised_score.get('flagged_principles', [])
+
+            _print_evaluation_result(revised_violations, revised_weighted_score, is_initial=False)
 
             if logger:
-                # Use the already-computed flagged_principles list from framework
-                revised_violations = revised_score.get('flagged_principles', [])
                 logger.log_stage(
                     "REVISION-EVALUATION",
                     f"Violations: {revised_violations if revised_violations else 'NONE'}\n"
@@ -269,17 +323,16 @@ def critique_revision_pipeline(
                     }
                 )
 
-            # CRITICAL FIX: Only train on examples that actually improved
-            # Positive improvement means revision made response better (lower violation score)
+            # Print improvement summary
             if improvement > 0:
-                # Store training example
+                print(f"\n  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                print(f"  → Added to training set")
                 training_data.append({
                     'prompt': prompt,
-                    'response': response,  # This is the revised, improved response
+                    'response': response,
                     'num_revisions': num_revisions,
                     'improvement': improvement
                 })
-
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-CREATED",
@@ -288,7 +341,8 @@ def critique_revision_pipeline(
                         f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)"
                     )
             else:
-                # Skip examples that didn't improve or got worse
+                print(f"\n  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                print(f"  → Skipped")
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-SKIPPED",
@@ -300,6 +354,18 @@ def critique_revision_pipeline(
                 logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
             print(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
             continue
+
+    # Print final summary
+    print(f"\n{'═' * 70}")
+    print(f"  PIPELINE SUMMARY")
+    print(f"{'═' * 70}")
+    print(f"  Total prompts processed: {len(prompts)}")
+    print(f"  Training examples generated: {len(training_data)}")
+    print(f"  Examples skipped: {len(prompts) - len(training_data)}")
+    if training_data:
+        avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
+        print(f"  Average improvement: {avg_improvement:.2f}")
+    print(f"{'═' * 70}\n")
 
     return training_data
 
