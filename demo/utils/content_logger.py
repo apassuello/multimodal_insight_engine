@@ -60,7 +60,8 @@ class ContentLogger:
         stage: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
-        truncate: int = 500
+        truncate: int = 500,
+        silent: bool = False
     ):
         """
         Log a pipeline stage with content visibility.
@@ -70,22 +71,24 @@ class ContentLogger:
             content: The actual text content (not a status message!)
             metadata: Additional data (scores, timing, flags, etc.)
             truncate: Max characters to display (full content still stored)
+            silent: If True, store log but don't print (for avoiding duplicates)
         """
-        if self.verbosity == 0:
-            return
-
-        # Store full content (never truncated)
+        # Always store (even when verbosity=0 or silent=True)
         self.logs.append(ContentLog(
             stage=stage,
             content=content,
             metadata=metadata or {},
             timestamp=time.time()
         ))
-        
+
         # Trim oldest entries if we exceed max_logs to prevent memory growth
         if len(self.logs) > self.max_logs:
             excess = len(self.logs) - self.max_logs
             self.logs = self.logs[excess:]
+
+        # Skip display if silent or verbosity is 0
+        if silent or self.verbosity == 0:
+            return
 
         # Display with formatting (may be truncated)
         separator = "=" * 60

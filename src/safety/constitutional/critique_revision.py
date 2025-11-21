@@ -18,6 +18,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from .framework import ConstitutionalFramework
 from .model_utils import generate_text, GenerationConfig
+from .principles import set_eval_debug_level, get_eval_debug_level
 
 
 def _get_model_name(model: PreTrainedModel) -> str:
@@ -57,18 +58,39 @@ def _print_content(label: str, content: str, role: str = "") -> None:
     print(content)
 
 
-def _print_evaluation_result(
+def _print_evaluation_box(
+    text_preview: str,
     violations: List[str],
     score: float,
     phase: str = "INITIAL",
-    eval_model_name: str = ""
+    eval_model_name: str = "Evaluation Model",
+    method: str = ""
 ) -> None:
-    """Print evaluation result in a clean format."""
-    status = "✓ CLEAN" if not violations else f"⚠ {len(violations)} violation(s)"
-    model_info = f" [Evaluation Model]" if eval_model_name else ""
-    print(f"\n  [{phase} EVAL]{model_info} {status} | Score: {score:.2f}")
-    if violations:
-        print(f"    Violations: {', '.join(violations)}")
+    """
+    Print evaluation interaction in a clear boxed format.
+    Shows the input to the evaluation model and its output.
+    """
+    print(f"\n{'┌' + '─' * 68 + '┐'}")
+    print(f"│ EVALUATION ({phase}) → {eval_model_name:<40} │")
+    print(f"{'├' + '─' * 68 + '┤'}")
+
+    # Show what we're evaluating (truncated)
+    preview = text_preview[:60] + "..." if len(text_preview) > 60 else text_preview
+    preview = preview.replace('\n', ' ')
+    print(f"│ Input:  \"{preview}\"")
+    print(f"{'├' + '─' * 68 + '┤'}")
+
+    # Show result
+    if not violations:
+        print(f"│ Result: ✓ CLEAN (Score: {score:.2f})")
+    else:
+        print(f"│ Result: ⚠ {len(violations)} VIOLATION(S) (Score: {score:.2f})")
+        print(f"│         → {', '.join(violations)}")
+
+    if method:
+        print(f"│ Method: {method}")
+
+    print(f"{'└' + '─' * 68 + '┘'}")
 
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:
@@ -136,8 +158,9 @@ def generate_critique(
         principles_text=principles_text
     )
 
+    # Store in logger silently (don't display - content is displayed by caller)
     if logger:
-        logger.log_stage("CRITIQUE-PROMPT", critique_prompt, truncate=400)
+        logger.log_stage("CRITIQUE-PROMPT", critique_prompt, truncate=400, silent=True)
 
     # Generate critique using model
     # FIX: Use max_new_tokens to avoid probability tensor errors
@@ -157,7 +180,7 @@ def generate_critique(
             critique = "No specific issues identified."
 
         if logger:
-            logger.log_stage("CRITIQUE-GENERATION", critique)
+            logger.log_stage("CRITIQUE-GENERATION", critique, silent=True)
 
         return critique
     except (RuntimeError, ValueError, TypeError) as e:
@@ -200,7 +223,7 @@ def generate_revision(
     )
 
     if logger:
-        logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400)
+        logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400, silent=True)
 
     # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
@@ -219,7 +242,7 @@ def generate_revision(
             revision = response
 
         if logger:
-            logger.log_stage("REVISION-GENERATION", revision)
+            logger.log_stage("REVISION-GENERATION", revision, silent=True)
 
         return revision
     except (RuntimeError, ValueError, TypeError) as e:
@@ -258,6 +281,10 @@ def critique_revision_pipeline(
     gen_model_name = _get_model_name(model)
     eval_model_name = _get_model_name(framework.model) if framework.model else "Regex"
 
+    # Suppress verbose evaluation debug output during pipeline (we have our own display)
+    original_debug_level = get_eval_debug_level()
+    set_eval_debug_level(0)
+
     # Print pipeline configuration
     print(f"\n{'═' * 70}")
     print(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
@@ -276,8 +303,9 @@ def critique_revision_pipeline(
         # Print full prompt
         _print_content("PROMPT", prompt)
 
+        # Store silently (already displayed above)
         if logger:
-            logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}")
+            logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}", silent=True)
 
         config = GenerationConfig(max_new_tokens=150, temperature=1.0, do_sample=True)
 
@@ -288,19 +316,24 @@ def critique_revision_pipeline(
             # Print full initial response
             _print_content("1. INITIAL RESPONSE", response, role="Generation Model")
             if logger:
-                logger.log_stage("INITIAL-GENERATION", response)
+                logger.log_stage("INITIAL-GENERATION", response, silent=True)
 
-            # Evaluate initial response
+            # Evaluate initial response (with clear evaluation model display)
             initial_score = framework.evaluate_text(response)
             violations = initial_score.get('flagged_principles', [])
             weighted_score = initial_score.get('weighted_score', 0.0)
-            _print_evaluation_result(violations, weighted_score, phase="INITIAL", eval_model_name=eval_model_name)
+            eval_method = initial_score.get('evaluation_method', 'unknown')
+            _print_evaluation_box(
+                response, violations, weighted_score,
+                phase="INITIAL", eval_model_name=eval_model_name, method=eval_method
+            )
 
             if logger:
                 logger.log_stage(
                     "INITIAL-EVALUATION",
                     f"Violations: {violations}\nWeighted score: {weighted_score:.2f}",
-                    metadata={"violations": violations, "score": weighted_score}
+                    metadata={"violations": violations, "score": weighted_score},
+                    silent=True
                 )
 
             # Iterative critique and revision
@@ -317,14 +350,18 @@ def critique_revision_pipeline(
                 # Print full revised response
                 _print_content("3. REVISED RESPONSE", response, role="Generation Model")
 
-            # Evaluate revised response
+            # Evaluate revised response (with clear evaluation model display)
             revised_score = framework.evaluate_text(response)
             initial_weighted_score = initial_score.get('weighted_score', 0.0)
             revised_weighted_score = revised_score.get('weighted_score', 0.0)
             improvement = initial_weighted_score - revised_weighted_score
             revised_violations = revised_score.get('flagged_principles', [])
+            revised_method = revised_score.get('evaluation_method', 'unknown')
 
-            _print_evaluation_result(revised_violations, revised_weighted_score, phase="REVISED", eval_model_name=eval_model_name)
+            _print_evaluation_box(
+                response, revised_violations, revised_weighted_score,
+                phase="REVISED", eval_model_name=eval_model_name, method=revised_method
+            )
 
             if logger:
                 logger.log_stage(
@@ -335,7 +372,8 @@ def critique_revision_pipeline(
                         "violations": revised_violations,
                         "score": revised_weighted_score,
                         "improvement": improvement
-                    }
+                    },
+                    silent=True
                 )
 
             # Print improvement summary
@@ -353,7 +391,8 @@ def critique_revision_pipeline(
                         "TRAINING-PAIR-CREATED",
                         f"✓ Training example added\n"
                         f"  Improvement: {initial_weighted_score:.2f} → "
-                        f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)"
+                        f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)",
+                        silent=True
                     )
             else:
                 print(f"\n  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
@@ -362,7 +401,8 @@ def critique_revision_pipeline(
                     logger.log_stage(
                         "TRAINING-PAIR-SKIPPED",
                         f"✗ Training example skipped (improvement: {improvement:+.2f})\n"
-                        f"  Score: {initial_weighted_score:.2f} → {revised_weighted_score:.2f}"
+                        f"  Score: {initial_weighted_score:.2f} → {revised_weighted_score:.2f}",
+                        silent=True
                     )
         except (RuntimeError, ValueError, TypeError) as e:
             if logger:
@@ -381,6 +421,9 @@ def critique_revision_pipeline(
         avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
         print(f"  Average improvement: {avg_improvement:.2f}")
     print(f"{'═' * 70}\n")
+
+    # Restore original debug level
+    set_eval_debug_level(original_debug_level)
 
     return training_data
 
