@@ -22,6 +22,64 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 from .framework import ConstitutionalPrinciple, ConstitutionalFramework
 from .model_utils import generate_text, GenerationConfig
 
+# =============================================================================
+# DEBUG CONFIGURATION
+# Set to control verbosity of evaluation output
+# 0 = Silent (no debug output)
+# 1 = Summary only (principle results)
+# 2 = Detailed (shows AI prompts and responses)
+# 3 = Verbose (includes JSON parsing details)
+# =============================================================================
+EVAL_DEBUG_LEVEL = 1  # Default: summary only
+
+
+def set_eval_debug_level(level: int) -> None:
+    """
+    Set the evaluation debug verbosity level.
+
+    Args:
+        level: 0=silent, 1=summary, 2=detailed, 3=verbose
+    """
+    global EVAL_DEBUG_LEVEL
+    EVAL_DEBUG_LEVEL = max(0, min(3, level))
+    if level > 0:
+        print(f"[CONFIG] Evaluation debug level set to {EVAL_DEBUG_LEVEL}")
+
+
+def get_eval_debug_level() -> int:
+    """Get current evaluation debug level."""
+    return EVAL_DEBUG_LEVEL
+
+
+def _debug_print(message: str, level: int = 1, prefix: str = "") -> None:
+    """Print debug message if current debug level is sufficient."""
+    if EVAL_DEBUG_LEVEL >= level:
+        if prefix:
+            print(f"[{prefix}] {message}")
+        else:
+            print(message)
+
+
+def _print_eval_summary(principle: str, flagged: bool, details: Dict[str, Any], model_name: str = "Evaluator") -> None:
+    """Print a clean, readable evaluation summary."""
+    if EVAL_DEBUG_LEVEL < 1:
+        return
+
+    status = "⚠ FLAGGED" if flagged else "✓ OK"
+    print(f"  [{principle}] {status}")
+
+    if flagged and EVAL_DEBUG_LEVEL >= 1:
+        # Show key details for flagged items
+        for key, value in details.items():
+            if key in ['flagged', 'method', 'principle_name', 'weight']:
+                continue
+            if isinstance(value, list) and value:
+                print(f"    → {key}: {value[:2]}{'...' if len(value) > 2 else ''}")
+            elif isinstance(value, str) and len(value) > 100:
+                print(f"    → {key}: {value[:100]}...")
+            elif value and value not in [[], {}, '', 0, 0.0, False]:
+                print(f"    → {key}: {value}")
+
 
 # ============================================================================
 # PERFORMANCE: Compile regex patterns at module level (not in functions)
@@ -216,22 +274,14 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
     Returns:
         Parsed dictionary or default structure
     """
-    print("\n" + "="*80)
-    print("[JSON-PARSE-DEBUG] Attempting to parse JSON response")
-    print("="*80)
-    print(f"[JSON-PARSE-DEBUG] Raw response (length: {len(response)} chars):")
-    print(f"[JSON-PARSE-DEBUG] {response[:500]}{'...' if len(response) > 500 else ''}")
-    print("-"*80)
+    _debug_print("Parsing JSON response...", level=3, prefix="JSON")
+    _debug_print(f"Raw response ({len(response)} chars): {response[:200]}...", level=3, prefix="JSON")
 
     try:
-        # Try to extract JSON from response (might have extra text)
         response = response.strip()
 
         # Find first JSON object by tracking brace depth
-        # FIX: Don't use rfind - Phi-2 often generates multiple JSON objects in "Exercise 2", etc.
         start_idx = response.find('{')
-
-        print(f"[JSON-PARSE-DEBUG] Found first '{{' at index: {start_idx}")
 
         if start_idx != -1:
             # Track brace depth to find the matching closing brace
@@ -243,7 +293,6 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
             for i in range(start_idx, len(response)):
                 char = response[i]
 
-                # Handle string escaping (to ignore { and } inside strings)
                 if escape_next:
                     escape_next = False
                     continue
@@ -254,54 +303,37 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                     in_string = not in_string
                     continue
 
-                # Only count braces outside of strings
                 if not in_string:
                     if char == '{':
                         brace_depth += 1
                     elif char == '}':
                         brace_depth -= 1
                         if brace_depth == 0:
-                            # Found the matching closing brace for the first JSON object!
                             end_idx = i
                             break
 
-            print(f"[JSON-PARSE-DEBUG] Found matching '}}' at index: {end_idx}")
-
-            if end_idx != -1:
-                json_str = response[start_idx:end_idx+1]
-                print(f"[JSON-PARSE-DEBUG] Extracted JSON string:")
-                print(f"[JSON-PARSE-DEBUG] {json_str}")
-                print("-"*80)
-            else:
-                print(f"[JSON-PARSE-DEBUG] ✗ No matching '}}' found")
-                print(f"[JSON-PARSE-DEBUG] Returning default structure: {default_structure}")
-                print("="*80 + "\n")
+            if end_idx == -1:
+                _debug_print("✗ No matching '}' found, using defaults", level=2, prefix="JSON")
                 return default_structure
 
-            parsed = json.loads(json_str)
-            print(f"[JSON-PARSE-DEBUG] ✓ Successfully parsed JSON:")
-            print(f"[JSON-PARSE-DEBUG] {json.dumps(parsed, indent=2)}")
+            json_str = response[start_idx:end_idx+1]
+            _debug_print(f"Extracted: {json_str[:150]}...", level=3, prefix="JSON")
 
-            # Validate structure has required keys
+            parsed = json.loads(json_str)
+
+            # Fill in missing keys with defaults
             for key in default_structure.keys():
                 if key not in parsed:
-                    print(f"[JSON-PARSE-DEBUG] ! Missing key '{key}', using default: {default_structure[key]}")
                     parsed[key] = default_structure[key]
 
-            print(f"[JSON-PARSE-DEBUG] ✓ Final parsed result:")
-            print(f"[JSON-PARSE-DEBUG] {json.dumps(parsed, indent=2)}")
-            print("="*80 + "\n")
+            _debug_print(f"✓ Parsed: flagged={parsed.get('flagged', 'N/A')}", level=3, prefix="JSON")
             return parsed
         else:
-            print(f"[JSON-PARSE-DEBUG] ✗ No JSON object found in response")
-            print(f"[JSON-PARSE-DEBUG] Returning default structure: {default_structure}")
-            print("="*80 + "\n")
+            _debug_print("✗ No JSON found, using defaults", level=2, prefix="JSON")
             return default_structure
+
     except (json.JSONDecodeError, ValueError) as e:
-        # If parsing fails, return default structure
-        print(f"[JSON-PARSE-DEBUG] ✗ JSON parsing failed: {type(e).__name__}: {e}")
-        print(f"[JSON-PARSE-DEBUG] Returning default structure: {default_structure}")
-        print("="*80 + "\n")
+        _debug_print(f"✗ Parse error: {e}, using defaults", level=2, prefix="JSON")
         return default_structure
 
 
@@ -329,37 +361,23 @@ def _evaluate_harm_with_ai(
         logger.log_stage("EVAL-INPUT-HARM", text)
 
     prompt = HARM_EVALUATION_PROMPT.format(text=text)
-
-    print("\n" + "="*80)
-    print("[AI-EVAL-DEBUG] HARM EVALUATION - Sending prompt to model")
-    print("="*80)
-    print(f"[AI-EVAL-DEBUG] Text being evaluated:")
-    print(f"[AI-EVAL-DEBUG] {text[:200]}{'...' if len(text) > 200 else ''}")
-    print("-"*80)
-    print(f"[AI-EVAL-DEBUG] Full evaluation prompt:")
-    print(f"[AI-EVAL-DEBUG] {prompt}")
-    print("="*80)
+    _debug_print("Evaluating HARM with AI...", level=2, prefix="EVAL")
+    _debug_print(f"Text: {text[:100]}...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-HARM", prompt, truncate=300)
 
-    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
         max_new_tokens=512,
-        temperature=0.3,  # Lower temperature for more consistent evaluation
+        temperature=0.3,
         do_sample=True
     )
 
     try:
-        # PERFORMANCE: Use torch.no_grad() for inference-only operations
-        # Expected speedup: 10-30%, memory reduction: ~50%
-        print(f"[AI-EVAL-DEBUG] Generating response from model...")
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        print(f"[AI-EVAL-DEBUG] Model generated response (length: {len(response)} chars):")
-        print(f"[AI-EVAL-DEBUG] {response}")
-        print("="*80 + "\n")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-HARM", response)
@@ -376,20 +394,13 @@ def _evaluate_harm_with_ai(
         result["method"] = "ai_evaluation"
 
         if logger:
-            logger.log_stage(
-                "EVAL-PARSED-HARM",
-                f"Flagged: {result.get('flagged', False)}",
-                metadata=result
-            )
+            logger.log_stage("EVAL-PARSED-HARM", f"Flagged: {result.get('flagged', False)}", metadata=result)
 
         return result
     except (RuntimeError, ValueError, TypeError) as e:
-        # Fallback to regex if AI evaluation fails
+        _debug_print(f"AI eval failed: {e}, using regex", level=1, prefix="EVAL")
         if logger:
-            logger.log_stage(
-                "EVAL-ERROR-HARM",
-                f"AI evaluation failed: {e}, falling back to regex"
-            )
+            logger.log_stage("EVAL-ERROR-HARM", f"AI evaluation failed: {e}, falling back to regex")
         return _evaluate_harm_with_regex(text)
 
 
@@ -582,21 +593,11 @@ def _evaluate_truthfulness_with_ai(
         logger.log_stage("EVAL-INPUT-TRUTH", text)
 
     prompt = TRUTHFULNESS_EVALUATION_PROMPT.format(text=text)
-
-    print("\n" + "="*80)
-    print("[AI-EVAL-DEBUG] TRUTHFULNESS EVALUATION - Sending prompt to model")
-    print("="*80)
-    print(f"[AI-EVAL-DEBUG] Text being evaluated:")
-    print(f"[AI-EVAL-DEBUG] {text[:200]}{'...' if len(text) > 200 else ''}")
-    print("-"*80)
-    print(f"[AI-EVAL-DEBUG] Full evaluation prompt:")
-    print(f"[AI-EVAL-DEBUG] {prompt}")
-    print("="*80)
+    _debug_print("Evaluating TRUTHFULNESS with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-TRUTH", prompt, truncate=300)
 
-    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
         max_new_tokens=512,
         temperature=0.3,
@@ -604,15 +605,10 @@ def _evaluate_truthfulness_with_ai(
     )
 
     try:
-        # PERFORMANCE: Use torch.no_grad() for inference-only operations
-        # Expected speedup: 10-30%, memory reduction: ~50%
-        print(f"[AI-EVAL-DEBUG] Generating response from model...")
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        print(f"[AI-EVAL-DEBUG] Model generated response (length: {len(response)} chars):")
-        print(f"[AI-EVAL-DEBUG] {response}")
-        print("="*80 + "\n")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-TRUTH", response)
@@ -820,21 +816,11 @@ def _evaluate_fairness_with_ai(
         logger.log_stage("EVAL-INPUT-FAIRNESS", text)
 
     prompt = FAIRNESS_EVALUATION_PROMPT.format(text=text)
-
-    print("\n" + "="*80)
-    print("[AI-EVAL-DEBUG] FAIRNESS EVALUATION - Sending prompt to model")
-    print("="*80)
-    print(f"[AI-EVAL-DEBUG] Text being evaluated:")
-    print(f"[AI-EVAL-DEBUG] {text[:200]}{'...' if len(text) > 200 else ''}")
-    print("-"*80)
-    print(f"[AI-EVAL-DEBUG] Full evaluation prompt:")
-    print(f"[AI-EVAL-DEBUG] {prompt}")
-    print("="*80)
+    _debug_print("Evaluating FAIRNESS with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-FAIRNESS", prompt, truncate=300)
 
-    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
         max_new_tokens=512,
         temperature=0.3,
@@ -842,15 +828,10 @@ def _evaluate_fairness_with_ai(
     )
 
     try:
-        # PERFORMANCE: Use torch.no_grad() for inference-only operations
-        # Expected speedup: 10-30%, memory reduction: ~50%
-        print(f"[AI-EVAL-DEBUG] Generating response from model...")
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        print(f"[AI-EVAL-DEBUG] Model generated response (length: {len(response)} chars):")
-        print(f"[AI-EVAL-DEBUG] {response}")
-        print("="*80 + "\n")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-FAIRNESS", response)
@@ -990,21 +971,11 @@ def _evaluate_autonomy_with_ai(
         logger.log_stage("EVAL-INPUT-AUTONOMY", text)
 
     prompt = AUTONOMY_EVALUATION_PROMPT.format(text=text)
-
-    print("\n" + "="*80)
-    print("[AI-EVAL-DEBUG] AUTONOMY EVALUATION - Sending prompt to model")
-    print("="*80)
-    print(f"[AI-EVAL-DEBUG] Text being evaluated:")
-    print(f"[AI-EVAL-DEBUG] {text[:200]}{'...' if len(text) > 200 else ''}")
-    print("-"*80)
-    print(f"[AI-EVAL-DEBUG] Full evaluation prompt:")
-    print(f"[AI-EVAL-DEBUG] {prompt}")
-    print("="*80)
+    _debug_print("Evaluating AUTONOMY with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-AUTONOMY", prompt, truncate=300)
 
-    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
         max_new_tokens=512,
         temperature=0.3,
@@ -1012,15 +983,10 @@ def _evaluate_autonomy_with_ai(
     )
 
     try:
-        # PERFORMANCE: Use torch.no_grad() for inference-only operations
-        # Expected speedup: 10-30%, memory reduction: ~50%
-        print(f"[AI-EVAL-DEBUG] Generating response from model...")
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        print(f"[AI-EVAL-DEBUG] Model generated response (length: {len(response)} chars):")
-        print(f"[AI-EVAL-DEBUG] {response}")
-        print("="*80 + "\n")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-AUTONOMY", response)
