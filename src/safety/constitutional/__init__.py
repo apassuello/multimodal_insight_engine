@@ -51,6 +51,13 @@ from .model_utils import (
     batch_generate,
     GenerationConfig
 )
+from .hf_api_evaluator import (
+    HuggingFaceAPIEvaluator,
+    HFAPIConfig,
+    evaluate_toxicity_api,
+    evaluate_harm_with_hf_api,
+    quick_evaluate
+)
 
 __all__ = [
     # Core framework
@@ -86,6 +93,13 @@ __all__ = [
     "generate_text",
     "batch_generate",
     "GenerationConfig",
+
+    # HuggingFace API Evaluator
+    "HuggingFaceAPIEvaluator",
+    "HFAPIConfig",
+    "evaluate_toxicity_api",
+    "evaluate_harm_with_hf_api",
+    "quick_evaluate",
 ]
 
 __version__ = "0.1.0"
