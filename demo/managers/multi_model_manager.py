@@ -42,6 +42,18 @@ class ModelConfig:
 # Organized by size/capability tier
 RECOMMENDED_CONFIGS = {
     # =========================================================================
+    # TIER 0: HF API (Most accurate, no local model needed)
+    # Uses HuggingFace Inference API with toxic-bert for ~98% accuracy
+    # Best choice when internet is available and regex isn't enough
+    # =========================================================================
+    "hf-api": ModelConfig(
+        name="HF-API (toxic-bert)",
+        role=ModelRole.EVALUATION,
+        hf_model_id="unitary/toxic-bert",  # API model, not downloaded
+        max_memory_gb=0.0  # No local memory needed
+    ),
+
+    # =========================================================================
     # TIER 1: RECOMMENDED (Best balance for Constitutional AI demo)
     # These instruction-tuned models are much better at JSON output and
     # following evaluation prompts than base models like Phi-2
@@ -238,6 +250,10 @@ def list_available_models() -> str:
         "  AVAILABLE MODELS FOR CONSTITUTIONAL AI",
         "=" * 70,
         "",
+        "TIER 0 - HF API (Most accurate, no local model):",
+        "-" * 50,
+        "  hf-api                   HF-API (toxic-bert)            ~0.0GB (API)",
+        "",
         "TIER 1 - RECOMMENDED (Best balance for CAI demo):",
         "-" * 50,
     ]
@@ -316,6 +332,7 @@ def get_evaluation_model_choices() -> list:
     Get list of model keys suitable for evaluation.
 
     Returns models in recommended order:
+    - Tier 0 HF API (most accurate, no local model)
     - Tier 1 instruction-tuned models (best for evaluation)
     - Tier 2 larger models
     - Tier 3 smaller models
@@ -326,6 +343,8 @@ def get_evaluation_model_choices() -> list:
     """
     # Order matters - put recommended models first
     eval_models = [
+        # Tier 0 - HF API (most accurate, no local resources)
+        "hf-api",
         # Tier 1 - Recommended for evaluation
         "phi-3-mini-instruct",
         "qwen2.5-3b-instruct",
@@ -400,6 +419,10 @@ class MultiModelManager:
         self.gen_tokenizer: Optional[PreTrainedTokenizer] = None
         self.gen_config: Optional[ModelConfig] = None
 
+        # HuggingFace API evaluator (alternative to local model)
+        self.hf_api_evaluator = None
+        self.using_hf_api: bool = False
+
         self.device: Optional[torch.device] = None
         self._auto_select_device()
 
@@ -414,13 +437,13 @@ class MultiModelManager:
 
     def load_evaluation_model(
         self,
-        model_key: str = "qwen2-1.5b-instruct"
+        model_key: str = "hf-api"
     ) -> Tuple[bool, str]:
         """
         Load model for evaluation tasks.
 
         Args:
-            model_key: Key from RECOMMENDED_CONFIGS
+            model_key: Key from RECOMMENDED_CONFIGS (use 'hf-api' for HuggingFace API)
 
         Returns:
             Tuple of (success, message)
@@ -429,6 +452,10 @@ class MultiModelManager:
             return False, f"✗ Unknown model: {model_key}"
 
         config = RECOMMENDED_CONFIGS[model_key]
+
+        # Special handling for HuggingFace API (no local model needed)
+        if model_key == "hf-api":
+            return self._setup_hf_api_evaluation()
 
         try:
             print(f"Loading evaluation model: {config.name} ({config.hf_model_id})...")
@@ -487,6 +514,52 @@ class MultiModelManager:
             )
         except (RuntimeError, ValueError, TypeError) as e:
             return False, f"✗ Failed to load evaluation model: {e}"
+
+    def _setup_hf_api_evaluation(self) -> Tuple[bool, str]:
+        """
+        Setup HuggingFace API-based evaluation (no local model needed).
+
+        This uses the HuggingFace Inference API with toxic-bert for accurate
+        toxicity detection (~98% accuracy) without downloading large models.
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            from src.safety.constitutional.hf_api_evaluator import HuggingFaceAPIEvaluator
+
+            # Clear any existing local evaluation model
+            if self.eval_model is not None:
+                self.unload_evaluation_model()
+
+            # Setup HF API evaluator
+            self.hf_api_evaluator = HuggingFaceAPIEvaluator(
+                toxicity_model="unitary/toxic-bert",
+                toxicity_threshold=0.5
+            )
+            self.using_hf_api = True
+            self.eval_config = RECOMMENDED_CONFIGS["hf-api"]
+
+            # Test the API connection
+            if not self.hf_api_evaluator.is_available():
+                return False, (
+                    "✗ HuggingFace API not available. Check:\n"
+                    "  1. Internet connection\n"
+                    "  2. huggingface_hub installed (pip install huggingface_hub)\n"
+                    "  3. Optional: Set HF_API_TOKEN environment variable"
+                )
+
+            message = "✓ HuggingFace API evaluation enabled\n"
+            message += "  Model: toxic-bert (via API)\n"
+            message += "  Memory: 0 GB (API-based)\n"
+            message += "  Accuracy: ~98% on toxicity detection"
+
+            return True, message
+
+        except ImportError as e:
+            return False, f"✗ Failed to import HF API evaluator: {e}"
+        except Exception as e:
+            return False, f"✗ Failed to setup HF API evaluation: {e}"
 
     def load_generation_model(
         self,
@@ -566,18 +639,25 @@ class MultiModelManager:
 
     def unload_evaluation_model(self) -> None:
         """Unload evaluation model to free memory."""
+        # Clear local model if present
         if self.eval_model is not None:
             del self.eval_model
             del self.eval_tokenizer
             self.eval_model = None
             self.eval_tokenizer = None
-            self.eval_config = None
 
             # Clear cache
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
                 torch.mps.empty_cache()
+
+        # Clear HF API evaluator if present
+        if self.hf_api_evaluator is not None:
+            self.hf_api_evaluator = None
+            self.using_hf_api = False
+
+        self.eval_config = None
 
     def unload_generation_model(self) -> None:
         """Unload generation model to free memory."""
@@ -603,8 +683,12 @@ class MultiModelManager:
         return self.gen_model, self.gen_tokenizer
 
     def is_ready(self) -> bool:
-        """Check if at least one model is loaded."""
-        return self.eval_model is not None or self.gen_model is not None
+        """Check if at least one model is loaded (or HF API is configured)."""
+        return (
+            self.eval_model is not None
+            or self.gen_model is not None
+            or self.using_hf_api
+        )
 
     def get_status_info(self) -> Dict[str, Any]:
         """Get status information about loaded models."""
@@ -612,15 +696,26 @@ class MultiModelManager:
             "device": str(self.device),
             "evaluation_model": None,
             "generation_model": None,
-            "total_memory_gb": 0.0
+            "total_memory_gb": 0.0,
+            "using_hf_api": self.using_hf_api
         }
 
-        if self.eval_model is not None and self.eval_config is not None:
+        # HF API evaluation (no local model)
+        if self.using_hf_api and self.eval_config is not None:
+            info["evaluation_model"] = {
+                "name": self.eval_config.name,
+                "parameters": 0,  # API-based, no local parameters
+                "memory_gb": 0.0,
+                "type": "api"
+            }
+        # Local evaluation model
+        elif self.eval_model is not None and self.eval_config is not None:
             num_params = sum(p.numel() for p in self.eval_model.parameters())
             info["evaluation_model"] = {
                 "name": self.eval_config.name,
                 "parameters": num_params,
-                "memory_gb": self.eval_config.max_memory_gb
+                "memory_gb": self.eval_config.max_memory_gb,
+                "type": "local"
             }
             info["total_memory_gb"] += self.eval_config.max_memory_gb
 
@@ -629,7 +724,8 @@ class MultiModelManager:
             info["generation_model"] = {
                 "name": self.gen_config.name,
                 "parameters": num_params,
-                "memory_gb": self.gen_config.max_memory_gb
+                "memory_gb": self.gen_config.max_memory_gb,
+                "type": "local"
             }
             info["total_memory_gb"] += self.gen_config.max_memory_gb
 
