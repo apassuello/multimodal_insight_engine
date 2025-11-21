@@ -28,35 +28,45 @@ def _get_model_name(model: PreTrainedModel) -> str:
             # Shorten common model names
             if 'phi-2' in name.lower():
                 return 'Phi-2'
+            if 'phi-3' in name.lower():
+                return 'Phi-3'
             if 'gpt2' in name.lower():
                 return 'GPT-2'
             if 'qwen' in name.lower():
                 return 'Qwen'
+            if 'mistral' in name.lower():
+                return 'Mistral'
+            if 'tinyllama' in name.lower():
+                return 'TinyLlama'
             return name.split('/')[-1][:20]  # Last part, truncated
     except Exception:
         pass
-    return "Model"
+    return "Unknown"
 
 
-def _print_pipeline_step(step: str, content: str, model_name: str = "", truncate: int = 200) -> None:
-    """Print a clean pipeline step with optional model attribution."""
+def _print_section_header(title: str) -> None:
+    """Print a section header."""
     print(f"\n{'─' * 70}")
-    if model_name:
-        print(f"│ {step} [{model_name}]")
-    else:
-        print(f"│ {step}")
+    print(f"│ {title}")
     print(f"{'─' * 70}")
-    if len(content) > truncate:
-        print(f"{content[:truncate]}...")
-    else:
-        print(content)
 
 
-def _print_evaluation_result(violations: List[str], score: float, is_initial: bool = True) -> None:
+def _print_content(label: str, content: str, role: str = "") -> None:
+    """Print content with label and optional role attribution."""
+    _print_section_header(f"{label} [{role}]" if role else label)
+    print(content)
+
+
+def _print_evaluation_result(
+    violations: List[str],
+    score: float,
+    phase: str = "INITIAL",
+    eval_model_name: str = ""
+) -> None:
     """Print evaluation result in a clean format."""
-    phase = "INITIAL" if is_initial else "REVISED"
     status = "✓ CLEAN" if not violations else f"⚠ {len(violations)} violation(s)"
-    print(f"\n  [{phase} EVAL] {status} | Score: {score:.2f}")
+    model_info = f" [Evaluation Model]" if eval_model_name else ""
+    print(f"\n  [{phase} EVAL]{model_info} {status} | Score: {score:.2f}")
     if violations:
         print(f"    Violations: {', '.join(violations)}")
 
@@ -262,7 +272,9 @@ def critique_revision_pipeline(
         print(f"\n{'━' * 70}")
         print(f"  EXAMPLE {idx + 1}/{len(prompts)}")
         print(f"{'━' * 70}")
-        print(f"  Prompt: {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
+
+        # Print full prompt
+        _print_content("PROMPT", prompt)
 
         if logger:
             logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}")
@@ -273,7 +285,8 @@ def critique_revision_pipeline(
             with torch.no_grad():
                 response = generate_text(model, tokenizer, prompt, config, device)
 
-            _print_pipeline_step("1. INITIAL RESPONSE", response, gen_model_name)
+            # Print full initial response
+            _print_content("1. INITIAL RESPONSE", response, role="Generation Model")
             if logger:
                 logger.log_stage("INITIAL-GENERATION", response)
 
@@ -281,7 +294,7 @@ def critique_revision_pipeline(
             initial_score = framework.evaluate_text(response)
             violations = initial_score.get('flagged_principles', [])
             weighted_score = initial_score.get('weighted_score', 0.0)
-            _print_evaluation_result(violations, weighted_score, is_initial=True)
+            _print_evaluation_result(violations, weighted_score, phase="INITIAL", eval_model_name=eval_model_name)
 
             if logger:
                 logger.log_stage(
@@ -295,12 +308,14 @@ def critique_revision_pipeline(
                 critique = generate_critique(
                     prompt, response, principles, model, tokenizer, device, logger=logger
                 )
-                _print_pipeline_step("2. CRITIQUE", critique, gen_model_name, truncate=300)
+                # Print full critique
+                _print_content("2. CRITIQUE", critique, role="Generation Model")
 
                 response = generate_revision(
                     prompt, response, critique, principles, model, tokenizer, device, logger=logger
                 )
-                _print_pipeline_step("3. REVISED RESPONSE", response, gen_model_name)
+                # Print full revised response
+                _print_content("3. REVISED RESPONSE", response, role="Generation Model")
 
             # Evaluate revised response
             revised_score = framework.evaluate_text(response)
@@ -309,7 +324,7 @@ def critique_revision_pipeline(
             improvement = initial_weighted_score - revised_weighted_score
             revised_violations = revised_score.get('flagged_principles', [])
 
-            _print_evaluation_result(revised_violations, revised_weighted_score, is_initial=False)
+            _print_evaluation_result(revised_violations, revised_weighted_score, phase="REVISED", eval_model_name=eval_model_name)
 
             if logger:
                 logger.log_stage(
