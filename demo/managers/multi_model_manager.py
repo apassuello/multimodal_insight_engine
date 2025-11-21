@@ -39,20 +39,89 @@ class ModelConfig:
 
 
 # Recommended model configurations
+# Organized by size/capability tier
 RECOMMENDED_CONFIGS = {
+    # =========================================================================
+    # TIER 1: RECOMMENDED (Best balance for Constitutional AI demo)
+    # These instruction-tuned models are much better at JSON output and
+    # following evaluation prompts than base models like Phi-2
+    # =========================================================================
+    "phi-3-mini-instruct": ModelConfig(
+        name="Phi-3-mini-4k-instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="microsoft/Phi-3-mini-4k-instruct",
+        max_memory_gb=7.6
+    ),
+    "qwen2.5-3b-instruct": ModelConfig(
+        name="Qwen2.5-3B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-3B-Instruct",
+        max_memory_gb=6.0
+    ),
+
+    # =========================================================================
+    # TIER 2: LARGER MODELS (Better capability if resources allow)
+    # =========================================================================
+    "mistral-7b-instruct": ModelConfig(
+        name="Mistral-7B-Instruct-v0.3",
+        role=ModelRole.EVALUATION,
+        hf_model_id="mistralai/Mistral-7B-Instruct-v0.3",
+        max_memory_gb=14.0
+    ),
+    "qwen2.5-7b-instruct": ModelConfig(
+        name="Qwen2.5-7B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-7B-Instruct",
+        max_memory_gb=14.0
+    ),
+
+    # =========================================================================
+    # TIER 3: SMALLER MODELS (For limited resources)
+    # =========================================================================
+    "qwen2.5-1.5b-instruct": ModelConfig(
+        name="Qwen2.5-1.5B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-1.5B-Instruct",
+        max_memory_gb=3.0
+    ),
     "qwen2-1.5b-instruct": ModelConfig(
         name="Qwen2-1.5B-Instruct",
         role=ModelRole.EVALUATION,
         hf_model_id="Qwen/Qwen2-1.5B-Instruct",
         max_memory_gb=3.0
     ),
+    "tinyllama-chat": ModelConfig(
+        name="TinyLlama-1.1B-Chat",
+        role=ModelRole.GENERATION,
+        hf_model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        max_memory_gb=2.2
+    ),
+
+    # =========================================================================
+    # GENERATION MODELS (For training/fine-tuning)
+    # =========================================================================
     "phi-2": ModelConfig(
         name="Phi-2",
         role=ModelRole.GENERATION,
         hf_model_id="microsoft/phi-2",
         max_memory_gb=5.4
     ),
-    # Fallback options
+    "phi-3-mini-gen": ModelConfig(
+        name="Phi-3-mini-4k-instruct",
+        role=ModelRole.GENERATION,
+        hf_model_id="microsoft/Phi-3-mini-4k-instruct",
+        max_memory_gb=7.6
+    ),
+    "qwen2.5-3b-gen": ModelConfig(
+        name="Qwen2.5-3B-Instruct",
+        role=ModelRole.GENERATION,
+        hf_model_id="Qwen/Qwen2.5-3B-Instruct",
+        max_memory_gb=6.0
+    ),
+
+    # =========================================================================
+    # MINIMAL (For testing/CI)
+    # =========================================================================
     "gpt2": ModelConfig(
         name="GPT-2",
         role=ModelRole.GENERATION,
@@ -69,14 +138,40 @@ RECOMMENDED_CONFIGS = {
 # Models not in this list will load with trust_remote_code=False
 # This prevents arbitrary code execution from malicious models
 TRUSTED_MODEL_IDS: Set[str] = {
+    # -------------------------------------------------------------------------
     # Qwen models - verified safe, official Alibaba Cloud models
+    # -------------------------------------------------------------------------
     "Qwen/Qwen2-1.5B-Instruct",
     "Qwen/Qwen2-1.5B",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-7B-Instruct",
+
+    # -------------------------------------------------------------------------
     # Microsoft Phi models - verified safe, official Microsoft models
+    # -------------------------------------------------------------------------
     "microsoft/phi-2",
     "microsoft/phi-1_5",
     "microsoft/phi-1",
+    "microsoft/Phi-3-mini-4k-instruct",
+    "microsoft/Phi-3-small-8k-instruct",
+    "microsoft/Phi-3-medium-4k-instruct",
+
+    # -------------------------------------------------------------------------
+    # Mistral models - verified safe, official Mistral AI models
+    # -------------------------------------------------------------------------
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "mistralai/Mistral-7B-v0.1",
+
+    # -------------------------------------------------------------------------
+    # TinyLlama - verified safe, community model with standard architecture
+    # -------------------------------------------------------------------------
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+
+    # -------------------------------------------------------------------------
     # OpenAI GPT models - standard transformers library, no remote code needed
+    # -------------------------------------------------------------------------
     "gpt2",
     "gpt2-medium",
     "gpt2-large",
