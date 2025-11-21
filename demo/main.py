@@ -9,14 +9,27 @@ DEPENDENCIES: gradio, torch, typing, demo.managers, demo.data
 SPECIAL NOTES: Phase 2 implementation with Impact Analysis tab (VR6)
 """
 
+import argparse
+import os
+import yaml
+from pathlib import Path
 import gradio as gr
 import torch
+import threading
+import time
 from typing import Dict, List, Any, Tuple, Optional
 
 from demo.managers.model_manager import ModelManager, ModelStatus
 from demo.managers.evaluation_manager import EvaluationManager
 from demo.managers.training_manager import TrainingManager, TrainingConfig
 from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
+from demo.managers.multi_model_manager import (
+    MultiModelManager,
+    RECOMMENDED_CONFIGS,
+    get_evaluation_model_choices,
+    get_generation_model_choices,
+    get_all_model_choices
+)
 from demo.data.test_examples import (
     EVALUATION_EXAMPLES,
     get_training_prompts,
@@ -24,15 +37,129 @@ from demo.data.test_examples import (
     TRAINING_CONFIGS,
     TEST_SUITES
 )
+from demo.utils.content_logger import ContentLogger
 
 from src.safety.constitutional.principles import setup_default_framework
 from src.safety.constitutional.model_utils import generate_text, GenerationConfig
+
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+# Input validation limits to prevent DoS attacks
+MAX_INPUT_LENGTH = 10000  # Maximum characters for text/prompt input
+MAX_PROMPT_LENGTH = 5000  # Maximum characters for generation prompts
+MIN_INPUT_LENGTH = 1      # Minimum characters for valid input
+
+# Rate limiting configuration
+RATE_LIMIT_TRAINING_SECONDS = 60      # Minimum seconds between training requests
+RATE_LIMIT_COMPARISON_SECONDS = 30    # Minimum seconds between comparison requests
+MAX_CONCURRENT_OPERATIONS = 1         # Maximum concurrent expensive operations
 
 
 # Global managers
 model_manager = ModelManager()
 evaluation_manager = EvaluationManager()
 training_manager = TrainingManager()
+multi_model_manager = MultiModelManager()
+
+# Global content logger (verbosity level 2 by default)
+content_logger = ContentLogger(verbosity=2)
+
+# Security: Rate limiting state
+_rate_limit_state: Dict[str, float] = {}  # operation_name -> last_execution_timestamp
+_rate_limit_lock = threading.Lock()
+_operation_semaphore = threading.Semaphore(MAX_CONCURRENT_OPERATIONS)
+
+# Security: Thread safety locks for global managers
+_model_manager_lock = threading.Lock()       # Protects model_manager operations
+_multi_model_manager_lock = threading.Lock() # Protects multi_model_manager operations
+
+
+# ============================================================================
+# Security Helper Functions
+# ============================================================================
+
+def validate_input_length(
+    text: str,
+    max_length: int = MAX_INPUT_LENGTH,
+    input_name: str = "Input"
+) -> Tuple[bool, str]:
+    """
+    Validate input text length to prevent DoS attacks.
+
+    Security: This prevents resource exhaustion from extremely long inputs.
+
+    Args:
+        text: Input text to validate
+        max_length: Maximum allowed length
+        input_name: Name of the input field for error messages
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not text or len(text) < MIN_INPUT_LENGTH:
+        return False, f"✗ Security: {input_name} is empty or too short (minimum {MIN_INPUT_LENGTH} characters)"
+
+    if len(text) > max_length:
+        return False, (
+            f"✗ Security: {input_name} exceeds maximum length\n"
+            f"Length: {len(text):,} characters\n"
+            f"Maximum: {max_length:,} characters\n"
+            f"This limit prevents resource exhaustion attacks."
+        )
+
+    return True, ""
+
+
+def check_rate_limit(operation_name: str, cooldown_seconds: int) -> Tuple[bool, str]:
+    """
+    Check if an operation can be executed based on rate limits.
+
+    Security: This prevents DoS attacks via repeated expensive operations.
+
+    Args:
+        operation_name: Name of the operation (for tracking)
+        cooldown_seconds: Minimum seconds between executions
+
+    Returns:
+        Tuple of (can_execute, error_message)
+    """
+    global _rate_limit_state, _rate_limit_lock
+
+    with _rate_limit_lock:
+        current_time = time.time()
+        last_execution = _rate_limit_state.get(operation_name, 0)
+        time_since_last = current_time - last_execution
+
+        if time_since_last < cooldown_seconds:
+            remaining = cooldown_seconds - time_since_last
+            return False, (
+                f"✗ Security: Rate limit exceeded for {operation_name}\n"
+                f"Please wait {remaining:.0f} seconds before trying again.\n"
+                f"This prevents system overload from repeated requests."
+            )
+
+        # Update last execution time
+        _rate_limit_state[operation_name] = current_time
+        return True, ""
+
+
+def acquire_operation_slot() -> bool:
+    """
+    Try to acquire a slot for expensive operations.
+
+    Security: This prevents multiple expensive operations from running concurrently.
+
+    Returns:
+        True if slot acquired, False otherwise
+    """
+    return _operation_semaphore.acquire(blocking=False)
+
+
+def release_operation_slot() -> None:
+    """Release a slot for expensive operations."""
+    _operation_semaphore.release()
 
 
 # ============================================================================
@@ -50,32 +177,178 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
     Returns:
         Tuple of (status_message, model_info)
     """
-    success, message = model_manager.load_model_from_pretrained(
-        model_name=model_name,
-        prefer_device=device_preference if device_preference != "auto" else None
-    )
-
-    if success:
-        # Initialize evaluation frameworks
-        eval_success, eval_msg = evaluation_manager.initialize_frameworks(
-            model=model_manager.model,
-            tokenizer=model_manager.tokenizer,
-            device=model_manager.device
+    # Security: Thread safety for global model_manager
+    with _model_manager_lock:
+        success, message = model_manager.load_model_from_pretrained(
+            model_name=model_name,
+            prefer_device=device_preference if device_preference != "auto" else None
         )
 
-        if not eval_success:
-            message += f"\n\nWarning: {eval_msg}"
+        if success:
+            # Initialize evaluation frameworks
+            eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
 
-        # Get model info
-        info = model_manager.get_status_info()
-        model_info = f"Model: {info['model_name']}\n"
-        model_info += f"Device: {info['device']}\n"
-        model_info += f"Parameters: {info.get('parameters', 0):,}\n"
-        model_info += f"Status: {info['status']}"
+            if not eval_success:
+                message += f"\n\nWarning: {eval_msg}"
 
-        return message, model_info
-    else:
-        return message, "No model loaded"
+            # Get model info
+            info = model_manager.get_status_info()
+            model_info = f"Model: {info['model_name']}\n"
+            model_info += f"Device: {info['device']}\n"
+            model_info += f"Parameters: {info.get('parameters', 0):,}\n"
+            model_info += f"Status: {info['status']}"
+
+            return message, model_info
+        else:
+            return message, "No model loaded"
+
+
+# ============================================================================
+# Logger Control Functions
+# ============================================================================
+
+def update_logger_verbosity(verbosity: int) -> str:
+    """
+    Update content logger verbosity level.
+
+    Args:
+        verbosity: Logging level (0=off, 1=summary, 2=key stages, 3=full pipeline)
+
+    Returns:
+        Status message
+    """
+    global content_logger
+    content_logger.verbosity = int(verbosity)
+
+    levels = {
+        0: "Off (no logging)",
+        1: "Summary only",
+        2: "Key stages (default)",
+        3: "Full pipeline"
+    }
+
+    return f"✓ Logging verbosity set to level {verbosity}: {levels.get(verbosity, 'Unknown')}"
+
+
+def export_logs_handler() -> Tuple[str, str]:
+    """
+    Export content logs to JSON file.
+
+    Returns:
+        Tuple of (status_message, log_summary)
+    """
+    global content_logger
+
+    if not content_logger.logs:
+        return "⚠ No logs to export", "No logs recorded yet. Run training or evaluation first."
+
+    # Export to file
+    import tempfile
+    import json
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"content_logs_{timestamp}.json"
+    filepath = os.path.join(tempfile.gettempdir(), filename)
+
+    content_logger.export_logs(filepath)
+
+    # Generate summary
+    summary = f"✓ Exported {len(content_logger.logs)} log entries to:\n{filepath}\n\n"
+    summary += content_logger.get_summary()
+
+    return f"✓ Logs exported to {filepath}", summary
+
+
+# ============================================================================
+# Dual Model Management Functions
+# ============================================================================
+
+def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
+    """
+    Load evaluation model using MultiModelManager.
+
+    Args:
+        model_key: Model identifier from RECOMMENDED_CONFIGS
+
+    Returns:
+        Tuple of (status_message, model_info)
+    """
+    global multi_model_manager
+
+    # Security: Thread safety for global multi_model_manager
+    with _multi_model_manager_lock:
+        success, message = multi_model_manager.load_evaluation_model(model_key)
+
+        if success:
+            # Initialize evaluation framework with new model
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=multi_model_manager.device
+            )
+
+            if not eval_success:
+                message += f"\n\nWarning: {eval_msg}"
+
+            # Get model info
+            status = multi_model_manager.get_status_info()
+            model_info = ""
+            if status["evaluation_model"]:
+                model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+                model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+            if status["generation_model"]:
+                model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+                model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+            model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+            model_info += f"Device: {status['device']}"
+
+            return message, model_info
+        else:
+            return message, "Failed to load evaluation model"
+
+
+def load_generation_model_handler(model_key: str) -> Tuple[str, str]:
+    """
+    Load generation model using MultiModelManager.
+
+    Args:
+        model_key: Model identifier from RECOMMENDED_CONFIGS
+
+    Returns:
+        Tuple of (status_message, model_info)
+    """
+    global multi_model_manager
+
+    # Security: Thread safety for global multi_model_manager
+    with _multi_model_manager_lock:
+        success, message = multi_model_manager.load_generation_model(model_key)
+
+        if success:
+            # Get model info
+            status = multi_model_manager.get_status_info()
+            model_info = ""
+            if status["evaluation_model"]:
+                model_info += f"Evaluation Model: {status['evaluation_model']['name']}\n"
+                model_info += f"Parameters: {status['evaluation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['evaluation_model']['memory_gb']:.1f}GB\n"
+            if status["generation_model"]:
+                model_info += f"\nGeneration Model: {status['generation_model']['name']}\n"
+                model_info += f"Parameters: {status['generation_model']['parameters']:,}\n"
+                model_info += f"Memory: {status['generation_model']['memory_gb']:.1f}GB\n"
+            model_info += f"\nTotal Memory: {status['total_memory_gb']:.1f}GB\n"
+            model_info += f"Device: {status['device']}"
+
+            return message, model_info
+        else:
+            return message, "Failed to load generation model"
 
 
 # ============================================================================
@@ -96,8 +369,32 @@ def evaluate_text_handler(
     Returns:
         Tuple of (status_message, results_display)
     """
-    if not model_manager.is_ready() and mode == "AI Evaluation":
-        return "✗ Please load a model first", ""
+    # Security: Validate input length to prevent DoS
+    is_valid, error_msg = validate_input_length(text, MAX_INPUT_LENGTH, "Text input")
+    if not is_valid:
+        return error_msg, ""
+
+    # Check if models are available
+    has_dual_eval = multi_model_manager.eval_model is not None
+    has_single = model_manager.is_ready()
+
+    if mode == "AI Evaluation" and not has_dual_eval and not has_single:
+        return "✗ Please load a model first (single model or evaluation model in dual mode)", ""
+
+    # Use dual model if available
+    if has_dual_eval and mode == "AI Evaluation":
+        # FIX (BUG #4): Add error handling for evaluation manager re-initialization
+        # Re-initialize evaluation manager with dual model
+        eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+        init_success, init_msg = evaluation_manager.initialize_frameworks(
+            model=eval_model,
+            tokenizer=eval_tokenizer,
+            device=multi_model_manager.device
+        )
+
+        # If initialization fails, fall back to regex evaluation or return error
+        if not init_success:
+            return f"✗ Failed to initialize evaluation manager: {init_msg}", ""
 
     # Map display names to internal modes
     mode_map = {
@@ -224,81 +521,135 @@ def start_training_handler(
     Returns:
         Tuple of (status_message, metrics_display, checkpoint_info)
     """
-    if not model_manager.is_ready():
-        return "✗ Please load a model first", "", ""
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("training", RATE_LIMIT_TRAINING_SECONDS)
+    if not can_execute:
+        return rate_error, "", ""
 
-    if training_manager.is_training:
-        return "✗ Training already in progress", "", ""
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", "", ""
 
-    # Get training configuration
-    mode_map = {
-        "Quick Demo (2 epochs, 20 examples, ~10-15 min)": "quick_demo",
-        "Standard (5 epochs, 50 examples, ~25-35 min)": "standard"
-    }
-    mode_key = mode_map.get(training_mode, "quick_demo")
-    config_dict = TRAINING_CONFIGS[mode_key]
+    try:
+        # Check if we have dual models loaded
+        use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
 
-    config = TrainingConfig(
-        num_epochs=config_dict["num_epochs"],
-        num_examples=config_dict["num_examples"],
-        batch_size=config_dict["batch_size"],
-        learning_rate=config_dict["learning_rate"],
-        mode=mode_key
-    )
+        if not use_dual_models and not model_manager.is_ready():
+            return "✗ Please load models first (either single model or dual models)", "", ""
 
-    # Get training prompts
-    training_prompts = config_dict["prompts"]
+        if training_manager.is_training:
+            return "✗ Training already in progress", "", ""
 
-    # Setup constitutional framework
-    framework = setup_default_framework(
-        model=model_manager.model,
-        tokenizer=model_manager.tokenizer,
-        device=model_manager.device
-    )
+        # Get training configuration
+        mode_map = {
+            "Quick Demo (2 epochs, 20 examples, ~10-15 min)": "quick_demo",
+            "Standard (5 epochs, 50 examples, ~25-35 min)": "standard"
+        }
+        mode_key = mode_map.get(training_mode, "quick_demo")
+        config_dict = TRAINING_CONFIGS[mode_key]
 
-    # Progress callback
-    def progress_callback(status: str, progress_pct: float):
-        progress(progress_pct, desc=status)
-
-    # Checkpoint callback
-    def checkpoint_callback(epoch: int, metrics: Dict[str, Any]):
-        model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
-
-    # Set model to training status
-    model_manager.set_status(ModelStatus.TRAINING)
-
-    # Execute training
-    result, success, message = training_manager.train_model(
-        model=model_manager.model,
-        tokenizer=model_manager.tokenizer,
-        framework=framework,
-        device=model_manager.device,
-        training_prompts=training_prompts,
-        config=config,
-        progress_callback=progress_callback,
-        checkpoint_callback=checkpoint_callback
-    )
-
-    # Reset model status
-    model_manager.set_status(ModelStatus.READY)
-
-    if success:
-        # Save final trained checkpoint
-        model_manager.save_trained_checkpoint(
-            epoch=config.num_epochs,
-            metrics=result.get("metrics", {})
+        config = TrainingConfig(
+            num_epochs=config_dict["num_epochs"],
+            num_examples=config_dict["num_examples"],
+            batch_size=config_dict["batch_size"],
+            learning_rate=config_dict["learning_rate"],
+            mode=mode_key
         )
 
-        # Format metrics
-        metrics_display = format_training_metrics(result)
+        # Get training prompts
+        training_prompts = config_dict["prompts"]
 
-        # Checkpoint info
-        checkpoint_info = f"Base checkpoint: {model_manager.base_checkpoint_path}\n"
-        checkpoint_info += f"Trained checkpoint: {model_manager.trained_checkpoint_path}"
+        # Select models based on what's available
+        if use_dual_models:
+            # Use dual model architecture: evaluation model for critique, generation model for training
+            gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            device = multi_model_manager.device
 
-        return message, metrics_display, checkpoint_info
-    else:
-        return message, "", ""
+            # Setup framework with evaluation model
+            framework = setup_default_framework(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=device
+            )
+
+            # Train the generation model
+            train_model = gen_model
+            train_tokenizer = gen_tokenizer
+        else:
+            # Use single model for everything
+            framework = setup_default_framework(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
+            train_model = model_manager.model
+            train_tokenizer = model_manager.tokenizer
+            device = model_manager.device
+
+        # Progress callback
+        def progress_callback(status: str, progress_pct: float):
+            progress(progress_pct, desc=status)
+
+        # Checkpoint callback
+        def checkpoint_callback(epoch: int, metrics: Dict[str, Any]):
+            if not use_dual_models:
+                model_manager.save_trained_checkpoint(epoch=epoch, metrics=metrics)
+
+        # Set model to training status
+        if not use_dual_models:
+            model_manager.set_status(ModelStatus.TRAINING)
+
+        # Execute training
+        result, success, message = training_manager.train_model(
+            model=train_model,
+            tokenizer=train_tokenizer,
+            framework=framework,
+            device=device,
+            training_prompts=training_prompts,
+            config=config,
+            progress_callback=progress_callback,
+            checkpoint_callback=checkpoint_callback,
+            logger=content_logger
+        )
+
+        # Reset model status
+        if not use_dual_models:
+            model_manager.set_status(ModelStatus.READY)
+
+        if success:
+            # FIX (CRITICAL - BUG #1): Only save checkpoint for single model mode
+            # When using dual models, the trained model is in multi_model_manager, not model_manager
+            if not use_dual_models:
+                model_manager.save_trained_checkpoint(
+                    epoch=config.num_epochs,
+                    metrics=result.get("metrics", {})
+                )
+
+            # Format metrics
+            metrics_display = format_training_metrics(result)
+
+            # Checkpoint info
+            if use_dual_models:
+                # For dual models, provide dual model information
+                checkpoint_info = "Dual model architecture active:\n"
+                status = multi_model_manager.get_status_info()
+                if status["evaluation_model"]:
+                    checkpoint_info += f"- Evaluation: {status['evaluation_model']['name']}\n"
+                if status["generation_model"]:
+                    checkpoint_info += f"- Generation: {status['generation_model']['name']}"
+            else:
+                # For single model, show checkpoint paths
+                checkpoint_info = f"Base checkpoint: {model_manager.base_checkpoint_path}\n"
+                checkpoint_info += f"Trained checkpoint: {model_manager.trained_checkpoint_path}"
+
+            return message, metrics_display, checkpoint_info
+        else:
+            return message, "", ""
+
+    finally:
+        # Security: Always release operation slot
+        release_operation_slot()
 
 
 def format_training_metrics(result: Dict[str, Any]) -> str:
@@ -333,6 +684,156 @@ def format_training_metrics(result: Dict[str, Any]) -> str:
 
 
 # ============================================================================
+# Phase 2: RLAIF Training Functions
+# ============================================================================
+
+def start_rlaif_training_handler(
+    num_ppo_steps: int,
+    batch_size: int,
+    learning_rate: float,
+    progress=gr.Progress()
+) -> Tuple[str, str]:
+    """
+    Handle Phase 2 (RLAIF) training request.
+
+    Args:
+        num_ppo_steps: Number of PPO training steps
+        batch_size: Batch size for training
+        learning_rate: Learning rate for PPO
+        progress: Gradio progress tracker
+
+    Returns:
+        Tuple of (status_message, metrics_display)
+    """
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("rlaif_training", RATE_LIMIT_TRAINING_SECONDS)
+    if not can_execute:
+        return rate_error, ""
+
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", ""
+
+    try:
+        # Check if preference pairs are available
+        if not training_manager.has_preference_pairs():
+            return (
+                "✗ No preference pairs available.\n"
+                "Please run Phase 1 (SFT) training first in the Training tab.\n"
+                "Phase 1 collects preference pairs needed for RLAIF.",
+                ""
+            )
+
+        # Check if we have models loaded
+        use_dual_models = multi_model_manager.gen_model is not None
+        if not use_dual_models and not model_manager.is_ready():
+            return "✗ Please load models first", ""
+
+        # Progress callback
+        def progress_callback(status: str, progress_pct: float):
+            progress(progress_pct, desc=status)
+
+        # Select model
+        if use_dual_models:
+            gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            device = multi_model_manager.device
+
+            # Setup framework
+            framework = setup_default_framework(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=device
+            )
+            train_model = gen_model
+            train_tokenizer = gen_tokenizer
+        else:
+            framework = setup_default_framework(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
+            train_model = model_manager.model
+            train_tokenizer = model_manager.tokenizer
+            device = model_manager.device
+
+        # Run RLAIF training
+        result, success, message = training_manager.train_rlaif(
+            model=train_model,
+            tokenizer=train_tokenizer,
+            framework=framework,
+            device=device,
+            num_ppo_steps=num_ppo_steps,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            progress_callback=progress_callback
+        )
+
+        if success:
+            metrics_display = format_rlaif_metrics(result)
+            return message, metrics_display
+        else:
+            return message, ""
+
+    finally:
+        release_operation_slot()
+
+
+def format_rlaif_metrics(result: Dict[str, Any]) -> str:
+    """Format RLAIF training metrics for display."""
+    output = "# RLAIF Training Metrics\n\n"
+
+    output += f"**Preference Pairs Used:** {result.get('preference_pairs_used', 0)}\n"
+    output += f"**PPO Steps:** {result.get('ppo_steps', 0)}\n"
+    output += f"**Training Time:** {result.get('training_time', 0):.1f}s\n\n"
+
+    # Reward model metrics
+    reward_metrics = result.get('reward_model_metrics', {})
+    if reward_metrics:
+        output += "## Reward Model Training\n\n"
+        if 'final_accuracy' in reward_metrics:
+            output += f"- **Final Accuracy:** {reward_metrics['final_accuracy']:.2%}\n"
+        if 'final_loss' in reward_metrics:
+            output += f"- **Final Loss:** {reward_metrics['final_loss']:.4f}\n"
+        output += "\n"
+
+    # PPO metrics
+    ppo_results = result.get('ppo_results', {})
+    if ppo_results:
+        output += "## PPO Training\n\n"
+        if 'final_avg_reward' in ppo_results:
+            output += f"- **Final Avg Reward:** {ppo_results['final_avg_reward']:.4f}\n"
+        if 'final_kl_divergence' in ppo_results:
+            output += f"- **Final KL Divergence:** {ppo_results['final_kl_divergence']:.4f}\n"
+
+        # Training history
+        history = ppo_results.get('training_history', {})
+        if history.get('step_avg_rewards'):
+            rewards = history['step_avg_rewards']
+            if len(rewards) > 1:
+                improvement = rewards[-1] - rewards[0]
+                output += f"- **Reward Improvement:** {improvement:+.4f}\n"
+
+    return output
+
+
+def get_preference_pairs_status() -> str:
+    """Get status of collected preference pairs."""
+    if not training_manager.has_preference_pairs():
+        return "⚠ No preference pairs available. Run Phase 1 training first."
+
+    pairs = training_manager.get_preference_pairs()
+    stats = training_manager.pipeline_stats
+
+    status = f"✓ {len(pairs)} preference pairs available for RLAIF\n"
+    if stats:
+        status += f"Average margin: {stats.get('avg_margin', 0):.2f}\n"
+    status += "\nReady for Phase 2 training!"
+
+    return status
+
+
+# ============================================================================
 # Generation Tab Functions
 # ============================================================================
 
@@ -352,6 +853,11 @@ def generate_comparison_handler(
     Returns:
         Tuple of (base_output, trained_output, base_eval, trained_eval)
     """
+    # Security: Validate prompt length to prevent DoS
+    is_valid, error_msg = validate_input_length(prompt, MAX_PROMPT_LENGTH, "Prompt")
+    if not is_valid:
+        return error_msg, error_msg, "", ""
+
     if not model_manager.can_compare():
         error_msg = "✗ Need both base and trained checkpoints for comparison"
         return error_msg, error_msg, "", ""
@@ -372,8 +878,9 @@ def generate_comparison_handler(
         trained_tokenizer = model_manager.tokenizer
 
         # Generation config
+        # FIX: Use max_new_tokens so max_length parameter means "new tokens to generate"
         gen_config = GenerationConfig(
-            max_length=max_length,
+            max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
             do_sample=True
         )
@@ -417,13 +924,24 @@ def generate_comparison_handler(
         return error_msg, error_msg, "", ""
 
     finally:
-        # Cleanup base model to free memory
-        if base_model is not None:
-            del base_model
-        if base_tokenizer is not None:
-            del base_tokenizer
+        # FIX (BUG #5): Robust cleanup with error handling to prevent memory leaks
+        # Even if cleanup fails, ensure all cleanup steps are attempted
+        cleanup_errors = []
 
-        # Clear GPU cache if available
+        try:
+            # Cleanup base model to free memory
+            if base_model is not None:
+                del base_model
+        except Exception as e:
+            cleanup_errors.append(f"Failed to delete base_model: {e}")
+
+        try:
+            if base_tokenizer is not None:
+                del base_tokenizer
+        except Exception as e:
+            cleanup_errors.append(f"Failed to delete base_tokenizer: {e}")
+
+        # Clear GPU/MPS cache if available
         try:
             import torch
             if torch.cuda.is_available():
@@ -431,11 +949,21 @@ def generate_comparison_handler(
             # Also try MPS cache clear (if available in PyTorch version)
             if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
                 torch.mps.empty_cache()
-        except:
-            pass  # Ignore cache clear errors
+        except Exception as e:
+            cleanup_errors.append(f"Failed to clear cache: {e}")
 
-        import gc
-        gc.collect()
+        # Garbage collection
+        try:
+            import gc
+            gc.collect()
+        except Exception as e:
+            cleanup_errors.append(f"Failed to run garbage collection: {e}")
+
+        # Log any cleanup errors for debugging (but don't raise them)
+        if cleanup_errors:
+            import logging
+            for error in cleanup_errors:
+                logging.warning(f"Cleanup issue: {error}")
 
 
 def format_generation_evaluation(eval_result: Dict[str, Any], model_type: str) -> str:
@@ -483,9 +1011,19 @@ def run_comparison_handler(
     Returns:
         Tuple of (results_summary, detailed_examples, export_json, export_csv)
     """
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("comparison", RATE_LIMIT_COMPARISON_SECONDS)
+    if not can_execute:
+        return rate_error, "", "", ""
+
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", "", "", ""
+
     if not model_manager.can_compare():
         error_msg = "✗ Cannot run comparison: Need both base and trained model checkpoints.\n"
         error_msg += "Please train a model first in the Training tab."
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     # Security: Validate inputs (HIGH-01, HIGH-02 fixes)
@@ -499,11 +1037,13 @@ def run_comparison_handler(
     if not (MIN_TEMPERATURE <= temperature <= MAX_TEMPERATURE):
         error_msg = f"✗ Invalid temperature: {temperature}\n"
         error_msg += f"Must be between {MIN_TEMPERATURE} and {MAX_TEMPERATURE}"
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     if not (MIN_MAX_LENGTH <= max_length <= MAX_MAX_LENGTH):
         error_msg = f"✗ Invalid max_length: {max_length}\n"
         error_msg += f"Must be between {MIN_MAX_LENGTH} and {MAX_MAX_LENGTH}"
+        release_operation_slot()  # Release before returning
         return error_msg, "", "", ""
 
     try:
@@ -514,7 +1054,8 @@ def run_comparison_handler(
             model_manager.base_checkpoint_path
         )
         if not success:
-            return f"✗ Failed to load base model: {msg}", "", ""
+            # FIX (BUG #3): Return 4 values to match function signature
+            return f"✗ Failed to load base model: {msg}", "", "", ""
 
         # Trained model is current model
         trained_model = model_manager.model
@@ -564,8 +1105,9 @@ def run_comparison_handler(
             progress((0.1 + (current / total) * 0.8), desc=message)
 
         # Run comparison
+        # FIX: Use max_new_tokens so max_length parameter means "new tokens to generate"
         gen_config = GenerationConfig(
-            max_length=max_length,
+            max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
             do_sample=True
         )
@@ -579,7 +1121,8 @@ def run_comparison_handler(
             device=model_manager.device,
             generation_config=gen_config,
             test_suite_name=test_suite_name,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            logger=content_logger
         )
 
         progress(0.95, desc="Formatting results...")
@@ -623,6 +1166,10 @@ def run_comparison_handler(
         error_msg += "- Test suite is valid\n"
         error_msg += "- Generation parameters are within acceptable ranges"
         return error_msg, "", "", ""
+
+    finally:
+        # Security: Always release operation slot
+        release_operation_slot()
 
 
 def format_comparison_summary(result: ComparisonResult) -> str:
@@ -871,12 +1418,15 @@ def create_demo() -> gr.Blocks:
         gr.Markdown("Demonstration of AI-based constitutional principle evaluation and training")
 
         # Global configuration section
+        gr.Markdown("### Single Model Mode (Legacy)")
+        gr.Markdown("*For best results, use the Dual Model Architecture section below instead*")
+
         with gr.Row():
             with gr.Column(scale=2):
                 model_dropdown = gr.Dropdown(
-                    choices=["gpt2", "gpt2-medium", "distilgpt2"],
-                    value="gpt2",
-                    label="Model Selection"
+                    choices=get_all_model_choices(),
+                    value="phi-3-mini-instruct",
+                    label="Model Selection (Legacy - Use Dual Models Below)"
                 )
                 device_dropdown = gr.Dropdown(
                     choices=["auto", "mps", "cuda", "cpu"],
@@ -892,6 +1442,85 @@ def create_demo() -> gr.Blocks:
                     interactive=False
                 )
 
+        # Logging controls
+        with gr.Row():
+            with gr.Column(scale=2):
+                verbosity_slider = gr.Slider(
+                    minimum=0,
+                    maximum=3,
+                    value=2,
+                    step=1,
+                    label="Content Logging Verbosity (0=off, 1=summary, 2=key stages, 3=full pipeline)",
+                    info="Controls how much detail is logged to the terminal during evaluation and training"
+                )
+                verbosity_status = gr.Textbox(
+                    label="Logging Status",
+                    value="✓ Logging verbosity set to level 2: Key stages (default)",
+                    interactive=False
+                )
+
+            with gr.Column(scale=1):
+                export_logs_btn = gr.Button("📥 Export Logs", variant="secondary")
+                export_status = gr.Textbox(
+                    label="Export Status",
+                    value="No logs to export yet",
+                    interactive=False,
+                    lines=3
+                )
+
+        # Dual model configuration (advanced)
+        with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=True):
+            gr.Markdown("""
+            **Dual Model System**: Use separate models for evaluation and generation/training for improved performance.
+            - **Evaluation Model**: Instruction-tuned models recommended (Phi-3-mini or Qwen2.5-3B)
+            - **Generation Model**: For training/fine-tuning (Phi-3-mini or Qwen2.5-3B recommended)
+
+            **Model Tiers**:
+            - 🥇 **Tier 1 (Recommended)**: phi-3-mini-instruct (~7.6GB), qwen2.5-3b-instruct (~6GB)
+            - 🥈 **Tier 2 (More capable)**: mistral-7b-instruct (~14GB), qwen2.5-7b-instruct (~14GB)
+            - 🥉 **Tier 3 (Limited resources)**: qwen2.5-1.5b-instruct (~3GB), tinyllama-chat (~2.2GB)
+            """)
+
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("### Evaluation Model")
+                    eval_model_dropdown = gr.Dropdown(
+                        choices=get_evaluation_model_choices(),
+                        value="phi-3-mini-instruct",
+                        label="Select Evaluation Model",
+                        info="Instruction-tuned models recommended for reliable JSON output"
+                    )
+                    load_eval_model_btn = gr.Button("Load Evaluation Model", variant="primary")
+                    eval_load_status = gr.Textbox(
+                        label="Status",
+                        value="No evaluation model loaded",
+                        interactive=False,
+                        lines=2
+                    )
+
+                with gr.Column():
+                    gr.Markdown("### Generation Model")
+                    gen_model_dropdown = gr.Dropdown(
+                        choices=get_generation_model_choices(),
+                        value="phi-3-mini-gen",
+                        label="Select Generation Model",
+                        info="Used for training and text generation"
+                    )
+                    load_gen_model_btn = gr.Button("Load Generation Model", variant="primary")
+                    gen_load_status = gr.Textbox(
+                        label="Status",
+                        value="No generation model loaded",
+                        interactive=False,
+                        lines=2
+                    )
+
+            dual_model_status = gr.Textbox(
+                label="Dual Model System Status",
+                value="No dual models loaded. Using single model system.",
+                interactive=False,
+                lines=4
+            )
+
         load_status = gr.Textbox(label="Status Messages", interactive=False)
 
         # Load model handler
@@ -899,6 +1528,32 @@ def create_demo() -> gr.Blocks:
             fn=load_model_handler,
             inputs=[model_dropdown, device_dropdown],
             outputs=[load_status, model_status]
+        )
+
+        # Logger control handlers
+        verbosity_slider.change(
+            fn=update_logger_verbosity,
+            inputs=[verbosity_slider],
+            outputs=[verbosity_status]
+        )
+
+        export_logs_btn.click(
+            fn=export_logs_handler,
+            inputs=[],
+            outputs=[verbosity_status, export_status]
+        )
+
+        # Dual model handlers
+        load_eval_model_btn.click(
+            fn=load_evaluation_model_handler,
+            inputs=[eval_model_dropdown],
+            outputs=[eval_load_status, dual_model_status]
+        )
+
+        load_gen_model_btn.click(
+            fn=load_generation_model_handler,
+            inputs=[gen_model_dropdown],
+            outputs=[gen_load_status, dual_model_status]
         )
 
         # Tabs
@@ -951,10 +1606,14 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 2: Training
+            # Tab 2: Phase 1 - SFT Training
             # ================================================================
-            with gr.Tab("🔧 Training"):
-                gr.Markdown("## Train Model with Constitutional AI")
+            with gr.Tab("🔧 Phase 1: SFT"):
+                gr.Markdown("## Phase 1: Supervised Fine-Tuning (Critique-Revision)")
+                gr.Markdown("""
+                **Phase 1** generates training data via critique-revision and fine-tunes the model.
+                This also collects **preference pairs** for Phase 2 (RLAIF).
+                """)
 
                 with gr.Row():
                     with gr.Column():
@@ -982,7 +1641,97 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 3: Generation (Before/After Comparison)
+            # Tab 3: Phase 2 - RLAIF Training
+            # ================================================================
+            with gr.Tab("🚀 Phase 2: RLAIF"):
+                gr.Markdown("## Reinforcement Learning from AI Feedback (RLAIF)")
+                gr.Markdown("""
+                **Phase 2** uses the preference pairs collected during Phase 1 to train a reward model,
+                then uses PPO (Proximal Policy Optimization) to further align the model.
+
+                **Pipeline:**
+                1. Train reward model on preference pairs (chosen vs rejected responses)
+                2. Use PPO to optimize policy to maximize reward
+                3. KL divergence penalty prevents model from diverging too far
+
+                **Prerequisites:**
+                - Complete Phase 1 training first to collect preference pairs
+                - Requires more memory (policy + reference + reward models)
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        # Status display
+                        rlaif_pairs_status = gr.Textbox(
+                            label="Preference Pairs Status",
+                            value="⚠ No preference pairs available. Run Phase 1 training first.",
+                            interactive=False,
+                            lines=3
+                        )
+
+                        refresh_status_btn = gr.Button("🔄 Refresh Status", variant="secondary")
+
+                        gr.Markdown("### RLAIF Configuration")
+
+                        rlaif_ppo_steps = gr.Slider(
+                            minimum=10,
+                            maximum=200,
+                            value=50,
+                            step=10,
+                            label="PPO Training Steps",
+                            info="More steps = better alignment but slower"
+                        )
+
+                        rlaif_batch_size = gr.Slider(
+                            minimum=1,
+                            maximum=16,
+                            value=4,
+                            step=1,
+                            label="Batch Size",
+                            info="Reduce if running out of memory"
+                        )
+
+                        rlaif_learning_rate = gr.Slider(
+                            minimum=1e-7,
+                            maximum=1e-4,
+                            value=1e-6,
+                            step=1e-7,
+                            label="Learning Rate",
+                            info="Lower = more stable, higher = faster learning"
+                        )
+
+                        start_rlaif_btn = gr.Button(
+                            "🚀 Start RLAIF Training",
+                            variant="primary",
+                            size="lg"
+                        )
+
+                    with gr.Column():
+                        rlaif_status = gr.Textbox(
+                            label="Training Status",
+                            interactive=False,
+                            lines=6
+                        )
+                        rlaif_metrics = gr.Markdown(
+                            label="Training Metrics",
+                            value="*Run RLAIF training to see metrics*"
+                        )
+
+                # Event handlers
+                refresh_status_btn.click(
+                    fn=get_preference_pairs_status,
+                    inputs=[],
+                    outputs=[rlaif_pairs_status]
+                )
+
+                start_rlaif_btn.click(
+                    fn=start_rlaif_training_handler,
+                    inputs=[rlaif_ppo_steps, rlaif_batch_size, rlaif_learning_rate],
+                    outputs=[rlaif_status, rlaif_metrics]
+                )
+
+            # ================================================================
+            # Tab 4: Generation (Before/After Comparison)
             # ================================================================
             with gr.Tab("📝 Generation"):
                 gr.Markdown("## Compare Base vs Trained Model Generation")
@@ -1040,7 +1789,7 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 4: Impact Analysis
+            # Tab 5: Impact Analysis
             # ================================================================
             with gr.Tab("📊 Impact"):
                 gr.Markdown("## Model Training Impact Analysis")
@@ -1138,7 +1887,7 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 5: Architecture & Documentation
+            # Tab 6: Architecture & Documentation
             # ================================================================
             with gr.Tab("📚 Architecture"):
                 gr.Markdown("## Constitutional AI Demo Architecture")
@@ -1296,13 +2045,179 @@ def create_demo() -> gr.Blocks:
 
 
 # ============================================================================
+# Configuration Loading
+# ============================================================================
+
+def load_config(config_path: str = "demo/config.yaml") -> Dict[str, Any]:
+    """
+    Load configuration from YAML file.
+
+    Args:
+        config_path: Path to config.yaml
+
+    Returns:
+        Configuration dictionary
+    """
+    config_file = Path(config_path)
+    if config_file.exists():
+        with open(config_file, 'r') as f:
+            return yaml.safe_load(f)
+    return {}
+
+
+def get_config_value(key: str, default: Any = None, config: Dict[str, Any] = None) -> Any:
+    """
+    Get configuration value with priority: ENV > config.yaml > default.
+
+    Priority order:
+    1. Environment variable (uppercase with prefix)
+    2. config.yaml value
+    3. Default value
+
+    Args:
+        key: Configuration key (e.g., "server_name")
+        default: Default value if not found
+        config: Loaded config dictionary
+
+    Returns:
+        Configuration value
+    """
+    # Convert key to uppercase environment variable name
+    env_key = key.upper()
+    if not env_key.startswith("GRADIO_"):
+        env_key = f"GRADIO_{env_key}"
+
+    # Check environment variable first
+    env_value = os.getenv(env_key)
+    if env_value is not None:
+        # Convert string booleans to actual booleans
+        if env_value.lower() in ('true', '1', 'yes'):
+            return True
+        elif env_value.lower() in ('false', '0', 'no'):
+            return False
+        # Convert string numbers to integers
+        try:
+            if '.' not in env_value:
+                return int(env_value)
+        except ValueError:
+            pass
+        return env_value
+
+    # Check config.yaml next
+    if config and key in config:
+        return config[key]
+
+    # Return default
+    return default
+
+
+# ============================================================================
+# Health Check Endpoint
+# ============================================================================
+
+def create_health_check_app():
+    """
+    Create a simple Gradio app with health check endpoint.
+
+    Returns:
+        Gradio Blocks app with /health endpoint
+    """
+    with gr.Blocks() as health_app:
+        gr.Markdown("# Health Check")
+        status_output = gr.JSON(value={"status": "healthy", "service": "Constitutional AI Demo"})
+
+    return health_app
+
+
+# ============================================================================
 # Main Entry Point
 # ============================================================================
 
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Constitutional AI Interactive Demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Environment Variables:
+  GRADIO_SERVER_NAME     Server hostname (default: 0.0.0.0)
+  GRADIO_SERVER_PORT     Server port (default: 7860)
+  GRADIO_SHARE           Enable public URL via Gradio share (default: false)
+  DEFAULT_MODEL          Default model to use (default: gpt2)
+  DEVICE_PREFERENCE      Device preference: auto, mps, cuda, cpu (default: auto)
+
+Examples:
+  # Run with default settings
+  python -m demo.main
+
+  # Run on specific port
+  python -m demo.main --server-port 8080
+
+  # Run with public URL
+  python -m demo.main --share
+
+  # Use environment variables
+  GRADIO_SERVER_PORT=8080 python -m demo.main
+        """
+    )
+
+    parser.add_argument(
+        "--server-name",
+        type=str,
+        default=None,
+        help="Server hostname (default: 0.0.0.0, env: GRADIO_SERVER_NAME)"
+    )
+
+    parser.add_argument(
+        "--server-port",
+        type=int,
+        default=None,
+        help="Server port (default: 7860, env: GRADIO_SERVER_PORT)"
+    )
+
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        default=None,
+        help="Enable public URL via Gradio share (env: GRADIO_SHARE)"
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="demo/config.yaml",
+        help="Path to config.yaml file (default: demo/config.yaml)"
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    # Parse command-line arguments
+    args = parse_args()
+
+    # Load configuration from YAML
+    config = load_config(args.config)
+
+    # Get configuration values with priority: CLI > ENV > config.yaml > default
+    server_name = args.server_name or get_config_value("server_name", "0.0.0.0", config)
+    server_port = args.server_port or get_config_value("server_port", 7860, config)
+    share = args.share if args.share is not None else get_config_value("share", False, config)
+
+    # Print startup configuration
+    print("=" * 60)
+    print("Constitutional AI Interactive Demo")
+    print("=" * 60)
+    print(f"Server: {server_name}:{server_port}")
+    print(f"Share: {share}")
+    print(f"Config: {args.config}")
+    print("=" * 60)
+    print()
+
+    # Create and launch demo
     demo = create_demo()
     demo.launch(
-        share=False,
-        server_name="0.0.0.0",
-        server_port=7860
+        share=share,
+        server_name=server_name,
+        server_port=server_port
     )

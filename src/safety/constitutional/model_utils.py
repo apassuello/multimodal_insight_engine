@@ -16,14 +16,16 @@ from dataclasses import dataclass
 @dataclass
 class GenerationConfig:
     """Configuration for text generation."""
-    max_length: int = 100
+    max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
+    max_length: Optional[int] = None  # Deprecated, kept for compatibility
     temperature: float = 1.0
-    top_p: float = 0.9
-    top_k: int = 50
+    top_p: float = 1.0  # FIX: Disable top_p filtering (1.0 = no filtering)
+    top_k: int = 0  # FIX: Disable top_k filtering (0 = no filtering)
     num_return_sequences: int = 1
     do_sample: bool = True
     pad_token_id: Optional[int] = None
     eos_token_id: Optional[int] = None
+    min_new_tokens: Optional[int] = None  # Minimum tokens to generate
 
 
 def load_model(
@@ -115,18 +117,39 @@ def generate_text(
         pad_token_id = tokenizer.pad_token_id
 
     # Generate
+    # FIX: Build generation kwargs, only passing parameters that are actually needed
+    gen_kwargs = {
+        "temperature": generation_config.temperature,
+        "num_return_sequences": generation_config.num_return_sequences,
+        "do_sample": generation_config.do_sample,
+        "pad_token_id": pad_token_id,
+        "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+        # FIX: Disable cache to avoid DynamicCache errors with Phi-3 and similar models
+        "use_cache": False,
+    }
+
+    # Only pass top_p if it's actually doing filtering (< 1.0)
+    if generation_config.top_p < 1.0:
+        gen_kwargs["top_p"] = generation_config.top_p
+
+    # Only pass top_k if it's actually doing filtering (> 0)
+    # CRITICAL: Don't pass top_k=0 as some models interpret it as "use 0 tokens"!
+    if generation_config.top_k > 0:
+        gen_kwargs["top_k"] = generation_config.top_k
+
+    # Use max_new_tokens (preferred) or fall back to max_length for compatibility
+    if generation_config.max_new_tokens is not None:
+        gen_kwargs["max_new_tokens"] = generation_config.max_new_tokens
+    elif generation_config.max_length is not None:
+        gen_kwargs["max_length"] = generation_config.max_length
+    else:
+        gen_kwargs["max_new_tokens"] = 100  # Default
+
+    if generation_config.min_new_tokens is not None:
+        gen_kwargs["min_new_tokens"] = generation_config.min_new_tokens
+
     with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_length=generation_config.max_length,
-            temperature=generation_config.temperature,
-            top_p=generation_config.top_p,
-            top_k=generation_config.top_k,
-            num_return_sequences=generation_config.num_return_sequences,
-            do_sample=generation_config.do_sample,
-            pad_token_id=pad_token_id,
-            eos_token_id=generation_config.eos_token_id or tokenizer.eos_token_id,
-        )
+        outputs = model.generate(**inputs, **gen_kwargs)
 
     # Decode output
     prompt_length = inputs["input_ids"].shape[1]
@@ -196,17 +219,37 @@ def batch_generate(
             pad_token_id = tokenizer.pad_token_id
 
         # Generate
+        # FIX: Build generation kwargs, only passing parameters that are actually needed
+        gen_kwargs = {
+            "temperature": generation_config.temperature,
+            "do_sample": generation_config.do_sample,
+            "pad_token_id": pad_token_id,
+            "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+            # FIX: Disable cache to avoid DynamicCache errors with Phi-3 and similar models
+            "use_cache": False,
+        }
+
+        # Only pass top_p if it's actually doing filtering (< 1.0)
+        if generation_config.top_p < 1.0:
+            gen_kwargs["top_p"] = generation_config.top_p
+
+        # Only pass top_k if it's actually doing filtering (> 0)
+        # CRITICAL: Don't pass top_k=0 as some models interpret it as "use 0 tokens"!
+        if generation_config.top_k > 0:
+            gen_kwargs["top_k"] = generation_config.top_k
+
+        if generation_config.max_new_tokens is not None:
+            gen_kwargs["max_new_tokens"] = generation_config.max_new_tokens
+        elif generation_config.max_length is not None:
+            gen_kwargs["max_length"] = generation_config.max_length
+        else:
+            gen_kwargs["max_new_tokens"] = 100
+
+        if generation_config.min_new_tokens is not None:
+            gen_kwargs["min_new_tokens"] = generation_config.min_new_tokens
+
         with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_length=generation_config.max_length,
-                temperature=generation_config.temperature,
-                top_p=generation_config.top_p,
-                top_k=generation_config.top_k,
-                do_sample=generation_config.do_sample,
-                pad_token_id=pad_token_id,
-                eos_token_id=generation_config.eos_token_id or tokenizer.eos_token_id,
-            )
+            outputs = model.generate(**inputs, **gen_kwargs)
 
         # Decode outputs
         prompt_lengths = inputs["input_ids"].ne(pad_token_id).sum(dim=1)

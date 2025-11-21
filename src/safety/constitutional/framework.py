@@ -5,7 +5,10 @@ KEY COMPONENTS:
 - ConstitutionalFramework: Collection of principles for comprehensive evaluation
 DEPENDENCIES: typing, torch
 SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's research.
-             Supports AI-based evaluation when model/tokenizer are provided to framework.
+             Supports three evaluation modes:
+             1. AI-based: Local model for nuanced evaluation
+             2. HF API: HuggingFace Inference API for accurate toxicity detection
+             3. Regex: Fast pattern matching for obvious cases
 """
 
 import inspect
@@ -54,7 +57,8 @@ class ConstitutionalPrinciple:
         text: str,
         model: Optional[Any] = None,
         tokenizer: Optional[Any] = None,
-        device: Optional[Any] = None
+        device: Optional[Any] = None,
+        logger=None  # type: ignore
     ) -> Dict[str, Any]:
         """
         Evaluate text against this principle.
@@ -64,6 +68,7 @@ class ConstitutionalPrinciple:
             model: Optional AI model for AI-based evaluation
             tokenizer: Optional tokenizer for AI-based evaluation
             device: Optional device for computation (e.g., torch.device)
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             Dictionary containing evaluation results with at least:
@@ -85,8 +90,17 @@ class ConstitutionalPrinciple:
         params = sig.parameters
 
         # Call evaluation function with appropriate parameters
-        if 'model' in params or 'tokenizer' in params or 'device' in params:
-            # New-style function that accepts model parameters
+        if 'logger' in params:
+            # Function supports content logging
+            result = self.evaluation_fn(
+                text,
+                model=model,
+                tokenizer=tokenizer,
+                device=device,
+                logger=logger
+            )
+        elif 'model' in params or 'tokenizer' in params or 'device' in params:
+            # New-style function that accepts model parameters (without logger)
             result = self.evaluation_fn(
                 text,
                 model=model,
@@ -124,7 +138,9 @@ class ConstitutionalFramework:
         name: str = "default_framework",
         model: Optional[Any] = None,
         tokenizer: Optional[Any] = None,
-        device: Optional[Any] = None
+        device: Optional[Any] = None,
+        use_hf_api: bool = False,
+        hf_api_token: Optional[str] = None
     ):
         """
         Initialize the constitutional framework.
@@ -134,6 +150,8 @@ class ConstitutionalFramework:
             model: Optional AI model for AI-based principle evaluation
             tokenizer: Optional tokenizer for AI-based evaluation
             device: Optional device for computation (defaults to CPU if torch available)
+            use_hf_api: If True, use HuggingFace API for evaluation (more accurate)
+            hf_api_token: Optional HuggingFace API token
         """
         self.name = name
         self.model = model
@@ -149,6 +167,131 @@ class ConstitutionalFramework:
 
         self.principles: Dict[str, ConstitutionalPrinciple] = {}
         self.evaluation_history: List[Dict[str, Any]] = []
+        self._model_name: Optional[str] = None  # Track model name for display
+
+        # HuggingFace API configuration
+        self._use_hf_api = use_hf_api
+        self._hf_api_evaluator = None
+        self._hf_api_token = hf_api_token
+
+        if use_hf_api:
+            self._setup_hf_api(hf_api_token)
+
+    def set_evaluation_model(
+        self,
+        model: Any,
+        tokenizer: Any,
+        device: Optional[Any] = None,
+        model_name: Optional[str] = None
+    ) -> None:
+        """
+        Set or change the evaluation model.
+
+        Use this to set a different model for evaluation than for generation.
+
+        Args:
+            model: AI model for evaluation
+            tokenizer: Tokenizer for the model
+            device: Computation device (optional, defaults to model's device or CPU)
+            model_name: Optional human-readable name for logging
+        """
+        self.model = model
+        self.tokenizer = tokenizer
+        if device is not None:
+            self.device = device
+        elif torch is not None:
+            self.device = torch.device('cpu')
+
+        # Store model name for display
+        if model_name:
+            self._model_name = model_name
+        elif hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
+            self._model_name = model.config.name_or_path.split('/')[-1]
+        else:
+            self._model_name = "Custom Model"
+
+        print(f"[Framework] Evaluation model set to: {self._model_name}")
+
+    def get_evaluation_model_name(self) -> str:
+        """Get the name of the current evaluation model."""
+        if self._model_name:
+            return self._model_name
+        if self._use_hf_api and self._hf_api_evaluator is not None:
+            return f"HF-API ({self._hf_api_evaluator.config.toxicity_model})"
+        if self.model is None:
+            return "Regex (no model)"
+        if hasattr(self.model, 'config') and hasattr(self.model.config, 'name_or_path'):
+            return self.model.config.name_or_path.split('/')[-1]
+        return "Unknown Model"
+
+    def use_regex_only(self) -> None:
+        """
+        Disable AI-based evaluation and use regex patterns only.
+
+        This is faster and more reliable for clear-cut cases,
+        but less nuanced than AI-based evaluation.
+        """
+        self.model = None
+        self.tokenizer = None
+        self._use_hf_api = False
+        self._hf_api_evaluator = None
+        self._model_name = "Regex Only"
+        print("[Framework] Switched to regex-only evaluation (no AI model)")
+
+    def _setup_hf_api(self, api_token: Optional[str] = None) -> bool:
+        """
+        Setup HuggingFace API evaluator.
+
+        Args:
+            api_token: Optional API token
+
+        Returns:
+            True if setup successful, False otherwise
+        """
+        try:
+            from .hf_api_evaluator import HuggingFaceAPIEvaluator
+            self._hf_api_evaluator = HuggingFaceAPIEvaluator(
+                api_token=api_token,
+                toxicity_threshold=0.5
+            )
+            self._use_hf_api = True
+            self._model_name = "HF-API (toxic-bert)"
+            print("[Framework] HuggingFace API evaluation enabled")
+            return True
+        except ImportError as e:
+            print(f"[Framework] Failed to setup HF API: {e}")
+            self._use_hf_api = False
+            return False
+        except Exception as e:
+            print(f"[Framework] HF API setup error: {e}")
+            self._use_hf_api = False
+            return False
+
+    def use_hf_api(self, api_token: Optional[str] = None) -> bool:
+        """
+        Switch to HuggingFace API-based evaluation.
+
+        This uses the HuggingFace Inference API with models like toxic-bert
+        for accurate toxicity detection (~98% accuracy).
+
+        Args:
+            api_token: Optional HuggingFace API token
+
+        Returns:
+            True if switch successful, False otherwise
+        """
+        # Disable local model when using HF API
+        self.model = None
+        self.tokenizer = None
+        return self._setup_hf_api(api_token)
+
+    def is_using_hf_api(self) -> bool:
+        """Check if HuggingFace API evaluation is active."""
+        return self._use_hf_api and self._hf_api_evaluator is not None
+
+    def get_hf_api_evaluator(self):
+        """Get the HF API evaluator instance if available."""
+        return self._hf_api_evaluator
 
     def add_principle(self, principle: ConstitutionalPrinciple) -> None:
         """
@@ -185,16 +328,19 @@ class ConstitutionalFramework:
         if name in self.principles:
             self.principles[name].enabled = False
 
-    def evaluate_text(self, text: str, track_history: bool = False) -> Dict[str, Any]:
+    def evaluate_text(self, text: str, track_history: bool = False, logger=None) -> Dict[str, Any]:  # type: ignore
         """
         Evaluate text against all constitutional principles.
 
-        Uses AI-based evaluation if model and tokenizer were provided to framework,
-        otherwise falls back to regex-based evaluation.
+        Evaluation modes (in order of preference):
+        1. HF API: If use_hf_api is True, uses HuggingFace Inference API (most accurate)
+        2. AI-based: If model and tokenizer are provided (local model, nuanced)
+        3. Regex: Fallback pattern matching (fast, obvious cases)
 
         Args:
             text: Text to evaluate
             track_history: Whether to add this evaluation to history
+            logger: Optional ContentLogger for pipeline visibility
 
         Returns:
             Dictionary containing:
@@ -202,8 +348,13 @@ class ConstitutionalFramework:
             - any_flagged: Whether any principle was violated
             - flagged_principles: List of violated principle names
             - weighted_score: Weighted sum of violations
-            - evaluation_method: "ai_evaluation" or "regex_heuristic" (based on first principle)
+            - evaluation_method: "hf_api", "ai_evaluation", or "regex_heuristic"
         """
+        # If HF API is enabled, use it for harm evaluation
+        if self._use_hf_api and self._hf_api_evaluator is not None:
+            return self._evaluate_with_hf_api(text, track_history, logger)
+
+        # Otherwise, use standard principle-based evaluation
         principle_results = {}
         flagged_principles = []
         weighted_score = 0.0
@@ -212,12 +363,13 @@ class ConstitutionalFramework:
             if not principle.enabled:
                 continue
 
-            # Pass framework's model/tokenizer/device to principle evaluation
+            # Pass framework's model/tokenizer/device/logger to principle evaluation
             result = principle.evaluate(
                 text,
                 model=self.model,
                 tokenizer=self.tokenizer,
-                device=self.device
+                device=self.device,
+                logger=logger
             )
             principle_results[name] = result
 
@@ -239,6 +391,75 @@ class ConstitutionalFramework:
             "num_principles_evaluated": len([p for p in self.principles.values() if p.enabled]),
             "text_length": len(text),
             "evaluation_method": evaluation_method
+        }
+
+        if track_history:
+            self.evaluation_history.append({
+                "text": text[:100] + "..." if len(text) > 100 else text,
+                "evaluation": evaluation
+            })
+
+        return evaluation
+
+    def _evaluate_with_hf_api(
+        self,
+        text: str,
+        track_history: bool = False,
+        logger=None  # type: ignore
+    ) -> Dict[str, Any]:
+        """
+        Evaluate text using HuggingFace API.
+
+        This provides more accurate toxicity detection than regex patterns
+        by using pre-trained classification models like toxic-bert.
+
+        Args:
+            text: Text to evaluate
+            track_history: Whether to add to history
+            logger: Optional ContentLogger
+
+        Returns:
+            Evaluation result dictionary
+        """
+        if self._hf_api_evaluator is None:
+            # Fallback to regex if API not available
+            return self.evaluate_text(text, track_history, logger)
+
+        # Get HF API evaluation result
+        hf_result = self._hf_api_evaluator.evaluate_harm(text)
+
+        # Convert to framework format
+        principle_results = {
+            "harm_prevention": {
+                "flagged": hf_result.get("flagged", False),
+                "explicit_harm_detected": hf_result.get("explicit_harm_detected", False),
+                "subtle_harm_score": hf_result.get("subtle_harm_score", 0.0),
+                "reasoning": hf_result.get("reasoning", ""),
+                "method": hf_result.get("method", "hf_api"),
+                "principle_name": "harm_prevention",
+                "weight": 2.0
+            }
+        }
+
+        flagged_principles = []
+        weighted_score = 0.0
+
+        if hf_result.get("flagged", False):
+            flagged_principles.append("harm_prevention")
+            weighted_score = 2.0  # harm_prevention weight
+
+        evaluation = {
+            "principle_results": principle_results,
+            "any_flagged": len(flagged_principles) > 0,
+            "flagged_principles": flagged_principles,
+            "weighted_score": weighted_score,
+            "num_principles_evaluated": 1,
+            "text_length": len(text),
+            "evaluation_method": hf_result.get("method", "hf_api"),
+            "hf_api_details": {
+                "toxicity_score": hf_result.get("subtle_harm_score", 0.0),
+                "model": self._hf_api_evaluator.config.toxicity_model if self._hf_api_evaluator else None
+            }
         }
 
         if track_history:

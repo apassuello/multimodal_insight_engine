@@ -1,0 +1,732 @@
+"""MODULE: multi_model_manager.py
+PURPOSE: Dual model management for Constitutional AI demo
+KEY COMPONENTS:
+- MultiModelManager: Manages separate evaluation and generation models
+- Qwen2-1.5B-Instruct for evaluation (best instruction-following)
+- Phi-2 for generation/training (best fine-tuning performance)
+- Optimized memory usage with model unloading
+- Security: Model whitelist to prevent arbitrary code execution
+DEPENDENCIES: torch, transformers, typing
+SPECIAL NOTES: Supports dual model architecture for improved performance
+"""
+
+import torch
+from typing import Optional, Tuple, Dict, Any, Set
+from dataclasses import dataclass
+from enum import Enum
+
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer
+)
+
+
+class ModelRole(Enum):
+    """Roles for different models in the system."""
+    EVALUATION = "evaluation"  # Model used for evaluating text
+    GENERATION = "generation"  # Model used for generation and training
+
+
+@dataclass
+class ModelConfig:
+    """Configuration for a model."""
+    name: str
+    role: ModelRole
+    hf_model_id: str  # Hugging Face model identifier
+    max_memory_gb: float
+
+
+# Recommended model configurations
+# Organized by size/capability tier
+RECOMMENDED_CONFIGS = {
+    # =========================================================================
+    # TIER 0: HF API (Most accurate, no local model needed)
+    # Uses HuggingFace Inference API with toxic-bert for ~98% accuracy
+    # Best choice when internet is available and regex isn't enough
+    # =========================================================================
+    "hf-api": ModelConfig(
+        name="HF-API (toxic-bert)",
+        role=ModelRole.EVALUATION,
+        hf_model_id="unitary/toxic-bert",  # API model, not downloaded
+        max_memory_gb=0.0  # No local memory needed
+    ),
+
+    # =========================================================================
+    # TIER 1: RECOMMENDED (Best balance for Constitutional AI demo)
+    # These instruction-tuned models are much better at JSON output and
+    # following evaluation prompts than base models like Phi-2
+    # =========================================================================
+    "phi-3-mini-instruct": ModelConfig(
+        name="Phi-3-mini-4k-instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="microsoft/Phi-3-mini-4k-instruct",
+        max_memory_gb=7.6
+    ),
+    "qwen2.5-3b-instruct": ModelConfig(
+        name="Qwen2.5-3B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-3B-Instruct",
+        max_memory_gb=6.0
+    ),
+
+    # =========================================================================
+    # TIER 2: LARGER MODELS (Better capability if resources allow)
+    # =========================================================================
+    "mistral-7b-instruct": ModelConfig(
+        name="Mistral-7B-Instruct-v0.3",
+        role=ModelRole.EVALUATION,
+        hf_model_id="mistralai/Mistral-7B-Instruct-v0.3",
+        max_memory_gb=14.0
+    ),
+    "qwen2.5-7b-instruct": ModelConfig(
+        name="Qwen2.5-7B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-7B-Instruct",
+        max_memory_gb=14.0
+    ),
+
+    # =========================================================================
+    # TIER 3: SMALLER MODELS (For limited resources)
+    # =========================================================================
+    "qwen2.5-1.5b-instruct": ModelConfig(
+        name="Qwen2.5-1.5B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2.5-1.5B-Instruct",
+        max_memory_gb=3.0
+    ),
+    "qwen2-1.5b-instruct": ModelConfig(
+        name="Qwen2-1.5B-Instruct",
+        role=ModelRole.EVALUATION,
+        hf_model_id="Qwen/Qwen2-1.5B-Instruct",
+        max_memory_gb=3.0
+    ),
+    "tinyllama-chat": ModelConfig(
+        name="TinyLlama-1.1B-Chat",
+        role=ModelRole.GENERATION,
+        hf_model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        max_memory_gb=2.2
+    ),
+
+    # =========================================================================
+    # GENERATION MODELS (For training/fine-tuning)
+    # =========================================================================
+    "phi-2": ModelConfig(
+        name="Phi-2",
+        role=ModelRole.GENERATION,
+        hf_model_id="microsoft/phi-2",
+        max_memory_gb=5.4
+    ),
+    "phi-3-mini-gen": ModelConfig(
+        name="Phi-3-mini-4k-instruct",
+        role=ModelRole.GENERATION,
+        hf_model_id="microsoft/Phi-3-mini-4k-instruct",
+        max_memory_gb=7.6
+    ),
+    "qwen2.5-3b-gen": ModelConfig(
+        name="Qwen2.5-3B-Instruct",
+        role=ModelRole.GENERATION,
+        hf_model_id="Qwen/Qwen2.5-3B-Instruct",
+        max_memory_gb=6.0
+    ),
+
+    # =========================================================================
+    # MINIMAL (For testing/CI)
+    # =========================================================================
+    "gpt2": ModelConfig(
+        name="GPT-2",
+        role=ModelRole.GENERATION,
+        hf_model_id="gpt2",
+        max_memory_gb=0.5
+    )
+}
+
+
+# ============================================================================
+# SECURITY: Model Whitelist for trust_remote_code
+# ============================================================================
+# CRITICAL SECURITY CONTROL: Whitelist of trusted models
+# Models not in this list will load with trust_remote_code=False
+# This prevents arbitrary code execution from malicious models
+TRUSTED_MODEL_IDS: Set[str] = {
+    # -------------------------------------------------------------------------
+    # Qwen models - verified safe, official Alibaba Cloud models
+    # -------------------------------------------------------------------------
+    "Qwen/Qwen2-1.5B-Instruct",
+    "Qwen/Qwen2-1.5B",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    "Qwen/Qwen2.5-3B-Instruct",
+    "Qwen/Qwen2.5-7B-Instruct",
+
+    # -------------------------------------------------------------------------
+    # Microsoft Phi models - verified safe, official Microsoft models
+    # -------------------------------------------------------------------------
+    "microsoft/phi-2",
+    "microsoft/phi-1_5",
+    "microsoft/phi-1",
+    "microsoft/Phi-3-mini-4k-instruct",
+    "microsoft/Phi-3-small-8k-instruct",
+    "microsoft/Phi-3-medium-4k-instruct",
+
+    # -------------------------------------------------------------------------
+    # Mistral models - verified safe, official Mistral AI models
+    # -------------------------------------------------------------------------
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "mistralai/Mistral-7B-v0.1",
+
+    # -------------------------------------------------------------------------
+    # TinyLlama - verified safe, community model with standard architecture
+    # -------------------------------------------------------------------------
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+
+    # -------------------------------------------------------------------------
+    # OpenAI GPT models - standard transformers library, no remote code needed
+    # -------------------------------------------------------------------------
+    "gpt2",
+    "gpt2-medium",
+    "gpt2-large",
+    "gpt2-xl",
+    "distilgpt2",
+}
+
+
+def _is_model_trusted(model_id: str) -> bool:
+    """
+    Check if a model is in the trusted whitelist.
+
+    Security: This prevents arbitrary code execution from malicious models.
+    Only models in TRUSTED_MODEL_IDS can use trust_remote_code=True.
+
+    Args:
+        model_id: Hugging Face model identifier
+
+    Returns:
+        True if model is trusted, False otherwise
+    """
+    return model_id in TRUSTED_MODEL_IDS
+
+
+def _get_trust_remote_code(model_id: str) -> bool:
+    """
+    Determine trust_remote_code setting based on model whitelist.
+
+    Security: CRITICAL - This prevents arbitrary code execution.
+    - Whitelisted models: trust_remote_code=True (verified safe)
+    - Non-whitelisted models: trust_remote_code=False (security first)
+
+    Args:
+        model_id: Hugging Face model identifier
+
+    Returns:
+        True if model is whitelisted, False otherwise
+    """
+    is_trusted = _is_model_trusted(model_id)
+
+    # Log security decision
+    if not is_trusted:
+        import warnings
+        warnings.warn(
+            f"Security: Model '{model_id}' is not in the trusted whitelist. "
+            f"Loading with trust_remote_code=False for security. "
+            f"If you trust this model, add it to TRUSTED_MODEL_IDS.",
+            UserWarning,
+            stacklevel=3
+        )
+
+    return is_trusted
+
+
+def list_available_models() -> str:
+    """
+    List all available models with their configurations.
+
+    Returns:
+        Formatted string with model information
+    """
+    lines = [
+        "=" * 70,
+        "  AVAILABLE MODELS FOR CONSTITUTIONAL AI",
+        "=" * 70,
+        "",
+        "TIER 0 - HF API (Most accurate, no local model):",
+        "-" * 50,
+        "  hf-api                   HF-API (toxic-bert)            ~0.0GB (API)",
+        "",
+        "TIER 1 - RECOMMENDED (Best balance for CAI demo):",
+        "-" * 50,
+    ]
+
+    tier1_keys = ["phi-3-mini-instruct", "qwen2.5-3b-instruct"]
+    tier2_keys = ["mistral-7b-instruct", "qwen2.5-7b-instruct"]
+    tier3_keys = ["qwen2.5-1.5b-instruct", "qwen2-1.5b-instruct", "tinyllama-chat"]
+    gen_keys = ["phi-2", "phi-3-mini-gen", "qwen2.5-3b-gen"]
+
+    for key in tier1_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "TIER 2 - LARGER (Better capability if resources allow):",
+        "-" * 50,
+    ])
+    for key in tier2_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "TIER 3 - SMALLER (For limited resources):",
+        "-" * 50,
+    ])
+    for key in tier3_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "GENERATION MODELS (For training/fine-tuning):",
+        "-" * 50,
+    ])
+    for key in gen_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "=" * 70,
+        "Usage: multi_model_manager.load_evaluation_model('phi-3-mini-instruct')",
+        "=" * 70,
+    ])
+
+    return "\n".join(lines)
+
+
+def get_model_config(key: str) -> ModelConfig:
+    """
+    Get model configuration by key.
+
+    Args:
+        key: Model configuration key (e.g., 'phi-3-mini-instruct')
+
+    Returns:
+        ModelConfig object
+
+    Raises:
+        KeyError: If model key not found
+    """
+    if key not in RECOMMENDED_CONFIGS:
+        available = ", ".join(RECOMMENDED_CONFIGS.keys())
+        raise KeyError(f"Model '{key}' not found. Available: {available}")
+    return RECOMMENDED_CONFIGS[key]
+
+
+def get_evaluation_model_choices() -> list:
+    """
+    Get list of model keys suitable for evaluation.
+
+    Returns models in recommended order:
+    - Tier 0 HF API (most accurate, no local model)
+    - Tier 1 instruction-tuned models (best for evaluation)
+    - Tier 2 larger models
+    - Tier 3 smaller models
+    - Legacy/fallback models
+
+    Returns:
+        List of model keys for dropdown choices
+    """
+    # Order matters - put recommended models first
+    eval_models = [
+        # Tier 0 - HF API (most accurate, no local resources)
+        "hf-api",
+        # Tier 1 - Recommended for evaluation
+        "phi-3-mini-instruct",
+        "qwen2.5-3b-instruct",
+        # Tier 2 - More capable
+        "mistral-7b-instruct",
+        "qwen2.5-7b-instruct",
+        # Tier 3 - Smaller
+        "qwen2.5-1.5b-instruct",
+        "qwen2-1.5b-instruct",
+        "tinyllama-chat",
+        # Legacy/fallback
+        "phi-2",
+        "gpt2"
+    ]
+    # Filter to only models that exist in RECOMMENDED_CONFIGS
+    return [m for m in eval_models if m in RECOMMENDED_CONFIGS]
+
+
+def get_generation_model_choices() -> list:
+    """
+    Get list of model keys suitable for generation/training.
+
+    Returns models in recommended order for fine-tuning.
+
+    Returns:
+        List of model keys for dropdown choices
+    """
+    # Order matters - put recommended models first
+    gen_models = [
+        # Tier 1 - Recommended for generation
+        "phi-3-mini-gen",
+        "qwen2.5-3b-gen",
+        # Legacy/fallback
+        "phi-2",
+        "gpt2"
+    ]
+    # Filter to only models that exist in RECOMMENDED_CONFIGS
+    return [m for m in gen_models if m in RECOMMENDED_CONFIGS]
+
+
+def get_all_model_choices() -> list:
+    """
+    Get list of all available model keys.
+
+    Returns:
+        List of all model keys for dropdown choices
+    """
+    return list(RECOMMENDED_CONFIGS.keys())
+
+
+class MultiModelManager:
+    """
+    Manages multiple models for Constitutional AI demo.
+
+    Supports dual model architecture:
+    - Evaluation model: Best at instruction-following and evaluation
+    - Generation model: Best at fine-tuning and learning
+
+    Memory optimization:
+    - Models can be loaded/unloaded independently
+    - Automatic device selection (MPS/CUDA/CPU)
+    - Memory monitoring and warnings
+    """
+
+    def __init__(self):
+        """Initialize multi-model manager."""
+        self.eval_model: Optional[PreTrainedModel] = None
+        self.eval_tokenizer: Optional[PreTrainedTokenizer] = None
+        self.eval_config: Optional[ModelConfig] = None
+
+        self.gen_model: Optional[PreTrainedModel] = None
+        self.gen_tokenizer: Optional[PreTrainedTokenizer] = None
+        self.gen_config: Optional[ModelConfig] = None
+
+        # HuggingFace API evaluator (alternative to local model)
+        self.hf_api_evaluator = None
+        self.using_hf_api: bool = False
+
+        self.device: Optional[torch.device] = None
+        self._auto_select_device()
+
+    def _auto_select_device(self) -> None:
+        """Auto-select best available device."""
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        elif hasattr(torch, 'mps') and hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+        else:
+            self.device = torch.device('cpu')
+
+    def load_evaluation_model(
+        self,
+        model_key: str = "hf-api"
+    ) -> Tuple[bool, str]:
+        """
+        Load model for evaluation tasks.
+
+        Args:
+            model_key: Key from RECOMMENDED_CONFIGS (use 'hf-api' for HuggingFace API)
+
+        Returns:
+            Tuple of (success, message)
+        """
+        if model_key not in RECOMMENDED_CONFIGS:
+            return False, f"✗ Unknown model: {model_key}"
+
+        config = RECOMMENDED_CONFIGS[model_key]
+
+        # Special handling for HuggingFace API (no local model needed)
+        if model_key == "hf-api":
+            return self._setup_hf_api_evaluation()
+
+        try:
+            print(f"Loading evaluation model: {config.name} ({config.hf_model_id})...")
+
+            # Security: Check if model is trusted before loading
+            trust_code = _get_trust_remote_code(config.hf_model_id)
+
+            # Load tokenizer
+            self.eval_tokenizer = AutoTokenizer.from_pretrained(
+                config.hf_model_id,
+                trust_remote_code=trust_code
+            )
+
+            # Set padding token if not set
+            if self.eval_tokenizer.pad_token is None:
+                self.eval_tokenizer.pad_token = self.eval_tokenizer.eos_token
+
+            # Load model
+            # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
+            # For MPS/CPU, we must manually move model to device instead
+            device_map_arg = "auto" if self.device.type == 'cuda' else None
+            # FIX: Use float32 to avoid numerical precision issues during sampling
+            # Float16 causes "probability tensor contains inf/nan" errors with Qwen2/Phi-2
+            self.eval_model = AutoModelForCausalLM.from_pretrained(
+                config.hf_model_id,
+                torch_dtype=torch.float32,  # Force float32 for stable generation
+                trust_remote_code=trust_code,
+                device_map=device_map_arg
+            )
+
+            # Manually move to device for MPS/CPU (not supported by device_map="auto")
+            if self.device.type in ['mps', 'cpu']:
+                self.eval_model = self.eval_model.to(self.device)
+
+            self.eval_model.eval()  # Set to evaluation mode
+            self.eval_config = config
+
+            # Count parameters
+            num_params = sum(p.numel() for p in self.eval_model.parameters())
+            num_params_m = num_params / 1_000_000
+
+            message = f"✓ Evaluation model loaded: {config.name}\n"
+            message += f"  Parameters: {num_params_m:.1f}M\n"
+            message += f"  Device: {self.device}\n"
+            message += f"  Memory: ~{config.max_memory_gb:.1f}GB"
+
+            return True, message
+
+        except torch.cuda.OutOfMemoryError as e:
+            return False, (
+                f"✗ Out of memory loading evaluation model. Try:\n"
+                f"  1. Restart the demo to clear memory\n"
+                f"  2. Use a smaller model\n"
+                f"  3. Close other GPU applications\n"
+                f"  Error: {e}"
+            )
+        except (RuntimeError, ValueError, TypeError) as e:
+            return False, f"✗ Failed to load evaluation model: {e}"
+
+    def _setup_hf_api_evaluation(self) -> Tuple[bool, str]:
+        """
+        Setup HuggingFace API-based evaluation (no local model needed).
+
+        This uses the HuggingFace Inference API with toxic-bert for accurate
+        toxicity detection (~98% accuracy) without downloading large models.
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            from src.safety.constitutional.hf_api_evaluator import HuggingFaceAPIEvaluator
+
+            # Clear any existing local evaluation model
+            if self.eval_model is not None:
+                self.unload_evaluation_model()
+
+            # Setup HF API evaluator
+            self.hf_api_evaluator = HuggingFaceAPIEvaluator(
+                toxicity_model="unitary/toxic-bert",
+                toxicity_threshold=0.5
+            )
+            self.using_hf_api = True
+            self.eval_config = RECOMMENDED_CONFIGS["hf-api"]
+
+            # Test the API connection
+            if not self.hf_api_evaluator.is_available():
+                return False, (
+                    "✗ HuggingFace API not available. Check:\n"
+                    "  1. Internet connection\n"
+                    "  2. huggingface_hub installed (pip install huggingface_hub)\n"
+                    "  3. Optional: Set HF_API_TOKEN environment variable"
+                )
+
+            message = "✓ HuggingFace API evaluation enabled\n"
+            message += "  Model: toxic-bert (via API)\n"
+            message += "  Memory: 0 GB (API-based)\n"
+            message += "  Accuracy: ~98% on toxicity detection"
+
+            return True, message
+
+        except ImportError as e:
+            return False, f"✗ Failed to import HF API evaluator: {e}"
+        except Exception as e:
+            return False, f"✗ Failed to setup HF API evaluation: {e}"
+
+    def load_generation_model(
+        self,
+        model_key: str = "phi-2"
+    ) -> Tuple[bool, str]:
+        """
+        Load model for generation and training tasks.
+
+        Args:
+            model_key: Key from RECOMMENDED_CONFIGS
+
+        Returns:
+            Tuple of (success, message)
+        """
+        if model_key not in RECOMMENDED_CONFIGS:
+            return False, f"✗ Unknown model: {model_key}"
+
+        config = RECOMMENDED_CONFIGS[model_key]
+
+        try:
+            print(f"Loading generation model: {config.name} ({config.hf_model_id})...")
+
+            # Security: Check if model is trusted before loading
+            trust_code = _get_trust_remote_code(config.hf_model_id)
+
+            # Load tokenizer
+            self.gen_tokenizer = AutoTokenizer.from_pretrained(
+                config.hf_model_id,
+                trust_remote_code=trust_code
+            )
+
+            # Set padding token if not set
+            if self.gen_tokenizer.pad_token is None:
+                self.gen_tokenizer.pad_token = self.gen_tokenizer.eos_token
+
+            # Load model
+            # FIX (CRITICAL - BUG #2): device_map="auto" only works with CUDA, not MPS (Apple Silicon)
+            # For MPS/CPU, we must manually move model to device instead
+            device_map_arg = "auto" if self.device.type == 'cuda' else None
+            # FIX: Use float32 to avoid numerical precision issues during sampling
+            # Float16 causes "probability tensor contains inf/nan" errors with Qwen2/Phi-2
+            self.gen_model = AutoModelForCausalLM.from_pretrained(
+                config.hf_model_id,
+                torch_dtype=torch.float32,  # Force float32 for stable generation
+                trust_remote_code=trust_code,
+                device_map=device_map_arg
+            )
+
+            # Manually move to device for MPS/CPU (not supported by device_map="auto")
+            if self.device.type in ['mps', 'cpu']:
+                self.gen_model = self.gen_model.to(self.device)
+
+            self.gen_model.eval()  # Start in eval mode, switch to train later
+            self.gen_config = config
+
+            # Count parameters
+            num_params = sum(p.numel() for p in self.gen_model.parameters())
+            num_params_m = num_params / 1_000_000
+
+            message = f"✓ Generation model loaded: {config.name}\n"
+            message += f"  Parameters: {num_params_m:.1f}M\n"
+            message += f"  Device: {self.device}\n"
+            message += f"  Memory: ~{config.max_memory_gb:.1f}GB"
+
+            return True, message
+
+        except torch.cuda.OutOfMemoryError as e:
+            return False, (
+                f"✗ Out of memory loading generation model. Try:\n"
+                f"  1. Restart the demo to clear memory\n"
+                f"  2. Unload the evaluation model first\n"
+                f"  3. Use a smaller model (e.g., gpt2)\n"
+                f"  Error: {e}"
+            )
+        except (RuntimeError, ValueError, TypeError) as e:
+            return False, f"✗ Failed to load generation model: {e}"
+
+    def unload_evaluation_model(self) -> None:
+        """Unload evaluation model to free memory."""
+        # Clear local model if present
+        if self.eval_model is not None:
+            del self.eval_model
+            del self.eval_tokenizer
+            self.eval_model = None
+            self.eval_tokenizer = None
+
+            # Clear cache
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+
+        # Clear HF API evaluator if present
+        if self.hf_api_evaluator is not None:
+            self.hf_api_evaluator = None
+            self.using_hf_api = False
+
+        self.eval_config = None
+
+    def unload_generation_model(self) -> None:
+        """Unload generation model to free memory."""
+        if self.gen_model is not None:
+            del self.gen_model
+            del self.gen_tokenizer
+            self.gen_model = None
+            self.gen_tokenizer = None
+            self.gen_config = None
+
+            # Clear cache
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+                torch.mps.empty_cache()
+
+    def get_evaluation_model(self) -> Tuple[Optional[PreTrainedModel], Optional[PreTrainedTokenizer]]:
+        """Get evaluation model and tokenizer."""
+        return self.eval_model, self.eval_tokenizer
+
+    def get_generation_model(self) -> Tuple[Optional[PreTrainedModel], Optional[PreTrainedTokenizer]]:
+        """Get generation model and tokenizer."""
+        return self.gen_model, self.gen_tokenizer
+
+    def is_ready(self) -> bool:
+        """Check if at least one model is loaded (or HF API is configured)."""
+        return (
+            self.eval_model is not None
+            or self.gen_model is not None
+            or self.using_hf_api
+        )
+
+    def get_status_info(self) -> Dict[str, Any]:
+        """Get status information about loaded models."""
+        info = {
+            "device": str(self.device),
+            "evaluation_model": None,
+            "generation_model": None,
+            "total_memory_gb": 0.0,
+            "using_hf_api": self.using_hf_api
+        }
+
+        # HF API evaluation (no local model)
+        if self.using_hf_api and self.eval_config is not None:
+            info["evaluation_model"] = {
+                "name": self.eval_config.name,
+                "parameters": 0,  # API-based, no local parameters
+                "memory_gb": 0.0,
+                "type": "api"
+            }
+        # Local evaluation model
+        elif self.eval_model is not None and self.eval_config is not None:
+            num_params = sum(p.numel() for p in self.eval_model.parameters())
+            info["evaluation_model"] = {
+                "name": self.eval_config.name,
+                "parameters": num_params,
+                "memory_gb": self.eval_config.max_memory_gb,
+                "type": "local"
+            }
+            info["total_memory_gb"] += self.eval_config.max_memory_gb
+
+        if self.gen_model is not None and self.gen_config is not None:
+            num_params = sum(p.numel() for p in self.gen_model.parameters())
+            info["generation_model"] = {
+                "name": self.gen_config.name,
+                "parameters": num_params,
+                "memory_gb": self.gen_config.max_memory_gb,
+                "type": "local"
+            }
+            info["total_memory_gb"] += self.gen_config.max_memory_gb
+
+        return info

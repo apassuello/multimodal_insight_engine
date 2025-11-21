@@ -14,9 +14,83 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from typing import List, Dict, Any, Optional
 from tqdm import tqdm
+from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from .framework import ConstitutionalFramework
 from .model_utils import generate_text, GenerationConfig
+from .principles import set_eval_debug_level, get_eval_debug_level
+
+
+def _get_model_name(model: PreTrainedModel) -> str:
+    """Extract model name from model config if available."""
+    try:
+        if hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
+            name = model.config.name_or_path
+            # Shorten common model names
+            if 'phi-2' in name.lower():
+                return 'Phi-2'
+            if 'phi-3' in name.lower():
+                return 'Phi-3'
+            if 'gpt2' in name.lower():
+                return 'GPT-2'
+            if 'qwen' in name.lower():
+                return 'Qwen'
+            if 'mistral' in name.lower():
+                return 'Mistral'
+            if 'tinyllama' in name.lower():
+                return 'TinyLlama'
+            return name.split('/')[-1][:20]  # Last part, truncated
+    except Exception:
+        pass
+    return "Unknown"
+
+
+def _print_section_header(title: str) -> None:
+    """Print a section header."""
+    print(f"\n{'─' * 70}")
+    print(f"│ {title}")
+    print(f"{'─' * 70}")
+
+
+def _print_content(label: str, content: str, role: str = "") -> None:
+    """Print content with label and optional role attribution."""
+    _print_section_header(f"{label} [{role}]" if role else label)
+    print(content)
+
+
+def _print_evaluation_box(
+    text_preview: str,
+    violations: List[str],
+    score: float,
+    phase: str = "INITIAL",
+    eval_model_name: str = "Evaluation Model",
+    method: str = ""
+) -> None:
+    """
+    Print evaluation interaction in a clear boxed format.
+    Shows the input to the evaluation model and its output.
+    """
+    print(f"\n{'┌' + '─' * 68 + '┐'}")
+    print(f"│ EVALUATION ({phase}) → {eval_model_name:<40} │")
+    print(f"{'├' + '─' * 68 + '┤'}")
+
+    # Show what we're evaluating (truncated)
+    preview = text_preview[:60] + "..." if len(text_preview) > 60 else text_preview
+    preview = preview.replace('\n', ' ')
+    print(f"│ Input:  \"{preview}\"")
+    print(f"{'├' + '─' * 68 + '┤'}")
+
+    # Show result
+    if not violations:
+        print(f"│ Result: ✓ CLEAN (Score: {score:.2f})")
+    else:
+        print(f"│ Result: ⚠ {len(violations)} VIOLATION(S) (Score: {score:.2f})")
+        print(f"│         → {', '.join(violations)}")
+
+    if method:
+        print(f"│ Method: {method}")
+
+    print(f"{'└' + '─' * 68 + '┘'}")
 
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:
@@ -52,9 +126,10 @@ def generate_critique(
     prompt: str,
     response: str,
     principles: List[str],
-    model,
-    tokenizer,
-    device: torch.device
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> str:
     """
     Generate constitutional critique of a response.
@@ -66,6 +141,7 @@ def generate_critique(
         model: Language model for generation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Critique text identifying violations
@@ -82,20 +158,34 @@ def generate_critique(
         principles_text=principles_text
     )
 
+    # Store in logger silently (don't display - content is displayed by caller)
+    if logger:
+        logger.log_stage("CRITIQUE-PROMPT", critique_prompt, truncate=400, silent=True)
+
     # Generate critique using model
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=256,
+        max_new_tokens=256,
         temperature=0.7,
         do_sample=True
     )
 
     try:
-        critique = generate_text(model, tokenizer, critique_prompt, config, device)
+        # PERFORMANCE: Use torch.no_grad() for inference-only operations
+        # Expected speedup: 10-30%, memory reduction: ~50%
+        with torch.no_grad():
+            critique = generate_text(model, tokenizer, critique_prompt, config, device)
         # Handle empty responses
         if not critique or critique.strip() == '':
             critique = "No specific issues identified."
+
+        if logger:
+            logger.log_stage("CRITIQUE-GENERATION", critique, silent=True)
+
         return critique
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
+        if logger:
+            logger.log_stage("CRITIQUE-ERROR", f"Critique generation failed: {e}")
         print(f"Warning: Critique generation failed: {e}")
         return "Error generating critique."
 
@@ -105,9 +195,10 @@ def generate_revision(
     response: str,
     critique: str,
     principles: List[str],
-    model,
-    tokenizer,
-    device: torch.device
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    device: torch.device,
+    logger=None  # type: ignore
 ) -> str:
     """
     Generate revised response based on critique.
@@ -120,6 +211,7 @@ def generate_revision(
         model: Language model for generation
         tokenizer: Model tokenizer
         device: Computation device
+        logger: Optional ContentLogger for pipeline visibility
 
     Returns:
         Revised response addressing critique
@@ -130,31 +222,46 @@ def generate_revision(
         critique=critique
     )
 
+    if logger:
+        logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400, silent=True)
+
+    # FIX: Use max_new_tokens to avoid probability tensor errors
     config = GenerationConfig(
-        max_length=256,
+        max_new_tokens=256,
         temperature=0.7,
         do_sample=True
     )
 
     try:
-        revision = generate_text(model, tokenizer, revision_prompt, config, device)
+        # PERFORMANCE: Use torch.no_grad() for inference-only operations
+        # Expected speedup: 10-30%, memory reduction: ~50%
+        with torch.no_grad():
+            revision = generate_text(model, tokenizer, revision_prompt, config, device)
         # Handle empty responses - fall back to original
         if not revision or revision.strip() == '':
             revision = response
+
+        if logger:
+            logger.log_stage("REVISION-GENERATION", revision, silent=True)
+
         return revision
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
+        if logger:
+            logger.log_stage("REVISION-ERROR", f"Revision generation failed: {e}, using original")
         print(f"Warning: Revision generation failed: {e}")
         return response  # Fall back to original
 
 
 def critique_revision_pipeline(
     prompts: List[str],
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     framework: ConstitutionalFramework,
     device: torch.device,
-    num_revisions: int = 1
-) -> List[Dict[str, Any]]:
+    num_revisions: int = 1,
+    logger=None,  # type: ignore
+    collect_preference_pairs: bool = True
+) -> Dict[str, Any]:
     """
     Complete critique-revision pipeline for dataset generation.
 
@@ -165,36 +272,200 @@ def critique_revision_pipeline(
         framework: Constitutional framework with principles
         device: Computation device
         num_revisions: Number of critique-revision iterations
+        logger: Optional ContentLogger for pipeline visibility
+        collect_preference_pairs: If True, also collect preference pairs for RLAIF
 
     Returns:
-        List of training examples with revised responses
+        Dictionary containing:
+        - training_data: List of training examples for SFT (Phase 1)
+        - preference_pairs: List of (chosen, rejected) pairs for reward model (Phase 2)
+        - stats: Pipeline statistics
     """
     training_data = []
+    preference_pairs = []  # NEW: For RLAIF Phase 2
     principles = [p.description for p in framework.principles.values()]
+    gen_model_name = _get_model_name(model)
+    eval_model_name = _get_model_name(framework.model) if framework.model else "Regex"
 
-    for prompt in tqdm(prompts, desc='Generating revised responses'):
-        # Generate initial response
-        config = GenerationConfig(max_length=150, temperature=1.0, do_sample=True)
+    # Suppress verbose evaluation debug output during pipeline (we have our own display)
+    original_debug_level = get_eval_debug_level()
+    set_eval_debug_level(0)
+
+    # Print pipeline configuration
+    print(f"\n{'═' * 70}")
+    print(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
+    print(f"{'═' * 70}")
+    print(f"  Generation Model: {gen_model_name}")
+    print(f"  Evaluation Model: {eval_model_name}")
+    print(f"  Prompts: {len(prompts)} | Revisions per prompt: {num_revisions}")
+    print(f"{'═' * 70}\n")
+
+    for idx, prompt in enumerate(tqdm(prompts, desc='Generating revised responses')):
+        # Print example header
+        print(f"\n{'━' * 70}")
+        print(f"  EXAMPLE {idx + 1}/{len(prompts)}")
+        print(f"{'━' * 70}")
+
+        # Print full prompt
+        _print_content("PROMPT", prompt)
+
+        # Store silently (already displayed above)
+        if logger:
+            logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}", silent=True)
+
+        config = GenerationConfig(max_new_tokens=150, temperature=1.0, do_sample=True)
 
         try:
-            response = generate_text(model, tokenizer, prompt, config, device)
+            with torch.no_grad():
+                response = generate_text(model, tokenizer, prompt, config, device)
+
+            # Print full initial response
+            _print_content("1. INITIAL RESPONSE", response, role="Generation Model")
+            if logger:
+                logger.log_stage("INITIAL-GENERATION", response, silent=True)
+
+            # Store initial response for preference pairs BEFORE revision
+            initial_response = response
+
+            # Evaluate initial response (with clear evaluation model display)
+            initial_score = framework.evaluate_text(response)
+            violations = initial_score.get('flagged_principles', [])
+            weighted_score = initial_score.get('weighted_score', 0.0)
+            eval_method = initial_score.get('evaluation_method', 'unknown')
+            _print_evaluation_box(
+                response, violations, weighted_score,
+                phase="INITIAL", eval_model_name=eval_model_name, method=eval_method
+            )
+
+            if logger:
+                logger.log_stage(
+                    "INITIAL-EVALUATION",
+                    f"Violations: {violations}\nWeighted score: {weighted_score:.2f}",
+                    metadata={"violations": violations, "score": weighted_score},
+                    silent=True
+                )
 
             # Iterative critique and revision
             for iteration in range(num_revisions):
-                critique = generate_critique(prompt, response, principles, model, tokenizer, device)
-                response = generate_revision(prompt, response, critique, principles, model, tokenizer, device)
+                critique = generate_critique(
+                    prompt, response, principles, model, tokenizer, device, logger=logger
+                )
+                # Print full critique
+                _print_content("2. CRITIQUE", critique, role="Generation Model")
 
-            # Store training example
-            training_data.append({
-                'prompt': prompt,
-                'response': response,  # This is the revised, improved response
-                'num_revisions': num_revisions
-            })
-        except Exception as e:
+                response = generate_revision(
+                    prompt, response, critique, principles, model, tokenizer, device, logger=logger
+                )
+                # Print full revised response
+                _print_content("3. REVISED RESPONSE", response, role="Generation Model")
+
+            # Evaluate revised response (with clear evaluation model display)
+            revised_score = framework.evaluate_text(response)
+            initial_weighted_score = initial_score.get('weighted_score', 0.0)
+            revised_weighted_score = revised_score.get('weighted_score', 0.0)
+            improvement = initial_weighted_score - revised_weighted_score
+            revised_violations = revised_score.get('flagged_principles', [])
+            revised_method = revised_score.get('evaluation_method', 'unknown')
+
+            _print_evaluation_box(
+                response, revised_violations, revised_weighted_score,
+                phase="REVISED", eval_model_name=eval_model_name, method=revised_method
+            )
+
+            if logger:
+                logger.log_stage(
+                    "REVISION-EVALUATION",
+                    f"Violations: {revised_violations if revised_violations else 'NONE'}\n"
+                    f"Weighted score: {revised_weighted_score:.2f}",
+                    metadata={
+                        "violations": revised_violations,
+                        "score": revised_weighted_score,
+                        "improvement": improvement
+                    },
+                    silent=True
+                )
+
+            # Print improvement summary
+            if improvement > 0:
+                print(f"\n  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                print(f"  → Added to training set")
+                training_data.append({
+                    'prompt': prompt,
+                    'response': response,
+                    'num_revisions': num_revisions,
+                    'improvement': improvement
+                })
+
+                # NEW: Collect preference pairs for RLAIF Phase 2
+                # The revised response is "chosen", initial response is "rejected"
+                if collect_preference_pairs:
+                    preference_pairs.append({
+                        'prompt': prompt,
+                        'chosen': response,  # Revised (better)
+                        'rejected': initial_response,  # Initial (worse)
+                        'chosen_score': revised_weighted_score,
+                        'rejected_score': initial_weighted_score,
+                        'margin': improvement
+                    })
+
+                if logger:
+                    logger.log_stage(
+                        "TRAINING-PAIR-CREATED",
+                        f"✓ Training example added\n"
+                        f"  Improvement: {initial_weighted_score:.2f} → "
+                        f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)",
+                        silent=True
+                    )
+            else:
+                print(f"\n  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                print(f"  → Skipped")
+                if logger:
+                    logger.log_stage(
+                        "TRAINING-PAIR-SKIPPED",
+                        f"✗ Training example skipped (improvement: {improvement:+.2f})\n"
+                        f"  Score: {initial_weighted_score:.2f} → {revised_weighted_score:.2f}",
+                        silent=True
+                    )
+        except (RuntimeError, ValueError, TypeError) as e:
+            if logger:
+                logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
             print(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
             continue
 
-    return training_data
+    # Print final summary
+    print(f"\n{'═' * 70}")
+    print(f"  PIPELINE SUMMARY")
+    print(f"{'═' * 70}")
+    print(f"  Total prompts processed: {len(prompts)}")
+    print(f"  Training examples generated: {len(training_data)}")
+    print(f"  Preference pairs collected: {len(preference_pairs)}")
+    print(f"  Examples skipped: {len(prompts) - len(training_data)}")
+    if training_data:
+        avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
+        print(f"  Average improvement: {avg_improvement:.2f}")
+    if preference_pairs:
+        avg_margin = sum(p['margin'] for p in preference_pairs) / len(preference_pairs)
+        print(f"  Average preference margin: {avg_margin:.2f}")
+    print(f"{'═' * 70}\n")
+
+    # Restore original debug level
+    set_eval_debug_level(original_debug_level)
+
+    # Build stats
+    stats = {
+        'total_prompts': len(prompts),
+        'training_examples': len(training_data),
+        'preference_pairs': len(preference_pairs),
+        'skipped': len(prompts) - len(training_data),
+        'avg_improvement': sum(d['improvement'] for d in training_data) / len(training_data) if training_data else 0.0,
+        'avg_margin': sum(p['margin'] for p in preference_pairs) / len(preference_pairs) if preference_pairs else 0.0
+    }
+
+    return {
+        'training_data': training_data,
+        'preference_pairs': preference_pairs,
+        'stats': stats
+    }
 
 
 class ConstitutionalDataset(Dataset):
@@ -249,13 +520,14 @@ class ConstitutionalDataset(Dataset):
 
 
 def supervised_finetune(
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     training_data: List[Dict[str, Any]],
     num_epochs: int = 3,
     batch_size: int = 8,
     learning_rate: float = 5e-5,
-    device: torch.device = None
+    device: torch.device = None,
+    use_amp: bool = True
 ) -> Dict[str, Any]:
     """
     Fine-tune model on critique-revised responses.
@@ -268,6 +540,7 @@ def supervised_finetune(
         batch_size: Batch size
         learning_rate: Learning rate
         device: Computation device
+        use_amp: Use automatic mixed precision for faster training (default: True)
 
     Returns:
         Training metrics and fine-tuned model
@@ -275,15 +548,50 @@ def supervised_finetune(
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    # Validate training data
+    if not training_data or len(training_data) == 0:
+        raise ValueError("Training data is empty. Cannot train model.")
+
+    # Filter out invalid training examples
+    valid_data = []
+    for idx, item in enumerate(training_data):
+        # Check if required fields exist and are non-empty
+        if 'prompt' not in item or 'response' not in item:
+            print(f"Warning: Skipping training example {idx}: missing prompt or response")
+            continue
+
+        prompt = item.get('prompt', '').strip()
+        response = item.get('response', '').strip()
+
+        if not prompt or not response:
+            print(f"Warning: Skipping training example {idx}: empty prompt or response")
+            continue
+
+        # Check for NaN or None values
+        if prompt == 'nan' or response == 'nan' or prompt == 'None' or response == 'None':
+            print(f"Warning: Skipping training example {idx}: NaN or None value detected")
+            continue
+
+        valid_data.append(item)
+
+    if not valid_data:
+        raise ValueError(f"All {len(training_data)} training examples are invalid. Cannot train.")
+
+    print(f"Using {len(valid_data)}/{len(training_data)} valid training examples")
+
     model = model.to(device)
     model.train()
 
     # Create dataset and dataloader
-    dataset = ConstitutionalDataset(training_data, tokenizer)
+    dataset = ConstitutionalDataset(valid_data, tokenizer)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+    # PERFORMANCE: Initialize GradScaler for Automatic Mixed Precision (AMP)
+    # Expected speedup: 2-3x on compatible GPUs, reduced memory usage
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp and device.type == 'cuda')
 
     # Training loop
     metrics = {'losses': [], 'epochs': []}
@@ -291,28 +599,76 @@ def supervised_finetune(
     for epoch in range(num_epochs):
         epoch_loss = 0
         batch_count = 0
+        nan_batches = 0
 
-        for batch in tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}'):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}')):
+            try:
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
 
-            # Forward pass
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
-            loss = outputs.loss
+                # Check for NaN in input tensors
+                if torch.isnan(input_ids.float()).any() or torch.isnan(attention_mask.float()).any():
+                    print(f"Warning: NaN detected in batch {batch_idx} input tensors, skipping")
+                    nan_batches += 1
+                    continue
 
-            # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
+                # PERFORMANCE: Use automatic mixed precision for forward pass
+                # autocast() automatically handles float16/float32 conversions
+                with torch.cuda.amp.autocast(enabled=use_amp and device.type == 'cuda'):
+                    # Forward pass
+                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+                    loss = outputs.loss
 
-            epoch_loss += loss.item()
-            batch_count += 1
+                # Check for NaN loss
+                if torch.isnan(loss) or torch.isinf(loss):
+                    print(f"Warning: NaN/Inf loss detected in batch {batch_idx}, skipping")
+                    nan_batches += 1
+                    continue
 
-        avg_loss = epoch_loss / batch_count if batch_count > 0 else 0.0
-        metrics['losses'].append(avg_loss)
-        metrics['epochs'].append(epoch + 1)
-        print(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f}')
+                # PERFORMANCE: Use GradScaler for backward pass with AMP
+                # Scales loss to prevent gradient underflow in float16
+                optimizer.zero_grad()
+                scaler.scale(loss).backward()
+
+                # Check for NaN gradients before clipping
+                has_nan_grad = False
+                for param in model.parameters():
+                    if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                        has_nan_grad = True
+                        break
+
+                if has_nan_grad:
+                    print(f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping")
+                    nan_batches += 1
+                    optimizer.zero_grad()
+                    continue
+
+                # Gradient clipping to prevent explosion (unscales gradients first)
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+                # Update weights with scaler
+                scaler.step(optimizer)
+                scaler.update()
+
+                epoch_loss += loss.item()
+                batch_count += 1
+
+            except (RuntimeError, ValueError, TypeError) as e:
+                print(f"Warning: Error processing batch {batch_idx}: {e}")
+                nan_batches += 1
+                continue
+
+        if batch_count == 0:
+            print(f"ERROR: Epoch {epoch+1} - All batches were invalid or produced NaN")
+            # Still record the epoch with 0 loss
+            metrics['losses'].append(0.0)
+            metrics['epochs'].append(epoch + 1)
+        else:
+            avg_loss = epoch_loss / batch_count
+            metrics['losses'].append(avg_loss)
+            metrics['epochs'].append(epoch + 1)
+            print(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)')
 
     return {
         'model': model,

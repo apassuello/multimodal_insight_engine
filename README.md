@@ -38,9 +38,9 @@ The codebase is organized into several key components:
    - Language modeling datasets ([src/data/language_modeling.py](src/data/language_modeling.py))
 
 3. **Training**: Trainers with metrics tracking
-   - Language model trainer ([src/training/language_model_trainer.py](src/training/language_model_trainer.py))
-   - Transformer training utilities ([src/training/transformer_trainer.py](src/training/transformer_trainer.py))
-   - Loss functions and metrics tracking ([src/training/losses.py](src/training/losses.py), [src/training/metrics.py](src/training/metrics.py))
+   - Language model trainer ([src/training/trainers/language_model_trainer.py](src/training/trainers/language_model_trainer.py))
+   - Transformer training utilities ([src/training/trainers/transformer_trainer.py](src/training/trainers/transformer_trainer.py))
+   - Loss functions and metrics tracking ([src/training/losses/](src/training/losses/), [src/training/metrics.py](src/training/metrics.py))
 
 4. **Optimization**: Model efficiency techniques
    - Mixed precision training ([src/optimization/mixed_precision.py](src/optimization/mixed_precision.py))
@@ -165,8 +165,40 @@ The test suite follows a pyramid approach:
 - 5 critical bugs fixed during testing
 
 For detailed testing documentation, see:
-- [Test Documentation](doc/test_documentation.md)
+- [Testing Documentation](docs/reference/testing_documentation.md)
 - [Constitutional AI Test Coverage](docs/constitutional-ai/CONSTITUTIONAL_AI_TEST_COVERAGE.md)
+
+## 📚 Documentation
+
+Comprehensive documentation is available to help you understand, use, and contribute to the project:
+
+### Getting Started
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Installation, setup, and first steps
+- **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Constitutional AI Demo user guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Architecture & Design
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture overview
+- **[DEMO_ARCHITECTURE.md](DEMO_ARCHITECTURE.md)** - Interactive demo architecture
+- **[API_REFERENCE.md](docs/API_REFERENCE.md)** - Developer API documentation
+
+### Policies & Guidelines
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Community guidelines
+- **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
+- **[CLAUDE.md](CLAUDE.md)** - Development guidelines for Claude Code
+
+### Technical Reference
+- **[docs/reference/](docs/reference/)** - Technical reference materials
+  - Architecture docs (models, training, optimization, data)
+  - Educational content (Anthropic insights, attention mechanisms, neural networks)
+  - Practical guides (training insights, debugging, testing)
+- **[docs/constitutional-ai/](docs/constitutional-ai/)** - Constitutional AI implementation docs
+- **[docs/improvement-plan/](docs/improvement-plan/)** - Repository improvement roadmap
+
+### Additional Resources
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+- **[docs/INDEX.md](docs/INDEX.md)** - Comprehensive documentation catalog
 
 ## 📊 Current Status and Implementation Details
 
