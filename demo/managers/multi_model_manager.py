@@ -311,6 +311,71 @@ def get_model_config(key: str) -> ModelConfig:
     return RECOMMENDED_CONFIGS[key]
 
 
+def get_evaluation_model_choices() -> list:
+    """
+    Get list of model keys suitable for evaluation.
+
+    Returns models in recommended order:
+    - Tier 1 instruction-tuned models (best for evaluation)
+    - Tier 2 larger models
+    - Tier 3 smaller models
+    - Legacy/fallback models
+
+    Returns:
+        List of model keys for dropdown choices
+    """
+    # Order matters - put recommended models first
+    eval_models = [
+        # Tier 1 - Recommended for evaluation
+        "phi-3-mini-instruct",
+        "qwen2.5-3b-instruct",
+        # Tier 2 - More capable
+        "mistral-7b-instruct",
+        "qwen2.5-7b-instruct",
+        # Tier 3 - Smaller
+        "qwen2.5-1.5b-instruct",
+        "qwen2-1.5b-instruct",
+        "tinyllama-chat",
+        # Legacy/fallback
+        "phi-2",
+        "gpt2"
+    ]
+    # Filter to only models that exist in RECOMMENDED_CONFIGS
+    return [m for m in eval_models if m in RECOMMENDED_CONFIGS]
+
+
+def get_generation_model_choices() -> list:
+    """
+    Get list of model keys suitable for generation/training.
+
+    Returns models in recommended order for fine-tuning.
+
+    Returns:
+        List of model keys for dropdown choices
+    """
+    # Order matters - put recommended models first
+    gen_models = [
+        # Tier 1 - Recommended for generation
+        "phi-3-mini-gen",
+        "qwen2.5-3b-gen",
+        # Legacy/fallback
+        "phi-2",
+        "gpt2"
+    ]
+    # Filter to only models that exist in RECOMMENDED_CONFIGS
+    return [m for m in gen_models if m in RECOMMENDED_CONFIGS]
+
+
+def get_all_model_choices() -> list:
+    """
+    Get list of all available model keys.
+
+    Returns:
+        List of all model keys for dropdown choices
+    """
+    return list(RECOMMENDED_CONFIGS.keys())
+
+
 class MultiModelManager:
     """
     Manages multiple models for Constitutional AI demo.
