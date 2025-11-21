@@ -124,6 +124,8 @@ def generate_text(
         "do_sample": generation_config.do_sample,
         "pad_token_id": pad_token_id,
         "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+        # FIX: Disable cache to avoid DynamicCache errors with Phi-3 and similar models
+        "use_cache": False,
     }
 
     # Only pass top_p if it's actually doing filtering (< 1.0)
@@ -223,6 +225,8 @@ def batch_generate(
             "do_sample": generation_config.do_sample,
             "pad_token_id": pad_token_id,
             "eos_token_id": generation_config.eos_token_id or tokenizer.eos_token_id,
+            # FIX: Disable cache to avoid DynamicCache errors with Phi-3 and similar models
+            "use_cache": False,
         }
 
         # Only pass top_p if it's actually doing filtering (< 1.0)
