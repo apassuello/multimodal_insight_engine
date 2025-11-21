@@ -1268,8 +1268,15 @@ def create_demo() -> gr.Blocks:
         with gr.Row():
             with gr.Column(scale=2):
                 model_dropdown = gr.Dropdown(
-                    choices=["gpt2", "gpt2-medium", "distilgpt2"],
-                    value="gpt2",
+                    choices=[
+                        "phi-3-mini-instruct",  # Recommended
+                        "qwen2.5-3b-instruct",  # Recommended
+                        "phi-2",
+                        "gpt2",
+                        "gpt2-medium",
+                        "distilgpt2"
+                    ],
+                    value="phi-3-mini-instruct",
                     label="Model Selection (Legacy - Use Dual Models Below)"
                 )
                 device_dropdown = gr.Dropdown(
@@ -1316,18 +1323,37 @@ def create_demo() -> gr.Blocks:
         with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=True):
             gr.Markdown("""
             **Dual Model System**: Use separate models for evaluation and generation/training for improved performance.
-            - **Evaluation Model**: Specialized for instruction-following and detecting violations (Qwen2-1.5B recommended)
-            - **Generation Model**: Specialized for learning and training (Phi-2 recommended)
+            - **Evaluation Model**: Instruction-tuned models recommended (Phi-3-mini or Qwen2.5-3B)
+            - **Generation Model**: For training/fine-tuning (Phi-3-mini or Qwen2.5-3B recommended)
+
+            **Model Tiers**:
+            - 🥇 **Tier 1 (Recommended)**: phi-3-mini-instruct (~7.6GB), qwen2.5-3b-instruct (~6GB)
+            - 🥈 **Tier 2 (More capable)**: mistral-7b-instruct (~14GB), qwen2.5-7b-instruct (~14GB)
+            - 🥉 **Tier 3 (Limited resources)**: qwen2.5-1.5b-instruct (~3GB), tinyllama-chat (~2.2GB)
             """)
 
             with gr.Row():
                 with gr.Column():
                     gr.Markdown("### Evaluation Model")
                     eval_model_dropdown = gr.Dropdown(
-                        choices=["qwen2-1.5b-instruct", "phi-2", "gpt2"],
-                        value="qwen2-1.5b-instruct",
+                        choices=[
+                            # Tier 1 - Recommended
+                            "phi-3-mini-instruct",
+                            "qwen2.5-3b-instruct",
+                            # Tier 2 - More capable
+                            "mistral-7b-instruct",
+                            "qwen2.5-7b-instruct",
+                            # Tier 3 - Smaller
+                            "qwen2.5-1.5b-instruct",
+                            "qwen2-1.5b-instruct",
+                            "tinyllama-chat",
+                            # Legacy
+                            "phi-2",
+                            "gpt2"
+                        ],
+                        value="phi-3-mini-instruct",
                         label="Select Evaluation Model",
-                        info="Used for critiquing and detecting violations"
+                        info="Instruction-tuned models recommended for reliable JSON output"
                     )
                     load_eval_model_btn = gr.Button("Load Evaluation Model", variant="primary")
                     eval_load_status = gr.Textbox(
@@ -1340,8 +1366,15 @@ def create_demo() -> gr.Blocks:
                 with gr.Column():
                     gr.Markdown("### Generation Model")
                     gen_model_dropdown = gr.Dropdown(
-                        choices=["phi-2", "qwen2-1.5b-instruct", "gpt2"],
-                        value="phi-2",
+                        choices=[
+                            # Tier 1 - Recommended
+                            "phi-3-mini-gen",
+                            "qwen2.5-3b-gen",
+                            # Legacy
+                            "phi-2",
+                            "gpt2"
+                        ],
+                        value="phi-3-mini-gen",
                         label="Select Generation Model",
                         info="Used for training and text generation"
                     )
