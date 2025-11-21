@@ -226,6 +226,91 @@ def _get_trust_remote_code(model_id: str) -> bool:
     return is_trusted
 
 
+def list_available_models() -> str:
+    """
+    List all available models with their configurations.
+
+    Returns:
+        Formatted string with model information
+    """
+    lines = [
+        "=" * 70,
+        "  AVAILABLE MODELS FOR CONSTITUTIONAL AI",
+        "=" * 70,
+        "",
+        "TIER 1 - RECOMMENDED (Best balance for CAI demo):",
+        "-" * 50,
+    ]
+
+    tier1_keys = ["phi-3-mini-instruct", "qwen2.5-3b-instruct"]
+    tier2_keys = ["mistral-7b-instruct", "qwen2.5-7b-instruct"]
+    tier3_keys = ["qwen2.5-1.5b-instruct", "qwen2-1.5b-instruct", "tinyllama-chat"]
+    gen_keys = ["phi-2", "phi-3-mini-gen", "qwen2.5-3b-gen"]
+
+    for key in tier1_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "TIER 2 - LARGER (Better capability if resources allow):",
+        "-" * 50,
+    ])
+    for key in tier2_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "TIER 3 - SMALLER (For limited resources):",
+        "-" * 50,
+    ])
+    for key in tier3_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "GENERATION MODELS (For training/fine-tuning):",
+        "-" * 50,
+    ])
+    for key in gen_keys:
+        if key in RECOMMENDED_CONFIGS:
+            cfg = RECOMMENDED_CONFIGS[key]
+            lines.append(f"  {key:<25} {cfg.name:<30} ~{cfg.max_memory_gb:.1f}GB")
+
+    lines.extend([
+        "",
+        "=" * 70,
+        "Usage: multi_model_manager.load_evaluation_model('phi-3-mini-instruct')",
+        "=" * 70,
+    ])
+
+    return "\n".join(lines)
+
+
+def get_model_config(key: str) -> ModelConfig:
+    """
+    Get model configuration by key.
+
+    Args:
+        key: Model configuration key (e.g., 'phi-3-mini-instruct')
+
+    Returns:
+        ModelConfig object
+
+    Raises:
+        KeyError: If model key not found
+    """
+    if key not in RECOMMENDED_CONFIGS:
+        available = ", ".join(RECOMMENDED_CONFIGS.keys())
+        raise KeyError(f"Model '{key}' not found. Available: {available}")
+    return RECOMMENDED_CONFIGS[key]
+
+
 class MultiModelManager:
     """
     Manages multiple models for Constitutional AI demo.
