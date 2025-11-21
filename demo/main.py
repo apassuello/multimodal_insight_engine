@@ -684,6 +684,156 @@ def format_training_metrics(result: Dict[str, Any]) -> str:
 
 
 # ============================================================================
+# Phase 2: RLAIF Training Functions
+# ============================================================================
+
+def start_rlaif_training_handler(
+    num_ppo_steps: int,
+    batch_size: int,
+    learning_rate: float,
+    progress=gr.Progress()
+) -> Tuple[str, str]:
+    """
+    Handle Phase 2 (RLAIF) training request.
+
+    Args:
+        num_ppo_steps: Number of PPO training steps
+        batch_size: Batch size for training
+        learning_rate: Learning rate for PPO
+        progress: Gradio progress tracker
+
+    Returns:
+        Tuple of (status_message, metrics_display)
+    """
+    # Security: Check rate limit to prevent DoS
+    can_execute, rate_error = check_rate_limit("rlaif_training", RATE_LIMIT_TRAINING_SECONDS)
+    if not can_execute:
+        return rate_error, ""
+
+    # Security: Check concurrency limit
+    if not acquire_operation_slot():
+        return "✗ Security: Another expensive operation is in progress. Please wait.", ""
+
+    try:
+        # Check if preference pairs are available
+        if not training_manager.has_preference_pairs():
+            return (
+                "✗ No preference pairs available.\n"
+                "Please run Phase 1 (SFT) training first in the Training tab.\n"
+                "Phase 1 collects preference pairs needed for RLAIF.",
+                ""
+            )
+
+        # Check if we have models loaded
+        use_dual_models = multi_model_manager.gen_model is not None
+        if not use_dual_models and not model_manager.is_ready():
+            return "✗ Please load models first", ""
+
+        # Progress callback
+        def progress_callback(status: str, progress_pct: float):
+            progress(progress_pct, desc=status)
+
+        # Select model
+        if use_dual_models:
+            gen_model, gen_tokenizer = multi_model_manager.get_generation_model()
+            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+            device = multi_model_manager.device
+
+            # Setup framework
+            framework = setup_default_framework(
+                model=eval_model,
+                tokenizer=eval_tokenizer,
+                device=device
+            )
+            train_model = gen_model
+            train_tokenizer = gen_tokenizer
+        else:
+            framework = setup_default_framework(
+                model=model_manager.model,
+                tokenizer=model_manager.tokenizer,
+                device=model_manager.device
+            )
+            train_model = model_manager.model
+            train_tokenizer = model_manager.tokenizer
+            device = model_manager.device
+
+        # Run RLAIF training
+        result, success, message = training_manager.train_rlaif(
+            model=train_model,
+            tokenizer=train_tokenizer,
+            framework=framework,
+            device=device,
+            num_ppo_steps=num_ppo_steps,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            progress_callback=progress_callback
+        )
+
+        if success:
+            metrics_display = format_rlaif_metrics(result)
+            return message, metrics_display
+        else:
+            return message, ""
+
+    finally:
+        release_operation_slot()
+
+
+def format_rlaif_metrics(result: Dict[str, Any]) -> str:
+    """Format RLAIF training metrics for display."""
+    output = "# RLAIF Training Metrics\n\n"
+
+    output += f"**Preference Pairs Used:** {result.get('preference_pairs_used', 0)}\n"
+    output += f"**PPO Steps:** {result.get('ppo_steps', 0)}\n"
+    output += f"**Training Time:** {result.get('training_time', 0):.1f}s\n\n"
+
+    # Reward model metrics
+    reward_metrics = result.get('reward_model_metrics', {})
+    if reward_metrics:
+        output += "## Reward Model Training\n\n"
+        if 'final_accuracy' in reward_metrics:
+            output += f"- **Final Accuracy:** {reward_metrics['final_accuracy']:.2%}\n"
+        if 'final_loss' in reward_metrics:
+            output += f"- **Final Loss:** {reward_metrics['final_loss']:.4f}\n"
+        output += "\n"
+
+    # PPO metrics
+    ppo_results = result.get('ppo_results', {})
+    if ppo_results:
+        output += "## PPO Training\n\n"
+        if 'final_avg_reward' in ppo_results:
+            output += f"- **Final Avg Reward:** {ppo_results['final_avg_reward']:.4f}\n"
+        if 'final_kl_divergence' in ppo_results:
+            output += f"- **Final KL Divergence:** {ppo_results['final_kl_divergence']:.4f}\n"
+
+        # Training history
+        history = ppo_results.get('training_history', {})
+        if history.get('step_avg_rewards'):
+            rewards = history['step_avg_rewards']
+            if len(rewards) > 1:
+                improvement = rewards[-1] - rewards[0]
+                output += f"- **Reward Improvement:** {improvement:+.4f}\n"
+
+    return output
+
+
+def get_preference_pairs_status() -> str:
+    """Get status of collected preference pairs."""
+    if not training_manager.has_preference_pairs():
+        return "⚠ No preference pairs available. Run Phase 1 training first."
+
+    pairs = training_manager.get_preference_pairs()
+    stats = training_manager.pipeline_stats
+
+    status = f"✓ {len(pairs)} preference pairs available for RLAIF\n"
+    if stats:
+        status += f"Average margin: {stats.get('avg_margin', 0):.2f}\n"
+    status += "\nReady for Phase 2 training!"
+
+    return status
+
+
+# ============================================================================
 # Generation Tab Functions
 # ============================================================================
 
@@ -1456,10 +1606,14 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 2: Training
+            # Tab 2: Phase 1 - SFT Training
             # ================================================================
-            with gr.Tab("🔧 Training"):
-                gr.Markdown("## Train Model with Constitutional AI")
+            with gr.Tab("🔧 Phase 1: SFT"):
+                gr.Markdown("## Phase 1: Supervised Fine-Tuning (Critique-Revision)")
+                gr.Markdown("""
+                **Phase 1** generates training data via critique-revision and fine-tunes the model.
+                This also collects **preference pairs** for Phase 2 (RLAIF).
+                """)
 
                 with gr.Row():
                     with gr.Column():
@@ -1487,7 +1641,97 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 3: Generation (Before/After Comparison)
+            # Tab 3: Phase 2 - RLAIF Training
+            # ================================================================
+            with gr.Tab("🚀 Phase 2: RLAIF"):
+                gr.Markdown("## Reinforcement Learning from AI Feedback (RLAIF)")
+                gr.Markdown("""
+                **Phase 2** uses the preference pairs collected during Phase 1 to train a reward model,
+                then uses PPO (Proximal Policy Optimization) to further align the model.
+
+                **Pipeline:**
+                1. Train reward model on preference pairs (chosen vs rejected responses)
+                2. Use PPO to optimize policy to maximize reward
+                3. KL divergence penalty prevents model from diverging too far
+
+                **Prerequisites:**
+                - Complete Phase 1 training first to collect preference pairs
+                - Requires more memory (policy + reference + reward models)
+                """)
+
+                with gr.Row():
+                    with gr.Column():
+                        # Status display
+                        rlaif_pairs_status = gr.Textbox(
+                            label="Preference Pairs Status",
+                            value="⚠ No preference pairs available. Run Phase 1 training first.",
+                            interactive=False,
+                            lines=3
+                        )
+
+                        refresh_status_btn = gr.Button("🔄 Refresh Status", variant="secondary")
+
+                        gr.Markdown("### RLAIF Configuration")
+
+                        rlaif_ppo_steps = gr.Slider(
+                            minimum=10,
+                            maximum=200,
+                            value=50,
+                            step=10,
+                            label="PPO Training Steps",
+                            info="More steps = better alignment but slower"
+                        )
+
+                        rlaif_batch_size = gr.Slider(
+                            minimum=1,
+                            maximum=16,
+                            value=4,
+                            step=1,
+                            label="Batch Size",
+                            info="Reduce if running out of memory"
+                        )
+
+                        rlaif_learning_rate = gr.Slider(
+                            minimum=1e-7,
+                            maximum=1e-4,
+                            value=1e-6,
+                            step=1e-7,
+                            label="Learning Rate",
+                            info="Lower = more stable, higher = faster learning"
+                        )
+
+                        start_rlaif_btn = gr.Button(
+                            "🚀 Start RLAIF Training",
+                            variant="primary",
+                            size="lg"
+                        )
+
+                    with gr.Column():
+                        rlaif_status = gr.Textbox(
+                            label="Training Status",
+                            interactive=False,
+                            lines=6
+                        )
+                        rlaif_metrics = gr.Markdown(
+                            label="Training Metrics",
+                            value="*Run RLAIF training to see metrics*"
+                        )
+
+                # Event handlers
+                refresh_status_btn.click(
+                    fn=get_preference_pairs_status,
+                    inputs=[],
+                    outputs=[rlaif_pairs_status]
+                )
+
+                start_rlaif_btn.click(
+                    fn=start_rlaif_training_handler,
+                    inputs=[rlaif_ppo_steps, rlaif_batch_size, rlaif_learning_rate],
+                    outputs=[rlaif_status, rlaif_metrics]
+                )
+
+            # ================================================================
+            # Tab 4: Generation (Before/After Comparison)
             # ================================================================
             with gr.Tab("📝 Generation"):
                 gr.Markdown("## Compare Base vs Trained Model Generation")
@@ -1545,7 +1789,7 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 4: Impact Analysis
+            # Tab 5: Impact Analysis
             # ================================================================
             with gr.Tab("📊 Impact"):
                 gr.Markdown("## Model Training Impact Analysis")
@@ -1643,7 +1887,7 @@ def create_demo() -> gr.Blocks:
                 )
 
             # ================================================================
-            # Tab 5: Architecture & Documentation
+            # Tab 6: Architecture & Documentation
             # ================================================================
             with gr.Tab("📚 Architecture"):
                 gr.Markdown("## Constitutional AI Demo Architecture")
