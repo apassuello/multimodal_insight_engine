@@ -61,6 +61,64 @@ class ModelManager:
         self.base_model = None
         self.base_tokenizer = None
 
+        # Separate evaluation model (optional - uses generation model if not set)
+        self.eval_model = None
+        self.eval_tokenizer = None
+        self.eval_model_name: Optional[str] = None
+
+    def load_evaluation_model(
+        self,
+        model_name: str,
+        prefer_device: Optional[str] = None
+    ) -> Tuple[bool, str]:
+        """
+        Load a separate model for evaluation.
+
+        This allows using a different (potentially larger/more capable) model
+        for evaluating safety violations while using a smaller model for generation.
+
+        Args:
+            model_name: HuggingFace model identifier (e.g., "microsoft/phi-2", "Qwen/Qwen2.5-1.5B")
+            prefer_device: Optional device preference
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            device = self.detect_device(prefer_device)
+            print(f"Loading evaluation model: {model_name} on {device}")
+
+            self.eval_model, self.eval_tokenizer = load_model(
+                model_name=model_name,
+                device=device
+            )
+            self.eval_model_name = model_name
+
+            param_count = sum(p.numel() for p in self.eval_model.parameters())
+            message = f"✓ Evaluation model '{model_name}' loaded on {device}\n"
+            message += f"Parameters: {param_count:,}"
+
+            return True, message
+
+        except Exception as e:
+            error_msg = f"✗ Failed to load evaluation model '{model_name}': {str(e)}"
+            return False, error_msg
+
+    def get_evaluation_model(self) -> Tuple[Any, Any, Optional[str]]:
+        """
+        Get the evaluation model (or generation model if no separate eval model).
+
+        Returns:
+            Tuple of (model, tokenizer, model_name)
+        """
+        if self.eval_model is not None:
+            return self.eval_model, self.eval_tokenizer, self.eval_model_name
+        return self.model, self.tokenizer, self.model_name
+
+    def has_separate_eval_model(self) -> bool:
+        """Check if a separate evaluation model is loaded."""
+        return self.eval_model is not None
+
     def detect_device(self, prefer_device: Optional[str] = None) -> torch.device:
         """
         Detect available device with preference order: MPS → CUDA → CPU.

@@ -160,6 +160,64 @@ class ConstitutionalFramework:
 
         self.principles: Dict[str, ConstitutionalPrinciple] = {}
         self.evaluation_history: List[Dict[str, Any]] = []
+        self._model_name: Optional[str] = None  # Track model name for display
+
+    def set_evaluation_model(
+        self,
+        model: Any,
+        tokenizer: Any,
+        device: Optional[Any] = None,
+        model_name: Optional[str] = None
+    ) -> None:
+        """
+        Set or change the evaluation model.
+
+        Use this to set a different model for evaluation than for generation.
+
+        Args:
+            model: AI model for evaluation
+            tokenizer: Tokenizer for the model
+            device: Computation device (optional, defaults to model's device or CPU)
+            model_name: Optional human-readable name for logging
+        """
+        self.model = model
+        self.tokenizer = tokenizer
+        if device is not None:
+            self.device = device
+        elif torch is not None:
+            self.device = torch.device('cpu')
+
+        # Store model name for display
+        if model_name:
+            self._model_name = model_name
+        elif hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
+            self._model_name = model.config.name_or_path.split('/')[-1]
+        else:
+            self._model_name = "Custom Model"
+
+        print(f"[Framework] Evaluation model set to: {self._model_name}")
+
+    def get_evaluation_model_name(self) -> str:
+        """Get the name of the current evaluation model."""
+        if self._model_name:
+            return self._model_name
+        if self.model is None:
+            return "Regex (no model)"
+        if hasattr(self.model, 'config') and hasattr(self.model.config, 'name_or_path'):
+            return self.model.config.name_or_path.split('/')[-1]
+        return "Unknown Model"
+
+    def use_regex_only(self) -> None:
+        """
+        Disable AI-based evaluation and use regex patterns only.
+
+        This is faster and more reliable for clear-cut cases,
+        but less nuanced than AI-based evaluation.
+        """
+        self.model = None
+        self.tokenizer = None
+        self._model_name = "Regex Only"
+        print("[Framework] Switched to regex-only evaluation (no AI model)")
 
     def add_principle(self, principle: ConstitutionalPrinciple) -> None:
         """
