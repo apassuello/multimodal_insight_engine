@@ -259,8 +259,9 @@ def critique_revision_pipeline(
     framework: ConstitutionalFramework,
     device: torch.device,
     num_revisions: int = 1,
-    logger=None  # type: ignore
-) -> List[Dict[str, Any]]:
+    logger=None,  # type: ignore
+    collect_preference_pairs: bool = True
+) -> Dict[str, Any]:
     """
     Complete critique-revision pipeline for dataset generation.
 
@@ -272,11 +273,16 @@ def critique_revision_pipeline(
         device: Computation device
         num_revisions: Number of critique-revision iterations
         logger: Optional ContentLogger for pipeline visibility
+        collect_preference_pairs: If True, also collect preference pairs for RLAIF
 
     Returns:
-        List of training examples with revised responses
+        Dictionary containing:
+        - training_data: List of training examples for SFT (Phase 1)
+        - preference_pairs: List of (chosen, rejected) pairs for reward model (Phase 2)
+        - stats: Pipeline statistics
     """
     training_data = []
+    preference_pairs = []  # NEW: For RLAIF Phase 2
     principles = [p.description for p in framework.principles.values()]
     gen_model_name = _get_model_name(model)
     eval_model_name = _get_model_name(framework.model) if framework.model else "Regex"
@@ -317,6 +323,9 @@ def critique_revision_pipeline(
             _print_content("1. INITIAL RESPONSE", response, role="Generation Model")
             if logger:
                 logger.log_stage("INITIAL-GENERATION", response, silent=True)
+
+            # Store initial response for preference pairs BEFORE revision
+            initial_response = response
 
             # Evaluate initial response (with clear evaluation model display)
             initial_score = framework.evaluate_text(response)
@@ -386,6 +395,19 @@ def critique_revision_pipeline(
                     'num_revisions': num_revisions,
                     'improvement': improvement
                 })
+
+                # NEW: Collect preference pairs for RLAIF Phase 2
+                # The revised response is "chosen", initial response is "rejected"
+                if collect_preference_pairs:
+                    preference_pairs.append({
+                        'prompt': prompt,
+                        'chosen': response,  # Revised (better)
+                        'rejected': initial_response,  # Initial (worse)
+                        'chosen_score': revised_weighted_score,
+                        'rejected_score': initial_weighted_score,
+                        'margin': improvement
+                    })
+
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-CREATED",
@@ -416,16 +438,34 @@ def critique_revision_pipeline(
     print(f"{'═' * 70}")
     print(f"  Total prompts processed: {len(prompts)}")
     print(f"  Training examples generated: {len(training_data)}")
+    print(f"  Preference pairs collected: {len(preference_pairs)}")
     print(f"  Examples skipped: {len(prompts) - len(training_data)}")
     if training_data:
         avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
         print(f"  Average improvement: {avg_improvement:.2f}")
+    if preference_pairs:
+        avg_margin = sum(p['margin'] for p in preference_pairs) / len(preference_pairs)
+        print(f"  Average preference margin: {avg_margin:.2f}")
     print(f"{'═' * 70}\n")
 
     # Restore original debug level
     set_eval_debug_level(original_debug_level)
 
-    return training_data
+    # Build stats
+    stats = {
+        'total_prompts': len(prompts),
+        'training_examples': len(training_data),
+        'preference_pairs': len(preference_pairs),
+        'skipped': len(prompts) - len(training_data),
+        'avg_improvement': sum(d['improvement'] for d in training_data) / len(training_data) if training_data else 0.0,
+        'avg_margin': sum(p['margin'] for p in preference_pairs) / len(preference_pairs) if preference_pairs else 0.0
+    }
+
+    return {
+        'training_data': training_data,
+        'preference_pairs': preference_pairs,
+        'stats': stats
+    }
 
 
 class ConstitutionalDataset(Dataset):
