@@ -179,8 +179,8 @@ Comprehensive documentation is available to help you understand, use, and contri
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
 
 ### Architecture & Design
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture overview
-- **[DEMO_ARCHITECTURE.md](DEMO_ARCHITECTURE.md)** - Interactive demo architecture
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete system architecture overview
+- **[DEMO_ARCHITECTURE.md](docs/demo/DEMO_ARCHITECTURE.md)** - Interactive demo architecture
 - **[API_REFERENCE.md](docs/API_REFERENCE.md)** - Developer API documentation
 
 ### Policies & Guidelines

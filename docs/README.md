@@ -14,8 +14,37 @@ Complete 10-16 week improvement plan with 4 axes:
 
 **Start here**: [`improvement-plan/README.md`](improvement-plan/README.md)
 
+### **demo/** - Demo Documentation
+Constitutional AI demo documentation:
+- `DEMO_ARCHITECTURE.md` - Interactive demo architecture
+- `DEMO_AUDIT_REPORT.md` - Demo audit findings
+- `DEMO_IMPROVEMENT_PLAN.md` - Original improvement plan
+- `DEMO_IMPROVEMENT_PLAN_V2.md` - V2 with model research
+- `DEMO_IMPROVEMENT_PLAN_V3.md` - V3 with realistic model sizes
+- `DEMO_PERFORMANCE_ANALYSIS.md` - Performance analysis
+- `DUAL_MODEL_SETUP.md` - Dual model configuration guide
+- `UI_LAYOUT.md` - UI layout documentation
+
+### **deployment/** - Deployment Documentation
+Production deployment guides:
+- `DEPLOYMENT.md` - Deployment guide
+- `DEPLOYMENT_FIXES_SUMMARY.md` - Deployment fixes
+- `DOCKER_DEPLOYMENT_PLAN.md` - Docker deployment plan
+
+### **audits/** - Code Reviews & Audits
+Code review and audit reports:
+- `PYTHON_CODE_REVIEW.md` - Python code review
+- `VERIFICATION_REPORT.md` - Verification results
+- `AGENT_VALIDATION_REPORT.md` - Agent validation
+
+### **security/** - Security Audits
+Security audit documentation:
+- `SECURITY_AUDIT_PHASE2.md` - Phase 2 security audit
+- `SECURITY_FIXES_PHASE2.md` - Phase 2 security fixes
+- `SECURITY_FIXES_SUMMARY.md` - Security fixes summary
+
 ### **assessments/** - Repository Assessments
-Historical assessment reports and audits:
+Historical assessment reports:
 - `AUDIT_FINDINGS.md` - Independent code audit results
 - `code_quality_assessment.md` - Code quality metrics
 - `MERGE_READINESS_ASSESSMENT.md` - Merge status checklist
@@ -101,7 +130,7 @@ Historical or superseded documentation:
 **New to the project?**
 1. Root: [`README.md`](../README.md) - Project overview
 2. Root: [`GETTING_STARTED.md`](../GETTING_STARTED.md) - Setup guide
-3. Root: [`ARCHITECTURE.md`](../ARCHITECTURE.md) - System architecture
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) - System architecture
 4. Root: [`CLAUDE.md`](../CLAUDE.md) - Development guidelines
 
 **Developer resources:**
@@ -111,14 +140,18 @@ Historical or superseded documentation:
 4. Root: [`CHANGELOG.md`](../CHANGELOG.md) - Version history
 
 **Want to improve the codebase?**
-1. Root: [`IMPROVEMENT_PLAN.md`](../IMPROVEMENT_PLAN.md) - 3-page overview
-2. This directory: [`improvement-plan/README.md`](improvement-plan/README.md) - Detailed roadmap
+1. [`improvement-plan/README.md`](improvement-plan/README.md) - Improvement plan overview
+2. Axes 1-4 in [`improvement-plan/`](improvement-plan/) - Detailed roadmaps
 
 **Security & Conduct:**
 1. Root: [`SECURITY.md`](../SECURITY.md) - Security policy
 2. Root: [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) - Community guidelines
 
 **Looking for specific docs?**
+- Demo documentation → `demo/`
+- Deployment guides → `deployment/`
+- Code audits → `audits/`
+- Security audits → `security/`
 - Improvement plans → `improvement-plan/`
 - Past assessments → `assessments/`
 - Technical reference → `reference/`
@@ -130,12 +163,12 @@ Historical or superseded documentation:
 
 ## Documentation Organization Principles
 
-1. **Root stays clean** - Only 5 essential files
-2. **Logical grouping** - Documents organized by purpose
+1. **Root stays clean** - Only 7 essential files (README, GETTING_STARTED, CLAUDE, CONTRIBUTING, CHANGELOG, SECURITY, CODE_OF_CONDUCT)
+2. **Logical grouping** - Documents organized by purpose (demo, deployment, audits, security, etc.)
 3. **Clear navigation** - README files guide the way
 4. **Archival strategy** - Old docs moved to `archive/`
 5. **Self-contained** - Each section has what it needs
 
 ---
 
-**Questions?** See the root [`IMPROVEMENT_PLAN.md`](../IMPROVEMENT_PLAN.md) or relevant section READMEs.
+**Questions?** See [`improvement-plan/README.md`](improvement-plan/README.md) for the detailed roadmap.
