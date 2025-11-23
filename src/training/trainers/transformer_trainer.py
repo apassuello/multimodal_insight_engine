@@ -36,6 +36,11 @@ import numpy as np
 from tqdm import tqdm
 import os
 
+from src.utils.logging import get_logger
+
+# Module logger
+logger = get_logger(__name__)
+
 from src.training.transformer_utils import (
     create_padding_mask,
     create_causal_mask,
@@ -175,10 +180,10 @@ class TransformerTrainer:
 
         # For logging purposes
         if self.gradient_accumulation_steps > 1:
-            print(
+            logger.info(
                 f"Using gradient accumulation with {self.gradient_accumulation_steps} steps"
             )
-            print(f"Effective batch size: {self.effective_batch_size}")
+            logger.info(f"Effective batch size: {self.effective_batch_size}")
 
     def get_lr_scheduler(self, optimizer):
         """
@@ -407,9 +412,9 @@ class TransformerTrainer:
         self.history["train_loss_stats"].append(loss_stats)
         self.history["train_ppl_stats"].append(ppl_stats)
 
-        # Print epoch summary with detailed statistics
+        # Log epoch summary with detailed statistics
         elapsed = time.time() - start_time
-        print(
+        logger.info(
             f"\nEpoch {self.current_epoch+1} Training Statistics:"
             f"\n  Time: {elapsed:.2f}s"
             f"\n  Loss - Mean: {avg_loss:.4f}, Min: {loss_stats[0]:.4f}, Max: {loss_stats[1]:.4f}, Var: {loss_stats[3]:.4f}, Median: {loss_stats[4]:.4f}, Q1: {loss_stats[5]:.4f}, Q3: {loss_stats[6]:.4f}"
@@ -505,8 +510,8 @@ class TransformerTrainer:
         self.history["val_loss_stats"].append(loss_stats)
         self.history["val_ppl_stats"].append(ppl_stats)
 
-        # Print validation summary with detailed statistics
-        print(
+        # Log validation summary with detailed statistics
+        logger.info(
             f"\nValidation Statistics:"
             f"\n  Loss - Mean: {avg_loss:.4f}, Min: {loss_stats[0]:.4f}, Max: {loss_stats[1]:.4f}, Var: {loss_stats[3]:.4f}, Median: {loss_stats[4]:.4f}, Q1: {loss_stats[5]:.4f}, Q3: {loss_stats[6]:.4f}"
             f"\n  Perplexity - Mean: {avg_ppl:.2f}, Min: {ppl_stats[0]:.2f}, Max: {ppl_stats[1]:.2f}, Var: {ppl_stats[3]:.2f}, Median: {ppl_stats[4]:.2f}, Q1: {ppl_stats[5]:.2f}, Q3: {ppl_stats[6]:.2f}   "
@@ -525,7 +530,7 @@ class TransformerTrainer:
         Returns:
             Dictionary containing training history
         """
-        print(f"Starting training on {self.device}...")
+        logger.info(f"Starting training on {self.device}...")
         start_time = time.time()
 
         # Create directories for plots if save_path is provided
@@ -562,7 +567,7 @@ class TransformerTrainer:
                     else:
                         self.patience_counter += 1
                         if self.patience_counter >= self.early_stopping_patience:
-                            print(f"Early stopping triggered after {epoch + 1} epochs")
+                            logger.info(f"Early stopping triggered after {epoch + 1} epochs")
                             break
 
             # Call epoch end callback if defined
@@ -570,11 +575,11 @@ class TransformerTrainer:
                 try:
                     self.epoch_end_callback(epoch, self.model, self)
                 except Exception as e:
-                    print(f"Error in epoch end callback: {e}")
+                    logger.error(f"Error in epoch end callback: {e}")
 
-        # Print total training time
+        # Log total training time
         total_time = time.time() - start_time
-        print(f"Training completed in {total_time:.2f}s")
+        logger.info(f"Training completed in {total_time:.2f}s")
 
         # Save final plots if save_path is provided
         if save_path:
@@ -587,7 +592,7 @@ class TransformerTrainer:
             self.early_stopping_patience is None
             or self.patience_counter < self.early_stopping_patience
         ):
-            print("Saving final model checkpoint...")
+            logger.info("Saving final model checkpoint...")
             self.save_checkpoint(save_path)
 
         return self.history
@@ -654,19 +659,19 @@ class TransformerTrainer:
 
             # Save the checkpoint
             torch.save(checkpoint, path)
-            print(f"\n===== Model saved to: {os.path.abspath(path)} =====")
-            print(f"Model configuration: {model_config}")
+            logger.info(f"\n===== Model saved to: {os.path.abspath(path)} =====")
+            logger.info(f"Model configuration: {model_config}")
 
             # Verify the file was created
             if os.path.exists(path):
                 file_size = os.path.getsize(path) / (1024 * 1024)  # Size in MB
-                print(f"File size: {file_size:.2f} MB")
+                logger.info(f"File size: {file_size:.2f} MB")
             else:
-                print(f"WARNING: File {path} was not created despite no errors!")
+                logger.warning(f" File {path} was not created despite no errors!")
 
         except Exception as e:
-            print(f"\n===== ERROR SAVING MODEL: {e} =====")
-            print(f"Attempted to save to: {os.path.abspath(path)}")
+            logger.error(f"\n===== ERROR SAVING MODEL: {e} =====")
+            logger.error(f"Attempted to save to: {os.path.abspath(path)}")
             import traceback
 
             traceback.print_exc()
@@ -680,13 +685,13 @@ class TransformerTrainer:
             strict: Whether to strictly enforce that the keys in state_dict match the keys
                    returned by the module's state_dict function
         """
-        print(f"Loading checkpoint from {path}...")
+        logger.info(f"Loading checkpoint from {path}...")
         try:
             checkpoint = torch.load(path, map_location=self.device, weights_only=True)
 
             # Check what's in the checkpoint
             checkpoint_contains = [k for k in checkpoint.keys()]
-            print(f"Checkpoint contains: {checkpoint_contains}")
+            logger.debug(f"Checkpoint contains: {checkpoint_contains}")
 
             # Load model state
             if "model_state_dict" in checkpoint:
@@ -694,21 +699,21 @@ class TransformerTrainer:
                     self.model.load_state_dict(
                         checkpoint["model_state_dict"], strict=strict
                     )
-                    print("Successfully loaded model state")
+                    logger.info("Successfully loaded model state")
                 except Exception as e:
-                    print(f"Error loading model state: {e}")
+                    logger.error(f"Error loading model state: {e}")
                     if not strict:
-                        print("Continuing with non-strict loading")
+                        logger.warning("Continuing with non-strict loading")
                         # Try again with strict=False if not already
                         try:
                             self.model.load_state_dict(
                                 checkpoint["model_state_dict"], strict=False
                             )
-                            print("Successfully loaded model state with strict=False")
+                            logger.info("Successfully loaded model state with strict=False")
                         except Exception as e2:
-                            print(f"Error even with non-strict loading: {e2}")
+                            logger.error(f"Error even with non-strict loading: {e2}")
             else:
-                print("No model state found in checkpoint")
+                logger.warning("No model state found in checkpoint")
 
             # Load optimizer state
             if "optimizer_state_dict" in checkpoint:
@@ -719,49 +724,49 @@ class TransformerTrainer:
                         for k, v in state.items():
                             if isinstance(v, torch.Tensor):
                                 state[k] = v.to(self.device)
-                    print("Successfully loaded optimizer state")
+                    logger.info("Successfully loaded optimizer state")
                 except Exception as e:
-                    print(f"Error loading optimizer state: {e}")
+                    logger.error(f"Error loading optimizer state: {e}")
             else:
-                print("No optimizer state found in checkpoint")
+                logger.warning("No optimizer state found in checkpoint")
 
             # Load scheduler state
             if "scheduler_state_dict" in checkpoint:
                 try:
                     self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-                    print("Successfully loaded scheduler state")
+                    logger.info("Successfully loaded scheduler state")
                 except Exception as e:
-                    print(f"Error loading scheduler state: {e}")
+                    logger.error(f"Error loading scheduler state: {e}")
             else:
-                print("No scheduler state found in checkpoint")
+                logger.warning("No scheduler state found in checkpoint")
 
             # Restore training state
             if "current_epoch" in checkpoint:
                 self.current_epoch = checkpoint["current_epoch"]
-                print(f"Restored training at epoch {self.current_epoch}")
+                logger.info(f"Restored training at epoch {self.current_epoch}")
 
             if "global_step" in checkpoint:
                 self.global_step = checkpoint["global_step"]
-                print(f"Restored global step {self.global_step}")
+                logger.info(f"Restored global step {self.global_step}")
 
             if "best_val_loss" in checkpoint:
                 self.best_val_loss = checkpoint["best_val_loss"]
-                print(f"Restored best validation loss: {self.best_val_loss:.4f}")
+                logger.info(f"Restored best validation loss: {self.best_val_loss:.4f}")
 
             if "patience_counter" in checkpoint:
                 self.patience_counter = checkpoint["patience_counter"]
-                print(f"Restored patience counter: {self.patience_counter}")
+                logger.info(f"Restored patience counter: {self.patience_counter}")
 
             if "history" in checkpoint:
                 self.history = checkpoint["history"]
-                print("Restored training history")
+                logger.info("Restored training history")
                 if self.history.get("train_loss"):
-                    print(f"History contains {len(self.history['train_loss'])} epochs")
+                    logger.debug(f"History contains {len(self.history['train_loss'])} epochs")
 
-            print("Checkpoint loading complete!")
+            logger.info("Checkpoint loading complete!")
 
         except Exception as e:
-            print(f"Error loading checkpoint: {e}")
+            logger.error(f"Error loading checkpoint: {e}")
             import traceback
 
             traceback.print_exc()
@@ -789,14 +794,14 @@ class TransformerTrainer:
         Returns:
             bool: Whether restoration was successful
         """
-        print(f"Restoring training state from: {path}")
+        logger.info(f"Restoring training state from: {path}")
 
         try:
             checkpoint = torch.load(path, map_location=self.device, weights_only=True)
 
             # Validate checkpoint contents
             if "model_state_dict" not in checkpoint:
-                print("ERROR: Checkpoint does not contain model state dict")
+                logger.error(" Checkpoint does not contain model state dict")
                 return False
 
             # Load model state dict (with proper error handling)
@@ -804,18 +809,18 @@ class TransformerTrainer:
                 self.model.load_state_dict(
                     checkpoint["model_state_dict"], strict=strict
                 )
-                print("✓ Model weights restored successfully")
+                logger.info("✓ Model weights restored successfully")
             except Exception as e:
-                print(f"! Error restoring model weights: {e}")
+                logger.warning(f"! Error restoring model weights: {e}")
                 if not strict:
-                    print("  Attempting non-strict loading...")
+                    logger.info("  Attempting non-strict loading...")
                     try:
                         self.model.load_state_dict(
                             checkpoint["model_state_dict"], strict=False
                         )
-                        print("✓ Model weights restored with strict=False")
+                        logger.info("✓ Model weights restored with strict=False")
                     except Exception as e2:
-                        print(f"! Failed even with non-strict loading: {e2}")
+                        logger.warning(f"! Failed even with non-strict loading: {e2}")
                         return False
 
             # Restore optimizer state if requested
@@ -827,31 +832,31 @@ class TransformerTrainer:
                         for k, v in state.items():
                             if isinstance(v, torch.Tensor):
                                 state[k] = v.to(self.device)
-                    print("✓ Optimizer state restored")
+                    logger.info("✓ Optimizer state restored")
                 except Exception as e:
-                    print(f"! Error restoring optimizer state: {e}")
-                    print("  Creating fresh optimizer state")
+                    logger.warning(f"! Error restoring optimizer state: {e}")
+                    logger.info("  Creating fresh optimizer state")
             else:
                 # Log that we're intentionally skipping optimizer restoration
                 if reset_optimizer:
-                    print("✓ Optimizer state reset as requested")
+                    logger.info("✓ Optimizer state reset as requested")
                 else:
-                    print("! No optimizer state found in checkpoint")
+                    logger.warning("! No optimizer state found in checkpoint")
 
             # Restore scheduler state if requested
             if not reset_scheduler and "scheduler_state_dict" in checkpoint:
                 try:
                     self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-                    print("✓ Scheduler state restored")
+                    logger.info("✓ Scheduler state restored")
                 except Exception as e:
-                    print(f"! Error restoring scheduler state: {e}")
-                    print("  Creating fresh scheduler state")
+                    logger.warning(f"! Error restoring scheduler state: {e}")
+                    logger.info("  Creating fresh scheduler state")
             else:
                 # Log that we're intentionally skipping scheduler restoration
                 if reset_scheduler:
-                    print("✓ Scheduler state reset as requested")
+                    logger.info("✓ Scheduler state reset as requested")
                 else:
-                    print("! No scheduler state found in checkpoint")
+                    logger.warning("! No scheduler state found in checkpoint")
 
             # Restore training progress metrics
             training_metrics = {
@@ -866,11 +871,11 @@ class TransformerTrainer:
                 if attr in checkpoint:
                     setattr(self, attr, checkpoint[attr])
                     if attr == "best_val_loss":
-                        print(f"✓ {desc} restored: {getattr(self, attr):.4f}")
+                        logger.info(f"✓ {desc} restored: {getattr(self, attr):.4f}")
                     else:
-                        print(f"✓ {desc} restored: {getattr(self, attr)}")
+                        logger.info(f"✓ {desc} restored: {getattr(self, attr)}")
                 else:
-                    print(f"! {desc} not found in checkpoint")
+                    logger.warning(f"! {desc} not found in checkpoint")
 
             # Restore training history
             if "history" in checkpoint:
@@ -880,22 +885,22 @@ class TransformerTrainer:
                     and len(checkpoint["history"]["train_loss"]) > 0
                 ):
                     self.history = checkpoint["history"]
-                    print(
+                    logger.info(
                         f"✓ Training history restored ({len(self.history['train_loss'])} epochs)"
                     )
                 else:
-                    print("! History found but contains no training data")
+                    logger.warning("! History found but contains no training data")
             else:
-                print("! No training history found in checkpoint")
+                logger.warning("! No training history found in checkpoint")
 
-            print("Training state restoration complete!")
+            logger.info("Training state restoration complete!")
             return True
 
         except FileNotFoundError:
-            print(f"! Checkpoint file not found: {path}")
+            logger.warning(f"! Checkpoint file not found: {path}")
             return False
         except Exception as e:
-            print(f"! Error during checkpoint restoration: {e}")
+            logger.warning(f"! Error during checkpoint restoration: {e}")
             import traceback
 
             traceback.print_exc()
@@ -989,7 +994,7 @@ class TransformerTrainer:
             save_path: Path to save the plot. If None, displays the plot.
         """
         if not self.history["epoch_losses"]:
-            print("No epoch data available to plot")
+            logger.warning("No epoch data available to plot")
             return
 
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 12))
