@@ -12,6 +12,10 @@ SPECIAL NOTES: Implements full Anthropic Constitutional AI methodology
 import torch
 import torch.nn as nn
 from typing import Dict, List, Any, Optional, Tuple
+from src.utils.logging import get_logger
+
+# Module logger
+logger = get_logger(__name__)
 import os
 import json
 from pathlib import Path
@@ -176,13 +180,13 @@ class ConstitutionalPipeline:
         Returns:
             Dictionary with training history and final statistics
         """
-        print("=" * 80)
-        print("CONSTITUTIONAL AI TRAINING PIPELINE")
-        print("=" * 80)
-        print(f"Training prompts: {len(training_prompts)}")
-        print(f"Constitutional principles: {len(self.constitutional_framework.principles)}")
-        print(f"Device: {self.device}")
-        print()
+        logger.info("=" * 80)
+        logger.info("CONSTITUTIONAL AI TRAINING PIPELINE")
+        logger.info("=" * 80)
+        logger.info(f"Training prompts: {len(training_prompts)}")
+        logger.info(f"Constitutional principles: {len(self.constitutional_framework.principles)}")
+        logger.info(f"Device: {self.device}")
+        logger.info("")
 
         # Create save directory if needed
         if save_dir is not None:
@@ -190,9 +194,9 @@ class ConstitutionalPipeline:
 
         # Phase 1: Supervised Learning with Critique and Revision
         if not resume_from_phase1:
-            print("=" * 80)
-            print("PHASE 1: SUPERVISED LEARNING (Critique → Revision → Fine-tuning)")
-            print("=" * 80)
+            logger.info("=" * 80)
+            logger.info("PHASE 1: SUPERVISED LEARNING (Critique → Revision → Fine-tuning)")
+            logger.info("=" * 80)
 
             phase1_results = self._run_phase1(
                 prompts=training_prompts,
@@ -209,23 +213,23 @@ class ConstitutionalPipeline:
             if save_dir is not None:
                 checkpoint_path = os.path.join(save_dir, "phase1_checkpoint.pt")
                 self._save_phase1_checkpoint(checkpoint_path)
-                print(f"\nPhase 1 checkpoint saved to: {checkpoint_path}")
+                logger.info(f"\nPhase 1 checkpoint saved to: {checkpoint_path}")
         else:
-            print("=" * 80)
-            print("PHASE 1: LOADING FROM CHECKPOINT")
-            print("=" * 80)
+            logger.info("=" * 80)
+            logger.info("PHASE 1: LOADING FROM CHECKPOINT")
+            logger.info("=" * 80)
 
             if save_dir is None:
                 raise ValueError("save_dir required when resume_from_phase1=True")
 
             checkpoint_path = os.path.join(save_dir, "phase1_checkpoint.pt")
             self._load_phase1_checkpoint(checkpoint_path)
-            print(f"Phase 1 checkpoint loaded from: {checkpoint_path}")
+            logger.info(f"Phase 1 checkpoint loaded from: {checkpoint_path}")
 
         # Phase 2: RLAIF (Reinforcement Learning from AI Feedback)
-        print("\n" + "=" * 80)
-        print("PHASE 2: RLAIF (Preferences → Reward Model → PPO)")
-        print("=" * 80)
+        logger.info("\n" + "=" * 80)
+        logger.info("PHASE 2: RLAIF (Preferences → Reward Model → PPO)")
+        logger.info("=" * 80)
 
         phase2_results = self._run_phase2(
             prompts=training_prompts,
@@ -245,21 +249,21 @@ class ConstitutionalPipeline:
         if save_dir is not None:
             checkpoint_path = os.path.join(save_dir, "phase2_checkpoint.pt")
             self._save_phase2_checkpoint(checkpoint_path)
-            print(f"\nPhase 2 checkpoint saved to: {checkpoint_path}")
+            logger.info(f"\nPhase 2 checkpoint saved to: {checkpoint_path}")
 
         # Final evaluation
         if validation_prompts is not None:
-            print("\n" + "=" * 80)
-            print("FINAL EVALUATION")
-            print("=" * 80)
+            logger.info("\n" + "=" * 80)
+            logger.info("FINAL EVALUATION")
+            logger.info("=" * 80)
 
             final_eval = self.evaluate_constitutional_compliance(
                 validation_prompts,
                 self.base_model
             )
 
-            print(f"Final Constitutional Compliance Score: {final_eval['avg_score']:.4f}")
-            print(f"Violation Rate: {final_eval['violation_rate']:.2%}")
+            logger.info(f"Final Constitutional Compliance Score: {final_eval['avg_score']:.4f}")
+            logger.info(f"Violation Rate: {final_eval['violation_rate']:.2%}")
 
         # Compile results
         results = {
@@ -272,9 +276,9 @@ class ConstitutionalPipeline:
         if validation_prompts is not None:
             results["final_evaluation"] = final_eval
 
-        print("\n" + "=" * 80)
-        print("TRAINING COMPLETE")
-        print("=" * 80)
+        logger.info("\n" + "=" * 80)
+        logger.info("TRAINING COMPLETE")
+        logger.info("=" * 80)
 
         return results
 
@@ -299,8 +303,8 @@ class ConstitutionalPipeline:
         Returns:
             Phase 1 training results
         """
-        print("\nStep 1: Generating critiques and revisions...")
-        print(f"Processing {len(prompts)} prompts with {num_revisions} revisions each")
+        logger.info("\nStep 1: Generating critiques and revisions...")
+        logger.info(f"Processing {len(prompts)} prompts with {num_revisions} revisions each")
 
         # Generate training data with critiques and revisions
         training_data = critique_revision_pipeline(
@@ -315,11 +319,11 @@ class ConstitutionalPipeline:
         self.stats["phase1_samples_processed"] = len(training_data)
         self.stats["phase1_revisions_generated"] = len(training_data) * num_revisions
 
-        print(f"Generated {len(training_data)} training examples")
-        print(f"Total revisions: {self.stats['phase1_revisions_generated']}")
+        logger.info(f"Generated {len(training_data)} training examples")
+        logger.info(f"Total revisions: {self.stats['phase1_revisions_generated']}")
 
         # Supervised fine-tuning on revised outputs
-        print("\nStep 2: Supervised fine-tuning on revised outputs...")
+        logger.info("\nStep 2: Supervised fine-tuning on revised outputs...")
 
         sft_results = supervised_finetune(
             model=self.base_model,
@@ -334,13 +338,13 @@ class ConstitutionalPipeline:
         # Validation
         validation_results = {}
         if validation_prompts is not None:
-            print("\nStep 3: Validating Phase 1 model...")
+            logger.info("\nStep 3: Validating Phase 1 model...")
             validation_results = self.evaluate_constitutional_compliance(
                 validation_prompts,
                 self.base_model
             )
-            print(f"Validation Score: {validation_results['avg_score']:.4f}")
-            print(f"Violation Rate: {validation_results['violation_rate']:.2%}")
+            logger.info(f"Validation Score: {validation_results['avg_score']:.4f}")
+            logger.info(f"Violation Rate: {validation_results['violation_rate']:.2%}")
 
         # Mark Phase 1 as complete
         self.phase1_complete = True
@@ -378,8 +382,8 @@ class ConstitutionalPipeline:
         Returns:
             Phase 2 training results
         """
-        print("\nStep 1: Generating preference pairs...")
-        print(f"Processing {len(prompts)} prompts with {responses_per_prompt} responses each")
+        logger.info("\nStep 1: Generating preference pairs...")
+        logger.info(f"Processing {len(prompts)} prompts with {responses_per_prompt} responses each")
 
         # Generate preference pairs
         preference_data = generate_preference_pairs(
@@ -392,10 +396,10 @@ class ConstitutionalPipeline:
         )
 
         self.stats["phase2_preference_pairs"] = len(preference_data)
-        print(f"Generated {len(preference_data)} preference pairs")
+        logger.info(f"Generated {len(preference_data)} preference pairs")
 
         # Initialize reward model
-        print("\nStep 2: Training reward model...")
+        logger.info("\nStep 2: Training reward model...")
 
         # Get model hidden size
         if hasattr(self.base_model, 'config'):
@@ -421,12 +425,12 @@ class ConstitutionalPipeline:
             num_epochs=reward_model_epochs
         )
 
-        print(f"Reward model training complete")
-        print(f"Final loss: {reward_results['final_loss']:.4f}")
-        print(f"Final accuracy: {reward_results['final_accuracy']:.2%}")
+        logger.info(f"Reward model training complete")
+        logger.info(f"Final loss: {reward_results['final_loss']:.4f}")
+        logger.info(f"Final accuracy: {reward_results['final_accuracy']:.2%}")
 
         # PPO training
-        print("\nStep 3: PPO optimization with reward model...")
+        logger.info("\nStep 3: PPO optimization with reward model...")
 
         ppo_trainer = PPOTrainer(
             policy_model=self.base_model,
@@ -451,20 +455,20 @@ class ConstitutionalPipeline:
 
         self.stats["phase2_ppo_steps"] = ppo_steps
 
-        print(f"PPO training complete")
-        print(f"Final reward: {ppo_results['final_avg_reward']:.4f}")
-        print(f"Final KL divergence: {ppo_results['final_kl_divergence']:.4f}")
+        logger.info(f"PPO training complete")
+        logger.info(f"Final reward: {ppo_results['final_avg_reward']:.4f}")
+        logger.info(f"Final KL divergence: {ppo_results['final_kl_divergence']:.4f}")
 
         # Validation
         validation_results = {}
         if validation_prompts is not None:
-            print("\nStep 4: Validating Phase 2 model...")
+            logger.info("\nStep 4: Validating Phase 2 model...")
             validation_results = self.evaluate_constitutional_compliance(
                 validation_prompts,
                 self.base_model
             )
-            print(f"Validation Score: {validation_results['avg_score']:.4f}")
-            print(f"Violation Rate: {validation_results['violation_rate']:.2%}")
+            logger.info(f"Validation Score: {validation_results['avg_score']:.4f}")
+            logger.info(f"Violation Rate: {validation_results['violation_rate']:.2%}")
 
         return {
             "preference_pairs": len(preference_data),
@@ -505,7 +509,7 @@ class ConstitutionalPipeline:
         scores = []
         violations = []
 
-        print(f"Evaluating {len(test_prompts)} test prompts...")
+        logger.info(f"Evaluating {len(test_prompts)} test prompts...")
 
         with torch.no_grad():
             for prompt in tqdm(test_prompts, desc="Evaluation"):

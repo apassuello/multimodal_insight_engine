@@ -16,36 +16,36 @@ def main(args):
     loader = ModelLoader()
     
     if args.list_local:
-        print("=== Available Local Models ===")
+        logger.info("=== Available Local Models ===")
         local_models = loader.list_available_local_models()
         
         if not local_models:
-            print("No local models found in ./data/pretrained/")
+            logger.info("No local models found in ./data/pretrained/")
         else:
             for model_name in local_models:
                 info = loader.get_model_info(model_name)
-                print(f"- {model_name}")
+                logger.info(f"- {model_name}")
                 
                 # Print basic info
-                print(f"  Path: {info.get('path', 'N/A')}")
+                logger.info(f"  Path: {info.get('path', 'N/A')}")
                 
                 # Print config if available
                 if "config" in info:
                     config = info["config"]
                     if "model_type" in config:
-                        print(f"  Type: {config['model_type']}")
+                        logger.info(f"  Type: {config['model_type']}")
                     if "d_model" in config:
-                        print(f"  Dimensions: {config['d_model']}")
+                        logger.info(f"  Dimensions: {config['d_model']}")
                     if "num_layers" in config:
-                        print(f"  Layers: {config['num_layers']}")
+                        logger.info(f"  Layers: {config['num_layers']}")
                 
-                print()
+                logger.info("")
     
     if args.list_hf:
         try:
             from huggingface_hub import list_models
             
-            print("=== Popular Hugging Face Models ===")
+            logger.info("=== Popular Hugging Face Models ===")
             
             models = list_models(
                 filter="text-generation",
@@ -55,28 +55,28 @@ def main(args):
             )
             
             for model in models:
-                print(f"- {model.id}")
-                print(f"  Downloads: {model.downloads:,}")
-                print(f"  Likes: {model.likes:,}")
+                logger.info(f"- {model.id}")
+                logger.info(f"  Downloads: {model.downloads:,}")
+                logger.info(f"  Likes: {model.likes:,}")
                 if model.pipeline_tag:
-                    print(f"  Pipeline: {model.pipeline_tag}")
-                print()
+                    logger.info(f"  Pipeline: {model.pipeline_tag}")
+                logger.info("")
                 
         except ImportError:
-            print("Error: huggingface_hub package not installed.")
-            print("Install it with: pip install huggingface_hub")
+            logger.info("Error: huggingface_hub package not installed.")
+            logger.info("Install it with: pip install huggingface_hub")
     
     if args.info:
-        print(f"=== Model Information: {args.info} ===")
+        logger.info(f"=== Model Information: {args.info} ===")
         info = loader.get_model_info(args.info)
         
         for key, value in info.items():
             if key == "config":
-                print("Config:")
+                logger.info("Config:")
                 for config_key, config_value in value.items():
-                    print(f"  {config_key}: {config_value}")
+                    logger.info(f"  {config_key}: {config_value}")
             else:
-                print(f"{key}: {value}")
+                logger.info(f"{key}: {value}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="List available models for red teaming")

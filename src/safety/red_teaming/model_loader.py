@@ -4,6 +4,10 @@ import os
 import torch
 import json
 from typing import Callable, Dict, Any, Optional, Union
+from src.utils.logging import get_logger
+
+# Module logger
+logger = get_logger(__name__)
 from pathlib import Path
 import sys
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
@@ -53,7 +57,7 @@ class ModelLoader:
             self.device = device
             
         if self.verbose:
-            print(f"Using device: {self.device}")
+            logger.info(f"Using device: {self.device}")
         
         # Generation parameters
         self.max_length = max_length
@@ -80,7 +84,7 @@ class ModelLoader:
         """
         # Check if model is already loaded
         if model_name in self.loaded_models:
-            print(f"Using cached model: {model_name}")
+            logger.info(f"Using cached model: {model_name}")
             return self.loaded_models[model_name]
         
         # Determine if model is local or from Hugging Face
@@ -88,8 +92,8 @@ class ModelLoader:
             # Check if model exists in local directory
             local_path = self.local_models_dir / model_name
             is_local = local_path.exists()
-            print(f"Listing available local models in: {self.local_models_dir}")
-            print(f"Listing available local model_path in: {local_path}")
+            logger.info(f"Listing available local models in: {self.local_models_dir}")
+            logger.info(f"Listing available local model_path in: {local_path}")
         
         # Load the appropriate model type
         if is_local:
@@ -113,15 +117,15 @@ class ModelLoader:
             Function that takes text input and returns model output
         """
         model_path = self.local_models_dir / model_name
-        print(f"Loading local model from: {model_path}")
+        logger.info(f"Loading local model from: {model_path}")
         
         # Check if this is a Hugging Face format model
         if (model_path / "config.json").exists() and (model_path / "tokenizer.json").exists():
-            print("Detected Hugging Face format model")
+            logger.info("Detected Hugging Face format model")
             return self._load_huggingface_model(str(model_path))
         
         # Otherwise, try to load as a custom PyTorch model
-        print("Attempting to load as custom PyTorch model")
+        logger.info("Attempting to load as custom PyTorch model")
         # Check for config file to determine model type
         config_path = model_path / "config.json"
         if config_path.exists():
@@ -150,12 +154,12 @@ class ModelLoader:
         
         if encoder_only_path.exists() or not (model_path / "decoder.pt").exists():
             # Load encoder-only transformer
-            print("Loading encoder-only transformer model")
+            logger.info("Loading encoder-only transformer model")
             model = Transformer()
             model.load(str(model_path / "model.pt"), map_location=self.device)
         else:
             # Load encoder-decoder transformer
-            print("Loading encoder-decoder transformer model")
+            logger.info("Loading encoder-decoder transformer model")
             model = EncoderDecoderTransformer(src_vocab_size=10000, tgt_vocab_size=10000)  # Placeholder sizes
             model.load(str(model_path / "model.pt"), map_location=self.device)
         
@@ -242,24 +246,24 @@ class ModelLoader:
             Function that takes text input and returns model output
         """
         if self.verbose:
-            print(f"\nLoading Hugging Face model: {model_name}")
-            print(f"Model path exists: {os.path.exists(model_name)}")
+            logger.info(f"\nLoading Hugging Face model: {model_name}")
+            logger.info(f"Model path exists: {os.path.exists(model_name)}")
             if os.path.exists(model_name):
-                print("Contents of model directory:")
+                logger.info("Contents of model directory:")
                 for file in os.listdir(model_name):
-                    print(f"  - {file}")
+                    logger.info(f"  - {file}")
         
         try:
             if self.verbose:
-                print("\nLoading tokenizer...")
+                logger.info("\nLoading tokenizer...")
             tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
             if self.verbose:
-                print("Tokenizer loaded successfully")
+                logger.info("Tokenizer loaded successfully")
             
             if self.verbose:
-                print("\nLoading model...")
-                print(f"Device: {self.device}")
-                print(f"Using device_map: auto")
+                logger.info("\nLoading model...")
+                logger.info(f"Device: {self.device}")
+                logger.info(f"Using device_map: auto")
             
             # Memory-efficient loading options
             model = AutoModelForCausalLM.from_pretrained(
@@ -273,34 +277,34 @@ class ModelLoader:
                 max_memory={0: "28GB"} if self.device == "mps" else None  # Limit GPU memory usage
             )
             if self.verbose:
-                print("Model loaded successfully")
+                logger.info("Model loaded successfully")
             
             # Set to evaluation mode
             model.eval()
             if self.verbose:
-                print("Model set to evaluation mode")
+                logger.info("Model set to evaluation mode")
             
             # Create a wrapped function for inference
             def model_func(prompt: str) -> str:
                 try:
                     if self.verbose:
-                        print(f"\nProcessing prompt: {prompt[:50]}...")
+                        logger.info(f"\nProcessing prompt: {prompt[:50]}...")
                     with torch.no_grad():
                         # Tokenize input
                         if self.verbose:
-                            print("Tokenizing input...")
+                            logger.info("Tokenizing input...")
                         inputs = tokenizer(prompt, return_tensors="pt")
                         if self.verbose:
-                            print(f"Input shape: {inputs['input_ids'].shape}")
+                            logger.info(f"Input shape: {inputs['input_ids'].shape}")
                         
                         # Move inputs to device
                         inputs = {k: v.to(self.device) for k, v in inputs.items()}
                         if self.verbose:
-                            print(f"Inputs moved to device: {self.device}")
+                            logger.info(f"Inputs moved to device: {self.device}")
                         
                         # Generate output
                         if self.verbose:
-                            print("Generating output...")
+                            logger.info("Generating output...")
                         outputs = model.generate(
                             **inputs,
                             max_length=min(self.max_length, tokenizer.model_max_length),
@@ -317,11 +321,11 @@ class ModelLoader:
                             top_p=0.95  # Nucleus sampling
                         )
                         if self.verbose:
-                            print(f"Output shape: {outputs.shape}")
+                            logger.info(f"Output shape: {outputs.shape}")
                         
                         # Decode output
                         if self.verbose:
-                            print("Decoding output...")
+                            logger.info("Decoding output...")
                         output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
                         
                         # For some models, we need to remove the prompt from the output
@@ -333,16 +337,16 @@ class ModelLoader:
                             output_text = "I apologize, but I cannot generate a response to that prompt."
                         
                         if self.verbose:
-                            print("\nModel Output:")
-                            print("-" * 50)
-                            print(output_text[:500] + "..." if len(output_text) > 500 else output_text)
-                            print("-" * 50)
-                            print("Generation complete")
+                            logger.info("\nModel Output:")
+                            logger.info("-" * 50)
+                            logger.debug(output_text[:500] + "..." if len(output_text) > 500 else output_text)
+                            logger.info("-" * 50)
+                            logger.info("Generation complete")
                         
                         return output_text
                 except Exception as e:
                     if self.verbose:
-                        print(f"Error during inference: {str(e)}")
+                        logger.info(f"Error during inference: {str(e)}")
                     return f"Error generating response: {str(e)}"
             
             return model_func
@@ -350,8 +354,8 @@ class ModelLoader:
         except Exception as e:
             error_msg = str(e)
             if self.verbose:
-                print(f"\nError loading model from Hugging Face: {error_msg}")
-                print(f"Error type: {type(e).__name__}")
+                logger.info(f"\nError loading model from Hugging Face: {error_msg}")
+                logger.info(f"Error type: {type(e).__name__}")
             
             # Return a function that explains the error
             def error_func(prompt: str) -> str:
@@ -366,7 +370,7 @@ class ModelLoader:
         Returns:
             List of model names
         """
-        print(f"Listing available local models in: {self.local_models_dir}")
+        logger.info(f"Listing available local models in: {self.local_models_dir}")
         if not self.local_models_dir.exists():
             return []
         
@@ -383,8 +387,8 @@ class ModelLoader:
             Dictionary with model information
         """
         model_path = self.local_models_dir / model_name
-        print(f"Listing available local models in: {self.local_models_dir}")
-        print(f"Listing available local model_path in: {model_path}")
+        logger.info(f"Listing available local models in: {self.local_models_dir}")
+        logger.info(f"Listing available local model_path in: {model_path}")
 
         if not model_path.exists():
             # Try to get info from Hugging Face

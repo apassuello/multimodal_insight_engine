@@ -234,7 +234,7 @@ class ModelProfiler:
         if save_path:
             with open(save_path, 'w') as f:
                 f.write(report)
-            print(f"Report saved to {save_path}")
+            logger.info(f"Report saved to {save_path}")
         
         return report
     
@@ -363,16 +363,16 @@ class ModelProfiler:
         # Save trace if path is provided
         if save_path:
             prof.export_chrome_trace(save_path)
-            print(f"Trace saved to {save_path}")
+            logger.info(f"Trace saved to {save_path}")
         
         # Print summary
-        print(prof.key_averages().table(sort_by="cpu_time_total"))
+        logger.info(prof.key_averages().table(sort_by="cpu_time_total"))
         
         # Analyze by operator type
         op_table = prof.key_averages(group_by_input_shape=True).table(sort_by="cpu_time_total")
         self.detailed_metrics['pytorch_profiler_ops'] = op_table
-        print("\nProfile by operator type:")
-        print(op_table)
+        logger.info("\nProfile by operator type:")
+        logger.info(op_table)
         
         # Extract data for plotting
         df = pd.DataFrame(
@@ -425,7 +425,7 @@ class ModelProfiler:
         for batch_size in batch_sizes:
             for seq_length in sequence_lengths:
                 current_config += 1
-                print(f"Benchmarking configuration {current_config}/{total_configurations}: "
+                logger.info(f"Benchmarking configuration {current_config}/{total_configurations}: "
                     f"batch_size={batch_size}, seq_length={seq_length}")
                 
                 # Generate input data
@@ -847,7 +847,7 @@ class ModelBenchmarkSuite:
         
         for model_name in model_names:
             if model_name not in self.results:
-                print(f"Warning: Model '{model_name}' not found in results.")
+                logger.info(f"Warning: Model '{model_name}' not found in results.")
                 continue
                 
             # Get model's benchmark DataFrame

@@ -27,7 +27,7 @@ class WMTDataLoader:
         for src_pattern, tgt_pattern in possible_patterns:
             if os.path.exists(src_pattern) and os.path.exists(tgt_pattern):
                 src_file, tgt_file = src_pattern, tgt_pattern
-                print(f"Found WMT files using pattern: {src_pattern.split('/')[-1]}")
+                logger.info(f"Found WMT files using pattern: {src_pattern.split('/')[-1]}")
                 break
 
         if src_file is None or tgt_file is None:
@@ -42,7 +42,7 @@ class WMTDataLoader:
 
         # Ensure same length
         if len(src_data) != len(tgt_data):
-            print(f"Warning: Source and target files have different lengths. Source: {len(src_data)}, Target: {len(tgt_data)}")
+            logger.info(f"Warning: Source and target files have different lengths. Source: {len(src_data)}, Target: {len(tgt_data)}")
             min_len = min(len(src_data), len(tgt_data))
             src_data = src_data[:min_len]
             tgt_data = tgt_data[:min_len]
@@ -59,7 +59,7 @@ class WMTDataLoader:
         # Unzip the pairs
         src_data, tgt_data = zip(*filtered_pairs) if filtered_pairs else ([], [])
 
-        print(f"Loaded {len(src_data)} parallel sentences")
+        logger.info(f"Loaded {len(src_data)} parallel sentences")
 
         return list(src_data), list(tgt_data)
 

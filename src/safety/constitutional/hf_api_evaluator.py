@@ -87,10 +87,10 @@ def get_hf_api_client():
         return _api_client
 
     except ImportError:
-        print("[HF-API] huggingface_hub not installed. Run: pip install huggingface_hub")
+        logger.info("[HF-API] huggingface_hub not installed. Run: pip install huggingface_hub")
         return None
     except Exception as e:
-        print(f"[HF-API] Failed to create client: {e}")
+        logger.info(f"[HF-API] Failed to create client: {e}")
         return None
 
 
@@ -151,7 +151,7 @@ def evaluate_toxicity_api(
     for attempt in range(config.max_retries):
         try:
             if verbose:
-                print(f"[HF-API] Evaluating with {config.toxicity_model}...")
+                logger.info(f"[HF-API] Evaluating with {config.toxicity_model}...")
 
             # Call the text classification endpoint
             result = client.text_classification(
@@ -160,7 +160,7 @@ def evaluate_toxicity_api(
             )
 
             if verbose:
-                print(f"[HF-API] Response: {result}")
+                logger.info(f"[HF-API] Response: {result}")
 
             # Parse results - format varies by model
             # toxic-bert returns: [{'label': 'toxic', 'score': 0.99}, {'label': 'non-toxic', 'score': 0.01}]
@@ -192,13 +192,13 @@ def evaluate_toxicity_api(
         except Exception as e:
             last_error = str(e)
             if verbose:
-                print(f"[HF-API] Attempt {attempt + 1} failed: {e}")
+                logger.info(f"[HF-API] Attempt {attempt + 1} failed: {e}")
 
             # Check for rate limiting
             if "rate limit" in str(e).lower() or "429" in str(e):
                 wait_time = config.retry_delay * (2 ** attempt)  # Exponential backoff
                 if verbose:
-                    print(f"[HF-API] Rate limited, waiting {wait_time}s...")
+                    logger.info(f"[HF-API] Rate limited, waiting {wait_time}s...")
                 time.sleep(wait_time)
             elif attempt < config.max_retries - 1:
                 time.sleep(config.retry_delay)
@@ -284,8 +284,8 @@ class HuggingFaceAPIEvaluator:
     Usage:
         evaluator = HuggingFaceAPIEvaluator()
         result = evaluator.evaluate_harm("How do I hack a computer?")
-        print(result['flagged'])  # True
-        print(result['toxicity_score'])  # 0.95
+        logger.info(result['flagged'])  # True
+        logger.info(result['toxicity_score'])  # 0.95
     """
 
     def __init__(
@@ -320,7 +320,7 @@ class HuggingFaceAPIEvaluator:
                 from huggingface_hub import InferenceClient
                 self._client = InferenceClient(token=self.config.api_token)
             except Exception as e:
-                print(f"[HF-API] Failed to create client: {e}")
+                logger.info(f"[HF-API] Failed to create client: {e}")
         return self._client
 
     def evaluate_harm(self, text: str, verbose: bool = False) -> Dict[str, Any]:

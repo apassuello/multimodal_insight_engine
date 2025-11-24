@@ -24,7 +24,7 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
         
         # Use the mapping if available, otherwise use the original name
         full_model_name = model_mapping.get(model_name, model_name)
-        print(f"Loading vision model: {full_model_name} (from '{model_name}')")
+        logger.info(f"Loading vision model: {full_model_name} (from '{model_name}')")
         
         self.pretrained_model = ViTModel.from_pretrained(full_model_name)
         self.config = self.pretrained_model.config.to_dict()

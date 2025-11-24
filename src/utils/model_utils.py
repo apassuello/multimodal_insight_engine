@@ -65,23 +65,23 @@ def print_model_summary(model: nn.Module, title: str = "MODEL SUMMARY") -> None:
     # Fusion parameters (estimate)
     fusion_params = total_params - vision_params - text_params
 
-    print("\n" + "=" * 50)
-    print(f"{title}")
-    print("-" * 50)
-    print(f"Total parameters:       {total_params:,}")
+    logger.info("\n" + "=" * 50)
+    logger.info(f"{title}")
+    logger.info("-" * 50)
+    logger.info(f"Total parameters:       {total_params:,}")
     if vision_params > 0:
-        print(
+        logger.info(
             f"Vision model parameters: {vision_params:,} ({vision_params/total_params*100:.1f}%)"
         )
     if text_params > 0:
-        print(
+        logger.info(
             f"Text model parameters:   {text_params:,} ({text_params/total_params*100:.1f}%)"
         )
     if fusion_params > 0:
-        print(
+        logger.info(
             f"Fusion parameters:       {fusion_params:,} ({fusion_params/total_params*100:.1f}%)"
         )
-    print("=" * 50 + "\n")
+    logger.info("=" * 50 + "\n")
 
 
 def get_device(device_name: Optional[str] = None) -> torch.device:

@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Dict, Any, Optional, Tuple
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import copy
 from tqdm import tqdm
 import numpy as np
@@ -898,10 +900,10 @@ class PPOTrainer:
         Returns:
             Training results and metrics
         """
-        print(f"Starting PPO training for {num_steps} steps")
-        print(f"Batch size: {batch_size}")
-        print(f"Epochs per batch: {num_epochs_per_batch}")
-        print(f"Total prompts: {len(prompts)}")
+        logger.info(f"Starting PPO training for {num_steps} steps")
+        logger.info(f"Batch size: {batch_size}")
+        logger.info(f"Epochs per batch: {num_epochs_per_batch}")
+        logger.info(f"Total prompts: {len(prompts)}")
 
         training_history = {
             'policy_losses': [],
@@ -937,11 +939,11 @@ class PPOTrainer:
 
             # Print progress
             if (step + 1) % 10 == 0:
-                print(f"\nStep {step + 1}/{num_steps}")
-                print(f"  Policy Loss: {metrics['policy_loss']:.4f}")
-                print(f"  Value Loss: {metrics['value_loss']:.4f}")
-                print(f"  KL Div: {metrics['kl_divergence']:.4f}")
-                print(f"  Mean Reward: {metrics['mean_reward']:.4f}")
+                logger.info(f"\nStep {step + 1}/{num_steps}")
+                logger.info(f"  Policy Loss: {metrics['policy_loss']:.4f}")
+                logger.info(f"  Value Loss: {metrics['value_loss']:.4f}")
+                logger.info(f"  KL Div: {metrics['kl_divergence']:.4f}")
+                logger.info(f"  Mean Reward: {metrics['mean_reward']:.4f}")
 
             # Checkpoint
             if checkpoint_dir and (step + 1) % checkpoint_freq == 0:
@@ -980,7 +982,7 @@ class PPOTrainer:
 
         torch.save(checkpoint, checkpoint_path)
 
-        print(f"Checkpoint saved to {checkpoint_path}")
+        logger.info(f"Checkpoint saved to {checkpoint_path}")
 
     def load_checkpoint(self, checkpoint_path: str):
         """
@@ -1000,8 +1002,8 @@ class PPOTrainer:
 
         self.stats = checkpoint['stats']
 
-        print(f"Checkpoint loaded from {checkpoint_path}")
-        print(f"Resuming from step {checkpoint['step']}")
+        logger.info(f"Checkpoint loaded from {checkpoint_path}")
+        logger.info(f"Resuming from step {checkpoint['step']}")
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get training statistics."""

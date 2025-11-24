@@ -303,7 +303,7 @@ def generate_preference_pairs(
                 })
             except Exception as e:
                 # Log error but continue processing
-                print(f"Warning: Failed to generate comparison for prompt '{prompt[:50]}...': {e}")
+                logger.info(f"Warning: Failed to generate comparison for prompt '{prompt[:50]}...': {e}")
                 continue
     
     return preference_data

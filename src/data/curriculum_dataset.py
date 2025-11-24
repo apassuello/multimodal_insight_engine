@@ -18,6 +18,8 @@ from torch.utils.data import Dataset
 import numpy as np
 from collections import Counter
 from typing import List, Dict, Tuple, Optional, Callable, Any
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import os
 
 
@@ -55,10 +57,10 @@ class CurriculumTranslationDataset(Dataset):
             max_src_len: Maximum source sequence length
             max_tgt_len: Maximum target sequence length
         """
-        print("\n=== Initializing Curriculum Learning Dataset ===")
-        print(f"Total examples: {len(source_sequences)}")
-        print(f"Strategy: {curriculum_strategy}")
-        print(f"Number of stages: {num_stages}")
+        logger.info("\n=== Initializing Curriculum Learning Dataset ===")
+        logger.info(f"Total examples: {len(source_sequences)}")
+        logger.info(f"Strategy: {curriculum_strategy}")
+        logger.info(f"Number of stages: {num_stages}")
 
         self.source_sequences = source_sequences
         self.target_sequences = target_sequences
@@ -71,30 +73,30 @@ class CurriculumTranslationDataset(Dataset):
         # Start at the first curriculum stage
         self.current_stage = 0
 
-        print("\nCalculating difficulty scores...")
+        logger.info("\nCalculating difficulty scores...")
         # Calculate difficulty scores for each example
         self.difficulties = self._calculate_difficulties()
 
         # Sort examples by difficulty
-        print("Sorting examples by difficulty...")
+        logger.info("Sorting examples by difficulty...")
         self.sorted_indices = np.argsort(self.difficulties).tolist()
 
-        print("\nCurriculum initialization complete!")
-        print(f"Initialized curriculum learning with strategy '{curriculum_strategy}'")
-        print(f"Curriculum will progress through {num_stages} stages")
+        logger.info("\nCurriculum initialization complete!")
+        logger.info(f"Initialized curriculum learning with strategy '{curriculum_strategy}'")
+        logger.info(f"Curriculum will progress through {num_stages} stages")
 
         # Calculate statistics for reporting
         difficulties = np.array(self.difficulties)
-        print(f"\nDifficulty statistics:")
-        print(f"  Min: {difficulties.min():.2f}")
-        print(f"  Max: {difficulties.max():.2f}")
-        print(f"  Mean: {difficulties.mean():.2f}")
-        print(f"  Median: {np.median(difficulties):.2f}")
+        logger.info(f"\nDifficulty statistics:")
+        logger.info(f"  Min: {difficulties.min():.2f}")
+        logger.info(f"  Max: {difficulties.max():.2f}")
+        logger.info(f"  Mean: {difficulties.mean():.2f}")
+        logger.info(f"  Median: {np.median(difficulties):.2f}")
 
         # Print initial curriculum samples
-        print("\nInitial curriculum setup:")
+        logger.info("\nInitial curriculum setup:")
         self.print_curriculum_samples(num_samples=5)
-        print("=== Curriculum Learning Dataset Initialization Complete ===\n")
+        logger.info("=== Curriculum Learning Dataset Initialization Complete ===\n")
 
     def _calculate_difficulties(self) -> List[float]:
         """Calculate difficulty scores for all examples based on selected strategy."""
@@ -147,10 +149,10 @@ class CurriculumTranslationDataset(Dataset):
 
         else:
             # Default to length-based if strategy not recognized
-            print(
+            logger.info(
                 f"Warning: Curriculum strategy '{self.curriculum_strategy}' not recognized."
             )
-            print("Defaulting to length-based curriculum.")
+            logger.info("Defaulting to length-based curriculum.")
             return self._calculate_difficulties_by_length()
 
         return difficulties
@@ -171,7 +173,7 @@ class CurriculumTranslationDataset(Dataset):
             new_stage: New curriculum stage (0 to num_stages-1)
         """
         if new_stage < 0 or new_stage >= self.num_stages:
-            print(
+            logger.info(
                 f"Warning: Invalid curriculum stage {new_stage}. Must be between 0 and {self.num_stages-1}."
             )
             return
@@ -183,7 +185,7 @@ class CurriculumTranslationDataset(Dataset):
         percent = 100 * self.get_stage_percent()
 
         if prev_stage != new_stage:
-            print(
+            logger.info(
                 f"Curriculum advanced to stage {new_stage}/{self.num_stages-1} ({percent:.1f}% of data)"
             )
             # Print sample examples from the current stage
@@ -204,30 +206,30 @@ class CurriculumTranslationDataset(Dataset):
         available_difficulties = [self.difficulties[i] for i in available_indices]
 
         # Print statistics about current stage
-        print(f"\nCurriculum Stage {self.current_stage} Samples:")
-        print(f"Strategy: {self.curriculum_strategy}")
-        print(
+        logger.info(f"\nCurriculum Stage {self.current_stage} Samples:")
+        logger.info(f"Strategy: {self.curriculum_strategy}")
+        logger.info(
             f"Available examples: {available_length}/{total_length} ({100 * available_length/total_length:.1f}%)"
         )
-        print(
+        logger.info(
             f"Difficulty range: {min(available_difficulties):.2f} - {max(available_difficulties):.2f}"
         )
-        print(
+        logger.info(
             f"Average difficulty: {sum(available_difficulties)/len(available_difficulties):.2f}"
         )
 
         # Print sample examples
-        print("\nSample examples from current stage:")
+        logger.info("\nSample examples from current stage:")
         for i in range(min(num_samples, available_length)):
             idx = available_indices[i]
             src = self.source_sequences[idx]
             tgt = self.target_sequences[idx]
             difficulty = self.difficulties[idx]
 
-            print(f"\nExample {i+1} (Difficulty: {difficulty:.2f}):")
-            print(f"Source length: {len(src)}, Target length: {len(tgt)}")
-            print(f"Source tokens: {src}")
-            print(f"Target tokens: {tgt}")
+            logger.info(f"\nExample {i+1} (Difficulty: {difficulty:.2f}):")
+            logger.info(f"Source length: {len(src)}, Target length: {len(tgt)}")
+            logger.info(f"Source tokens: {src}")
+            logger.info(f"Target tokens: {tgt}")
 
     def get_stage_percent(self) -> float:
         """
@@ -309,10 +311,10 @@ class CurriculumTranslationDataset(Dataset):
         """
         Print a summary of the curriculum progression.
         """
-        print("\nCurriculum Learning Progression Summary:")
-        print(f"Strategy: {self.curriculum_strategy}")
-        print(f"Total stages: {self.num_stages}")
-        print(f"Final stage reached: {self.current_stage}/{self.num_stages-1}")
+        logger.info("\nCurriculum Learning Progression Summary:")
+        logger.info(f"Strategy: {self.curriculum_strategy}")
+        logger.info(f"Total stages: {self.num_stages}")
+        logger.info(f"Final stage reached: {self.current_stage}/{self.num_stages-1}")
 
         # Calculate statistics for each stage
         total_examples = len(self.source_sequences)
@@ -325,14 +327,14 @@ class CurriculumTranslationDataset(Dataset):
             # Get difficulty scores for this stage
             stage_difficulties = [self.difficulties[i] for i in available_indices]
 
-            print(f"\nStage {stage}/{self.num_stages-1}:")
-            print(
+            logger.info(f"\nStage {stage}/{self.num_stages-1}:")
+            logger.info(
                 f"  Examples available: {available_count}/{total_examples} ({100 * available_count/total_examples:.1f}%)"
             )
-            print(
+            logger.info(
                 f"  Difficulty range: {min(stage_difficulties):.2f} - {max(stage_difficulties):.2f}"
             )
-            print(
+            logger.info(
                 f"  Average difficulty: {sum(stage_difficulties)/len(stage_difficulties):.2f}"
             )
 

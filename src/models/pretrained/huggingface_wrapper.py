@@ -17,7 +17,11 @@ DEPENDENCIES:
 
 import os
 import torch
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import torch.nn as nn
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import logging
 from typing import Dict, Optional, Union, Tuple, Any, List
 from transformers import PreTrainedModel, AutoModel, AutoConfig
@@ -74,16 +78,16 @@ class HuggingFaceTextModelWrapper(nn.Module):
         if "mobilebert" in model_name.lower():
             from transformers import MobileBertModel, MobileBertTokenizer
 
-            print(f"Loading MobileBERT model: {model_name}")
+            logger.info(f"Loading MobileBERT model: {model_name}")
             self.encoder = MobileBertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "mobilebert"
-            print(f"MobileBERT hidden size: {self.d_model}")  # Diagnostic logging
+            logger.info(f"MobileBERT hidden size: {self.d_model}")  # Diagnostic logging
 
         elif "albert" in model_name.lower():
             from transformers import AlbertModel, AlbertTokenizer
 
-            print(f"Loading ALBERT model: {model_name}")
+            logger.info(f"Loading ALBERT model: {model_name}")
             self.encoder = AlbertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "albert"
@@ -91,25 +95,25 @@ class HuggingFaceTextModelWrapper(nn.Module):
         elif "minilm" in model_name.lower():
             from transformers import AutoModel
 
-            print(f"Loading MiniLM model: {model_name}")
+            logger.info(f"Loading MiniLM model: {model_name}")
             self.encoder = AutoModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "minilm"
-            print(f"MiniLM hidden size: {self.d_model}")  # Diagnostic logging
+            logger.info(f"MiniLM hidden size: {self.d_model}")  # Diagnostic logging
 
         elif "flaubert" in model_name.lower():
             from transformers import FlaubertModel
 
-            print(f"Loading FlauBERT model: {model_name}")
+            logger.info(f"Loading FlauBERT model: {model_name}")
             self.encoder = FlaubertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "flaubert"
-            print(f"FlauBERT hidden size: {self.d_model}")  # Diagnostic logging
+            logger.info(f"FlauBERT hidden size: {self.d_model}")  # Diagnostic logging
 
         elif "bert" in model_name.lower() and "distil" not in model_name.lower():
             from transformers import BertModel, BertTokenizer
 
-            print(f"Loading BERT model: {model_name}")
+            logger.info(f"Loading BERT model: {model_name}")
             self.encoder = BertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "bert"
@@ -117,7 +121,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
         elif "roberta" in model_name.lower():
             from transformers import RobertaModel, RobertaTokenizer
 
-            print(f"Loading RoBERTa model: {model_name}")
+            logger.info(f"Loading RoBERTa model: {model_name}")
             self.encoder = RobertaModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "roberta"
@@ -125,7 +129,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
         elif "distilbert" in model_name.lower():
             from transformers import DistilBertModel, DistilBertTokenizer
 
-            print(f"Loading DistilBERT model: {model_name}")
+            logger.info(f"Loading DistilBERT model: {model_name}")
             self.encoder = DistilBertModel.from_pretrained(model_name)
             self.d_model = self.encoder.config.hidden_size
             self.encoder_type = "distilbert"
@@ -135,21 +139,21 @@ class HuggingFaceTextModelWrapper(nn.Module):
             try:
                 from transformers import AutoModel
 
-                print(f"Attempting to load model with AutoModel: {model_name}")
+                logger.info(f"Attempting to load model with AutoModel: {model_name}")
                 self.encoder = AutoModel.from_pretrained(model_name)
                 self.d_model = self.encoder.config.hidden_size
                 self.encoder_type = "auto"
-                print(f"Successfully loaded model with dimension: {self.d_model}")
+                logger.info(f"Successfully loaded model with dimension: {self.d_model}")
             except Exception as e:
-                print(f"Failed to load with AutoModel: {str(e)}")
+                logger.info(f"Failed to load with AutoModel: {str(e)}")
                 raise ValueError(f"Unsupported model: {model_name}")
 
         # Try moving to the system device if MPS-compatible
         try:
             self.encoder = self.encoder.to(system_device)
-            print(f"Successfully moved {model_name} to {system_device}")
+            logger.info(f"Successfully moved {model_name} to {system_device}")
         except Exception as e:
-            print(
+            logger.info(
                 f"Could not move model to {system_device}, using CPU instead: {str(e)}"
             )
             self.encoder = self.encoder.to("cpu")
@@ -183,7 +187,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             for possible_key in key_mapping["input_ids"]:
                 if possible_key in src:
                     input_ids = src[possible_key]
-                    # print(f"Found input_ids as '{possible_key}'")
+                    # logger.info(f"Found input_ids as '{possible_key}'")
                     break
 
             # Try to find attention_mask from various possible keys
@@ -191,7 +195,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             for possible_key in key_mapping["attention_mask"]:
                 if possible_key in src:
                     attention_mask = src[possible_key]
-                    # print(f"Found attention_mask as '{possible_key}'")
+                    # logger.info(f"Found attention_mask as '{possible_key}'")
                     break
 
             # Make sure we have valid input_ids
@@ -225,7 +229,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
 
         # Define a CPU fallback function for reuse
         def process_on_cpu():
-            print(
+            logger.info(
                 f"Processing {getattr(self, 'encoder_type', 'model')} on CPU for compatibility"
             )
             # Move everything to CPU
@@ -262,7 +266,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
                 # Return results on input device
                 return outputs.last_hidden_state.to(input_device)
             except Exception as cpu_err:
-                print(f"CPU fallback processing failed: {str(cpu_err)}")
+                logger.info(f"CPU fallback processing failed: {str(cpu_err)}")
                 self.encoder = self.encoder.to(original_device)
 
                 # Return zeros as last resort
@@ -304,7 +308,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
                 vocab_size = self.encoder.embeddings.word_embeddings.weight.size(0)
                 # Check if indices are in range
                 if torch.max(input_ids) >= vocab_size:
-                    print(
+                    logger.info(
                         f"Warning: Found input indices larger than vocabulary size ({vocab_size}). Clipping."
                     )
                     # Clip indices to valid range
@@ -320,19 +324,19 @@ class HuggingFaceTextModelWrapper(nn.Module):
                 return outputs.last_hidden_state.to(input_device)
 
         except Exception as e:
-            print(f"Error in HuggingFace text encoding: {str(e)}")
-            print(f"Encoder type: {getattr(self, 'encoder_type', 'unknown')}")
-            print(f"Encoder device: {encoder_device}, Input device: {input_device}")
+            logger.info(f"Error in HuggingFace text encoding: {str(e)}")
+            logger.info(f"Encoder type: {getattr(self, 'encoder_type', 'unknown')}")
+            logger.info(f"Encoder device: {encoder_device}, Input device: {input_device}")
 
             # Try CPU fallback
             try:
                 return process_on_cpu()
             except Exception as fallback_err:
-                print(f"All fallback attempts failed: {str(fallback_err)}")
+                logger.info(f"All fallback attempts failed: {str(fallback_err)}")
 
             # Final emergency fallback - generate features with correct shape
             batch_size, seq_length = src.shape
-            print(
+            logger.info(
                 f"Using final fallback: zeros in correct shape on device {input_device}"
             )
             return torch.zeros(

@@ -185,7 +185,7 @@ class SafetyTestHarness:
 
             # If we couldn't identify the category, log a warning and skip this test case
             if test_category is None:
-                print(
+                logger.info(
                     f"Warning: Unable to determine category for test ID '{test_id}'. Skipping this test case."
                 )
                 continue
@@ -194,7 +194,7 @@ class SafetyTestHarness:
             try:
                 output_text = model_func(input_text)
             except Exception as e:
-                print(f"Error during model inference for test case {test_id}: {str(e)}")
+                logger.info(f"Error during model inference for test case {test_id}: {str(e)}")
                 output_text = f"[ERROR: {str(e)}]"
 
             # Evaluate output using the safety evaluator

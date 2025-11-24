@@ -3,6 +3,10 @@
 import re
 import random
 from typing import List, Dict, Any, Optional, Tuple, Callable
+from src.utils.logging import get_logger
+
+# Module logger
+logger = get_logger(__name__)
 import datetime
 
 class PromptInjectionTester:
@@ -325,26 +329,26 @@ class PromptInjectionTester:
         Returns:
             Dictionary with evaluation results
         """
-        print("\n=== Prompt Injection Evaluation ===")
-        print(f"Target Action: {metadata['target_action']}")
-        print(f"Severity: {metadata['severity']}\n")
+        logger.info("\n=== Prompt Injection Evaluation ===")
+        logger.info(f"Target Action: {metadata['target_action']}")
+        logger.info(f"Severity: {metadata['severity']}\n")
         
-        print("Injected Prompt:")
-        print("-" * 40)
-        print(injected_prompt)
-        print("-" * 40)
+        logger.info("Injected Prompt:")
+        logger.info("-" * 40)
+        logger.debug(injected_prompt)
+        logger.info("-" * 40)
         
-        print("\nModel Response:")
-        print("-" * 40)
-        print(response)
-        print("-" * 40)
+        logger.info("\nModel Response:")
+        logger.info("-" * 40)
+        logger.debug(response)
+        logger.info("-" * 40)
         
         # Check for pattern matches
         pattern_matches = []
         for pattern in metadata.get("patterns", []):
             if re.search(pattern, response, re.IGNORECASE):
                 pattern_matches.append(pattern)
-                print(f"\nFound matching pattern: {pattern}")
+                logger.info(f"\nFound matching pattern: {pattern}")
         
         # Determine if injection was successful based on target action
         injection_successful = False
@@ -433,16 +437,16 @@ class PromptInjectionTester:
             safety_success = True
             injection_successful = False
         
-        print("\nEvaluation Results:")
-        print(f"- Injection Successful: {injection_successful}")
-        print(f"- Pattern Matches: {len(pattern_matches)}")
-        print(f"- Safety Success: {safety_success}")
-        print("=" * 50)
+        logger.info("\nEvaluation Results:")
+        logger.info(f"- Injection Successful: {injection_successful}")
+        logger.info(f"- Pattern Matches: {len(pattern_matches)}")
+        logger.info(f"- Safety Success: {safety_success}")
+        logger.info("=" * 50)
         
         if injection_successful:
-            print("\n⚠️  Injection Successful!")
+            logger.info("\n⚠️  Injection Successful!")
         else:
-            print("\n✅  Injection Failed (Model Resisted)")
+            logger.info("\n✅  Injection Failed (Model Resisted)")
         
         return {
             "target_action": metadata["target_action"],
@@ -469,10 +473,10 @@ class PromptInjectionTester:
         Returns:
             Dictionary with test results
         """
-        print(f"\n{'='*80}")
-        print(f"Running Prompt Injection Test Suite on {model_name}")
-        print(f"Number of variations per test: {num_variations}")
-        print(f"{'='*80}")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Running Prompt Injection Test Suite on {model_name}")
+        logger.info(f"Number of variations per test: {num_variations}")
+        logger.info(f"{'='*80}")
         
         results = {
             "model_name": model_name,
@@ -485,12 +489,12 @@ class PromptInjectionTester:
         
         # Run each test case
         for test_case in self.test_suite:
-            print(f"\n\n{'='*80}")
-            print(f"Test Case: {test_case['name']}")
-            print(f"Description: {test_case['description']}")
-            print(f"Target Action: {test_case['target_action']}")
-            print(f"Injection Position: {test_case['injection_position']}")
-            print(f"{'='*80}")
+            logger.info(f"\n\n{'='*80}")
+            logger.info(f"Test Case: {test_case['name']}")
+            logger.info(f"Description: {test_case['description']}")
+            logger.info(f"Target Action: {test_case['target_action']}")
+            logger.info(f"Injection Position: {test_case['injection_position']}")
+            logger.info(f"{'='*80}")
             
             case_results = {
                 "name": test_case["name"],
@@ -503,9 +507,9 @@ class PromptInjectionTester:
             
             # Generate variations
             for i in range(num_variations):
-                print(f"\n{'-'*80}")
-                print(f"Variation {i+1}/{num_variations}")
-                print(f"{'-'*80}")
+                logger.info(f"\n{'-'*80}")
+                logger.info(f"Variation {i+1}/{num_variations}")
+                logger.info(f"{'-'*80}")
                 
                 # Generate injection
                 injected_prompt, metadata = self.generate_injection(
@@ -514,17 +518,17 @@ class PromptInjectionTester:
                     injection_position=test_case["injection_position"]
                 )
                 
-                print("\nInjected Prompt:")
-                print("-" * 40)
-                print(injected_prompt)
-                print("-" * 40)
+                logger.info("\nInjected Prompt:")
+                logger.info("-" * 40)
+                logger.debug(injected_prompt)
+                logger.info("-" * 40)
                 
                 # Get model response
                 try:
                     response = model_fn(injected_prompt)
                 except Exception as e:
                     response = f"ERROR: {str(e)}"
-                    print(f"Error during model inference: {str(e)}")
+                    logger.info(f"Error during model inference: {str(e)}")
                 
                 # Evaluate response
                 evaluation = self.evaluate_response(injected_prompt, response, metadata)
@@ -532,9 +536,9 @@ class PromptInjectionTester:
                 # Track successful injections
                 if evaluation["injection_successful"]:
                     results["successful_injections"] += 1
-                    print("\n⚠️  Injection Successful!")
+                    logger.info("\n⚠️  Injection Successful!")
                 else:
-                    print("\n✅  Injection Failed (Model Resisted)")
+                    logger.info("\n✅  Injection Failed (Model Resisted)")
                 
                 # Store variation results
                 variation_result = {
@@ -556,12 +560,12 @@ class PromptInjectionTester:
                 results["successful_injections"] / results["total_tests"]
             )
         
-        print(f"\n{'='*80}")
-        print("Test Suite Summary")
-        print(f"{'='*80}")
-        print(f"Total Tests: {results['total_tests']}")
-        print(f"Successful Injections: {results['successful_injections']}")
-        print(f"Injection Success Rate: {results['injection_success_rate']:.2%}")
-        print(f"{'='*80}")
+        logger.info(f"\n{'='*80}")
+        logger.info("Test Suite Summary")
+        logger.info(f"{'='*80}")
+        logger.info(f"Total Tests: {results['total_tests']}")
+        logger.info(f"Successful Injections: {results['successful_injections']}")
+        logger.info(f"Injection Success Rate: {results['injection_success_rate']:.2%}")
+        logger.info(f"{'='*80}")
         
         return results

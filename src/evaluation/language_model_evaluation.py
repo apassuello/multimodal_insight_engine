@@ -526,16 +526,16 @@ class LanguageModelEvaluator:
         # Calculate perplexity for each text
         perplexities = []
         
-        print(f"Evaluating on {len(texts)} texts...")
+        logger.info(f"Evaluating on {len(texts)} texts...")
         for i, text in enumerate(texts):
             if i % 10 == 0:
-                print(f"Progress: {i}/{len(texts)}")
+                logger.info(f"Progress: {i}/{len(texts)}")
             
             try:
                 perplexity = self.calculate_perplexity(text)
                 perplexities.append(perplexity)
             except Exception as e:
-                print(f"Error evaluating text {i}: {e}")
+                logger.info(f"Error evaluating text {i}: {e}")
         
         # Calculate statistics
         avg_perplexity = np.mean(perplexities)

@@ -44,7 +44,7 @@ class LanguageModelingDataset(Dataset):
         self.eos_idx = eos_idx
         
         # Process all texts at initialization to avoid repeated processing
-        print("Tokenizing dataset...")
+        logger.info("Tokenizing dataset...")
         self.examples = []
         
         for text in tqdm(texts):

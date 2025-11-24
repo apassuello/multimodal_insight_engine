@@ -61,7 +61,7 @@ class CombinedTranslationDataset:
                 self.src_data.extend(dataset.src_data[:max_examples])
                 self.tgt_data.extend(dataset.tgt_data[:max_examples])
         
-        print(f"Combined dataset contains {len(self.src_data)} parallel sentences") 
+        logger.info(f"Combined dataset contains {len(self.src_data)} parallel sentences") 
 
 def extract_file_metadata(file_path=__file__):
     """

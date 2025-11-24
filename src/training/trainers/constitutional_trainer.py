@@ -12,6 +12,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, List, Optional, Union, Any, Tuple
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import time
 import math
 import numpy as np
@@ -279,7 +281,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         except Exception as e:
             # If constitutional loss computation fails, return zero loss
             # and continue training
-            print(f"Warning: Constitutional loss computation failed: {e}")
+            logger.info(f"Warning: Constitutional loss computation failed: {e}")
             return torch.tensor(0.0, device=self.device)
 
     def _extract_prompts_from_batch(
@@ -333,7 +335,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             return prompts
 
         except Exception as e:
-            print(f"Warning: Failed to extract prompts from batch: {e}")
+            logger.info(f"Warning: Failed to extract prompts from batch: {e}")
             return []
 
     def _generate_response_for_evaluation(
@@ -393,7 +395,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             return response
 
         except Exception as e:
-            print(f"Warning: Failed to generate response for evaluation: {e}")
+            logger.info(f"Warning: Failed to generate response for evaluation: {e}")
             return ""
 
     def evaluate_constitutional_compliance(
@@ -455,8 +457,8 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         Returns:
             Training history
         """
-        print(f"Starting Constitutional AI training for {num_epochs} epochs...")
-        print(f"Constitutional principles: {self.constitutional_framework.get_active_principles()}")
+        logger.info(f"Starting Constitutional AI training for {num_epochs} epochs...")
+        logger.info(f"Constitutional principles: {self.constitutional_framework.get_active_principles()}")
 
         self.num_epochs = num_epochs
         training_history = {
@@ -467,9 +469,9 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         }
 
         for epoch in range(num_epochs):
-            print(f"\n{'='*60}")
-            print(f"Epoch {epoch + 1}/{num_epochs}")
-            print(f"{'='*60}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"Epoch {epoch + 1}/{num_epochs}")
+            logger.info(f"{'='*60}")
 
             epoch_losses = []
             epoch_metrics = []
@@ -503,8 +505,8 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Epoch summary
             avg_loss = np.mean(epoch_losses)
-            print(f"\nEpoch {epoch + 1} Summary:")
-            print(f"  Average Loss: {avg_loss:.4f}")
+            logger.info(f"\nEpoch {epoch + 1} Summary:")
+            logger.info(f"  Average Loss: {avg_loss:.4f}")
 
             training_history["train_losses"].append(avg_loss)
 
@@ -512,15 +514,15 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             if self.val_dataloader is not None:
                 val_loss = self._validate()
                 training_history["val_losses"].append(val_loss)
-                print(f"  Validation Loss: {val_loss:.4f}")
+                logger.info(f"  Validation Loss: {val_loss:.4f}")
 
             # Constitutional evaluation
             if epoch % max(1, num_epochs // 5) == 0:  # Evaluate every 20% of training
-                print(f"\n  Evaluating constitutional compliance...")
+                logger.info(f"\n  Evaluating constitutional compliance...")
                 # This would need actual text generation capability
                 # For now, we track the framework statistics
                 framework_stats = self.constitutional_framework.get_statistics()
-                print(f"  Framework Statistics: {framework_stats}")
+                logger.info(f"  Framework Statistics: {framework_stats}")
 
         return training_history
 
@@ -529,7 +531,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         # This would need actual text generation
         # For now, just log framework statistics
         stats = self.constitutional_evaluator.get_statistics()
-        print(f"\n  Constitutional Evaluator Stats: {stats}")
+        logger.info(f"\n  Constitutional Evaluator Stats: {stats}")
 
     def _save_checkpoint(self, epoch: int, loss: float):
         """Save training checkpoint."""

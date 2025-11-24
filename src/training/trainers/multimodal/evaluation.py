@@ -392,13 +392,13 @@ class Evaluator:
 
     def _print_global_metrics(self, metrics: Dict[str, float]) -> None:
         """Print global evaluation metrics."""
-        print("\n*** GLOBAL EVALUATION METRICS (USE THESE FOR FINAL RESULTS) ***")
-        print(f"  Accuracy: {metrics['global_accuracy']:.4f} "
+        logger.info("\n*** GLOBAL EVALUATION METRICS (USE THESE FOR FINAL RESULTS) ***")
+        logger.info(f"  Accuracy: {metrics['global_accuracy']:.4f} "
               f"(I2T: {metrics['global_i2t_accuracy']:.4f}, "
               f"T2I: {metrics['global_t2i_accuracy']:.4f})")
 
         for k in self.recall_k_values:
-            print(f"  Recall@{k}: {metrics[f'global_avg_recall@{k}']:.4f} "
+            logger.info(f"  Recall@{k}: {metrics[f'global_avg_recall@{k}']:.4f} "
                   f"(I2T: {metrics[f'global_i2t_recall@{k}']:.4f}, "
                   f"T2I: {metrics[f'global_t2i_recall@{k}']:.4f})")
 
@@ -406,14 +406,14 @@ class Evaluator:
         self, global_metrics: Dict[str, float], in_batch_metrics: Dict[str, float]
     ) -> None:
         """Print comparison between global and in-batch metrics."""
-        print("\n⚠️ IN-BATCH VS GLOBAL METRICS COMPARISON ⚠️")
-        print("WARNING: In-batch metrics are often misleadingly high!")
+        logger.info("\n⚠️ IN-BATCH VS GLOBAL METRICS COMPARISON ⚠️")
+        logger.info("WARNING: In-batch metrics are often misleadingly high!")
 
         # Compare accuracy
         global_acc = global_metrics['global_accuracy']
         in_batch_acc = in_batch_metrics['accuracy']
         acc_ratio = in_batch_acc / max(1e-5, global_acc)
-        print(f"  Accuracy: In-Batch={in_batch_acc:.4f}, Global={global_acc:.4f}, "
+        logger.info(f"  Accuracy: In-Batch={in_batch_acc:.4f}, Global={global_acc:.4f}, "
               f"Ratio={acc_ratio:.1f}x higher (artificial)")
 
         # Compare Recall@K
@@ -421,7 +421,7 @@ class Evaluator:
             in_batch = in_batch_metrics[f'avg_recall@{k}']
             global_val = global_metrics[f'global_avg_recall@{k}']
             ratio = in_batch / max(1e-5, global_val)
-            print(f"  Recall@{k}: In-Batch={in_batch:.4f}, Global={global_val:.4f}, "
+            logger.info(f"  Recall@{k}: In-Batch={in_batch:.4f}, Global={global_val:.4f}, "
                   f"Ratio={ratio:.1f}x higher (artificial)")
 
     def compute_retrieval_metrics(

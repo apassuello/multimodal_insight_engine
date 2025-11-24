@@ -250,7 +250,7 @@ class VisionTransformerTrainer:
         self.history["val_loss"].append(avg_loss)
         self.history["val_acc"].append(accuracy)
 
-        print(f"Validation - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
+        logger.info(f"Validation - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
         return avg_loss, accuracy
 
@@ -261,14 +261,14 @@ class VisionTransformerTrainer:
         Returns:
             Training history
         """
-        print(f"Starting training on {self.device}...")
+        logger.info(f"Starting training on {self.device}...")
 
         for epoch in range(self.num_epochs):
             self.current_epoch = epoch
 
             # Train one epoch
             train_loss, train_acc = self.train_epoch()
-            print(
+            logger.info(
                 f"Epoch {epoch+1}/{self.num_epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%"
             )
 
@@ -282,7 +282,7 @@ class VisionTransformerTrainer:
             # Early stopping and model saving
             if self.val_dataloader is not None:
                 if val_acc > self.best_val_acc:
-                    print(
+                    logger.info(
                         f"Validation accuracy improved from {self.best_val_acc:.2f}% to {val_acc:.2f}%"
                     )
                     self.best_val_acc = val_acc
@@ -290,7 +290,7 @@ class VisionTransformerTrainer:
                     self.save_checkpoint(f"{self.experiment_name}_best.pth")
                 else:
                     self.patience_counter += 1
-                    print(
+                    logger.info(
                         f"Validation accuracy did not improve. Patience: {self.patience_counter}/{self.early_stopping_patience}"
                     )
 
@@ -298,7 +298,7 @@ class VisionTransformerTrainer:
                         self.early_stopping_patience is not None
                         and self.patience_counter >= self.early_stopping_patience
                     ):
-                        print(f"Early stopping triggered after {epoch+1} epochs")
+                        logger.info(f"Early stopping triggered after {epoch+1} epochs")
                         break
 
             # Save checkpoint
@@ -308,7 +308,7 @@ class VisionTransformerTrainer:
         # Save final model
         self.save_checkpoint(f"{self.experiment_name}_final.pth")
 
-        print("Training completed!")
+        logger.info("Training completed!")
         return self.history
 
     def save_checkpoint(self, filename: str) -> None:
@@ -332,7 +332,7 @@ class VisionTransformerTrainer:
             checkpoint["scheduler_state_dict"] = self.scheduler.state_dict()
 
         torch.save(checkpoint, checkpoint_path)
-        print(f"Checkpoint saved to {checkpoint_path}")
+        logger.info(f"Checkpoint saved to {checkpoint_path}")
 
     def load_checkpoint(self, filename: str) -> None:
         """
@@ -344,7 +344,7 @@ class VisionTransformerTrainer:
         checkpoint_path = os.path.join(self.save_dir, filename)
 
         if not os.path.exists(checkpoint_path):
-            print(f"Checkpoint {checkpoint_path} does not exist")
+            logger.info(f"Checkpoint {checkpoint_path} does not exist")
             return
 
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
@@ -358,7 +358,7 @@ class VisionTransformerTrainer:
         if "scheduler_state_dict" in checkpoint and self.scheduler is not None:
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-        print(f"Checkpoint loaded from {checkpoint_path}")
+        logger.info(f"Checkpoint loaded from {checkpoint_path}")
 
     def plot_training_history(self) -> None:
         """

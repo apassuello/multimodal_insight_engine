@@ -243,7 +243,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         self.dim = dim
 
         # Store dimension for debugging
-        print(f"MultiModalMixedContrastiveLoss initialized with dimension: {dim}")
+        logger.info(f"MultiModalMixedContrastiveLoss initialized with dimension: {dim}")
 
         # Base contrastive loss with correct input dimension
         self.contrastive_loss = ContrastiveLoss(
