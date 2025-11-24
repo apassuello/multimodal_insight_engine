@@ -20,6 +20,8 @@ from tqdm import tqdm
 import tarfile
 import io
 from typing import List, Tuple, Optional
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 
 
 class IWSLTDataset:
@@ -70,7 +72,7 @@ class IWSLTDataset:
         self.src_data, self.tgt_data = self.load_data()
 
         # Print dataset info
-        print(f"Loaded {len(self.src_data)} {split} examples")
+        logger.info(f"Loaded {len(self.src_data)} {split} examples")
 
     def download_data(self, year=None):
         """
@@ -104,16 +106,16 @@ class IWSLTDataset:
                 tgt_lines = tgt_content.count("\n") + 1
 
                 if src_lines > 0 and tgt_lines > 0:
-                    print(
+                    logger.info(
                         f"IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data already exists with {src_lines} examples"
                     )
                     return src_file, tgt_file
                 else:
-                    print(
+                    logger.info(
                         f"IWSLT files for year {year} exist but are empty. Recreating..."
                     )
             except Exception as e:
-                print(
+                logger.info(
                     f"Error reading existing files for year {year}: {e}. Recreating..."
                 )
 
@@ -123,15 +125,15 @@ class IWSLTDataset:
             if success:
                 return src_file, tgt_file
         except Exception as e:
-            print(f"Error downloading from HuggingFace for year {year}: {e}")
+            logger.info(f"Error downloading from HuggingFace for year {year}: {e}")
             try:
                 success = self._download_from_official_source(year)
                 if success:
                     return src_file, tgt_file
             except Exception as e2:
-                print(f"Error downloading from official source for year {year}: {e2}")
+                logger.info(f"Error downloading from official source for year {year}: {e2}")
                 # No synthetic data fallback - return None to indicate failure
-                print(
+                logger.info(
                     f"Failed to download IWSLT data for year {year}. Please fix the download issue manually."
                 )
                 return None
@@ -146,7 +148,7 @@ class IWSLTDataset:
         """Download dataset from HuggingFace datasets."""
         requested_year = year or self.year
         actual_year = requested_year  # Track which year's dataset was actually loaded
-        print(
+        logger.info(
             f"Downloading IWSLT {requested_year} {self.src_lang}-{self.tgt_lang} {self.split} data from HuggingFace..."
         )
 
@@ -156,7 +158,7 @@ class IWSLTDataset:
             # First try the TED talks dataset for years 2014-2016
             if requested_year in ["2014", "2015", "2016"]:
                 try:
-                    print(
+                    logger.info(
                         f"Attempting to load from IWSLT/ted_talks_iwslt dataset for year {requested_year}..."
                     )
                     dataset = load_dataset(
@@ -194,16 +196,16 @@ class IWSLTDataset:
                         with open(tgt_file, "w", encoding="utf-8") as f:
                             f.write("\n".join(tgt_texts))
 
-                        print(
+                        logger.info(
                             f"Downloaded {len(src_texts)} examples from TED talks dataset for year {requested_year}"
                         )
                         return True
                     else:
-                        print(
+                        logger.info(
                             f"No valid translation pairs found in the TED talks dataset for year {requested_year}"
                         )
                 except Exception as e:
-                    print(
+                    logger.info(
                         f"Error downloading from TED talks dataset for year {requested_year}: {e}"
                     )
                     # Continue to try the old approach
@@ -352,11 +354,11 @@ class IWSLTDataset:
 
                 # If this isn't the originally requested year data, print a warning
                 if actual_year != requested_year:
-                    print(
+                    logger.info(
                         f"Warning: IWSLT {requested_year} data not found. Using IWSLT {actual_year} data instead."
                     )
 
-                print(
+                logger.info(
                     f"Downloaded {len(src_texts)} examples from HuggingFace for year {actual_year}"
                 )
 
@@ -368,19 +370,19 @@ class IWSLTDataset:
 
                 return True
             else:
-                print(
+                logger.info(
                     f"No valid translation pairs found in the dataset for year {requested_year}"
                 )
                 return False
 
         except Exception as e:
-            print(f"Error downloading from HuggingFace for year {requested_year}: {e}")
+            logger.info(f"Error downloading from HuggingFace for year {requested_year}: {e}")
             return False
 
     def _download_from_official_source(self, year=None):
         """Attempt to download from the official IWSLT website."""
         year = year or self.year
-        print(
+        logger.info(
             f"Downloading IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
         )
 
@@ -444,11 +446,11 @@ class IWSLTDataset:
                         f"Could not find {src_file_in_tar} or {tgt_file_in_tar} in the tarball"
                     )
 
-            print(f"Downloaded from official source for year {year}")
+            logger.info(f"Downloaded from official source for year {year}")
             return True
 
         except Exception as e:
-            print(f"Official source download failed for year {year}: {e}")
+            logger.info(f"Official source download failed for year {year}: {e}")
             return False
 
     def load_data(self) -> Tuple[List[str], List[str]]:
@@ -490,7 +492,7 @@ class IWSLTDataset:
             # Ensure same length
             min_len = min(len(src_data), len(tgt_data))
             if min_len < max(len(src_data), len(tgt_data)):
-                print(
+                logger.info(
                     f"Warning: Source and target data have different lengths for year {self.year}. Truncating to {min_len} examples."
                 )
                 src_data = src_data[:min_len]
@@ -507,7 +509,7 @@ class IWSLTDataset:
             and len(all_src_data) < self.max_examples
         ):
             remaining = self.max_examples - len(all_src_data)
-            print(
+            logger.info(
                 f"Loaded {len(all_src_data)} examples from year {self.year}, need {remaining} more."
             )
 
@@ -518,11 +520,11 @@ class IWSLTDataset:
                     continue
 
                 years_attempted.append(year)
-                print(f"Attempting to load additional data from year {year}...")
+                logger.info(f"Attempting to load additional data from year {year}...")
                 files = self.download_data(year)
 
                 if not files:
-                    print(f"No data available for year {year}, skipping.")
+                    logger.info(f"No data available for year {year}, skipping.")
                     continue
 
                 src_file, tgt_file = files
@@ -531,7 +533,7 @@ class IWSLTDataset:
 
                 # Skip if we've already loaded this year's data (avoid duplicates)
                 if actual_year in years_loaded:
-                    print(
+                    logger.info(
                         f"Already loaded data from year {actual_year}, skipping to avoid duplicates."
                     )
                     continue
@@ -552,7 +554,7 @@ class IWSLTDataset:
                 # Ensure same length
                 min_len = min(len(src_data), len(tgt_data))
                 if min_len < max(len(src_data), len(tgt_data)):
-                    print(
+                    logger.info(
                         f"Warning: Source and target data have different lengths for year {actual_year}. Truncating to {min_len} examples."
                     )
                     src_data = src_data[:min_len]
@@ -563,7 +565,7 @@ class IWSLTDataset:
                 all_src_data.extend(src_data[:examples_to_add])
                 all_tgt_data.extend(tgt_data[:examples_to_add])
 
-                print(f"Added {examples_to_add} examples from year {actual_year}")
+                logger.info(f"Added {examples_to_add} examples from year {actual_year}")
 
                 # Check if we have enough
                 remaining = self.max_examples - len(all_src_data)
@@ -579,15 +581,15 @@ class IWSLTDataset:
             )
 
         if years_loaded:
-            print(
+            logger.info(
                 f"Successfully loaded data from years: {', '.join(sorted(years_loaded))}"
             )
             if len(years_loaded) < len(years_attempted):
                 missing_years = set([str(y) for y in years_attempted]) - years_loaded
-                print(
+                logger.info(
                     f"Warning: Could not load data for years: {', '.join(sorted(missing_years))}"
                 )
-                print(
+                logger.info(
                     "Note: Only IWSLT 2017 may be available through HuggingFace datasets."
                 )
 

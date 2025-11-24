@@ -210,7 +210,7 @@ class ConstitutionalFramework:
         else:
             self._model_name = "Custom Model"
 
-        print(f"[Framework] Evaluation model set to: {self._model_name}")
+        logger.info(f"[Framework] Evaluation model set to: {self._model_name}")
 
     def get_evaluation_model_name(self) -> str:
         """Get the name of the current evaluation model."""
@@ -236,7 +236,7 @@ class ConstitutionalFramework:
         self._use_hf_api = False
         self._hf_api_evaluator = None
         self._model_name = "Regex Only"
-        print("[Framework] Switched to regex-only evaluation (no AI model)")
+        logger.info("[Framework] Switched to regex-only evaluation (no AI model)")
 
     def _setup_hf_api(self, api_token: Optional[str] = None) -> bool:
         """
@@ -256,14 +256,14 @@ class ConstitutionalFramework:
             )
             self._use_hf_api = True
             self._model_name = "HF-API (toxic-bert)"
-            print("[Framework] HuggingFace API evaluation enabled")
+            logger.info("[Framework] HuggingFace API evaluation enabled")
             return True
         except ImportError as e:
-            print(f"[Framework] Failed to setup HF API: {e}")
+            logger.info(f"[Framework] Failed to setup HF API: {e}")
             self._use_hf_api = False
             return False
         except Exception as e:
-            print(f"[Framework] HF API setup error: {e}")
+            logger.info(f"[Framework] HF API setup error: {e}")
             self._use_hf_api = False
             return False
 

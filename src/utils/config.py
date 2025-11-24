@@ -38,7 +38,7 @@ class ConfigManager:
             with open(config_path, 'r') as f:
                 self.config.update(json.load(f))
         except Exception as e:
-            print(f"Error loading config from {config_path}: {e}")
+            logger.info(f"Error loading config from {config_path}: {e}")
     
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -74,7 +74,7 @@ class ConfigManager:
             with open(config_path, 'w') as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
-            print(f"Error saving config to {config_path}: {e}")
+            logger.info(f"Error saving config to {config_path}: {e}")
 
 # Create a default instance
 config_manager = ConfigManager()

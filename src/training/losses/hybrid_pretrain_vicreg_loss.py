@@ -94,7 +94,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         needs_projection = (vision_dim != fusion_dim) or (text_dim != fusion_dim)
 
         if needs_projection:
-            print(
+            logger.info(
                 f"Dimensions differ - using projection: vision_dim={vision_dim}, text_dim={text_dim}, fusion_dim={fusion_dim}"
             )
             # Configure contrastive loss with projection (only if needed)
@@ -107,7 +107,7 @@ class HybridPretrainVICRegLoss(nn.Module):
 
             # Create custom text projection if needed
             if text_dim != vision_dim:
-                print(f"Creating separate text projection ({text_dim} -> {fusion_dim})")
+                logger.info(f"Creating separate text projection ({text_dim} -> {fusion_dim})")
                 # Create text projection head with proper dimensions
                 self.contrastive_loss.text_projection = nn.Sequential(
                     nn.Linear(text_dim, text_dim),
@@ -115,7 +115,7 @@ class HybridPretrainVICRegLoss(nn.Module):
                     nn.Linear(text_dim, fusion_dim),
                 )
         else:
-            print(
+            logger.info(
                 f"Dimensions match - skipping projection: vision_dim={vision_dim}, text_dim={text_dim}, fusion_dim={fusion_dim}"
             )
             # Configure contrastive loss with NO projection since dimensions already match
@@ -127,17 +127,17 @@ class HybridPretrainVICRegLoss(nn.Module):
             )
 
         # Print confirmation
-        print("Projection disabled in contrastive loss component of hybrid loss")
+        logger.info("Projection disabled in contrastive loss component of hybrid loss")
 
         # Make sure projection dimensions match
         contrastive_proj_dim = fusion_dim
         vicreg_proj_dim = fusion_dim
 
         if contrastive_proj_dim != vicreg_proj_dim:
-            print(
+            logger.info(
                 f"WARNING: Dimension mismatch between contrastive projection ({contrastive_proj_dim}) and VICReg model ({vicreg_proj_dim})"
             )
-            print(f"This may cause issues during the transition phase")
+            logger.info(f"This may cause issues during the transition phase")
 
         # Pre-training configuration
         self.contrastive_pretrain_steps = contrastive_pretrain_steps
@@ -336,7 +336,7 @@ class HybridPretrainVICRegLoss(nn.Module):
 
         # Print feature shape information for debugging
         if should_print:
-            print(
+            logger.info(
                 f"Feature shapes in HybridPretrainVICRegLoss.forward() - z_a: {z_a.shape}, z_b: {z_b.shape}"
             )
 
@@ -478,7 +478,7 @@ class HybridPretrainVICRegLoss(nn.Module):
 
             # Print alignment metrics periodically
             if should_print:
-                print(
+                logger.info(
                     f"VICReg phase - Alignment metrics - Gap: {alignment_metrics['alignment_gap']:.4f}, "
                     f"SNR: {alignment_metrics['alignment_snr']:.2f}, "
                     f"Diag: {alignment_metrics['diag_mean']:.4f}"

@@ -249,15 +249,15 @@ class SimpleTokenizer:
                 if hasattr(self.hf_tokenizer, 'mask_token_id') and self.hf_tokenizer.mask_token_id is not None:
                     self._special_tokens["mask_token_idx"] = self.hf_tokenizer.mask_token_id
                 
-                print(f"Loaded HuggingFace tokenizer for {pretrained_model_name}")
+                logger.info(f"Loaded HuggingFace tokenizer for {pretrained_model_name}")
                 
             except (ImportError, ModuleNotFoundError) as e:
-                print(f"Warning: Unable to import transformers library: {e}")
-                print("Falling back to WhitespaceTokenizer")
+                logger.info(f"Warning: Unable to import transformers library: {e}")
+                logger.info("Falling back to WhitespaceTokenizer")
                 self.hf_tokenizer = None
             except Exception as e:
-                print(f"Error loading HuggingFace tokenizer: {e}")
-                print("Falling back to WhitespaceTokenizer")
+                logger.info(f"Error loading HuggingFace tokenizer: {e}")
+                logger.info("Falling back to WhitespaceTokenizer")
                 self.hf_tokenizer = None
         
         # If HuggingFace tokenizer is not available, use WhitespaceTokenizer
@@ -273,7 +273,7 @@ class SimpleTokenizer:
             
             # Create tokenizer
             self.basic_tokenizer = WhitespaceTokenizer(vocab=vocab)
-            print("Using WhitespaceTokenizer as fallback")
+            logger.info("Using WhitespaceTokenizer as fallback")
     
     def encode(self, text: str) -> List[int]:
         """

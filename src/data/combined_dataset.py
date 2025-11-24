@@ -57,9 +57,9 @@ class CombinedDataset:
             self.src_data = self.src_data[:max_examples]
             self.tgt_data = self.tgt_data[:max_examples]
 
-        print(f"Loaded {len(self.src_data)} examples from combined dataset")
-        print(f"  - Europarl: {len(self.europarl.src_data)} examples")
-        print(f"  - OpenSubtitles: {len(self.opensubtitles.src_data)} examples")
+        logger.info(f"Loaded {len(self.src_data)} examples from combined dataset")
+        logger.info(f"  - Europarl: {len(self.europarl.src_data)} examples")
+        logger.info(f"  - OpenSubtitles: {len(self.opensubtitles.src_data)} examples")
 
     def __len__(self) -> int:
         """Return the number of examples in the dataset."""

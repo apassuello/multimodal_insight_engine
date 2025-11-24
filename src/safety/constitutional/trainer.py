@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, List, Any, Optional, Tuple
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import numpy as np
 from tqdm import tqdm
 
@@ -376,21 +378,21 @@ Analysis:"""
             else:
                 raise ValueError("Tokenizer required for training")
 
-        print("=" * 80)
-        print("RLAIF TRAINING WITH CONSTITUTIONAL AI")
-        print("=" * 80)
-        print(f"Training prompts: {len(prompts)}")
-        print(f"PPO steps: {num_steps}")
-        print(f"Batch size: {batch_size}")
-        print(f"PPO epochs per batch: {num_epochs_per_batch}")
-        print(f"Device: {self.device}")
-        print()
+        logger.info("=" * 80)
+        logger.info("RLAIF TRAINING WITH CONSTITUTIONAL AI")
+        logger.info("=" * 80)
+        logger.info(f"Training prompts: {len(prompts)}")
+        logger.info(f"PPO steps: {num_steps}")
+        logger.info(f"Batch size: {batch_size}")
+        logger.info(f"PPO epochs per batch: {num_epochs_per_batch}")
+        logger.info(f"Device: {self.device}")
+        logger.info("")
 
         # Initialize PPO trainer
         self._initialize_ppo_trainer(tokenizer)
 
         # Run PPO training
-        print("Starting PPO optimization with constitutional reward model...")
+        logger.info("Starting PPO optimization with constitutional reward model...")
         ppo_results = self.ppo_trainer.train(
             prompts=prompts,
             num_steps=num_steps,
@@ -417,17 +419,17 @@ Analysis:"""
                 )
                 self.stats["improvement_rate"] = float(improvement)
 
-        print(f"\nPPO Training Complete")
-        print(f"Final Average Reward: {ppo_results['final_avg_reward']:.4f}")
-        print(f"Final KL Divergence: {ppo_results['final_kl_divergence']:.4f}")
+        logger.info(f"\nPPO Training Complete")
+        logger.info(f"Final Average Reward: {ppo_results['final_avg_reward']:.4f}")
+        logger.info(f"Final KL Divergence: {ppo_results['final_kl_divergence']:.4f}")
 
         # Validation
         validation_results = {}
         if validation_prompts:
-            print("\nRunning validation...")
+            logger.info("\nRunning validation...")
             val_score = self.validate(validation_prompts, tokenizer)
             validation_results["constitutional_score"] = val_score
-            print(f"Validation Constitutional Score: {val_score:.4f}")
+            logger.info(f"Validation Constitutional Score: {val_score:.4f}")
 
         return {
             "ppo_results": ppo_results,

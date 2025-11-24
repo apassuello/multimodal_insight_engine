@@ -291,7 +291,7 @@ def visualize_test_samples(
         float: Accuracy of image-to-text matching for these samples
     """
     # Print model parameter information
-    print(
+    logger.info(
         f"Model used for visualization has {count_parameters(model):,} trainable parameters"
     )
 
@@ -339,7 +339,7 @@ def visualize_test_samples(
         )
 
         # Process all text in the dataset to get embeddings
-        print("Computing text embeddings for all captions in the dataset...")
+        logger.info("Computing text embeddings for all captions in the dataset...")
         for batch in tqdm(full_loader, desc="Processing captions"):
             if "text" in batch:
                 text_data = {
@@ -395,7 +395,7 @@ def visualize_test_samples(
         text_dim = all_text_embeddings.shape[1]
 
         if vision_dim != text_dim:
-            print(
+            logger.info(
                 f"Dimension mismatch: vision={vision_dim}, text={text_dim}. Creating projection..."
             )
             # Create a simple projection to match dimensions
@@ -536,11 +536,11 @@ def visualize_test_samples(
     plt.close()
 
     if is_synthetic:
-        print(
+        logger.info(
             f"WARNING: Visualizations saved to {save_path} and {matrix_path} using SYNTHETIC data"
         )
     else:
-        print(f"Visualizations saved to {save_path} and {matrix_path}")
+        logger.info(f"Visualizations saved to {save_path} and {matrix_path}")
 
     # Calculate accuracy - comparing against all possible captions
     ground_truth_np = np.array(ground_truth_idxs)
@@ -548,7 +548,7 @@ def visualize_test_samples(
     accuracy = np.mean((most_similar_np == ground_truth_np).astype(np.float32))
     total_captions = len(all_captions)
 
-    print(
+    logger.info(
         f"Test samples matching accuracy: {accuracy:.2f} (selecting from {total_captions} possible captions)"
     )
     return accuracy

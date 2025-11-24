@@ -382,7 +382,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
     # After alignment, dimensions should match
     # Now adjust fusion_dim to match the aligned model dimensions if needed
-    print(
+    logger.info(
         f"DIMENSION CHECK - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
     )
 
@@ -390,10 +390,10 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
     if hasattr(text_model, "encoder") and hasattr(text_model.encoder, "config"):
         hf_dim = getattr(text_model.encoder.config, "hidden_size", None)
         if hf_dim is not None:
-            print(f"HuggingFace model hidden size: {hf_dim}")
+            logger.info(f"HuggingFace model hidden size: {hf_dim}")
             # If there's a mismatch, update text_dim
             if hf_dim != text_dim:
-                print(
+                logger.info(
                     f"WARNING: Text dimension mismatch - Detected: {text_dim}, Actual: {hf_dim}"
                 )
                 text_dim = hf_dim
@@ -461,10 +461,10 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         multimodal_model.classifier = multimodal_model.classifier.to(device)
 
     # Print device confirmation
-    print(f"Model components successfully moved to {device}")
-    print(f"- Vision model: {next(multimodal_model.vision_model.parameters()).device}")
-    print(f"- Text model: {next(multimodal_model.text_model.parameters()).device}")
-    print(
+    logger.info(f"Model components successfully moved to {device}")
+    logger.info(f"- Vision model: {next(multimodal_model.vision_model.parameters()).device}")
+    logger.info(f"- Text model: {next(multimodal_model.text_model.parameters()).device}")
+    logger.info(
         f"- Fusion module: {next(multimodal_model.fusion_module.parameters()).device}"
     )
 

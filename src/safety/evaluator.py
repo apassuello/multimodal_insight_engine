@@ -307,7 +307,7 @@ class SafetyEvaluator:
             for k in SAFETY_CATEGORIES
         }
 
-        print(
+        logger.info(
             f"Safety evaluator sensitivity set to {sensitivity}. New thresholds: {self.safety_thresholds}"
         )
 

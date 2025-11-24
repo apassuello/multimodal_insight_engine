@@ -74,7 +74,7 @@ class EuroparlDataset:
         for src_pattern, tgt_pattern in possible_patterns:
             if os.path.exists(src_pattern) and os.path.exists(tgt_pattern):
                 src_file, tgt_file = src_pattern, tgt_pattern
-                print(f"Found Europarl files using pattern: {src_pattern.split('/')[-1]}")
+                logger.info(f"Found Europarl files using pattern: {src_pattern.split('/')[-1]}")
                 break
         
         # If no pattern matched, raise an error
@@ -85,17 +85,17 @@ class EuroparlDataset:
             )
         
         # Read data files
-        print(f"Loading source data from: {src_file}")
+        logger.info(f"Loading source data from: {src_file}")
         with open(src_file, 'r', encoding='utf-8') as f:
             src_data = [line.strip() for line in f if line.strip()]
             
-        print(f"Loading target data from: {tgt_file}")
+        logger.info(f"Loading target data from: {tgt_file}")
         with open(tgt_file, 'r', encoding='utf-8') as f:
             tgt_data = [line.strip() for line in f if line.strip()]
         
         # Ensure same length
         if len(src_data) != len(tgt_data):
-            print(f"Warning: Source and target files have different lengths. "
+            logger.info(f"Warning: Source and target files have different lengths. "
                   f"Source: {len(src_data)}, Target: {len(tgt_data)}")
             min_len = min(len(src_data), len(tgt_data))
             src_data = src_data[:min_len]
@@ -122,7 +122,7 @@ class EuroparlDataset:
         # Unzip the pairs
         src_data, tgt_data = zip(*filtered_pairs) if filtered_pairs else ([], [])
         
-        print(f"Loaded {len(src_data)} parallel sentences")
+        logger.info(f"Loaded {len(src_data)} parallel sentences")
         
         return list(src_data), list(tgt_data)
         

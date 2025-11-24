@@ -40,9 +40,9 @@ class TurboBPEPreprocessor:
         
         # Check if we're using MPS
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-        print(f"TurboBPEPreprocessor initialized with {self.num_workers} worker processes")
-        print(f"Optimal batch size: {self.optimal_batch_size}")
-        print(f"Using device: {self.device}")
+        logger.info(f"TurboBPEPreprocessor initialized with {self.num_workers} worker processes")
+        logger.info(f"Optimal batch size: {self.optimal_batch_size}")
+        logger.info(f"Using device: {self.device}")
     
     def _generate_cache_key(self, dataset):
         """Generate a cache key based on the dataset characteristics."""
@@ -62,7 +62,7 @@ class TurboBPEPreprocessor:
 
         # Try JSON first (secure)
         if os.path.exists(cache_file_json):
-            print(f"Found cached preprocessed data: {cache_file_json}")
+            logger.info(f"Found cached preprocessed data: {cache_file_json}")
             try:
                 import json
                 with open(cache_file_json, 'r') as f:
@@ -71,23 +71,23 @@ class TurboBPEPreprocessor:
                     # Convert back to tuple format
                     return (data['src_sequences'], data['tgt_sequences'])
             except Exception as e:
-                print(f"Error loading JSON cache: {e}")
+                logger.info(f"Error loading JSON cache: {e}")
                 # Fall through to try pickle
 
         # Fallback to pickle for backward compatibility (UNSAFE - migration only)
         if os.path.exists(cache_file_pickle):
-            print(f"JSON cache not found, attempting to load legacy pickle cache: {cache_file_pickle}")
+            logger.info(f"JSON cache not found, attempting to load legacy pickle cache: {cache_file_pickle}")
             try:
                 with open(cache_file_pickle, 'rb') as f:
                     data = pickle.load(f)
-                print(f"Loaded from pickle cache, converting to JSON for future use...")
+                logger.info(f"Loaded from pickle cache, converting to JSON for future use...")
 
                 # Migrate to JSON for next time
                 self.save_preprocessed_data(data, dataset, src_lang, tgt_lang)
 
                 return data
             except Exception as e:
-                print(f"Error loading pickle cache: {e}. Regenerating...")
+                logger.info(f"Error loading pickle cache: {e}. Regenerating...")
 
         return None
     
@@ -107,9 +107,9 @@ class TurboBPEPreprocessor:
             with open(cache_file, 'w') as f:
                 # Save as JSON (SAFE - no code execution risk)
                 json.dump(serializable_data, f)
-            print(f"Saved preprocessed data to cache: {cache_file}")
+            logger.info(f"Saved preprocessed data to cache: {cache_file}")
         except Exception as e:
-            print(f"Error saving cache: {e}")
+            logger.info(f"Error saving cache: {e}")
     
     def _get_token_index(self, token: str) -> int:
         """Get token index from vocabulary."""
@@ -190,7 +190,7 @@ class TurboBPEPreprocessor:
             if cached_data is not None:
                 return cached_data
         
-        print(f"Preprocessing {len(dataset.src_data)} sentence pairs...")
+        logger.info(f"Preprocessing {len(dataset.src_data)} sentence pairs...")
         
         # Initialize timer
         start_time = time.time()
@@ -204,7 +204,7 @@ class TurboBPEPreprocessor:
         }
         
         # Always use single-process approach for MPS
-        print("Using single-process approach with GPU acceleration")
+        logger.info("Using single-process approach with GPU acceleration")
         
         # Process in optimally-sized batches for MPS
         src_sequences = []
@@ -232,7 +232,7 @@ class TurboBPEPreprocessor:
         elapsed_time = time.time() - start_time
         examples_per_sec = len(dataset.src_data) / elapsed_time
         
-        print(f"Preprocessing completed in {elapsed_time:.2f}s ({examples_per_sec:.1f} examples/sec)")
+        logger.info(f"Preprocessing completed in {elapsed_time:.2f}s ({examples_per_sec:.1f} examples/sec)")
         
         # Cache result for future use
         result = (src_sequences, tgt_sequences)

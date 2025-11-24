@@ -49,7 +49,7 @@ def train_joint_bpe_tokenizer(
     if not src_texts or not tgt_texts:
         raise ValueError("Source and target texts cannot be empty")
         
-    print(f"Training joint BPE tokenizer with vocab size {vocab_size}...")
+    logger.info(f"Training joint BPE tokenizer with vocab size {vocab_size}...")
     
     # Combine texts from both languages
     combined_texts = src_texts + tgt_texts
@@ -87,8 +87,8 @@ def main():
     src_tokenizer = BPETokenizer.from_pretrained("models/tokenizers")
     tgt_tokenizer = BPETokenizer.from_pretrained("models/tokenizers")
     
-    print(f"Source tokenizer vocab size: {src_tokenizer.vocab_size}")
-    print(f"Target tokenizer vocab size: {tgt_tokenizer.vocab_size}")
+    logger.info(f"Source tokenizer vocab size: {src_tokenizer.vocab_size}")
+    logger.info(f"Target tokenizer vocab size: {tgt_tokenizer.vocab_size}")
 
 
 if __name__ == "__main__":

@@ -84,7 +84,7 @@ class MetricsCollector:
                 metrics_parts.append(f"{k}={v:.4f}")
 
         metrics_str = ", ".join(metrics_parts)
-        print(f"{prefix.capitalize()}: {metrics_str}")
+        logger.info(f"{prefix.capitalize()}: {metrics_str}")
 
         # Add to history
         self.update(metrics, prefix)

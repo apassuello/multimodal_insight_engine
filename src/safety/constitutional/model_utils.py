@@ -54,8 +54,8 @@ def load_model(
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    print(f"Loading model: {model_name}")
-    print(f"Device: {device}")
+    logger.info(f"Loading model: {model_name}")
+    logger.info(f"Device: {device}")
 
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -75,8 +75,8 @@ def load_model(
     if not load_in_8bit:
         model = model.to(device)
 
-    print(f"Model loaded successfully")
-    print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    logger.info(f"Model loaded successfully")
+    logger.info(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     return model, tokenizer
 

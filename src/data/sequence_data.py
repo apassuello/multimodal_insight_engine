@@ -2,6 +2,8 @@
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from typing import Dict, List, Tuple, Optional, Any, Callable, Union
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import numpy as np
 import os
 import torch.nn.functional as F
@@ -142,36 +144,36 @@ class TransformerDataset(Dataset):
 
         This is a compatibility method for when curriculum learning is not used.
         """
-        print("\nStandard Dataset Summary (No Curriculum):")
+        logger.info("\nStandard Dataset Summary (No Curriculum):")
 
         # Calculate some basic statistics about the dataset
         src_lengths = [len(seq) for seq in self.source_sequences]
         tgt_lengths = [len(seq) for seq in self.target_sequences]
 
-        print(f"Total examples: {len(self.source_sequences)}")
+        logger.info(f"Total examples: {len(self.source_sequences)}")
 
         if src_lengths:
-            print(f"\nSource sequence statistics:")
-            print(f"  Min length: {min(src_lengths)}")
-            print(f"  Max length: {max(src_lengths)}")
-            print(f"  Average length: {sum(src_lengths)/len(src_lengths):.2f}")
+            logger.info(f"\nSource sequence statistics:")
+            logger.info(f"  Min length: {min(src_lengths)}")
+            logger.info(f"  Max length: {max(src_lengths)}")
+            logger.info(f"  Average length: {sum(src_lengths)/len(src_lengths):.2f}")
 
         if tgt_lengths:
-            print(f"\nTarget sequence statistics:")
-            print(f"  Min length: {min(tgt_lengths)}")
-            print(f"  Max length: {max(tgt_lengths)}")
-            print(f"  Average length: {sum(tgt_lengths)/len(tgt_lengths):.2f}")
+            logger.info(f"\nTarget sequence statistics:")
+            logger.info(f"  Min length: {min(tgt_lengths)}")
+            logger.info(f"  Max length: {max(tgt_lengths)}")
+            logger.info(f"  Average length: {sum(tgt_lengths)/len(tgt_lengths):.2f}")
 
         # Display a few sample examples
-        print("\nSample examples:")
+        logger.info("\nSample examples:")
         for i in range(min(3, len(self.source_sequences))):
-            print(f"\nExample {i+1}:")
-            print(f"  Source length: {len(self.source_sequences[i])}")
-            print(f"  Target length: {len(self.target_sequences[i])}")
-            print(f"  Source tokens: {self.source_sequences[i]}")
-            print(f"  Target tokens: {self.target_sequences[i]}")
+            logger.info(f"\nExample {i+1}:")
+            logger.info(f"  Source length: {len(self.source_sequences[i])}")
+            logger.info(f"  Target length: {len(self.target_sequences[i])}")
+            logger.info(f"  Source tokens: {self.source_sequences[i]}")
+            logger.info(f"  Target tokens: {self.target_sequences[i]}")
 
-        print("\nNote: Curriculum learning was not used for this run.")
+        logger.info("\nNote: Curriculum learning was not used for this run.")
 
 
 class TransformerCollator:

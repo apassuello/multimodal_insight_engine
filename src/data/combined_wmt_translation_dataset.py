@@ -34,43 +34,43 @@ def create_combined_dataset_jsonl(
     src_lang="de",
     tgt_lang="en",
 ):
-    print("Downloading WMT14...")
+    logger.info("Downloading WMT14...")
     wmt_dataset = load_dataset("wmt14", f"{src_lang}-{tgt_lang}", split="train")
     n_wmt = min(n_wmt, len(wmt_dataset))
     wmt = wmt_dataset.select(range(n_wmt))
-    print(f"Selected {n_wmt} samples from WMT14 (total available: {len(wmt_dataset)})")
+    logger.info(f"Selected {n_wmt} samples from WMT14 (total available: {len(wmt_dataset)})")
 
-    print("Downloading OPUS Books...")
+    logger.info("Downloading OPUS Books...")
     opus_dataset = load_dataset("opus_books", f"{src_lang}-{tgt_lang}", split="train")
     n_opus = min(n_opus, len(opus_dataset))
     opus = opus_dataset.select(range(n_opus))
-    print(
+    logger.info(
         f"Selected {n_opus} samples from OPUS Books (total available: {len(opus_dataset)})"
     )
 
-    print("Normalizing format...")
+    logger.info("Normalizing format...")
     wmt = wmt.map(lambda x: to_standard_format(x, src_lang, tgt_lang))
     opus = opus.map(lambda x: to_standard_format(x, src_lang, tgt_lang))
 
-    print("Combining and shuffling...")
+    logger.info("Combining and shuffling...")
     combined = concatenate_datasets([wmt, opus])
     combined = combined.shuffle(seed=42)
 
-    print(f"Saving to {path}...")
+    logger.info(f"Saving to {path}...")
     with open(path, "w", encoding="utf-8") as f:
         for item in combined:
             json.dump(item, f, ensure_ascii=False)
             f.write("\n")
 
-    print(f"Saved combined dataset with {len(combined)} samples.")
+    logger.info(f"Saved combined dataset with {len(combined)} samples.")
 
 
 def load_dataset_from_file(path="combined_de_en_dataset.jsonl", max_samples=None):
     if not os.path.exists(path):
-        print(f"Dataset not found at {path}. Creating it...")
+        logger.info(f"Dataset not found at {path}. Creating it...")
         create_combined_dataset_jsonl(path)
 
-    print(f"Loading dataset from {path}...")
+    logger.info(f"Loading dataset from {path}...")
     data = []
     with open(path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
@@ -79,5 +79,5 @@ def load_dataset_from_file(path="combined_de_en_dataset.jsonl", max_samples=None
             item = json.loads(line)
             if item["source"] and item["target"]:
                 data.append((item["source"], item["target"]))
-    print(f"Loaded {len(data)} samples from dataset.")
+    logger.info(f"Loaded {len(data)} samples from dataset.")
     return CombinedTranslationDataset(data)

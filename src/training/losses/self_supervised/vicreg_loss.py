@@ -155,7 +155,7 @@ class VICRegLoss(nn.Module):
         self._print_counter += 1
 
         if should_print:
-            print(f"VICReg forward - z_a: {z_a.shape}, z_b: {z_b.shape}")
+            logger.info(f"VICReg forward - z_a: {z_a.shape}, z_b: {z_b.shape}")
 
         # Apply curriculum learning if enabled
         if self.curriculum:
@@ -214,10 +214,10 @@ class VICRegLoss(nn.Module):
 
         # Print loss components for debugging
         if should_print:
-            print(
+            logger.info(
                 f"VICReg loss components - Sim: {sim_loss.item():.4f}, Var: {std_loss.item():.4f}, Cov: {cov_loss.item():.4f}"
             )
-            print(
+            logger.info(
                 f"Using coefficients - Sim: {self.sim_coeff}, Var: {effective_var_coeff:.4f}, Cov: {effective_cov_coeff:.4f}"
             )
 

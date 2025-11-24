@@ -364,10 +364,10 @@ class CrossAttentionMultiModalTransformer(BaseModel):
         except Exception as e:
             # If we're on MPS with a HuggingFace model, provide a more informative message
             if is_huggingface and is_mps:
-                print(f"Using hybrid CPU-MPS approach for HuggingFace model: {str(e)}")
+                logger.info(f"Using hybrid CPU-MPS approach for HuggingFace model: {str(e)}")
             else:
-                print(f"Error in direct text processing: {str(e)}")
-                print("Attempting CPU processing...")
+                logger.info(f"Error in direct text processing: {str(e)}")
+                logger.info("Attempting CPU processing...")
 
         # Hybrid approach for HuggingFace models on MPS:
         # 1. Process on CPU
@@ -402,7 +402,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                             0
                         )
                         if torch.max(cpu_src) >= vocab_size:
-                            print(
+                            logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
                             )
                             cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
@@ -426,7 +426,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                             text_model_cpu.embeddings.word_embeddings.weight.size(0)
                         )
                         if torch.max(cpu_src) >= vocab_size:
-                            print(
+                            logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
                             )
                             cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
@@ -447,7 +447,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                             text_model_cpu.embeddings.word_embeddings.weight.size(0)
                         )
                         if torch.max(cpu_src) >= vocab_size:
-                            print(
+                            logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
                             )
                             cpu_src = torch.clamp(cpu_src, max=vocab_size - 1)
@@ -461,16 +461,16 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                 return features.to(original_device)
 
         except Exception as cpu_err:
-            print(f"CPU processing failed with error: {str(cpu_err)}")
+            logger.info(f"CPU processing failed with error: {str(cpu_err)}")
             # Ensure model is moved back if needed
             if next(self.text_model.parameters()).device != original_model_device:
                 self.text_model = self.text_model.to(original_model_device)
 
             # Since training can't proceed without text features, use zeros as absolute last resort
-            print(
+            logger.info(
                 "WARNING: Returning zeros as absolute last resort. Training will be severely affected."
             )
-            print("Consider using the --device cpu option if this problem persists.")
+            logger.info("Consider using the --device cpu option if this problem persists.")
             batch_size, seq_length = text_data["src"].shape
             d_model = getattr(self.text_model, "d_model", 512)
             return torch.zeros(batch_size, seq_length, d_model, device=original_device)
@@ -515,7 +515,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
         if not hasattr(self, "_logged_device") or self._logged_device != target_device:
             # Format the device name to be more user-friendly (strip ":0" from device name)
             device_name = str(target_device).split(":")[0]
-            print(f"MultiModal model using device: {device_name}")
+            logger.info(f"MultiModal model using device: {device_name}")
             self._logged_device = target_device
 
         # Process vision input if provided
@@ -682,7 +682,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                     projection = nn.Linear(text_dim, vision_dim).to(target_device)
                     text_global = projection(text_global)
 
-                print(
+                logger.info(
                     f"Created projection layer to match vision dim={vision_dim} with text dim={text_dim} on {target_device}"
                 )
 

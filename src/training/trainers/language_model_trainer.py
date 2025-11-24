@@ -147,7 +147,7 @@ class LanguageModelTrainer:
         # Don't print every few seconds, let the tqdm progress bar handle displaying metrics
         # Only print at milestone steps for record-keeping
         if step % 10000 == 0:
-            print(f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}")
+            logger.info(f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}")
     
     def train(self, num_epochs, save_dir="models/language", model_name="language_model"):
         """
@@ -167,7 +167,7 @@ class LanguageModelTrainer:
         # Store number of epochs for scheduler
         self.num_epochs = num_epochs
         
-        print(f"Starting training on {self.device}...")
+        logger.info(f"Starting training on {self.device}...")
         start_time = time.time()
         
         for epoch in range(num_epochs):
@@ -248,18 +248,18 @@ class LanguageModelTrainer:
             # Calculate average training loss
             avg_train_loss = train_loss / num_batches
             train_perplexity = math.exp(avg_train_loss)
-            print(f"Epoch {epoch+1} - Train Loss: {avg_train_loss:.4f}, Train Perplexity: {train_perplexity:.2f}")
+            logger.info(f"Epoch {epoch+1} - Train Loss: {avg_train_loss:.4f}, Train Perplexity: {train_perplexity:.2f}")
             
             # Validation
             if self.val_dataloader is not None:
                 val_loss, val_perplexity = self.evaluate()
-                print(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}, Val Perplexity: {val_perplexity:.2f}")
+                logger.info(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}, Val Perplexity: {val_perplexity:.2f}")
                 
                 # Save best model
                 if val_loss < self.best_val_loss:
                     self.best_val_loss = val_loss
                     self.save_model(f"{save_dir}/{model_name}_best.pt")
-                    print(f"New best model saved with validation loss: {val_loss:.4f}")
+                    logger.info(f"New best model saved with validation loss: {val_loss:.4f}")
             
             # Save checkpoint
             if (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
@@ -267,11 +267,11 @@ class LanguageModelTrainer:
             
             # Print epoch time
             epoch_time = time.time() - epoch_start_time
-            print(f"Epoch {epoch+1} completed in {epoch_time:.2f}s")
+            logger.info(f"Epoch {epoch+1} completed in {epoch_time:.2f}s")
         
         # Print total training time
         total_time = time.time() - start_time
-        print(f"Training completed in {total_time:.2f}s")
+        logger.info(f"Training completed in {total_time:.2f}s")
         
         # Return training statistics
         return {

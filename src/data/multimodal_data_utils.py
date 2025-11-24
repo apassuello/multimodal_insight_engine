@@ -21,6 +21,8 @@ import random
 import logging
 import numpy as np
 from typing import Dict, List, Tuple, Any, Optional, Iterator
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 from torch.utils.data import DataLoader, SubsetRandomSampler, Sampler, BatchSampler
 from collections import defaultdict
 from dataclasses import dataclass
@@ -480,7 +482,7 @@ def randomize_dataset_positions(dataset: Any) -> List[int]:
         match_ids = dataset.get_match_ids()
     # Try to extract from each item
     else:
-        print("Attempting to extract match_ids from dataset items...")
+        logger.info("Attempting to extract match_ids from dataset items...")
         # Check if we can access items and if they have match_id
         try:
             # Check first item
@@ -491,13 +493,13 @@ def randomize_dataset_positions(dataset: Any) -> List[int]:
                 for i in range(len(dataset)):
                     item = dataset[i]
                     match_ids.append(item.get("match_id", f"id_{i}"))
-                print(f"Successfully extracted {len(match_ids)} match_ids from items")
+                logger.info(f"Successfully extracted {len(match_ids)} match_ids from items")
         except Exception as e:
-            print(f"Error extracting match_ids from items: {e}")
+            logger.info(f"Error extracting match_ids from items: {e}")
 
     # If we still don't have match_ids, use default
     if match_ids is None:
-        print("WARNING: Couldn't access match_ids, using fallback with unique IDs")
+        logger.info("WARNING: Couldn't access match_ids, using fallback with unique IDs")
         match_ids = [f"id_{i}" for i in range(len(dataset))]
 
     # Store match_ids in the dataset for future reference
@@ -511,7 +513,7 @@ def randomize_dataset_positions(dataset: Any) -> List[int]:
             match_id_groups[match_id] = []
         match_id_groups[match_id].append(idx)
 
-    print(
+    logger.info(
         f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items"
     )
 
@@ -527,7 +529,7 @@ def randomize_dataset_positions(dataset: Any) -> List[int]:
         random.shuffle(indices)
         shuffled_indices.extend(indices)
 
-    print(f"Created shuffled indices list with {len(shuffled_indices)} items")
+    logger.info(f"Created shuffled indices list with {len(shuffled_indices)} items")
     return shuffled_indices
 
 
@@ -548,12 +550,12 @@ def create_data_loaders(
     Returns:
         Train, validation, and test data loaders
     """
-    print(f"Creating data loaders for {args.dataset} dataset...")
+    logger.info(f"Creating data loaders for {args.dataset} dataset...")
 
     # Create dataset and data loaders
     if args.dataset == "flickr30k":
         if args.use_synthetic:
-            print("WARNING: Using synthetic data instead of real Flickr30k data!")
+            logger.info("WARNING: Using synthetic data instead of real Flickr30k data!")
             synthetic_samples = args.synthetic_samples
         else:
             # When using real data, don't specify synthetic_samples
@@ -561,7 +563,7 @@ def create_data_loaders(
 
         # Try to create Flickr30k dataset splits
         try:
-            print("Loading Flickr30k train split...")
+            logger.info("Loading Flickr30k train split...")
             # Get captions_per_image from args if available, otherwise default to 1
             captions_per_image = getattr(args, "captions_per_image", 1)
 
@@ -591,14 +593,14 @@ def create_data_loaders(
                 dataset_info.get("total_samples", 0) <= args.synthetic_samples
                 and not args.use_synthetic
             ):
-                print(
+                logger.info(
                     f"WARNING: Got {dataset_info.get('total_samples', 0)} samples which may indicate synthetic data fallback"
                 )
-                print(
+                logger.info(
                     "If you want to use synthetic data explicitly, use --use_synthetic flag"
                 )
 
-            print("Loading Flickr30k validation split...")
+            logger.info("Loading Flickr30k validation split...")
             val_dataset = EnhancedMultimodalDataset(
                 dataset_name="flickr30k",
                 split="val",
@@ -616,7 +618,7 @@ def create_data_loaders(
                 cap_strategy=cap_strategy,
             )
 
-            print("Loading Flickr30k test split...")
+            logger.info("Loading Flickr30k test split...")
             test_dataset = EnhancedMultimodalDataset(
                 dataset_name="flickr30k",
                 split="test",
@@ -632,14 +634,14 @@ def create_data_loaders(
             )
 
         except Exception as e:
-            print(f"ERROR: Failed to load Flickr30k dataset: {str(e)}")
-            print(
+            logger.info(f"ERROR: Failed to load Flickr30k dataset: {str(e)}")
+            logger.info(
                 "If you intended to use synthetic data, please use --dataset synthetic or --use_synthetic flag"
             )
             raise
 
     elif args.dataset == "synthetic":
-        print("Creating synthetic datasets for training demo")
+        logger.info("Creating synthetic datasets for training demo")
         # Create synthetic datasets explicitly
         # Adjust the number of synthetic samples based on max_examples settings
         train_synthetic_samples = args.synthetic_samples
@@ -740,12 +742,12 @@ def create_data_loaders(
     if use_semantic_batching:
         # Log the configuration settings
         if max_samples_per_group is not None:
-            print(
+            logger.info(
                 f"Using SemanticGroupBatchSampler with min_samples_per_group={min_samples_per_group}, "
                 f"max_samples_per_group={max_samples_per_group}, cap_strategy='{cap_strategy}'"
             )
         else:
-            print(
+            logger.info(
                 f"Using SemanticGroupBatchSampler with min_samples_per_group={min_samples_per_group}"
             )
 
@@ -782,10 +784,10 @@ def create_data_loaders(
                 num_workers=0,  # Keep at 0 for MPS
             )
 
-            print(
+            logger.info(
                 f"SemanticGroupBatchSampler created {len(train_batch_sampler)} training batches"
             )
-            print(
+            logger.info(
                 f"SemanticGroupBatchSampler created {len(val_batch_sampler)} validation batches"
             )
 
@@ -796,9 +798,9 @@ def create_data_loaders(
 
     if not use_semantic_batching:
         # Fallback to traditional randomization
-        print("Using traditional random sampling (without semantic grouping)")
+        logger.info("Using traditional random sampling (without semantic grouping)")
         # Randomize our datasets to prevent shortcut learning
-        print("Randomizing dataset positions to prevent shortcut learning...")
+        logger.info("Randomizing dataset positions to prevent shortcut learning...")
         train_indices = randomize_dataset_positions(train_dataset)
         val_indices = randomize_dataset_positions(val_dataset)
 
@@ -832,9 +834,9 @@ def create_data_loaders(
     )
 
     # Print dataset statistics
-    print(f"Train split: {train_dataset.get_split_proportions()}")
-    print(f"Val split: {val_dataset.get_split_proportions()}")
-    print(f"Test split: {test_dataset.get_split_proportions()}")
+    logger.info(f"Train split: {train_dataset.get_split_proportions()}")
+    logger.info(f"Val split: {val_dataset.get_split_proportions()}")
+    logger.info(f"Test split: {test_dataset.get_split_proportions()}")
 
     return train_loader, val_loader, test_loader
 

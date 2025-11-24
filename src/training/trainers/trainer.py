@@ -65,7 +65,7 @@ def train_model(
 
     # Training loop
     for epoch in range(epochs):
-        print(f"Epoch {epoch+1}/{epochs}")
+        logger.info(f"Epoch {epoch+1}/{epochs}")
         start_time = time.time()
 
         # Training phase
@@ -162,22 +162,22 @@ def train_model(
                 else:
                     patience_counter += 1
                     if patience_counter >= early_stopping_patience:
-                        print(f"Early stopping triggered after {epoch+1} epochs")
+                        logger.info(f"Early stopping triggered after {epoch+1} epochs")
                         break
 
         # Print epoch summary
         epoch_time = time.time() - start_time
-        print(
+        logger.info(
             f"Epoch {epoch+1}/{epochs} - {epoch_time:.2f}s - loss: {avg_train_loss:.4f}",
             end="",
         )
         if train_accuracies:
-            print(f" - accuracy: {avg_train_accuracy:.4f}", end="")
+            logger.info(f" - accuracy: {avg_train_accuracy:.4f}", end="")
         if val_dataloader is not None and avg_val_loss is not None:
-            print(f" - val_loss: {avg_val_loss:.4f}", end="")
+            logger.info(f" - val_loss: {avg_val_loss:.4f}", end="")
             if val_accuracies:
-                print(f" - val_accuracy: {avg_val_accuracy:.4f}", end="")
-        print()
+                logger.info(f" - val_accuracy: {avg_val_accuracy:.4f}", end="")
+        logger.info("")
 
         # Call callbacks if provided
         if callbacks:

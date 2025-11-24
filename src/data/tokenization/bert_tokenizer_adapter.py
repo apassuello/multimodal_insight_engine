@@ -47,8 +47,8 @@ class BertTokenizerAdapter:
             "mask_token_idx": self.tokenizer.mask_token_id,
         }
 
-        print(f"Created BertTokenizerAdapter with max_length={max_length}")
-        print(f"Special tokens: {self._special_tokens}")
+        logger.info(f"Created BertTokenizerAdapter with max_length={max_length}")
+        logger.info(f"Special tokens: {self._special_tokens}")
 
     def encode(self, text: str) -> List[int]:
         """

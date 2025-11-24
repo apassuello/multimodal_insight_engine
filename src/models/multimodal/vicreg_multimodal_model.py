@@ -17,8 +17,14 @@ DEPENDENCIES:
 
 import os
 import torch
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import torch.nn as nn
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import torch.nn.functional as F
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -38,11 +44,11 @@ class VICRegMultimodalModel(nn.Module):
 
         # Temporarily move to CPU for initialization if needed
         if vision_device != cpu_device:
-            print(f"Temporarily moving vision model to CPU for initialization")
+            logger.info(f"Temporarily moving vision model to CPU for initialization")
             vision_model = vision_model.to(cpu_device)
 
         if text_device != cpu_device:
-            print(f"Temporarily moving text model to CPU for initialization")
+            logger.info(f"Temporarily moving text model to CPU for initialization")
             text_model = text_model.to(cpu_device)
 
         # Store models
@@ -53,11 +59,11 @@ class VICRegMultimodalModel(nn.Module):
         vision_dim = self._get_model_dimension(vision_model)
         text_dim = self._get_model_dimension(text_model)
 
-        print(f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}")
+        logger.info(f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}")
 
         # Always create proper projection networks, even when dimensions match
         # This ensures we have trainable parameters in stage 1
-        print(
+        logger.info(
             f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}"
         )
         self.vision_proj = nn.Sequential(
@@ -75,7 +81,7 @@ class VICRegMultimodalModel(nn.Module):
         )
 
         # Always create proper text projection too, even when dimensions match
-        print(
+        logger.info(
             f"Creating text projection with dimensions: {text_dim} -> {projection_dim}"
         )
         self.text_proj = nn.Sequential(
@@ -111,22 +117,22 @@ class VICRegMultimodalModel(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
         # Initialize weights with orthogonal initialization on CPU
-        print("Performing orthogonal initialization on CPU")
+        logger.info("Performing orthogonal initialization on CPU")
         self._init_parameters()
 
         # Move components back to their original devices or target device if specified
         if self.target_device is not None:
             # If a target device is specified, move everything there
-            print(f"Moving model components to target device: {self.target_device}")
+            logger.info(f"Moving model components to target device: {self.target_device}")
             self.to(self.target_device)
         else:
             # Otherwise, move components back to their original devices
             if vision_device != cpu_device:
-                print(f"Moving vision model back to original device: {vision_device}")
+                logger.info(f"Moving vision model back to original device: {vision_device}")
                 self.vision_model = self.vision_model.to(vision_device)
 
             if text_device != cpu_device:
-                print(f"Moving text model back to original device: {text_device}")
+                logger.info(f"Moving text model back to original device: {text_device}")
                 self.text_model = self.text_model.to(text_device)
 
     def _get_model_dimension(self, model):
@@ -155,7 +161,7 @@ class VICRegMultimodalModel(nn.Module):
             return model.pretrained_model.config.hidden_size
         else:
             # Default to a standard size if we can't determine
-            print(
+            logger.info(
                 f"Warning: Could not determine dimension for model {type(model).__name__}. Using default 768."
             )
             return 768
@@ -178,7 +184,7 @@ class VICRegMultimodalModel(nn.Module):
 
         # Print debug info about the input (less frequently)
         if should_print:
-            print(
+            logger.info(
                 f"Extracting features from {type(model).__name__} with input type {type(x)}"
             )
 
@@ -186,14 +192,14 @@ class VICRegMultimodalModel(nn.Module):
             if isinstance(x, dict):
                 # Check for standard keys in text data
                 keys = set(x.keys())
-                print(f"Dict keys in input: {keys}")
+                logger.info(f"Dict keys in input: {keys}")
 
         # Special handling for different dataset formats
         if isinstance(x, dict):
             # We have a "raw" text representation
             if "input_ids" not in x.keys() and "text" in x.keys():
                 if should_print:
-                    print("Converting raw text to features using fallback")
+                    logger.info("Converting raw text to features using fallback")
                 # In a real implementation, we would tokenize the text here
                 # For now, this is handled in the error recovery in the forward method
                 raise ValueError(
@@ -205,17 +211,17 @@ class VICRegMultimodalModel(nn.Module):
             if hasattr(model, "encode"):
                 # Our wrappers typically have an encode method
                 if should_print:
-                    print("Using model.encode method")
+                    logger.info("Using model.encode method")
                 features = model.encode(x)
             elif hasattr(model, "extract_features"):
                 # Some models have a dedicated feature extraction method
                 if should_print:
-                    print("Using model.extract_features method")
+                    logger.info("Using model.extract_features method")
                 features = model.extract_features(x)
             else:
                 # Default to standard forward pass
                 if should_print:
-                    print("Using model.__call__ method")
+                    logger.info("Using model.__call__ method")
                 features = model(x)
 
                 # Handle different return types
@@ -228,20 +234,20 @@ class VICRegMultimodalModel(nn.Module):
             if len(features.shape) == 3:
                 # Mean pooling over sequence dimension
                 if should_print:
-                    print(f"Pooling sequence features from shape {features.shape}")
+                    logger.info(f"Pooling sequence features from shape {features.shape}")
                 features = features.mean(dim=1)
 
             return features
 
         except Exception as e:
-            print(f"Error in feature extraction: {str(e)}")
+            logger.info(f"Error in feature extraction: {str(e)}")
             # Try to provide more diagnostic information
             if isinstance(x, dict) and not any(
                 k in x for k in ["input_ids", "inputs_embeds"]
             ):
-                print("Input dictionary is missing expected HuggingFace model inputs.")
+                logger.info("Input dictionary is missing expected HuggingFace model inputs.")
                 keys_str = ", ".join(x.keys())
-                print(f"Available keys: {keys_str}")
+                logger.info(f"Available keys: {keys_str}")
                 raise ValueError(
                     f"Missing required keys for HuggingFace model. Found: {keys_str}"
                 )
@@ -259,20 +265,20 @@ class VICRegMultimodalModel(nn.Module):
                 if "var_predictor" in name:
                     # Still use higher gain for variance predictors, but reduced
                     nn.init.orthogonal_(module.weight, gain=1.7)
-                    print(
+                    logger.info(
                         f"Applied variance predictor orthogonal initialization (gain=1.7) to {name}"
                     )
                 else:
                     # Standardized gain for all other layers
                     nn.init.orthogonal_(module.weight, gain=1.5)
-                    print(
+                    logger.info(
                         f"Applied standardized orthogonal initialization (gain=1.5) to {name}"
                     )
 
                 # Initialize all biases to zero for better stability
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
-                    print(f"Applied zero bias initialization to {name}")
+                    logger.info(f"Applied zero bias initialization to {name}")
 
     def forward(self, images=None, text_data=None):
         outputs = {}
@@ -290,12 +296,12 @@ class VICRegMultimodalModel(nn.Module):
 
         # Print input info for debugging (less frequently)
         if should_print and images is not None:
-            print(f"Input images shape: {images.shape}")
+            logger.info(f"Input images shape: {images.shape}")
         if should_print and text_data is not None:
             if isinstance(text_data, dict):
-                print(f"Input text_data keys: {text_data.keys()}")
+                logger.info(f"Input text_data keys: {text_data.keys()}")
                 if "input_ids" in text_data:
-                    print(
+                    logger.info(
                         f"Input text_data['input_ids'] shape: {text_data['input_ids'].shape}"
                     )
 
@@ -325,9 +331,9 @@ class VICRegMultimodalModel(nn.Module):
         if text_data is not None:
             # Debug: Print the structure of text_data to understand what we're dealing with
             if should_print:
-                print(f"Text data type: {type(text_data)}")
+                logger.info(f"Text data type: {type(text_data)}")
                 if isinstance(text_data, dict):
-                    print(f"Text data keys: {text_data.keys()}")
+                    logger.info(f"Text data keys: {text_data.keys()}")
 
             # Prepare text input based on the actual keys in the dataset
             modified_text_data = {}
@@ -335,7 +341,7 @@ class VICRegMultimodalModel(nn.Module):
             # Dataset may provide src/src_mask, but we need to rename to input_ids/attention_mask
             if "src" in text_data and "input_ids" not in text_data:
                 if should_print:
-                    print("Adapting dataset format: src -> input_ids")
+                    logger.info("Adapting dataset format: src -> input_ids")
                 modified_text_data["input_ids"] = text_data["src"]
             else:
                 # Keep existing input_ids if available
@@ -345,7 +351,7 @@ class VICRegMultimodalModel(nn.Module):
             # Same for attention mask
             if "src_mask" in text_data and "attention_mask" not in text_data:
                 if should_print:
-                    print("Adapting dataset format: src_mask -> attention_mask")
+                    logger.info("Adapting dataset format: src_mask -> attention_mask")
                 modified_text_data["attention_mask"] = text_data["src_mask"]
             else:
                 # Keep existing attention_mask if available
@@ -358,7 +364,7 @@ class VICRegMultimodalModel(nn.Module):
 
             # Use the modified text data with properly renamed keys
             text_data = modified_text_data if modified_text_data else text_data
-            # print(f"Adapted text_data keys: {text_data.keys()}")
+            # logger.info(f"Adapted text_data keys: {text_data.keys()}")
 
             # Ensure text data is on the same device as the model
             # Handle both tensor and dictionary inputs
@@ -374,7 +380,7 @@ class VICRegMultimodalModel(nn.Module):
             try:
                 text_features = self._extract_features(self.text_model, text_data)
             except Exception as e:
-                print(f"Error extracting text features: {str(e)}")
+                logger.info(f"Error extracting text features: {str(e)}")
                 # Create zeros instead of random features for better stability
                 batch_size = (
                     text_data["input_ids"].shape[0]
@@ -382,11 +388,11 @@ class VICRegMultimodalModel(nn.Module):
                     else (images.shape[0] if images is not None else 1)
                 )
                 text_dim = self._get_model_dimension(self.text_model)
-                print(f"Creating zero text features of size {batch_size}x{text_dim}")
+                logger.info(f"Creating zero text features of size {batch_size}x{text_dim}")
 
                 # Use zeros instead of random features to avoid introducing noise
                 text_features = torch.zeros(batch_size, text_dim, device=model_device)
-                print(
+                logger.info(
                     "Using zero features for error recovery (more stable than random)"
                 )
             text_proj = self.text_proj(text_features)
@@ -412,7 +418,7 @@ class VICRegMultimodalModel(nn.Module):
 
             # Print feature shapes for debugging (less frequently)
             if should_print:
-                print(
+                logger.info(
                     f"Normalized feature shapes - Vision: {vision_norm.shape}, Text: {text_norm.shape}"
                 )
 

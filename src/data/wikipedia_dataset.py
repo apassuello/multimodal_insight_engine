@@ -138,7 +138,7 @@ class WikipediaDataset:
         
         # Try to load from cache first
         if cache_path and os.path.exists(cache_path):
-            print(f"Loading cached processed data from {cache_path}")
+            logger.info(f"Loading cached processed data from {cache_path}")
             return torch.load(cache_path, weights_only=True)
         
         # Get file paths for the specified split
@@ -157,7 +157,7 @@ class WikipediaDataset:
         # Process each file
         total_examples = 0
         for file_path in file_paths:
-            print(f"Processing {file_path}")
+            logger.info(f"Processing {file_path}")
             dataset = tf.data.TFRecordDataset([file_path], compression_type="GZIP")
             
             for example_proto in tqdm(dataset):
@@ -185,14 +185,14 @@ class WikipediaDataset:
             if self.max_examples is not None and total_examples >= self.max_examples:
                 break
         
-        print(f"Loaded {total_examples} examples from {self.split} split")
+        logger.info(f"Loaded {total_examples} examples from {self.split} split")
         
         # Convert lists to tensors
         data['images'] = torch.tensor(np.array(data['images']), dtype=torch.float32)
         
         # Cache processed data if enabled
         if cache_path:
-            print(f"Saving processed data to cache: {cache_path}")
+            logger.info(f"Saving processed data to cache: {cache_path}")
             torch.save(data, cache_path)
         
         return data

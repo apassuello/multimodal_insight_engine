@@ -70,7 +70,7 @@ class BaseModel(nn.Module):
         
         # Save the state dictionary
         torch.save(state_dict, path)
-        print(f"Model saved to {path}")
+        logger.info(f"Model saved to {path}")
     
     def load(self, path: str, map_location: Optional[str] = None):
         """
@@ -89,11 +89,11 @@ class BaseModel(nn.Module):
         # Check if the model type matches
         saved_model_type = checkpoint.get('model_type')
         if saved_model_type != self.model_type:
-            print(f"Warning: Loading weights from {saved_model_type} into {self.model_type}")
+            logger.info(f"Warning: Loading weights from {saved_model_type} into {self.model_type}")
         
         # Load the model weights
         self.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Model loaded from {path}")
+        logger.info(f"Model loaded from {path}")
         
         # Remove model-related keys and return the rest
         checkpoint.pop('model_type', None)

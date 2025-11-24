@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Dict, Any, Optional
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 from pathlib import Path
 import json
 from torch.utils.data import DataLoader
@@ -246,16 +248,16 @@ def train_reward_model(
         >>> from src.safety.constitutional.preference_comparison import generate_preference_pairs
         >>> preference_data = generate_preference_pairs(prompts, model, tokenizer, framework, device)
         >>> metrics = train_reward_model(reward_model, preference_data, tokenizer, num_epochs=3)
-        >>> print(f"Final accuracy: {metrics['accuracy'][-1]:.2%}")
+        >>> logger.info(f"Final accuracy: {metrics['accuracy'][-1]:.2%}")
     """
     # Setup device
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    print(f"Training reward model on {device}")
-    print(f"Training samples: {len(training_data)}")
+    logger.info(f"Training reward model on {device}")
+    logger.info(f"Training samples: {len(training_data)}")
     if validation_data:
-        print(f"Validation samples: {len(validation_data)}")
+        logger.info(f"Validation samples: {len(validation_data)}")
 
     reward_model = reward_model.to(device)
     reward_model.train()
@@ -379,7 +381,7 @@ def train_reward_model(
         metrics['accuracy'].append(accuracy)
         metrics['epochs'].append(epoch + 1)
 
-        print(f'Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f} ({correct}/{total})')
+        logger.info(f'Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f} ({correct}/{total})')
 
         # Validation
         if validation_data:
@@ -393,9 +395,9 @@ def train_reward_model(
             )
             metrics['val_losses'].append(val_loss)
             metrics['val_accuracy'].append(val_accuracy)
-            print(f'  Validation - Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}')
+            logger.info(f'  Validation - Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}')
 
-    print("Training complete!")
+    logger.info("Training complete!")
 
     # Add convenience keys for final values
     metrics['final_loss'] = metrics['losses'][-1] if metrics['losses'] else 0.0
@@ -569,7 +571,7 @@ class RewardModelTrainer:
             split_idx = int(len(training_data) * (1 - validation_split))
             train_subset = training_data[:split_idx]
             validation_data = training_data[split_idx:]
-            print(f"Split data: {len(train_subset)} train, {len(validation_data)} validation")
+            logger.info(f"Split data: {len(train_subset)} train, {len(validation_data)} validation")
         else:
             train_subset = training_data
 
@@ -598,7 +600,7 @@ class RewardModelTrainer:
                 best_accuracy = max(metrics['val_accuracy'])
                 if metrics['val_accuracy'][-1] == best_accuracy:
                     self.save_checkpoint(save_path / 'best_model')
-                    print(f"Saved best model with validation accuracy: {best_accuracy:.4f}")
+                    logger.info(f"Saved best model with validation accuracy: {best_accuracy:.4f}")
             else:
                 self.save_checkpoint(save_path / 'final_model')
 
@@ -630,7 +632,7 @@ class RewardModelTrainer:
         with open(str(path) + '_metadata.json', 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        print(f"Checkpoint saved to {path}")
+        logger.info(f"Checkpoint saved to {path}")
 
     def load_checkpoint(self, path: str) -> None:
         """
@@ -646,7 +648,7 @@ class RewardModelTrainer:
         self.reward_model.load_state_dict(checkpoint['model_state_dict'])
         self.training_history = checkpoint.get('training_history', [])
 
-        print(f"Checkpoint loaded from {path}")
+        logger.info(f"Checkpoint loaded from {path}")
 
     def evaluate(
         self,

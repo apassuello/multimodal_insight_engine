@@ -92,10 +92,10 @@ def print_evaluation_results(scores: Dict[str, float]):
     Args:
         scores: Dictionary containing metric scores
     """
-    print("\n=== Translation Evaluation Results ===")
-    print(f"BLEU Score: {scores['bleu']:.4f}")
-    print(f"TER Score:  {scores['ter']:.4f}")
-    print("=" * 35)
+    logger.info("\n=== Translation Evaluation Results ===")
+    logger.info(f"BLEU Score: {scores['bleu']:.4f}")
+    logger.info(f"TER Score:  {scores['ter']:.4f}")
+    logger.info("=" * 35)
 
 def extract_file_metadata(file_path=__file__):
     """

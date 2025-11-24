@@ -26,6 +26,8 @@ import pickle  # Used for backward compatibility with old caches
 import time
 import random
 from typing import Dict, List, Tuple, Optional, Callable, Union, Any
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import numpy as np
 from collections import defaultdict
 
@@ -111,7 +113,7 @@ class MultimodalDataset(Dataset):
         # Build class-based indices for hard negative mining
         self.class_to_indices = self._build_class_indices()
 
-        print(f"Loaded {len(self.samples)} samples for {split} split")
+        logger.info(f"Loaded {len(self.samples)} samples for {split} split")
 
     def _load_metadata(self, metadata_path: str, split: str) -> List[Dict]:
         """
@@ -275,7 +277,7 @@ class MultimodalDataset(Dataset):
                 image_tensor = self.image_processor(image)
 
         except Exception as e:
-            print(f"Error loading image {image_path}: {e}")
+            logger.info(f"Error loading image {image_path}: {e}")
             # Return a black image as fallback
             image_tensor = torch.zeros(3, 224, 224)
 
@@ -318,7 +320,7 @@ class MultimodalDataset(Dataset):
                 text_tensor = caption
                 text_mask = torch.ones(1, dtype=torch.float)  # Dummy mask
         except Exception as e:
-            print(f"Error processing text '{caption}': {e}")
+            logger.info(f"Error processing text '{caption}': {e}")
             # Return empty tensor as fallback
             if self.text_tokenizer and self.max_text_length > 0:
                 text_tensor = torch.full(
@@ -422,7 +424,7 @@ class Flickr30kDataset(MultimodalDataset):
 
         # Try to load from cache first
         if self._load_from_cache():
-            print(
+            logger.info(
                 f"Successfully loaded {len(self.samples)} examples from cache for {split} split"
             )
         else:
@@ -432,7 +434,7 @@ class Flickr30kDataset(MultimodalDataset):
                 from datasets import load_dataset
                 import tqdm
 
-                print(f"Loading Flickr30k dataset for split: {split}...")
+                logger.info(f"Loading Flickr30k dataset for split: {split}...")
 
                 try:
                     # Load the full dataset
@@ -479,7 +481,7 @@ class Flickr30kDataset(MultimodalDataset):
                     if not self.samples:
                         raise ValueError(f"No examples found for split '{split}'")
 
-                    print(
+                    logger.info(
                         f"Successfully loaded {len(self.samples)} examples from Flickr30k {split} split"
                     )
 
@@ -487,12 +489,12 @@ class Flickr30kDataset(MultimodalDataset):
                     self._save_to_cache()
 
                 except Exception as e:
-                    print(f"Error with primary dataset source: {str(e)}")
+                    logger.info(f"Error with primary dataset source: {str(e)}")
                     raise  # Re-raise to try alternative sources
 
             except Exception as e:
-                print(f"Error loading Flickr30k dataset: {str(e)}")
-                print("Falling back to synthetic data generation...")
+                logger.info(f"Error loading Flickr30k dataset: {str(e)}")
+                logger.info("Falling back to synthetic data generation...")
                 self._generate_synthetic_data()
 
         # Limit samples if specified
@@ -523,31 +525,31 @@ class Flickr30kDataset(MultimodalDataset):
                 if not self.samples:
                     return False
 
-                print(f"Loaded from JSON cache: {cache_samples_json}")
+                logger.info(f"Loaded from JSON cache: {cache_samples_json}")
                 return True
             except Exception as e:
-                print(f"Error loading from JSON cache: {str(e)}")
+                logger.info(f"Error loading from JSON cache: {str(e)}")
                 # Fall through to try pickle
 
         # Fallback to pickle for backward compatibility (UNSAFE - migration only)
         if os.path.exists(self.cache_metadata) and os.path.exists(self.cache_samples):
             try:
-                print(f"JSON cache not found, attempting to load legacy pickle cache...")
+                logger.info(f"JSON cache not found, attempting to load legacy pickle cache...")
                 with open(self.cache_samples, 'rb') as f:
                     self.samples = pickle.load(f)
 
                 if not self.samples:
                     return False
 
-                print(f"Loaded from pickle cache: {self.cache_samples}")
-                print(f"Converting to JSON format for future use...")
+                logger.info(f"Loaded from pickle cache: {self.cache_samples}")
+                logger.info(f"Converting to JSON format for future use...")
 
                 # Migrate to JSON for next time
                 self._save_to_cache()
 
                 return True
             except Exception as e:
-                print(f"Error loading from pickle cache: {str(e)}")
+                logger.info(f"Error loading from pickle cache: {str(e)}")
                 return False
 
         return False
@@ -573,9 +575,9 @@ class Flickr30kDataset(MultimodalDataset):
             with open(self.cache_metadata, "w") as f:
                 json.dump(metadata, f, indent=2)
 
-            print(f"Saved {len(self.samples)} samples to cache at {self.cache_dir}")
+            logger.info(f"Saved {len(self.samples)} samples to cache at {self.cache_dir}")
         except Exception as e:
-            print(f"Error saving to cache: {str(e)}")
+            logger.info(f"Error saving to cache: {str(e)}")
 
     def _generate_synthetic_data(self):
         """Generate synthetic data as a fallback."""

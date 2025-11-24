@@ -18,6 +18,8 @@ import sys
 import random
 from tqdm import tqdm
 from typing import List, Tuple, Optional, Dict, Any
+from src.utils.logging import get_logger
+logger = get_logger(__name__)
 import json
 
 
@@ -76,7 +78,7 @@ class WMTDataset:
         self.src_data, self.tgt_data = self.load_data()
 
         # Print dataset info
-        print(f"Loaded {len(self.src_data)} {split} examples from WMT{self.year}")
+        logger.info(f"Loaded {len(self.src_data)} {split} examples from WMT{self.year}")
 
     def _map_split(self, split: str) -> str:
         """
@@ -131,7 +133,7 @@ class WMTDataset:
             dataset_name = f"wmt{self.year}"
             lang_pair = self._get_config_name()
 
-            print(f"Loading {dataset_name} dataset with language pair {lang_pair}")
+            logger.info(f"Loading {dataset_name} dataset with language pair {lang_pair}")
 
             # Get available configs for this dataset if we need to validate
             try:
@@ -143,7 +145,7 @@ class WMTDataset:
                         f"Available language pairs: {', '.join(available_pairs)}"
                     )
             except Exception as e:
-                print(f"Warning: Could not verify available configs: {e}")
+                logger.info(f"Warning: Could not verify available configs: {e}")
 
             # Load the dataset
             dataset = load_dataset(
@@ -156,7 +158,7 @@ class WMTDataset:
 
             # Subset filtering note - added for awareness
             if self.subset:
-                print(
+                logger.info(
                     f"Note: Subset filtering for '{self.subset}' needs to be done manually if needed"
                 )
 
@@ -168,10 +170,10 @@ class WMTDataset:
             swap_languages = False
             if f"{self.tgt_lang}-{self.src_lang}" == lang_pair:
                 swap_languages = True
-                print(f"Note: Source and target are swapped in the dataset")
+                logger.info(f"Note: Source and target are swapped in the dataset")
 
             # Convert to list for easier processing
-            print("Processing dataset examples...")
+            logger.info("Processing dataset examples...")
             examples = list(dataset)
 
             if not examples:
@@ -189,11 +191,11 @@ class WMTDataset:
 
                 if filtered_examples:
                     examples = filtered_examples
-                    print(
+                    logger.info(
                         f"Filtered to {len(examples)} examples in subset: {self.subset}"
                     )
                 else:
-                    print(
+                    logger.info(
                         f"Warning: No examples found in subset '{self.subset}', using all data"
                     )
 
@@ -210,7 +212,7 @@ class WMTDataset:
                         tgt_data.append(translation[self.tgt_lang])
             else:
                 # Handle other formats or print available keys
-                print(f"Dataset structure: {sample.keys()}")
+                logger.info(f"Dataset structure: {sample.keys()}")
                 raise ValueError(
                     f"Unsupported dataset structure. Expected 'translation' field, "
                     f"but found: {list(sample.keys())}"
@@ -242,17 +244,17 @@ class WMTDataset:
             return src_data, tgt_data
 
         except ImportError:
-            print("Error: The 'datasets' library is required to use WMTDataset")
-            print("Please install it using: pip install datasets")
+            logger.info("Error: The 'datasets' library is required to use WMTDataset")
+            logger.info("Please install it using: pip install datasets")
             raise
 
         except Exception as e:
-            print(f"Error loading WMT dataset: {e}")
+            logger.info(f"Error loading WMT dataset: {e}")
 
             # Try to load from cache if available
             cached_data = self._load_from_cache()
             if cached_data:
-                print(f"Loaded data from cache instead")
+                logger.info(f"Loaded data from cache instead")
                 return cached_data
 
             raise RuntimeError(
@@ -288,9 +290,9 @@ class WMTDataset:
             with open(tgt_file, "w", encoding="utf-8") as f:
                 f.write("\n".join(tgt_data))
 
-            print(f"Saved {len(src_data)} examples to cache files")
+            logger.info(f"Saved {len(src_data)} examples to cache files")
         except Exception as e:
-            print(f"Warning: Failed to save cache files: {e}")
+            logger.info(f"Warning: Failed to save cache files: {e}")
 
     def _load_from_cache(self) -> Optional[Tuple[List[str], List[str]]]:
         """Try to load dataset from cache files."""
@@ -315,7 +317,7 @@ class WMTDataset:
 
                     return src_data, tgt_data
             except Exception as e:
-                print(f"Error loading from cache: {e}")
+                logger.info(f"Error loading from cache: {e}")
 
         return None
 

@@ -112,7 +112,7 @@ class FeedForwardBlock(nn.Module):
         # Check if residual connection is possible
         self.use_residual = use_residual and input_dim == output_dim
         if use_residual and input_dim != output_dim:
-            print(f"Warning: Cannot use residual connection when input_dim ({input_dim}) "
+            logger.info(f"Warning: Cannot use residual connection when input_dim ({input_dim}) "
                   f"!= output_dim ({output_dim}). Disabling residual connection.")
         
         # First linear layer
