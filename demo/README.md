@@ -1,18 +1,26 @@
 # Constitutional AI Interactive Demo
 
-Phase 1 (MVP) implementation of the Constitutional AI Interactive Demo.
+Complete implementation of the Constitutional AI Interactive Demo with both Phase 1 (SFT) and Phase 2 (RLAIF) training.
 
 ## Overview
 
-This demo showcases the complete Constitutional AI pipeline:
-- **Evaluation**: Test text against constitutional principles using AI or regex
-- **Training**: Train models using critique-revision methodology
-- **Generation**: Compare base vs trained model outputs
+This demo showcases the complete Constitutional AI pipeline across 6 interactive tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **Evaluation** | Test text against constitutional principles using AI, Regex, or HuggingFace API |
+| **Phase 1 SFT** | Supervised fine-tuning with critique-revision methodology |
+| **Phase 2 RLAIF** | Reinforcement Learning from AI Feedback (preference pairs, reward model, PPO) |
+| **Generation** | Compare base vs trained model outputs side-by-side |
+| **Impact** | Analyze training effects with comprehensive metrics |
+| **Architecture** | Visualize the Constitutional AI pipeline |
 
 ## Requirements
 
 ```bash
 pip install torch transformers gradio
+# Optional for HuggingFace API evaluation:
+pip install huggingface_hub
 ```
 
 For Apple Silicon (M1/M2/M4):
@@ -37,35 +45,69 @@ The interface will launch at `http://localhost:7860`
 3. Click "Load Model"
 4. Wait ~30 seconds for first-time download
 
-### 3. Try the Tabs
+### 3. Explore the 6 Tabs
 
 #### Evaluation Tab
+Test text against constitutional principles:
 - Load example text or enter your own
-- Choose evaluation mode (AI, Regex, or Both)
+- Choose evaluation mode:
+  - **AI**: Uses the loaded model for evaluation
+  - **Regex**: Fast pattern-based detection
+  - **HF API**: Uses HuggingFace's toxicity classifier (requires API token)
+  - **Both**: AI + Regex comparison
 - See which constitutional principles are violated
+- View detailed violation reports
 
-#### Training Tab
+#### Phase 1 SFT Tab
+Supervised Fine-Tuning using critique-revision:
 - Select training mode:
   - **Quick Demo**: 2 epochs, 20 examples (~10-15 minutes)
   - **Standard**: 5 epochs, 50 examples (~25-35 minutes)
 - Click "Start Training"
 - Monitor real-time progress and metrics
+- View training logs and loss curves
+
+#### Phase 2 RLAIF Tab
+Reinforcement Learning from AI Feedback:
+- **Step 1: Collect Preferences** - Generate response pairs and compare them
+- **Step 2: Train Reward Model** - Train on preference data with Bradley-Terry loss
+- **Step 3: PPO Training** - Optimize policy using the trained reward model
+- Monitor each step's progress independently
+- View reward model accuracy and PPO metrics
 
 #### Generation Tab
+Compare model outputs:
 - Enter a prompt (or load adversarial prompt)
 - Adjust temperature and max length
-- Compare base vs trained model outputs
-- See evaluation of both generations
+- Generate from both base and trained models
+- See side-by-side comparison
+- View evaluation scores for both outputs
+
+#### Impact Tab
+Analyze training effects:
+- View before/after metrics
+- Compare evaluation scores across training
+- Visualize improvement trajectories
+- Export analysis results
+
+#### Architecture Tab
+Visualize the pipeline:
+- Interactive CAI architecture diagrams
+- Phase 1 and Phase 2 flow visualization
+- Component relationships
 
 ## Architecture
 
 ```
 demo/
-├── main.py                    # Gradio application
+├── main.py                    # Gradio application (6-tab interface)
 ├── managers/
+│   ├── __init__.py            # Manager exports
 │   ├── model_manager.py       # Model loading and checkpointing
+│   ├── multi_model_manager.py # Multi-model management for comparisons
 │   ├── evaluation_manager.py  # Constitutional evaluation
-│   └── training_manager.py    # Training orchestration
+│   ├── training_manager.py    # Phase 1 SFT training orchestration
+│   └── comparison_engine.py   # Model comparison utilities
 ├── data/
 │   └── test_examples.py       # Test cases and prompts
 ├── checkpoints/               # Saved model checkpoints
@@ -82,7 +124,8 @@ Automatically detects and uses the best available device:
 
 ### Checkpoint Management
 - **Base checkpoint**: Saved immediately after model loading
-- **Trained checkpoint**: Saved after training completion
+- **SFT checkpoint**: Saved after Phase 1 training
+- **RLAIF checkpoint**: Saved after Phase 2 training
 - Enables before/after comparison in Generation tab
 
 ### Constitutional Principles
@@ -90,6 +133,12 @@ Automatically detects and uses the best available device:
 2. **Truthfulness**: Identifies misleading or deceptive information
 3. **Fairness**: Flags stereotyping and biased language
 4. **Autonomy Respect**: Detects coercive or manipulative language
+
+### Evaluation Modes
+- **Regex**: Fast pattern matching (~0.1s)
+- **AI**: Model-based evaluation (~2-3s)
+- **HF API**: Production-grade toxicity classifier
+- **Both**: Side-by-side comparison
 
 ## Performance Expectations
 
@@ -100,8 +149,9 @@ Automatically detects and uses the best available device:
 ### Evaluation
 - AI evaluation: ~2-3 seconds per text
 - Regex evaluation: <0.1 seconds per text
+- HF API evaluation: ~1-2 seconds per text
 
-### Training
+### Phase 1 Training (SFT)
 - **Quick Demo** (2 epochs, 20 examples):
   - Data generation: ~3 minutes (3 generations per example)
   - Fine-tuning: ~5-10 minutes
@@ -111,6 +161,11 @@ Automatically detects and uses the best available device:
   - Data generation: ~7-8 minutes
   - Fine-tuning: ~15-20 minutes
   - Total: ~25-35 minutes
+
+### Phase 2 Training (RLAIF)
+- **Preference Collection**: ~5-10 minutes (50 pairs)
+- **Reward Model Training**: ~3-5 minutes (3 epochs)
+- **PPO Training**: ~10-15 minutes (100 steps)
 
 ### Generation
 - ~3-5 seconds per generation (50-150 tokens)
@@ -136,21 +191,31 @@ Automatically detects and uses the best available device:
 - Use smaller model (distilgpt2 instead of gpt2-medium)
 - Close other applications to free memory
 
+### HuggingFace API errors
+- Ensure `HF_API_TOKEN` environment variable is set
+- Check API quota and rate limits
+- Falls back gracefully to regex evaluation
+
 ## File Locations
 
 ### Checkpoints
 Saved in: `demo/checkpoints/`
 - `base_gpt2/` - Base model before training
-- `trained_gpt2_epochN/` - Trained model at epoch N
+- `sft_gpt2_epochN/` - After Phase 1 SFT training
+- `rlaif_gpt2_stepN/` - After Phase 2 RLAIF training
+
+### Logs
+Training logs saved to: `demo/logs/`
 
 ### Cache
 Models cached by Hugging Face in: `~/.cache/huggingface/`
 
 ## Integration with Existing Code
 
-The demo integrates with the existing Constitutional AI implementation:
+The demo integrates with the Constitutional AI implementation:
 
 ```python
+# Phase 1 (SFT)
 from src.safety.constitutional.framework import ConstitutionalFramework
 from src.safety.constitutional.principles import setup_default_framework
 from src.safety.constitutional.model_utils import load_model, generate_text
@@ -158,31 +223,35 @@ from src.safety.constitutional.critique_revision import (
     critique_revision_pipeline,
     supervised_finetune
 )
+
+# Phase 2 (RLAIF)
+from src.safety.constitutional.preference_comparison import PreferenceCollector
+from src.safety.constitutional.reward_model import RewardModel, train_reward_model
+from src.safety.constitutional.ppo_trainer import PPOTrainer
+
+# Evaluation
+from src.safety.constitutional.hf_api_evaluator import HFAPIEvaluator
 ```
-
-## Next Steps (Phase 2+)
-
-Future enhancements (not in MVP):
-- Impact analysis tab with comprehensive metrics
-- Architecture visualization tab
-- Batch evaluation with test suites
-- Comparison engine for quantitative analysis
-- Export results (JSON, CSV, PDF)
-- Custom training configurations
 
 ## Support
 
 For issues or questions:
 1. Check this README
-2. Review architecture document: `DEMO_ARCHITECTURE.md`
-3. Check implementation: Phase 1 files in `demo/`
+2. Review architecture document: `docs/demo/DEMO_ARCHITECTURE.md`
+3. See implementation docs: `docs/CONSTITUTIONAL_AI_IMPLEMENTATION.md`
 
 ## Success Criteria
 
-Phase 1 MVP is successful if:
-- ✅ Loads GPT-2 on MPS device in <30 seconds
-- ✅ Evaluates text with AI in <3 seconds
-- ✅ Compares AI vs Regex side-by-side
-- ✅ Completes Quick Demo training (2 epochs, 20 examples) in <15 minutes
-- ✅ Saves base and trained checkpoints
-- ✅ Generates from both models and compares outputs
+The demo is complete when:
+- [x] Loads GPT-2 on MPS device in <30 seconds
+- [x] Evaluates text with AI in <3 seconds
+- [x] Compares AI vs Regex side-by-side
+- [x] HuggingFace API evaluation integration
+- [x] Completes Phase 1 SFT training
+- [x] Collects preference pairs for RLAIF
+- [x] Trains reward model on preferences
+- [x] Runs PPO training with reward model
+- [x] Saves checkpoints at each stage
+- [x] Compares base vs trained model outputs
+- [x] Shows impact analysis metrics
+- [x] Displays architecture visualization
