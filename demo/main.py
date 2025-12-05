@@ -724,8 +724,8 @@ def start_rlaif_training_handler(
                 ""
             )
 
-        # Check if we have models loaded
-        use_dual_models = multi_model_manager.gen_model is not None
+        # Check if we have models loaded (both gen and eval required for dual mode)
+        use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
         if not use_dual_models and not model_manager.is_ready():
             return "✗ Please load models first", ""
 
@@ -797,8 +797,8 @@ def format_rlaif_metrics(result: Dict[str, Any]) -> str:
             output += f"- **Final Loss:** {reward_metrics['final_loss']:.4f}\n"
         output += "\n"
 
-    # PPO metrics
-    ppo_results = result.get('ppo_results', {})
+    # PPO metrics (nested: result['ppo_results']['ppo_results'] from RLAIFTrainer → ppo_trainer)
+    ppo_results = result.get('ppo_results', {}).get('ppo_results', {})
     if ppo_results:
         output += "## PPO Training\n\n"
         if 'final_avg_reward' in ppo_results:
