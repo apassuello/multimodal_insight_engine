@@ -400,7 +400,7 @@ class TrainingManager:
             # Train reward model
             reward_metrics = train_reward_model(
                 reward_model=reward_model,
-                preference_pairs=self.preference_pairs,
+                training_data=self.preference_pairs,
                 tokenizer=tokenizer,
                 device=device,
                 num_epochs=2,
@@ -453,8 +453,8 @@ class TrainingManager:
             message += f"PPO steps: {num_ppo_steps}\n"
             message += f"Training time: {training_time:.1f}s\n"
 
-            if ppo_results.get("final_avg_reward"):
-                message += f"Final avg reward: {ppo_results['final_avg_reward']:.4f}"
+            if ppo_results.get("ppo_results", {}).get("final_avg_reward"):
+                message += f"Final avg reward: {ppo_results['ppo_results']['final_avg_reward']:.4f}"
 
             return result, True, message
 
