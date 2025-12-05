@@ -225,7 +225,7 @@ def train_reward_model(
     Args:
         reward_model: RewardModel instance to train
         training_data: List of preference examples with keys:
-                      'prompt', 'response_chosen', 'response_rejected'
+                      'prompt', 'chosen', 'rejected'
         tokenizer: Tokenizer for encoding text
         num_epochs: Number of training epochs (default: 3)
         batch_size: Batch size for training (default: 4)
@@ -306,13 +306,13 @@ def train_reward_model(
 
             # Prepare texts for chosen responses
             chosen_texts = [
-                item['prompt'] + ' ' + item['response_chosen']
+                item['prompt'] + ' ' + item['chosen']
                 for item in batch
             ]
 
             # Prepare texts for rejected responses
             rejected_texts = [
-                item['prompt'] + ' ' + item['response_rejected']
+                item['prompt'] + ' ' + item['rejected']
                 for item in batch
             ]
 
@@ -444,7 +444,7 @@ def evaluate_reward_model(
                 for item in batch
             ]
             rejected_texts = [
-                item['prompt'] + ' ' + item['response_rejected']
+                item['prompt'] + ' ' + item['rejected']
                 for item in batch
             ]
 

@@ -1077,7 +1077,7 @@ def run_comparison_handler(
             }
             suite_key = suite_key_map.get(test_suite_name)
             if not suite_key:
-                return f"✗ Unknown test suite: {test_suite_name}", "", ""
+                return f"✗ Unknown test suite: {test_suite_name}", "", "", ""
 
             test_prompts = TEST_SUITES[suite_key]
 
