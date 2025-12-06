@@ -394,7 +394,11 @@ class TrainingManager:
             if progress_callback:
                 progress_callback("Training reward model on preference pairs...", 0.1)
 
-            reward_model = RewardModel(model)
+            # Extract hidden size from model config
+            # GPT-2 uses 'n_embd', most others use 'hidden_size'
+            hidden_size = getattr(model.config, 'hidden_size', None) or getattr(model.config, 'n_embd', 768)
+
+            reward_model = RewardModel(model, hidden_size=hidden_size)
             reward_model = reward_model.to(device)
 
             # Train reward model
