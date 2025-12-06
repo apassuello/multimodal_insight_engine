@@ -457,6 +457,12 @@ class MultiModelManager:
         if model_key == "hf-api":
             return self._setup_hf_api_evaluation()
 
+        # Clear HF API state when loading local model
+        # This prevents both HF API and local model being active simultaneously
+        if self.using_hf_api:
+            self.using_hf_api = False
+            self.hf_api_evaluator = None
+
         try:
             print(f"Loading evaluation model: {config.name} ({config.hf_model_id})...")
 
