@@ -403,7 +403,8 @@ class ConstitutionalPipeline:
 
         # Get model hidden size
         if hasattr(self.base_model, 'config'):
-            hidden_size = self.base_model.config.hidden_size
+            # GPT-2 uses 'n_embd', most others use 'hidden_size'
+            hidden_size = getattr(self.base_model.config, 'hidden_size', None) or getattr(self.base_model.config, 'n_embd', 768)
         else:
             # Default fallback
             hidden_size = 768
