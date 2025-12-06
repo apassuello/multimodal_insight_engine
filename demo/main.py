@@ -374,12 +374,13 @@ def evaluate_text_handler(
     if not is_valid:
         return error_msg, ""
 
-    # Check if models are available
+    # Check if models are available (including HF API)
     has_dual_eval = multi_model_manager.eval_model is not None
+    has_hf_api = multi_model_manager.using_hf_api
     has_single = model_manager.is_ready()
 
-    if mode == "AI Evaluation" and not has_dual_eval and not has_single:
-        return "✗ Please load a model first (single model or evaluation model in dual mode)", ""
+    if mode == "AI Evaluation" and not has_dual_eval and not has_hf_api and not has_single:
+        return "✗ Please load a model first (single model, dual model, or HF API evaluation)", ""
 
     # Use dual model if available
     if has_dual_eval and mode == "AI Evaluation":

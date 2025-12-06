@@ -537,11 +537,11 @@ class MultiModelManager:
                 toxicity_model="unitary/toxic-bert",
                 toxicity_threshold=0.5
             )
-            self.using_hf_api = True
             self.eval_config = RECOMMENDED_CONFIGS["hf-api"]
 
             # Test the API connection
             if not self.hf_api_evaluator.is_available():
+                self.using_hf_api = False  # Reset flag on failure
                 return False, (
                     "✗ HuggingFace API not available. Check:\n"
                     "  1. Internet connection\n"
@@ -549,6 +549,8 @@ class MultiModelManager:
                     "  3. Optional: Set HF_API_TOKEN environment variable"
                 )
 
+            # Only set flag after successful availability check
+            self.using_hf_api = True
             message = "✓ HuggingFace API evaluation enabled\n"
             message += "  Model: toxic-bert (via API)\n"
             message += "  Memory: 0 GB (API-based)\n"
@@ -557,8 +559,10 @@ class MultiModelManager:
             return True, message
 
         except ImportError as e:
+            self.using_hf_api = False  # Reset flag on failure
             return False, f"✗ Failed to import HF API evaluator: {e}"
         except Exception as e:
+            self.using_hf_api = False  # Reset flag on failure
             return False, f"✗ Failed to setup HF API evaluation: {e}"
 
     def load_generation_model(
