@@ -285,13 +285,20 @@ def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
         success, message = multi_model_manager.load_evaluation_model(model_key)
 
         if success:
-            # Initialize evaluation framework with new model
-            eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
-            eval_success, eval_msg = evaluation_manager.initialize_frameworks(
-                model=eval_model,
-                tokenizer=eval_tokenizer,
-                device=multi_model_manager.device
-            )
+            # Special handling for HF API evaluation (no local model)
+            if multi_model_manager.using_hf_api:
+                # HF API doesn't need framework initialization
+                # The hf_api_evaluator is already set up in multi_model_manager
+                eval_success = True
+                eval_msg = "HF API evaluator ready"
+            else:
+                # Initialize evaluation framework with local model
+                eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
+                eval_success, eval_msg = evaluation_manager.initialize_frameworks(
+                    model=eval_model,
+                    tokenizer=eval_tokenizer,
+                    device=multi_model_manager.device
+                )
 
             if not eval_success:
                 message += f"\n\nWarning: {eval_msg}"
@@ -405,7 +412,28 @@ def evaluate_text_handler(
     }
     internal_mode = mode_map.get(mode, "regex")
 
-    result, success, message = evaluation_manager.evaluate_text(text, internal_mode)
+    # Special handling for HF API evaluation
+    if has_hf_api and internal_mode == "ai":
+        # Use HF API evaluator directly
+        hf_result = multi_model_manager.hf_api_evaluator.evaluate_harm(text, verbose=False)
+        result = {
+            "summary": {
+                "any_flagged": hf_result.get("flagged", False),
+                "evaluation_method": "hf_api",
+                "evaluation_time": 0.0,
+                "flagged_principles": ["Harm Prevention"] if hf_result.get("flagged") else []
+            },
+            "principles": {
+                "Harm Prevention": {
+                    "flagged": hf_result.get("flagged", False),
+                    "reasoning": hf_result.get("reasoning", "No reasoning available")
+                }
+            }
+        }
+        success = True
+        message = "✓ Evaluation complete (HF API)"
+    else:
+        result, success, message = evaluation_manager.evaluate_text(text, internal_mode)
 
     if not success:
         return message, ""
@@ -619,9 +647,18 @@ def start_training_handler(
             model_manager.set_status(ModelStatus.READY)
 
         if success:
-            # FIX (CRITICAL - BUG #1): Only save checkpoint for single model mode
-            # When using dual models, the trained model is in multi_model_manager, not model_manager
+            # Save checkpoint for comparison/impact analysis
             if not use_dual_models:
+                # Single model mode: save to model_manager
+                model_manager.save_trained_checkpoint(
+                    epoch=config.num_epochs,
+                    metrics=result.get("metrics", {})
+                )
+            else:
+                # Dual model mode: copy trained gen_model to model_manager for comparison
+                # This enables Impact Analysis to work with dual model training
+                model_manager.model = multi_model_manager.gen_model
+                model_manager.tokenizer = multi_model_manager.gen_tokenizer
                 model_manager.save_trained_checkpoint(
                     epoch=config.num_epochs,
                     metrics=result.get("metrics", {})
