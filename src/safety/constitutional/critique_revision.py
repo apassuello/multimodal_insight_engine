@@ -22,8 +22,8 @@ from .principles import set_eval_debug_level, get_eval_debug_level
 
 from src.utils.logging import get_logger
 
-# Module logger
-logger = get_logger(__name__)
+# Module logger (prefixed with _ to avoid shadowing the logger parameter in functions)
+_logger = get_logger(__name__)
 
 
 def _get_model_name(model: PreTrainedModel) -> str:
@@ -52,15 +52,15 @@ def _get_model_name(model: PreTrainedModel) -> str:
 
 def _log_section_header(title: str) -> None:
     """Print a section header."""
-    logger.info("─" * 70)
-    logger.info(f"│ {title}")
-    logger.info(f"{'─' * 70}")
+    _logger.info("─" * 70)
+    _logger.info(f"│ {title}")
+    _logger.info(f"{'─' * 70}")
 
 
 def _print_content(label: str, content: str, role: str = "") -> None:
     """Print content with label and optional role attribution."""
     _log_section_header(f"{label} [{role}]" if role else label)
-    logger.info(content)
+    _logger.info(content)
 
 
 def _print_evaluation_box(
@@ -75,27 +75,27 @@ def _print_evaluation_box(
     Print evaluation interaction in a clear boxed format.
     Shows the input to the evaluation model and its output.
     """
-    logger.info(f"{'┌' + '─' * 68 + '┐'}")
-    logger.info(f"│ EVALUATION ({phase}) → {eval_model_name:<40} │")
-    logger.info(f"{'├' + '─' * 68 + '┤'}")
+    _logger.info(f"{'┌' + '─' * 68 + '┐'}")
+    _logger.info(f"│ EVALUATION ({phase}) → {eval_model_name:<40} │")
+    _logger.info(f"{'├' + '─' * 68 + '┤'}")
 
     # Show what we're evaluating (truncated)
     preview = text_preview[:60] + "..." if len(text_preview) > 60 else text_preview
     preview = preview.replace('\n', ' ')
-    logger.info(f"│ Input:  \"{preview}\"")
-    logger.info(f"{'├' + '─' * 68 + '┤'}")
+    _logger.info(f"│ Input:  \"{preview}\"")
+    _logger.info(f"{'├' + '─' * 68 + '┤'}")
 
     # Show result
     if not violations:
-        logger.info(f"│ Result: ✓ CLEAN (Score: {score:.2f})")
+        _logger.info(f"│ Result: ✓ CLEAN (Score: {score:.2f})")
     else:
-        logger.info(f"│ Result: ⚠ {len(violations)} VIOLATION(S) (Score: {score:.2f})")
-        logger.info(f"│         → {', '.join(violations)}")
+        _logger.info(f"│ Result: ⚠ {len(violations)} VIOLATION(S) (Score: {score:.2f})")
+        _logger.info(f"│         → {', '.join(violations)}")
 
     if method:
-        logger.info(f"│ Method: {method}")
+        _logger.info(f"│ Method: {method}")
 
-    logger.info(f"{'└' + '─' * 68 + '┘'}")
+    _logger.info(f"{'└' + '─' * 68 + '┘'}")
 
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:
@@ -191,7 +191,7 @@ def generate_critique(
     except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage("CRITIQUE-ERROR", f"Critique generation failed: {e}")
-        logger.info(f"Warning: Critique generation failed: {e}")
+        _logger.info(f"Warning: Critique generation failed: {e}")
         return "Error generating critique."
 
 
@@ -253,7 +253,7 @@ def generate_revision(
     except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage("REVISION-ERROR", f"Revision generation failed: {e}, using original")
-        logger.info(f"Warning: Revision generation failed: {e}")
+        _logger.info(f"Warning: Revision generation failed: {e}")
         return response  # Fall back to original
 
 
@@ -297,19 +297,19 @@ def critique_revision_pipeline(
     set_eval_debug_level(0)
 
     # Print pipeline configuration
-    logger.info(f"{'═' * 70}")
-    logger.info(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
-    logger.info(f"{'═' * 70}")
-    logger.info(f"  Generation Model: {gen_model_name}")
-    logger.info(f"  Evaluation Model: {eval_model_name}")
-    logger.info(f"  Prompts: {len(prompts)} | Revisions per prompt: {num_revisions}")
-    logger.info(f"{'═' * 70}\n")
+    _logger.info(f"{'═' * 70}")
+    _logger.info(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
+    _logger.info(f"{'═' * 70}")
+    _logger.info(f"  Generation Model: {gen_model_name}")
+    _logger.info(f"  Evaluation Model: {eval_model_name}")
+    _logger.info(f"  Prompts: {len(prompts)} | Revisions per prompt: {num_revisions}")
+    _logger.info(f"{'═' * 70}\n")
 
     for idx, prompt in enumerate(tqdm(prompts, desc='Generating revised responses')):
         # Print example header
-        logger.info(f"{'━' * 70}")
-        logger.info(f"  EXAMPLE {idx + 1}/{len(prompts)}")
-        logger.info(f"{'━' * 70}")
+        _logger.info(f"{'━' * 70}")
+        _logger.info(f"  EXAMPLE {idx + 1}/{len(prompts)}")
+        _logger.info(f"{'━' * 70}")
 
         # Print full prompt
         _print_content("PROMPT", prompt)
@@ -392,8 +392,8 @@ def critique_revision_pipeline(
 
             # Print improvement summary
             if improvement > 0:
-                logger.info(f"  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
-                logger.info(f"  → Added to training set")
+                _logger.info(f"  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                _logger.info(f"  → Added to training set")
                 training_data.append({
                     'prompt': prompt,
                     'response': response,
@@ -422,8 +422,8 @@ def critique_revision_pipeline(
                         silent=True
                     )
             else:
-                logger.info(f"  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
-                logger.info(f"  → Skipped")
+                _logger.info(f"  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                _logger.info(f"  → Skipped")
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-SKIPPED",
@@ -434,24 +434,24 @@ def critique_revision_pipeline(
         except (RuntimeError, ValueError, TypeError) as e:
             if logger:
                 logger.log_stage("TRAINING-EXAMPLE-ERROR", f"Failed: {e}")
-            logger.info(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
+            _logger.info(f"Warning: Failed to process prompt '{prompt[:50]}...': {e}")
             continue
 
     # Print final summary
-    logger.info(f"{'═' * 70}")
-    logger.info(f"  PIPELINE SUMMARY")
-    logger.info(f"{'═' * 70}")
-    logger.info(f"  Total prompts processed: {len(prompts)}")
-    logger.info(f"  Training examples generated: {len(training_data)}")
-    logger.info(f"  Preference pairs collected: {len(preference_pairs)}")
-    logger.info(f"  Examples skipped: {len(prompts) - len(training_data)}")
+    _logger.info(f"{'═' * 70}")
+    _logger.info(f"  PIPELINE SUMMARY")
+    _logger.info(f"{'═' * 70}")
+    _logger.info(f"  Total prompts processed: {len(prompts)}")
+    _logger.info(f"  Training examples generated: {len(training_data)}")
+    _logger.info(f"  Preference pairs collected: {len(preference_pairs)}")
+    _logger.info(f"  Examples skipped: {len(prompts) - len(training_data)}")
     if training_data:
         avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
-        logger.info(f"  Average improvement: {avg_improvement:.2f}")
+        _logger.info(f"  Average improvement: {avg_improvement:.2f}")
     if preference_pairs:
         avg_margin = sum(p['margin'] for p in preference_pairs) / len(preference_pairs)
-        logger.info(f"  Average preference margin: {avg_margin:.2f}")
-    logger.info(f"{'═' * 70}\n")
+        _logger.info(f"  Average preference margin: {avg_margin:.2f}")
+    _logger.info(f"{'═' * 70}\n")
 
     # Restore original debug level
     set_eval_debug_level(original_debug_level)
@@ -562,19 +562,19 @@ def supervised_finetune(
     for idx, item in enumerate(training_data):
         # Check if required fields exist and are non-empty
         if 'prompt' not in item or 'response' not in item:
-            logger.info(f"Warning: Skipping training example {idx}: missing prompt or response")
+            _logger.info(f"Warning: Skipping training example {idx}: missing prompt or response")
             continue
 
         prompt = item.get('prompt', '').strip()
         response = item.get('response', '').strip()
 
         if not prompt or not response:
-            logger.info(f"Warning: Skipping training example {idx}: empty prompt or response")
+            _logger.info(f"Warning: Skipping training example {idx}: empty prompt or response")
             continue
 
         # Check for NaN or None values
         if prompt == 'nan' or response == 'nan' or prompt == 'None' or response == 'None':
-            logger.info(f"Warning: Skipping training example {idx}: NaN or None value detected")
+            _logger.info(f"Warning: Skipping training example {idx}: NaN or None value detected")
             continue
 
         valid_data.append(item)
@@ -582,7 +582,7 @@ def supervised_finetune(
     if not valid_data:
         raise ValueError(f"All {len(training_data)} training examples are invalid. Cannot train.")
 
-    logger.info(f"Using {len(valid_data)}/{len(training_data)} valid training examples")
+    _logger.info(f"Using {len(valid_data)}/{len(training_data)} valid training examples")
 
     model = model.to(device)
     model.train()
@@ -613,7 +613,7 @@ def supervised_finetune(
 
                 # Check for NaN in input tensors
                 if torch.isnan(input_ids.float()).any() or torch.isnan(attention_mask.float()).any():
-                    logger.info(f"Warning: NaN detected in batch {batch_idx} input tensors, skipping")
+                    _logger.info(f"Warning: NaN detected in batch {batch_idx} input tensors, skipping")
                     nan_batches += 1
                     continue
 
@@ -626,7 +626,7 @@ def supervised_finetune(
 
                 # Check for NaN loss
                 if torch.isnan(loss) or torch.isinf(loss):
-                    logger.info(f"Warning: NaN/Inf loss detected in batch {batch_idx}, skipping")
+                    _logger.info(f"Warning: NaN/Inf loss detected in batch {batch_idx}, skipping")
                     nan_batches += 1
                     continue
 
@@ -643,7 +643,7 @@ def supervised_finetune(
                         break
 
                 if has_nan_grad:
-                    logger.info(f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping")
+                    _logger.info(f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping")
                     nan_batches += 1
                     optimizer.zero_grad()
                     continue
@@ -660,12 +660,12 @@ def supervised_finetune(
                 batch_count += 1
 
             except (RuntimeError, ValueError, TypeError) as e:
-                logger.info(f"Warning: Error processing batch {batch_idx}: {e}")
+                _logger.info(f"Warning: Error processing batch {batch_idx}: {e}")
                 nan_batches += 1
                 continue
 
         if batch_count == 0:
-            logger.info(f"ERROR: Epoch {epoch+1} - All batches were invalid or produced NaN")
+            _logger.info(f"ERROR: Epoch {epoch+1} - All batches were invalid or produced NaN")
             # Still record the epoch with 0 loss
             metrics['losses'].append(0.0)
             metrics['epochs'].append(epoch + 1)
@@ -673,7 +673,7 @@ def supervised_finetune(
             avg_loss = epoch_loss / batch_count
             metrics['losses'].append(avg_loss)
             metrics['epochs'].append(epoch + 1)
-            logger.info(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)')
+            _logger.info(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)')
 
     return {
         'model': model,
