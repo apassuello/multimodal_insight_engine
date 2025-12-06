@@ -396,7 +396,12 @@ class TrainingManager:
 
             # Extract hidden size from model config
             # GPT-2 uses 'n_embd', most others use 'hidden_size'
-            hidden_size = getattr(model.config, 'hidden_size', None) or getattr(model.config, 'n_embd', 768)
+            if hasattr(model.config, 'n_embd') and model.config.n_embd is not None:
+                hidden_size = model.config.n_embd  # GPT-2 style
+            elif hasattr(model.config, 'hidden_size') and model.config.hidden_size is not None:
+                hidden_size = model.config.hidden_size  # Modern models
+            else:
+                hidden_size = 768  # Safe fallback
 
             reward_model = RewardModel(model, hidden_size=hidden_size)
             reward_model = reward_model.to(device)
