@@ -440,7 +440,7 @@ def evaluate_reward_model(
 
             # Prepare texts
             chosen_texts = [
-                item['prompt'] + ' ' + item['response_chosen']
+                item['prompt'] + ' ' + item['chosen']
                 for item in batch
             ]
             rejected_texts = [

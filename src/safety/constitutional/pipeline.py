@@ -404,9 +404,14 @@ class ConstitutionalPipeline:
         # Get model hidden size
         if hasattr(self.base_model, 'config'):
             # GPT-2 uses 'n_embd', most others use 'hidden_size'
-            hidden_size = getattr(self.base_model.config, 'hidden_size', None) or getattr(self.base_model.config, 'n_embd', 768)
+            if hasattr(self.base_model.config, 'n_embd') and self.base_model.config.n_embd is not None:
+                hidden_size = self.base_model.config.n_embd  # GPT-2 style
+            elif hasattr(self.base_model.config, 'hidden_size') and self.base_model.config.hidden_size is not None:
+                hidden_size = self.base_model.config.hidden_size  # Modern models
+            else:
+                hidden_size = 768  # Fallback
         else:
-            # Default fallback
+            # No config available
             hidden_size = 768
 
         self.reward_model = RewardModel(base_model=self.base_model, hidden_size=hidden_size)
