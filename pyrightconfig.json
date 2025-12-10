@@ -1,9 +1,29 @@
 {
-    "venvPath": "/Users/apa/miniconda3/envs",
-    "venv": "me",
-    "extraPaths": [
-        "/Users/apa/miniconda3/envs/me/lib/python3.10/site-packages"
+    "include": [
+        "src",
+        "tests"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/.venv",
+        "**/venv",
+        "**/env",
+        "**/.pytest_cache",
+        "**/.mypy_cache",
+        "**/.ruff_cache",
+        "**/build",
+        "**/dist",
+        "**/*.egg-info"
     ],
     "reportMissingImports": true,
-    "reportMissingTypeStubs": false
+    "reportMissingTypeStubs": false,
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning",
+    "reportDuplicateImport": "warning",
+    "pythonVersion": "3.8",
+    "pythonPlatform": "Linux",
+    "typeCheckingMode": "basic",
+    "useLibraryCodeForTypes": true,
+    "venvPath": ".",
+    "venv": ".venv"
 }
