@@ -5,10 +5,11 @@ to add specific capabilities like temperature scaling, normalization,
 projection heads, and hard negative mining.
 """
 
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple
 
 
 class TemperatureScalingMixin:

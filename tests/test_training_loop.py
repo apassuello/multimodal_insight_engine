@@ -3,8 +3,8 @@
 Tests training loop execution, gradient handling, and diagnostics.
 """
 
-import tempfile
 import shutil
+import tempfile
 
 import pytest
 import torch

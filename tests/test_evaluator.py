@@ -3,13 +3,15 @@ Unit tests for evaluator.py
 Tests the ConstitutionalSafetyEvaluator and two-stage evaluation process.
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 import torch
+
 from src.safety.constitutional.evaluator import (
     ConstitutionalSafetyEvaluator,
+    combine_reasoning,
     critique_indicates_issues,
-    combine_reasoning
 )
 from src.safety.constitutional.framework import ConstitutionalFramework, ConstitutionalPrinciple
 from src.safety.constitutional.principles import setup_default_framework

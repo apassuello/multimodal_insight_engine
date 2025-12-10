@@ -14,13 +14,15 @@ DEPENDENCIES:
 """
 
 import os
-import sys
 import random
+from typing import List, Optional, Tuple
+
 from tqdm import tqdm
-from typing import List, Tuple, Optional, Dict, Any
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
-import json
 
 
 class WMTDataset:
@@ -127,7 +129,7 @@ class WMTDataset:
             Tuple containing lists of source and target sentences
         """
         try:
-            from datasets import load_dataset, get_dataset_config_names
+            from datasets import get_dataset_config_names, load_dataset
 
             # Determine dataset name and config
             dataset_name = f"wmt{self.year}"
@@ -170,14 +172,14 @@ class WMTDataset:
             swap_languages = False
             if f"{self.tgt_lang}-{self.src_lang}" == lang_pair:
                 swap_languages = True
-                logger.info(f"Note: Source and target are swapped in the dataset")
+                logger.info("Note: Source and target are swapped in the dataset")
 
             # Convert to list for easier processing
             logger.info("Processing dataset examples...")
             examples = list(dataset)
 
             if not examples:
-                raise ValueError(f"No examples found in the dataset")
+                raise ValueError("No examples found in the dataset")
 
             # Check structure of examples to determine how to extract translations
             sample = examples[0]
@@ -254,7 +256,7 @@ class WMTDataset:
             # Try to load from cache if available
             cached_data = self._load_from_cache()
             if cached_data:
-                logger.info(f"Loaded data from cache instead")
+                logger.info("Loaded data from cache instead")
                 return cached_data
 
             raise RuntimeError(
@@ -300,10 +302,10 @@ class WMTDataset:
 
         if os.path.exists(src_file) and os.path.exists(tgt_file):
             try:
-                with open(src_file, "r", encoding="utf-8") as f:
+                with open(src_file, encoding="utf-8") as f:
                     src_data = f.read().strip().split("\n")
 
-                with open(tgt_file, "r", encoding="utf-8") as f:
+                with open(tgt_file, encoding="utf-8") as f:
                     tgt_data = f.read().strip().split("\n")
 
                 if len(src_data) > 0 and len(tgt_data) > 0:

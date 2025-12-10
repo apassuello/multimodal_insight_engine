@@ -11,15 +11,16 @@ Tests cover:
 - Hard negative mining
 """
 
-import pytest
-import torch
-from torch.utils.data import DataLoader
-import os
 import json
+import os
 import tempfile
 from pathlib import Path
-from PIL import Image
+
 import numpy as np
+import pytest
+import torch
+from PIL import Image
+from torch.utils.data import DataLoader
 
 from src.data.multimodal_dataset import MultimodalDataset
 

@@ -18,14 +18,15 @@ SPECIAL NOTES:
 - Supports metric grouping and visualization
 """
 
-import os
 import logging
+import os
 from collections import defaultdict
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
 
-import torch
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
 
 logger = logging.getLogger(__name__)
 

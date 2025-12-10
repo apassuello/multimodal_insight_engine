@@ -55,7 +55,7 @@ exclude = [
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
-    "F",      # pyflakes (undefined names, unused imports, etc.)
+    "F",      # pyflakes (undefined names, unused imports, etc.) - CRITICAL: catches bugs like undefined logger
     "I",      # isort (import sorting)
     "N",      # pep8-naming
     "UP",     # pyupgrade (modernize Python code)
@@ -63,7 +63,8 @@ select = [
     "C4",     # flake8-comprehensions
     "SIM",    # flake8-simplify
     "TCH",    # flake8-type-checking
-    "PTH",    # flake8-use-pathlib
+    # NOTE: PTH (pathlib) rules disabled - too opinionated for portfolio project
+    # os.path works fine; focus on catching real bugs (F821, etc.)
 ]
 
 # Rules to ignore
@@ -73,6 +74,8 @@ ignore = [
     "C901",   # Too complex (we have complex ML code)
     "E203",   # Whitespace before ':' (conflicts with Black)
     "SIM108", # Use ternary operator (not always clearer)
+    "UP006",  # Use `list` instead of `List` for type annotations (Python 3.8 compat)
+    "UP007",  # Use `X | Y` for type annotations (Python 3.8 compat)
 ]
 
 # Per-file ignores

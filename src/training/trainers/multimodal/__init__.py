@@ -14,11 +14,12 @@ Main Components:
 """
 
 from .checkpoint_manager import CheckpointManager
-from .metrics_collector import MetricsCollector
-from .training_loop import TrainingLoop
-from .evaluation import Evaluator
 from .data_handler import DataHandler
-from .trainer import MultimodalTrainer, ModalityBalancingScheduler
+from .evaluation import Evaluator
+from .metrics_collector import MetricsCollector
+from .trainer import ModalityBalancingScheduler, MultimodalTrainer
+from .training_loop import TrainingLoop
+
 
 __all__ = [
     "MultimodalTrainer",

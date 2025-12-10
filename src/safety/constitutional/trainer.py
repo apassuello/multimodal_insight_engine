@@ -9,19 +9,22 @@ SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning by combinin
 constitutional evaluation with PPO-based reinforcement learning
 """
 
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Any, Optional, Tuple
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 import numpy as np
 from tqdm import tqdm
 
-from .framework import ConstitutionalFramework
 from .evaluator import ConstitutionalSafetyEvaluator
-from .principles import setup_default_framework
+from .framework import ConstitutionalFramework
 from .ppo_trainer import PPOTrainer
+from .principles import setup_default_framework
 from .reward_model import RewardModel
 
 
@@ -178,7 +181,7 @@ class RLAIFTrainer:
             Generated response text
         """
         try:
-            from .model_utils import generate_text, GenerationConfig
+            from .model_utils import GenerationConfig, generate_text
 
             # Get tokenizer
             if tokenizer is None:
@@ -233,7 +236,7 @@ Provide a detailed analysis of any issues with respect to:
 Analysis:"""
 
         try:
-            from .model_utils import generate_text, GenerationConfig
+            from .model_utils import GenerationConfig, generate_text
 
             # Use critique model or policy model
             model = self.critique_model if self.critique_model is not None else self.policy_model
@@ -419,7 +422,7 @@ Analysis:"""
                 )
                 self.stats["improvement_rate"] = float(improvement)
 
-        logger.info(f"\nPPO Training Complete")
+        logger.info("\nPPO Training Complete")
         logger.info(f"Final Average Reward: {ppo_results['final_avg_reward']:.4f}")
         logger.info(f"Final KL Divergence: {ppo_results['final_kl_divergence']:.4f}")
 

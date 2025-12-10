@@ -1,18 +1,18 @@
 # src/training/strategies/single_modality_strategy.py
 
+import logging
+from typing import Any, Dict
+
 import torch
 import torch.nn as nn
 from torch.optim.adamw import AdamW
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
-from tqdm import tqdm
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.utils.learningrate_scheduler import WarmupCosineScheduler
-from src.utils.gradient_handler import GradientHandler
-from src.utils.metrics_tracker import MetricsTracker
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 from src.training.losses.self_supervised import VICRegLoss
+from src.training.strategies.training_strategy import TrainingStrategy
+from src.utils.gradient_handler import GradientHandler
+from src.utils.learningrate_scheduler import WarmupCosineScheduler
+
 
 logger = logging.getLogger(__name__)
 
@@ -173,9 +173,7 @@ class SingleModalityStrategy(TrainingStrategy):
             # Vision projection dimension
             if hasattr(self.model, "vision_projection"):
                 vision_proj = self.model.vision_projection
-                if isinstance(vision_proj, nn.Linear):
-                    return vision_proj.out_features
-                elif hasattr(vision_proj, "out_features"):
+                if isinstance(vision_proj, nn.Linear) or hasattr(vision_proj, "out_features"):
                     return vision_proj.out_features
                 elif isinstance(vision_proj, nn.Sequential) and hasattr(
                     vision_proj[-1], "out_features"
@@ -185,15 +183,13 @@ class SingleModalityStrategy(TrainingStrategy):
             # Text projection dimension as fallback
             if hasattr(self.model, "text_projection"):
                 text_proj = self.model.text_projection
-                if isinstance(text_proj, nn.Linear):
-                    return text_proj.out_features
-                elif hasattr(text_proj, "out_features"):
+                if isinstance(text_proj, nn.Linear) or hasattr(text_proj, "out_features"):
                     return text_proj.out_features
                 elif isinstance(text_proj, nn.Sequential) and hasattr(
                     text_proj[-1], "out_features"
                 ):
                     return text_proj[-1].out_features
-        except (AttributeError, TypeError, IndexError) as e:
+        except (AttributeError, TypeError, IndexError):
             pass  # Silently fail and use default
 
         # Default to 512 as a common projection dimension

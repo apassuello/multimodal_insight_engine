@@ -4,8 +4,8 @@ Tests checkpoint saving, loading, and training state persistence.
 """
 
 import os
-import tempfile
 import shutil
+import tempfile
 from collections import defaultdict
 
 import pytest

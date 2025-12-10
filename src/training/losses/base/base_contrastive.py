@@ -5,17 +5,17 @@ including shared logic for similarity computation, positive/negative pair handli
 and common contrastive loss patterns.
 """
 
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, Optional, Union, List
-from abc import ABC, abstractmethod
 
 from .mixins import (
-    TemperatureScalingMixin,
+    HardNegativeMiningMixin,
     NormalizationMixin,
     ProjectionMixin,
-    HardNegativeMiningMixin,
+    TemperatureScalingMixin,
 )
 
 

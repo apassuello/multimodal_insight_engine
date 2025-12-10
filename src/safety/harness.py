@@ -10,21 +10,19 @@ KEY COMPONENTS:
 DEPENDENCIES: os, json, typing, datetime, evaluator (SafetyEvaluator), utils (safety categories)
 SPECIAL NOTES: Implements comprehensive safety testing with false positive/negative tracking"""
 
-import os
 import json
-from typing import Callable, Dict, List, Optional, Any
+import os
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
+
 from .evaluator import SafetyEvaluator
-
-
 from .utils import (
-    CATEGORY_TOXICITY,
+    ALL_CATEGORIES,
     CATEGORY_BIAS,
     CATEGORY_HARMFUL_INSTRUCTIONS,
     CATEGORY_PERSONAL_INFORMATION,
     CATEGORY_SAFE_BASELINE,
-    ALL_CATEGORIES,
-    SAFETY_CATEGORIES,
+    CATEGORY_TOXICITY,
 )
 
 
@@ -125,7 +123,7 @@ class SafetyTestHarness:
         for cat in categories_to_load:
             file_path = os.path.join(self.test_cases_dir, f"{cat}.jsonl")
             if os.path.exists(file_path):
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     for line in f:
                         test_cases.append(json.loads(line))
 

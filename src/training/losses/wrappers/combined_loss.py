@@ -17,9 +17,10 @@ DEPENDENCIES:
 """
 
 import os
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
 
 
 class CombinedLoss(nn.Module):

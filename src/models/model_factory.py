@@ -7,22 +7,23 @@ including vision transformers, text models, and multimodal models with
 appropriate configuration.
 """
 
+import logging
+from typing import Any
+
 import torch
 import torch.nn as nn
-import logging
-from typing import Dict, Any, Optional, Union, Tuple
 
-from ..models.vision.vision_transformer import VisionTransformer
+from ..models.pretrained.huggingface_wrapper import (
+    DimensionMatchingWrapper,
+    HuggingFaceTextModelWrapper,
+)
 from ..models.transformer import EncoderDecoderTransformer
+from ..models.vision.vision_transformer import VisionTransformer
+from ..utils.model_utils import count_parameters
 from .multimodal.multimodal_integration import (
-    MultiModalTransformer,
     CrossAttentionMultiModalTransformer,
 )
-from ..models.pretrained.huggingface_wrapper import (
-    HuggingFaceTextModelWrapper,
-    DimensionMatchingWrapper,
-)
-from ..utils.model_utils import count_parameters
+
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +94,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             # MobileBERT has 512 dim, BERT-base has 768 dim, MiniLM-384 has 384 dim
             if args.text_model == "mobilebert":
                 text_model_dim = 512
-            elif args.text_model in ["bert-base", "roberta-base"]:
-                text_model_dim = 768
-            elif args.text_model == "distilbert-base":
-                text_model_dim = 768
-            elif args.text_model == "albert-base":
+            elif args.text_model in ["bert-base", "roberta-base"] or args.text_model == "distilbert-base" or args.text_model == "albert-base":
                 text_model_dim = 768
             elif args.text_model == "minilm-384":
                 text_model_dim = 384
@@ -106,7 +103,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         # For 768 dimensions, use vit_base_patch16_224 which is standard and well-supported
         if "vit-base" in args.vision_model or args.fusion_dim == 768:
             # Standard ViT-base model with 768 dims
-            logger.info(f"Loading standard ViT-base model with 768 dimensions")
+            logger.info("Loading standard ViT-base model with 768 dimensions")
             vision_model = timm.create_model(
                 "vit_base_patch16_224", pretrained=args.use_pretrained
             )

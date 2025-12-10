@@ -3,8 +3,10 @@ Unit tests for filter.py
 Tests the ConstitutionalSafetyFilter for input validation and output filtering.
 """
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
+
 from src.safety.constitutional.filter import ConstitutionalSafetyFilter
 from src.safety.constitutional.framework import ConstitutionalFramework, ConstitutionalPrinciple
 from src.safety.constitutional.principles import setup_default_framework

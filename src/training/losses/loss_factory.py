@@ -6,15 +6,23 @@ This module provides factory functions to create various types of loss functions
 tailored for multimodal learning, with appropriate configurations.
 """
 
+import logging
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
-import logging
-from typing import Dict, Any, Optional, Union, Callable
 
-from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss, DynamicTemperatureLoss, DecoupledLoss
+from .contrastive import (
+    DecoupledLoss,
+    DynamicTemperatureLoss,
+    HardNegativeLoss,
+    MoCoLoss,
+    SimCLRLoss,
+)
 from .multimodal import MixedMultimodalLoss
 from .self_supervised import BarlowTwinsLoss, VICRegLoss
 from .wrappers import CombinedLoss
+
 
 # Backward compatibility aliases
 ContrastiveLoss = SimCLRLoss

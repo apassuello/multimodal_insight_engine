@@ -13,15 +13,16 @@ SPECIAL NOTES: This module follows the architecture described in "Attention is A
 """
 
 import os
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from typing import Optional, Dict, Any
 
-from .base_model import BaseModel
 from .attention import MultiHeadAttention
+from .base_model import BaseModel
+from .embeddings import TokenEmbedding
 from .layers import FeedForwardBlock
 from .positional import PositionalEncoding, RotaryPositionEncoding
-from .embeddings import TokenEmbedding
 
 
 class TransformerEncoderLayer(nn.Module):

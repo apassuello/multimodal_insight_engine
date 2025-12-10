@@ -1,13 +1,13 @@
-import torch
-import time
-import numpy as np
-from tqdm import tqdm
-from collections import Counter
+import multiprocessing
 import os
 import pickle  # Used for backward compatibility with old caches
-import multiprocessing
-from functools import partial
+import time
+
+import torch
+from tqdm import tqdm
+
 from .vocabulary import Vocabulary
+
 
 class TurboBPEPreprocessor:
     """
@@ -16,7 +16,7 @@ class TurboBPEPreprocessor:
     This preprocessor uses aggressive caching, parallel processing, and avoids
     unnecessary CPU-GPU transfers for maximum performance on M-series chips.
     """
-    
+
     def __init__(self, cache_dir="tokenizer_cache"):
         """
         Initialize the preprocessor.
@@ -29,21 +29,21 @@ class TurboBPEPreprocessor:
         self.word_cache = {}
         self.dataset_cache = {}
         self.vocab = Vocabulary()  # Initialize with Vocabulary class
-        
+
         # Determine best batch size for local hardware
         # Smaller batches often work better on MPS for this workload
         self.optimal_batch_size = 1000  # Adjusted for M4-Pro
-        
+
         # Determine number of CPU cores to use (leave some for system)
         num_cpus = multiprocessing.cpu_count()
         self.num_workers = max(1, num_cpus - 2)
-        
+
         # Check if we're using MPS
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         logger.info(f"TurboBPEPreprocessor initialized with {self.num_workers} worker processes")
         logger.info(f"Optimal batch size: {self.optimal_batch_size}")
         logger.info(f"Using device: {self.device}")
-    
+
     def _generate_cache_key(self, dataset):
         """Generate a cache key based on the dataset characteristics."""
         # Use first few examples to create a hash
@@ -52,7 +52,7 @@ class TurboBPEPreprocessor:
         sample_text = "".join(samples)
         import hashlib
         return hashlib.md5(sample_text.encode()).hexdigest()
-    
+
     def check_cached_preprocessed_data(self, dataset, src_lang="de", tgt_lang="en"):
         """Check if preprocessed data exists in cache.
         First tries JSON (secure), then falls back to pickle (legacy)."""
@@ -65,7 +65,7 @@ class TurboBPEPreprocessor:
             logger.info(f"Found cached preprocessed data: {cache_file_json}")
             try:
                 import json
-                with open(cache_file_json, 'r') as f:
+                with open(cache_file_json) as f:
                     # Load as JSON (SAFE - no code execution risk)
                     data = json.load(f)
                     # Convert back to tuple format
@@ -80,7 +80,7 @@ class TurboBPEPreprocessor:
             try:
                 with open(cache_file_pickle, 'rb') as f:
                     data = pickle.load(f)
-                logger.info(f"Loaded from pickle cache, converting to JSON for future use...")
+                logger.info("Loaded from pickle cache, converting to JSON for future use...")
 
                 # Migrate to JSON for next time
                 self.save_preprocessed_data(data, dataset, src_lang, tgt_lang)
@@ -90,7 +90,7 @@ class TurboBPEPreprocessor:
                 logger.info(f"Error loading pickle cache: {e}. Regenerating...")
 
         return None
-    
+
     def save_preprocessed_data(self, data, dataset, src_lang="de", tgt_lang="en"):
         """Save preprocessed data to cache."""
         cache_key = self._generate_cache_key(dataset)
@@ -110,37 +110,37 @@ class TurboBPEPreprocessor:
             logger.info(f"Saved preprocessed data to cache: {cache_file}")
         except Exception as e:
             logger.info(f"Error saving cache: {e}")
-    
+
     def _get_token_index(self, token: str) -> int:
         """Get token index from vocabulary."""
         if token not in self.vocab.token_to_idx:
             self.vocab.add_token(token)
         return self.vocab.token_to_idx[token]
-    
+
     def _process_text_batch(self, texts, tokenizer):
         """Process a batch of texts with a tokenizer."""
         # Using cached MPS implementation
         token_ids_batch = []
-        
+
         for text in texts:
             # Check if text is in cache
             if text in self.word_cache:
                 token_ids_batch.append(self.word_cache[text])
                 continue
-                
+
             # Preprocess text
             processed = tokenizer.preprocess(text)
-            
+
             # Split into words
             words = processed.split()
-            
+
             # Tokenize words individually with caching
             all_tokens = []
             for word in words:
                 # Skip empty words
                 if not word:
                     continue
-                    
+
                 # Use cached tokens if available
                 word_key = (tokenizer.__class__.__name__, word)
                 if word_key in self.word_cache:
@@ -150,38 +150,38 @@ class TurboBPEPreprocessor:
                     tokens = tokenizer._tokenize_word(word)
                     # Cache result
                     self.word_cache[word_key] = tokens
-                
+
                 all_tokens.extend(tokens)
-            
+
             # Convert to token IDs using Vocabulary
             token_ids = [self._get_token_index(token) for token in all_tokens]
-            
+
             # Cache the result for the whole text
             self.word_cache[text] = token_ids
             token_ids_batch.append(token_ids)
-        
+
         return token_ids_batch
-    
+
     def _process_data_chunk(self, args):
         """Process a chunk of data (for multiprocessing)."""
         chunk_id, src_chunk, tgt_chunk, src_tokenizer, tgt_tokenizer, special_tokens = args
-        
+
         # Process source texts
         src_token_ids = self._process_text_batch(src_chunk, src_tokenizer)
-        
+
         # Process target texts
         tgt_token_ids = self._process_text_batch(tgt_chunk, tgt_tokenizer)
-        
+
         # Add special tokens
         src_sequences = []
         tgt_sequences = []
-        
+
         for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
             src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
             tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
-        
+
         return chunk_id, src_sequences, tgt_sequences
-    
+
     def preprocess_with_caching(self, dataset, src_tokenizer, tgt_tokenizer, force_regenerate=False):
         """Preprocess data with aggressive caching and parallel processing."""
         # Check cache first
@@ -189,12 +189,12 @@ class TurboBPEPreprocessor:
             cached_data = self.check_cached_preprocessed_data(dataset)
             if cached_data is not None:
                 return cached_data
-        
+
         logger.info(f"Preprocessing {len(dataset.src_data)} sentence pairs...")
-        
+
         # Initialize timer
         start_time = time.time()
-        
+
         # Get special token IDs from tokenizer's special_tokens property
         special_tokens = {
             'src_bos': src_tokenizer.special_tokens["bos_token_idx"],
@@ -202,81 +202,81 @@ class TurboBPEPreprocessor:
             'tgt_bos': tgt_tokenizer.special_tokens["bos_token_idx"],
             'tgt_eos': tgt_tokenizer.special_tokens["eos_token_idx"],
         }
-        
+
         # Always use single-process approach for MPS
         logger.info("Using single-process approach with GPU acceleration")
-        
+
         # Process in optimally-sized batches for MPS
         src_sequences = []
         tgt_sequences = []
-        
+
         # Use tqdm for progress tracking
-        for i in tqdm(range(0, len(dataset.src_data), self.optimal_batch_size), 
+        for i in tqdm(range(0, len(dataset.src_data), self.optimal_batch_size),
                      desc="Processing batches"):
             end_idx = min(i + self.optimal_batch_size, len(dataset.src_data))
-            
+
             # Get batch
             src_batch = dataset.src_data[i:end_idx]
             tgt_batch = dataset.tgt_data[i:end_idx]
-            
+
             # Process batch
             src_token_ids = self._process_text_batch(src_batch, src_tokenizer)
             tgt_token_ids = self._process_text_batch(tgt_batch, tgt_tokenizer)
-            
+
             # Add special tokens
             for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
                 src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
                 tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
-        
+
         # Calculate processing time
         elapsed_time = time.time() - start_time
         examples_per_sec = len(dataset.src_data) / elapsed_time
-        
+
         logger.info(f"Preprocessing completed in {elapsed_time:.2f}s ({examples_per_sec:.1f} examples/sec)")
-        
+
         # Cache result for future use
         result = (src_sequences, tgt_sequences)
         self.save_preprocessed_data(result, dataset)
-        
+
         return result
-    
+
     @staticmethod
     def optimize_tokenizer_for_preprocessing(tokenizer):
         """Apply optimizations to a tokenizer for preprocessing."""
         # 1. Add word cache if it doesn't exist
         if not hasattr(tokenizer, 'word_token_cache'):
             tokenizer.word_token_cache = {}
-        
+
         # 2. Ensure _tokenize_word uses simple dictionary lookup when possible
         if not hasattr(tokenizer, '_tokenize_word_original'):
             # Save original implementation
             tokenizer._tokenize_word_original = tokenizer._tokenize_word
-            
+
             # Replace with optimized version that prioritizes cache and dict lookup
             def _tokenize_word_optimized(self, word: str) -> list:
                 # Check cache first
                 if word in self.word_token_cache:
                     return self.word_token_cache[word]
-                
+
                 # For single-character words, return immediately
                 if len(word) <= 1:
                     result = [word]
                     self.word_token_cache[word] = result
                     return result
-                
+
                 # Use original implementation but with caching
                 result = self._tokenize_word_original(word)
-                
+
                 # Cache result
                 if len(self.word_token_cache) < 100000:  # Limit cache size
                     self.word_token_cache[word] = result
-                
+
                 return result
-            
+
             # Bind the optimized method to the tokenizer instance
             import types
             tokenizer._tokenize_word = types.MethodType(_tokenize_word_optimized, tokenizer)
-        
+
         return tokenizer
 
 def turbo_preprocess_data(dataset, de_tokenizer, en_tokenizer, force_regenerate=False):
@@ -294,15 +294,15 @@ def turbo_preprocess_data(dataset, de_tokenizer, en_tokenizer, force_regenerate=
     """
     # Create the processor
     processor = TurboBPEPreprocessor()
-    
+
     # Optimize tokenizers
     de_tokenizer = processor.optimize_tokenizer_for_preprocessing(de_tokenizer)
     en_tokenizer = processor.optimize_tokenizer_for_preprocessing(en_tokenizer)
-    
+
     # Process the dataset
     return processor.preprocess_with_caching(
-        dataset, 
-        de_tokenizer, 
+        dataset,
+        de_tokenizer,
         en_tokenizer,
         force_regenerate=force_regenerate
     )

@@ -8,20 +8,23 @@ DEPENDENCIES: torch, language_model_trainer, constitutional AI modules
 SPECIAL NOTES: Implements Constitutional AI training approach for safer model outputs
 """
 
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Union, Any, Tuple
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
-import time
-import math
-import numpy as np
-import matplotlib.pyplot as plt
 import os
+
+import numpy as np
 from tqdm import tqdm
 
 from .language_model_trainer import LanguageModelTrainer
+
 
 # Import constitutional AI components
 try:
@@ -199,7 +202,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         """
         # Extract inputs
         if isinstance(batch, dict):
-            input_ids = batch.get("input_ids", batch.get("inputs", None))
+            input_ids = batch.get("input_ids", batch.get("inputs"))
             labels = batch.get("labels", batch.get("targets", input_ids))
         else:
             input_ids = batch
@@ -308,7 +311,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Extract input_ids
             if isinstance(batch, dict):
-                input_ids = batch.get("input_ids", batch.get("inputs", None))
+                input_ids = batch.get("input_ids", batch.get("inputs"))
             else:
                 input_ids = batch
 
@@ -518,7 +521,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Constitutional evaluation
             if epoch % max(1, num_epochs // 5) == 0:  # Evaluate every 20% of training
-                logger.info(f"\n  Evaluating constitutional compliance...")
+                logger.info("\n  Evaluating constitutional compliance...")
                 # This would need actual text generation capability
                 # For now, we track the framework statistics
                 framework_stats = self.constitutional_framework.get_statistics()

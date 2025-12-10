@@ -21,11 +21,12 @@ SPECIAL NOTES:
 
 import logging
 from collections import defaultdict
-from typing import Dict, Optional, Any, Callable
+from typing import Any, Callable, Dict, Optional
 
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+
 
 logger = logging.getLogger(__name__)
 

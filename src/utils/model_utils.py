@@ -24,10 +24,11 @@ This module provides utilities for model inspection, parameter counting,
 data conversion, and other helper functions for model management.
 """
 
+import os
+from typing import Any, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Tuple, Optional, Union, Any
-import os
 
 
 def count_parameters(model: nn.Module) -> int:

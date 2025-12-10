@@ -14,11 +14,12 @@ SPECIAL NOTES:
 - Provides flexible reduction options for different training scenarios
 """
 
+import os
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Union, Tuple
-import os
 
 
 class CrossEntropyLoss(nn.Module):
@@ -36,7 +37,7 @@ class CrossEntropyLoss(nn.Module):
         weight (torch.Tensor, optional): Manual rescaling weight given to each class.
             Defaults to None.
     """
-    
+
     def __init__(
         self,
         smoothing: float = 0.1,
@@ -47,7 +48,7 @@ class CrossEntropyLoss(nn.Module):
         self.smoothing = smoothing
         self.reduction = reduction
         self.weight = weight
-        
+
     def forward(
         self,
         input: torch.Tensor,
@@ -74,11 +75,11 @@ class CrossEntropyLoss(nn.Module):
             loss = -(smooth_one_hot * log_probs).sum(dim=-1)
         else:
             loss = F.cross_entropy(input, target, weight=self.weight, reduction='none')
-        
+
         # Apply sample weights if provided
         if sample_weight is not None:
             loss = loss * sample_weight
-        
+
         # Apply reduction
         if self.reduction == 'mean':
             return loss.mean()
@@ -101,7 +102,7 @@ class MeanSquaredError(nn.Module):
         clip_grad (float, optional): Maximum gradient value for clipping.
             Defaults to None.
     """
-    
+
     def __init__(
         self,
         reduction: str = 'mean',
@@ -110,7 +111,7 @@ class MeanSquaredError(nn.Module):
         super().__init__()
         self.reduction = reduction
         self.clip_grad = clip_grad
-        
+
     def forward(
         self,
         input: torch.Tensor,
@@ -130,21 +131,21 @@ class MeanSquaredError(nn.Module):
         """
         # Compute squared error
         loss = (input - target) ** 2
-        
+
         # Apply sample weights if provided
         if sample_weight is not None:
             loss = loss * sample_weight.unsqueeze(-1)
-        
+
         # Apply reduction
         if self.reduction == 'mean':
             loss = loss.mean()
         elif self.reduction == 'sum':
             loss = loss.sum()
-        
+
         # Clip gradients if specified
         if self.clip_grad is not None:
             loss = torch.clamp(loss, max=self.clip_grad)
-        
+
         return loss
 
 

@@ -9,30 +9,27 @@ DEPENDENCIES: torch, critique_revision, preference_comparison, reward_model, ppo
 SPECIAL NOTES: Implements full Anthropic Constitutional AI methodology
 """
 
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Any, Optional, Tuple
+
 from src.utils.logging import get_logger
+
 
 # Module logger
 logger = get_logger(__name__)
 import os
-import json
 from pathlib import Path
+
 from tqdm import tqdm
 
+from .critique_revision import critique_revision_pipeline, supervised_finetune
 from .framework import ConstitutionalFramework
-from .principles import setup_default_framework
-from .critique_revision import (
-    critique_revision_pipeline,
-    supervised_finetune
-)
-from .preference_comparison import generate_preference_pairs
-from .reward_model import (
-    RewardModel,
-    RewardModelTrainer
-)
 from .ppo_trainer import PPOTrainer
+from .preference_comparison import generate_preference_pairs
+from .principles import setup_default_framework
+from .reward_model import RewardModel, RewardModelTrainer
 
 
 class ConstitutionalPipeline:
@@ -431,7 +428,7 @@ class ConstitutionalPipeline:
             num_epochs=reward_model_epochs
         )
 
-        logger.info(f"Reward model training complete")
+        logger.info("Reward model training complete")
         logger.info(f"Final loss: {reward_results['final_loss']:.4f}")
         logger.info(f"Final accuracy: {reward_results['final_accuracy']:.2%}")
 
@@ -461,7 +458,7 @@ class ConstitutionalPipeline:
 
         self.stats["phase2_ppo_steps"] = ppo_steps
 
-        logger.info(f"PPO training complete")
+        logger.info("PPO training complete")
         logger.info(f"Final reward: {ppo_results['final_avg_reward']:.4f}")
         logger.info(f"Final KL divergence: {ppo_results['final_kl_divergence']:.4f}")
 
@@ -504,7 +501,7 @@ class ConstitutionalPipeline:
         model.eval()
 
         from .evaluator import ConstitutionalSafetyEvaluator
-        from .model_utils import generate_text, GenerationConfig
+        from .model_utils import GenerationConfig, generate_text
 
         evaluator = ConstitutionalSafetyEvaluator(
             framework=self.constitutional_framework,

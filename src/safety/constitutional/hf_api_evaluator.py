@@ -12,8 +12,8 @@ SPECIAL NOTES: Uses HF Inference API for accurate toxicity/harm detection withou
 
 import os
 import time
-from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional
 
 
 @dataclass

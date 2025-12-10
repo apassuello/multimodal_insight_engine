@@ -16,20 +16,25 @@ DEPENDENCIES:
 - multimodal_data_utils
 """
 
-import torch
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-import PIL.Image as Image
-import os
 import json
+import os
 import pickle  # Used for backward compatibility with old caches
-import time
 import random
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
+import time
+from typing import Callable, Dict, List, Optional, Union
+
+import PIL.Image as Image
+import torch
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
 
 from ..models.vision.image_preprocessing import ImagePreprocessor
 
@@ -129,7 +134,7 @@ class MultimodalDataset(Dataset):
         if not os.path.exists(metadata_path):
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
-        with open(metadata_path, "r") as f:
+        with open(metadata_path) as f:
             full_metadata = json.load(f)
 
         # Check if metadata has split information
@@ -431,8 +436,8 @@ class Flickr30kDataset(MultimodalDataset):
             # Load the dataset from HuggingFace if not in cache
             try:
                 # Load from Hugging Face datasets
-                from datasets import load_dataset
                 import tqdm
+                from datasets import load_dataset
 
                 logger.info(f"Loading Flickr30k dataset for split: {split}...")
 
@@ -518,7 +523,7 @@ class Flickr30kDataset(MultimodalDataset):
         if os.path.exists(self.cache_metadata) and os.path.exists(cache_samples_json):
             try:
                 # Load samples from JSON file (SAFE)
-                with open(cache_samples_json, "r") as f:
+                with open(cache_samples_json) as f:
                     self.samples = json.load(f)
 
                 # Ensure cache is valid
@@ -534,7 +539,7 @@ class Flickr30kDataset(MultimodalDataset):
         # Fallback to pickle for backward compatibility (UNSAFE - migration only)
         if os.path.exists(self.cache_metadata) and os.path.exists(self.cache_samples):
             try:
-                logger.info(f"JSON cache not found, attempting to load legacy pickle cache...")
+                logger.info("JSON cache not found, attempting to load legacy pickle cache...")
                 with open(self.cache_samples, 'rb') as f:
                     self.samples = pickle.load(f)
 
@@ -542,7 +547,7 @@ class Flickr30kDataset(MultimodalDataset):
                     return False
 
                 logger.info(f"Loaded from pickle cache: {self.cache_samples}")
-                logger.info(f"Converting to JSON format for future use...")
+                logger.info("Converting to JSON format for future use...")
 
                 # Migrate to JSON for next time
                 self._save_to_cache()
@@ -707,7 +712,9 @@ class Flickr30kDataset(MultimodalDataset):
 
 
 import logging
+
 from datasets import load_dataset
+
 
 logger = logging.getLogger(__name__)
 
@@ -860,8 +867,8 @@ class EnhancedMultimodalDataset(Dataset):
 
         try:
             import numpy as np
-            from sklearn.cluster import KMeans
             import torch
+            from sklearn.cluster import KMeans
             from tqdm import tqdm
 
             logger.info(
@@ -870,7 +877,7 @@ class EnhancedMultimodalDataset(Dataset):
 
             # Import a pretrained model for feature extraction
             try:
-                from torchvision.models import resnet18, ResNet18_Weights
+                from torchvision.models import ResNet18_Weights, resnet18
 
                 pretrained_model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
                 pretrained_model.fc = torch.nn.Identity()  # Remove classification layer
@@ -1123,7 +1130,7 @@ class EnhancedMultimodalDataset(Dataset):
         if os.path.exists(cache_metadata) and os.path.exists(cache_samples_json):
             try:
                 # Load samples from JSON file (SAFE - no code execution)
-                with open(cache_samples_json, "r") as f:
+                with open(cache_samples_json) as f:
                     loaded_dataset = json.load(f)
 
                 # Convert back to proper format - load images from paths
@@ -1158,7 +1165,7 @@ class EnhancedMultimodalDataset(Dataset):
         # Fallback to pickle for backward compatibility (UNSAFE - migration only)
         if os.path.exists(cache_metadata) and os.path.exists(cache_samples):
             try:
-                logger.info(f"JSON cache not found, attempting to load legacy pickle cache...")
+                logger.info("JSON cache not found, attempting to load legacy pickle cache...")
                 with open(cache_samples, 'rb') as f:
                     self.dataset = pickle.load(f)
 
@@ -1167,7 +1174,7 @@ class EnhancedMultimodalDataset(Dataset):
                     logger.info(
                         f"Successfully loaded {len(self.dataset)} examples from pickle cache for {self.split} split"
                     )
-                    logger.info(f"Converting to JSON format for future use...")
+                    logger.info("Converting to JSON format for future use...")
 
                     # Migrate to JSON - save with proper structure
                     try:
@@ -1198,7 +1205,7 @@ class EnhancedMultimodalDataset(Dataset):
                         with open(cache_samples_json, "w") as f:
                             json.dump(serializable_dataset, f, indent=2)
 
-                        logger.info(f"Successfully migrated cache to JSON format")
+                        logger.info("Successfully migrated cache to JSON format")
                     except Exception as save_e:
                         logger.warning(f"Error migrating cache to JSON: {save_e}")
 

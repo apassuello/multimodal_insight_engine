@@ -9,12 +9,13 @@ Tests cover:
 4. subprocess command injection (should not use shell=True)
 """
 
-import os
 import json
-import tempfile
+import os
 import shutil
-import pytest
+import tempfile
 from pathlib import Path
+
+import pytest
 
 
 class TestPickleRemoval:
@@ -45,7 +46,7 @@ class TestPickleRemoval:
                     pickle_imports.append(f"Line {line_num}: {line.strip()}")
 
         if pickle_imports:
-            pytest.fail(f"Found pickle imports without backward compatibility justification:\n" + "\n".join(pickle_imports))
+            pytest.fail("Found pickle imports without backward compatibility justification:\n" + "\n".join(pickle_imports))
 
     def test_no_pickle_usage_in_turbo_bpe(self):
         """Verify that turbo_bpe_preprocessor.py uses pickle ONLY for reading old caches (not writing new ones)."""
@@ -87,7 +88,7 @@ class TestPickleRemoval:
                 json.dump(test_data, f)
 
             # Load from JSON
-            with open(cache_file, 'r') as f:
+            with open(cache_file) as f:
                 loaded_data = json.load(f)
 
             # Verify data integrity
@@ -151,7 +152,7 @@ class TestExecRemoval:
                         exec_found.append(f"Line {line_num}: {line.strip()}")
 
         if exec_found:
-            pytest.fail(f"Found exec() in compile_metadata.py:\n" + "\n".join(exec_found))
+            pytest.fail("Found exec() in compile_metadata.py:\n" + "\n".join(exec_found))
 
 
 class TestTorchLoadSafety:
@@ -212,7 +213,7 @@ class TestSubprocessSafety:
                     shell_true_found.append(f"Line {line_num}: {line.strip()}")
 
         if shell_true_found:
-            pytest.fail(f"Found shell=True in test_gpu.py:\n" + "\n".join(shell_true_found))
+            pytest.fail("Found shell=True in test_gpu.py:\n" + "\n".join(shell_true_found))
 
 
 class TestSecurityCodePatterns:
@@ -220,8 +221,8 @@ class TestSecurityCodePatterns:
 
     def test_no_eval_usage(self):
         """Ensure eval() builtin is not used anywhere in the codebase."""
-        import subprocess
         import re
+        import subprocess
 
         result = subprocess.run(
             ['grep', '-rn', 'eval(', 'src/', '--include=*.py'],

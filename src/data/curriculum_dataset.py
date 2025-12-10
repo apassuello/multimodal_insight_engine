@@ -13,12 +13,16 @@ KEY COMPONENTS:
     - Tools for monitoring curriculum progression and statistics
 """
 
+from collections import Counter
+from typing import Any, Dict, List
+
+import numpy as np
 import torch
 from torch.utils.data import Dataset
-import numpy as np
-from collections import Counter
-from typing import List, Dict, Tuple, Optional, Callable, Any
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 import os
 
@@ -87,7 +91,7 @@ class CurriculumTranslationDataset(Dataset):
 
         # Calculate statistics for reporting
         difficulties = np.array(self.difficulties)
-        logger.info(f"\nDifficulty statistics:")
+        logger.info("\nDifficulty statistics:")
         logger.info(f"  Min: {difficulties.min():.2f}")
         logger.info(f"  Max: {difficulties.max():.2f}")
         logger.info(f"  Mean: {difficulties.mean():.2f}")

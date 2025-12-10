@@ -9,11 +9,12 @@ Tests all core PPO components:
 - Full training loop
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-from unittest.mock import Mock, MagicMock, patch
 
 from src.safety.constitutional.ppo_trainer import PPOTrainer
 

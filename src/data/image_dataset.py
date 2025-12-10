@@ -13,13 +13,14 @@ KEY COMPONENTS:
     - Integration with image preprocessing pipeline
 """
 
-import torch
-from torch.utils.data import Dataset
-import os
-from PIL import Image
-from typing import Optional, Callable, List, Tuple, Dict, Any
 import json
+import os
 from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
 
 from ..models.vision.image_preprocessing import ImagePreprocessor
 
@@ -57,7 +58,7 @@ class ImageDataset(Dataset):
         # Load class mapping if provided
         self.class_mapping = None
         if class_mapping_file and os.path.exists(class_mapping_file):
-            with open(class_mapping_file, "r") as f:
+            with open(class_mapping_file) as f:
                 self.class_mapping = json.load(f)
 
         # Find all image files
@@ -86,16 +87,16 @@ class ImageDataset(Dataset):
                         self.labels.append(class_idx)
         else:
             # Assume flat directory with label information elsewhere
-            for img_path in self.root_dir.glob(f"**/*.jpg"):
+            for img_path in self.root_dir.glob("**/*.jpg"):
                 self.image_paths.append(img_path)
                 # Placeholder label, should be overridden
                 self.labels.append(0)
 
-            for img_path in self.root_dir.glob(f"**/*.png"):
+            for img_path in self.root_dir.glob("**/*.png"):
                 self.image_paths.append(img_path)
                 self.labels.append(0)
 
-            for img_path in self.root_dir.glob(f"**/*.jpeg"):
+            for img_path in self.root_dir.glob("**/*.jpeg"):
                 self.image_paths.append(img_path)
                 self.labels.append(0)
 

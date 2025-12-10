@@ -14,15 +14,17 @@ DEPENDENCIES:
 - typing
 """
 
+import logging
 import os
+from typing import Dict, Literal, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
-from typing import Dict, Tuple, Optional, Union, List, Any, Literal
 
-from src.training.losses.self_supervised import VICRegLoss
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
+from src.training.losses.self_supervised import VICRegLoss
+
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +139,7 @@ class HybridPretrainVICRegLoss(nn.Module):
             logger.info(
                 f"WARNING: Dimension mismatch between contrastive projection ({contrastive_proj_dim}) and VICReg model ({vicreg_proj_dim})"
             )
-            logger.info(f"This may cause issues during the transition phase")
+            logger.info("This may cause issues during the transition phase")
 
         # Pre-training configuration
         self.contrastive_pretrain_steps = contrastive_pretrain_steps
@@ -178,7 +180,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         self._print_counter = 0
         self._print_frequency = 200  # Print every 200 steps
 
-        logger.info(f"Initialized HybridPretrainVICRegLoss with:")
+        logger.info("Initialized HybridPretrainVICRegLoss with:")
         logger.info(f"  - Contrastive pretrain steps: {contrastive_pretrain_steps}")
         logger.info(f"  - Adaptive transition: {adaptive_transition}")
         logger.info(f"  - Min alignment threshold: {min_alignment_threshold}")
@@ -234,7 +236,7 @@ class HybridPretrainVICRegLoss(nn.Module):
                 self.transition_complete = True
                 self.in_pretrain_phase = False
                 self.current_phase = "vicreg"
-                logger.info(f"Gradual transition to VICReg complete")
+                logger.info("Gradual transition to VICReg complete")
 
         elif not self.in_pretrain_phase:
             self.transition_progress = 1.0
@@ -347,7 +349,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         # Full contrastive pre-training phase
         if self.in_pretrain_phase and not self.early_transition:
             # Get match IDs for proper semantic alignment
-            match_ids = kwargs.get("match_ids", None)
+            match_ids = kwargs.get("match_ids")
 
             # First normalize features for contrastive loss
             z_a_norm = F.normalize(z_a, p=2, dim=1)
@@ -398,7 +400,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         # Gradual transition phase
         elif self.early_transition and not self.transition_complete:
             # Get match IDs for proper semantic alignment (for contrastive component)
-            match_ids = kwargs.get("match_ids", None)
+            match_ids = kwargs.get("match_ids")
 
             # First normalize features for contrastive loss
             z_a_norm = F.normalize(z_a, p=2, dim=1)

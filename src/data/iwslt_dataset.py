@@ -12,15 +12,17 @@ DEPENDENCIES:
 - tqdm
 """
 
-import os
-import sys
-import requests
-import random
-from tqdm import tqdm
-import tarfile
 import io
-from typing import List, Tuple, Optional
+import os
+import random
+import tarfile
+from typing import List, Tuple
+
+import requests
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 
 
@@ -96,9 +98,9 @@ class IWSLTDataset:
         if files_exist:
             # Verify the files are not empty and contain adequate data
             try:
-                with open(src_file, "r", encoding="utf-8") as f:
+                with open(src_file, encoding="utf-8") as f:
                     src_content = f.read().strip()
-                with open(tgt_file, "r", encoding="utf-8") as f:
+                with open(tgt_file, encoding="utf-8") as f:
                     tgt_content = f.read().strip()
 
                 # Check if we have data
@@ -153,7 +155,7 @@ class IWSLTDataset:
         )
 
         try:
-            from datasets import load_dataset, get_dataset_config_names
+            from datasets import get_dataset_config_names, load_dataset
 
             # First try the TED talks dataset for years 2014-2016
             if requested_year in ["2014", "2015", "2016"]:
@@ -219,14 +221,14 @@ class IWSLTDataset:
                 dataset = load_dataset(
                     f"iwslt{requested_year}", dataset_config, split=self.split
                 )
-            except (ValueError, FileNotFoundError, ImportError) as e:
+            except (ValueError, FileNotFoundError, ImportError):
                 # Try with the fixed name format "iwslt2017"
                 try:
                     dataset = load_dataset(
                         "iwslt2017", dataset_config, split=self.split
                     )
                     actual_year = "2017"  # Actually using 2017 dataset
-                except (ValueError, FileNotFoundError) as e:
+                except (ValueError, FileNotFoundError):
                     # If that fails, try the reverse configuration
                     dataset_config = (
                         f"iwslt{requested_year}-{self.tgt_lang}-{self.src_lang}"
@@ -237,14 +239,14 @@ class IWSLTDataset:
                         )
                         # If this works, we need to swap src and tgt in our extraction
                         swap_languages = True
-                    except (ValueError, FileNotFoundError) as e:
+                    except (ValueError, FileNotFoundError):
                         try:
                             dataset = load_dataset(
                                 "iwslt2017", dataset_config, split=self.split
                             )
                             swap_languages = True
                             actual_year = "2017"  # Actually using 2017 dataset
-                        except (ValueError, FileNotFoundError) as e:
+                        except (ValueError, FileNotFoundError):
                             # Try all available configurations and pick the one that matches our languages
                             try:
                                 available_configs = get_dataset_config_names(
@@ -255,7 +257,7 @@ class IWSLTDataset:
                                     available_configs = get_dataset_config_names(
                                         "iwslt2017"
                                     )
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
                                     available_configs = []
 
                             matching_configs = [
@@ -278,7 +280,7 @@ class IWSLTDataset:
                                         dataset_config,
                                         split=self.split,
                                     )
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
                                     dataset = load_dataset(
                                         "iwslt2017", dataset_config, split=self.split
                                     )
@@ -313,7 +315,7 @@ class IWSLTDataset:
                                         )
                                     else:
                                         return False
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError) as e:
+                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
                                     return False
             else:
                 swap_languages = False
@@ -386,9 +388,6 @@ class IWSLTDataset:
             f"Downloading IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
         )
 
-        import requests
-        import tarfile
-        import io
 
         # This is a simplified example - the actual URL structure would need to be adjusted
         # based on the specific IWSLT release
@@ -479,10 +478,10 @@ class IWSLTDataset:
             years_loaded.add(actual_year)
 
             # Read the files
-            with open(src_file, "r", encoding="utf-8") as f:
+            with open(src_file, encoding="utf-8") as f:
                 src_data = f.read().strip().split("\n")
 
-            with open(tgt_file, "r", encoding="utf-8") as f:
+            with open(tgt_file, encoding="utf-8") as f:
                 tgt_data = f.read().strip().split("\n")
 
             # Skip empty lines
@@ -541,10 +540,10 @@ class IWSLTDataset:
                 years_loaded.add(actual_year)
 
                 # Read the files
-                with open(src_file, "r", encoding="utf-8") as f:
+                with open(src_file, encoding="utf-8") as f:
                     src_data = f.read().strip().split("\n")
 
-                with open(tgt_file, "r", encoding="utf-8") as f:
+                with open(tgt_file, encoding="utf-8") as f:
                     tgt_data = f.read().strip().split("\n")
 
                 # Skip empty lines

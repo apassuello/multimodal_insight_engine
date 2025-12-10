@@ -16,11 +16,11 @@ DEPENDENCIES:
 """
 
 import os
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any
-from abc import ABC, abstractmethod
 
 
 class CrossModalAttention(nn.Module):

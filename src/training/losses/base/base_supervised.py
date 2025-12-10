@@ -4,11 +4,12 @@ This module provides the foundation for supervised loss implementations,
 including label handling, class weighting, and common supervised patterns.
 """
 
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Union
-from abc import ABC, abstractmethod
 
 from .mixins import NormalizationMixin, ProjectionMixin
 

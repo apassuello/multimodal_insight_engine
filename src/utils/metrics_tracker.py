@@ -1,14 +1,16 @@
 # src/utils/metrics_tracker.py
 
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Dict, List, Optional, Any, Tuple, Union
-import os
 import json
 import logging
-from collections import defaultdict
+import os
 import time
+from collections import defaultdict
+from typing import Any, Dict, List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -395,7 +397,7 @@ class MetricsTracker:
 
         # Save figure
         plt.tight_layout()
-        plot_file = os.path.join(vis_dir, f"alignment_progress.png")
+        plot_file = os.path.join(vis_dir, "alignment_progress.png")
         plt.savefig(plot_file)
         plt.close()
         logger.debug(f"Created alignment plot: {plot_file}")

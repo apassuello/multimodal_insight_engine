@@ -7,19 +7,20 @@ DEPENDENCIES: torch, torch.nn, typing, ..base_model, ..transformer, .vision_tran
 SPECIAL NOTES: Current implementation uses a simple integration approach that will be enhanced in future versions
 """
 
+import os
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Tuple
-import os
 
 from src.models.base_model import BaseModel
-from src.models.transformer import EncoderDecoderTransformer
-from src.models.vision.vision_transformer import VisionTransformer
-from src.models.multimodal.co_attention_fusion import CoAttentionFusion
 from src.models.multimodal.bidirectional_cross_attention import (
     BidirectionalCrossAttention,
 )
+from src.models.multimodal.co_attention_fusion import CoAttentionFusion
+from src.models.transformer import EncoderDecoderTransformer
+from src.models.vision.vision_transformer import VisionTransformer
 
 
 class MultiModalTransformer(BaseModel):
@@ -105,7 +106,7 @@ class MultiModalTransformer(BaseModel):
         # Removed torch.no_grad() to allow gradient flow
         # Use the encoder part of the text model
         text_encoding = self.text_model.encode(
-            text["src"], src_mask=text.get("src_mask", None)
+            text["src"], src_mask=text.get("src_mask")
         )
 
         # Use the final hidden state of the first token (assumed to be [CLS] or similar)
@@ -353,13 +354,13 @@ class CrossAttentionMultiModalTransformer(BaseModel):
         try:
             if hasattr(self.text_model, "encode"):
                 text_features = self.text_model.encode(
-                    text_data["src"], src_mask=text_data.get("src_mask", None)
+                    text_data["src"], src_mask=text_data.get("src_mask")
                 )
                 return text_features  # Already on correct device
             else:
                 # Try forward method as fallback
                 return self.text_model(
-                    text_data["src"], src_mask=text_data.get("src_mask", None)
+                    text_data["src"], src_mask=text_data.get("src_mask")
                 )
         except Exception as e:
             # If we're on MPS with a HuggingFace model, provide a more informative message
@@ -380,7 +381,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
 
         # Move inputs to CPU
         cpu_src = text_data["src"].to("cpu")
-        cpu_mask = text_data.get("src_mask", None)
+        cpu_mask = text_data.get("src_mask")
         if cpu_mask is not None:
             cpu_mask = cpu_mask.to("cpu")
 

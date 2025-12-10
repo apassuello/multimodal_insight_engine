@@ -4,13 +4,14 @@ Refactored from clip_style_loss.py to eliminate code duplication.
 Reduces from 434 lines to ~150 lines by leveraging BaseContrastiveLoss.
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Any, Dict, List, Optional
+
+import torch
+import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
+
 
 logger = logging.getLogger(__name__)
 

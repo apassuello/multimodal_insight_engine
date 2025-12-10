@@ -7,13 +7,13 @@ Uses explicit class labels to form positive pairs, creating tighter semantic
 clusters compared to unsupervised contrastive learning.
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Any, Dict, Optional
+
+import torch
 
 from ..base import BaseSupervisedLoss
+
 
 logger = logging.getLogger(__name__)
 

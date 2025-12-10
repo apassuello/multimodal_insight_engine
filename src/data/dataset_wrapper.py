@@ -13,10 +13,10 @@ KEY COMPONENTS:
     - Conversion between tuple and dictionary formats
 """
 
-import torch
-from torch.utils.data import Dataset, DataLoader
-from typing import Dict, Tuple, List, Any, Callable, Optional, Union
 import os
+from typing import Any, Dict, List, Tuple
+
+from torch.utils.data import DataLoader, Dataset
 
 
 class DictionaryDataset(Dataset):

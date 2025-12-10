@@ -12,38 +12,35 @@ Each stage uses different components, loss functions, learning rates, and batch 
 strategies to systematically develop multimodal understanding capabilities.
 """
 
-import os
 import json
-import time
 import logging
+import os
+from collections import defaultdict
+from typing import Dict, Optional, Tuple
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
-import numpy as np
-from tqdm import tqdm
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
-import matplotlib.pyplot as plt
-from collections import defaultdict
-from torch.optim.optimizer import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.adamw import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
+
+from src.data.multimodal_data_utils import SemanticGroupBatchSampler
+from src.data.multimodal_dataset import EnhancedMultimodalDataset
 
 # Local imports
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.training.trainers.multimodal import MultimodalTrainer
-from src.data.multimodal_dataset import MultimodalDataset
-from src.data.multimodal_data_utils import SemanticGroupBatchSampler
-from src.training.losses.self_supervised import VICRegLoss
-from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss, MoCoLoss as MemoryQueueContrastiveLoss
-from src.training.losses import HardNegativeMiningContrastiveLoss
 from src.models.pretrained import (
-    VisionTransformerWrapper,
     HuggingFaceTextModelWrapper,
+    VisionTransformerWrapper,
 )
-from src.data.multimodal_dataset import EnhancedMultimodalDataset
+from src.training.losses import HardNegativeMiningContrastiveLoss
+from src.training.losses.contrastive import MoCoLoss as MemoryQueueContrastiveLoss
+from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss
+from src.training.losses.self_supervised import VICRegLoss
+from src.training.trainers.multimodal import MultimodalTrainer
+
 
 logger = logging.getLogger(__name__)
 
@@ -561,7 +558,7 @@ class FlickrMultistageTrainer:
 
             # Find which component this parameter belongs to
             component_match = None
-            for component_name in lr_map.keys():
+            for component_name in lr_map:
                 if component_name != "default" and component_name in name:
                     component_match = component_name
                     break

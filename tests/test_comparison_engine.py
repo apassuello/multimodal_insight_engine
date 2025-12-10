@@ -4,16 +4,17 @@ Tests for ComparisonEngine module.
 Tests comparison functionality, alignment calculations, and error handling.
 """
 
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
 import torch
-from unittest.mock import Mock, MagicMock, patch
-from typing import List, Dict, Any
 
 from demo.managers.comparison_engine import (
     ComparisonEngine,
     ComparisonResult,
+    ExampleComparison,
     PrincipleComparison,
-    ExampleComparison
 )
 from src.safety.constitutional.framework import ConstitutionalFramework
 from src.safety.constitutional.model_utils import GenerationConfig

@@ -10,17 +10,19 @@ DEPENDENCIES: torch, transformers, tqdm, typing, framework, model_utils
 SPECIAL NOTES: Implements Phase 1 of Constitutional AI methodology from Anthropic (2022)
 """
 
+from typing import Any, Dict, List
+
 import torch
 from torch.utils.data import DataLoader, Dataset
-from typing import List, Dict, Any, Optional
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
-from .framework import ConstitutionalFramework
-from .model_utils import generate_text, GenerationConfig
-from .principles import set_eval_debug_level, get_eval_debug_level
-
 from src.utils.logging import get_logger
+
+from .framework import ConstitutionalFramework
+from .model_utils import GenerationConfig, generate_text
+from .principles import get_eval_debug_level, set_eval_debug_level
+
 
 # Module logger (prefixed with _ to avoid shadowing the logger parameter in functions)
 _logger = get_logger(__name__)
@@ -298,7 +300,7 @@ def critique_revision_pipeline(
 
     # Print pipeline configuration
     _logger.info(f"{'═' * 70}")
-    _logger.info(f"  CONSTITUTIONAL AI TRAINING PIPELINE")
+    _logger.info("  CONSTITUTIONAL AI TRAINING PIPELINE")
     _logger.info(f"{'═' * 70}")
     _logger.info(f"  Generation Model: {gen_model_name}")
     _logger.info(f"  Evaluation Model: {eval_model_name}")
@@ -393,7 +395,7 @@ def critique_revision_pipeline(
             # Print improvement summary
             if improvement > 0:
                 _logger.info(f"  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
-                _logger.info(f"  → Added to training set")
+                _logger.info("  → Added to training set")
                 training_data.append({
                     'prompt': prompt,
                     'response': response,
@@ -423,7 +425,7 @@ def critique_revision_pipeline(
                     )
             else:
                 _logger.info(f"  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
-                _logger.info(f"  → Skipped")
+                _logger.info("  → Skipped")
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-SKIPPED",
@@ -439,7 +441,7 @@ def critique_revision_pipeline(
 
     # Print final summary
     _logger.info(f"{'═' * 70}")
-    _logger.info(f"  PIPELINE SUMMARY")
+    _logger.info("  PIPELINE SUMMARY")
     _logger.info(f"{'═' * 70}")
     _logger.info(f"  Total prompts processed: {len(prompts)}")
     _logger.info(f"  Training examples generated: {len(training_data)}")
