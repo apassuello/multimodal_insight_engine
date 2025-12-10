@@ -5,6 +5,8 @@ A framework for developing, training, and evaluating transformer-based models wi
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)
+![CI/CD](https://github.com/apassuello/multimodal_insight_engine/workflows/CI%2FCD%20Pipeline/badge.svg)
+[![codecov](https://codecov.io/gh/apassuello/multimodal_insight_engine/branch/main/graph/badge.svg)](https://codecov.io/gh/apassuello/multimodal_insight_engine)
 
 ## 📑 Overview
 

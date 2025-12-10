@@ -1,0 +1,57 @@
+# Codecov Configuration
+# Documentation: https://docs.codecov.com/docs/codecov-yaml
+
+# Coverage reporting settings
+coverage:
+  precision: 2
+  round: down
+  range: "40...80"  # Yellow between 40-80%, green above 80%
+
+  status:
+    # Overall project coverage
+    project:
+      default:
+        target: 45%           # Current honest coverage level
+        threshold: 1%         # Allow 1% decrease
+        if_ci_failed: error   # Fail if CI failed
+
+    # Patch coverage (new code in PR)
+    patch:
+      default:
+        target: 50%           # Require new code to have 50%+ coverage
+        threshold: 5%         # Allow some flexibility
+        if_ci_failed: error
+
+  # Ignore files/paths
+  ignore:
+    - "tests/**/*"
+    - "**/__pycache__/**/*"
+    - "**/*.egg-info/**/*"
+    - "setup.py"
+    - "docs/**/*"
+
+# Comment settings for pull requests
+comment:
+  layout: "reach,diff,flags,tree,footer"
+  behavior: default
+  require_changes: false      # Always comment on PRs
+  require_base: false         # Comment even on first PR
+  require_head: true
+
+# GitHub checks
+github_checks:
+  annotations: true
+
+# Flags for different test types (optional, for future use)
+flags:
+  unittests:
+    paths:
+      - src/
+    carryforward: true
+
+# Ignore uploaded coverage in these conditions
+ignore:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.yml"
+  - "**/*.yaml"

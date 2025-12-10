@@ -1,0 +1,242 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, "claude/**" ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual triggering
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==============================================================================
+  # Static Analysis & Code Quality
+  # ==============================================================================
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black flake8 isort
+
+      - name: Run Ruff (Fast Linting)
+        run: |
+          echo "::group::Ruff Check"
+          ruff check src/ tests/ --output-format=github
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Check code formatting with Black
+        run: |
+          echo "::group::Black Format Check"
+          black --check --diff src/ tests/
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Check import sorting with isort
+        run: |
+          echo "::group::isort Check"
+          isort --check-only --diff src/ tests/
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Run Flake8 (Backward Compatibility)
+        run: |
+          echo "::group::Flake8 Check"
+          flake8 src/ tests/ --count --show-source --statistics
+          echo "::endgroup::"
+        continue-on-error: true  # Ruff is primary, flake8 is secondary
+
+  # ==============================================================================
+  # Type Checking
+  # ==============================================================================
+  type-check:
+    name: Type Checking (MyPy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy types-requests types-PyYAML
+          # Install minimal project dependencies for type checking
+          pip install torch --index-url https://download.pytorch.org/whl/cpu || true
+
+      - name: Run MyPy
+        run: |
+          echo "::group::MyPy Type Check"
+          mypy src/ --install-types --non-interactive || true
+          echo "::endgroup::"
+        continue-on-error: true  # Type checking is advisory for now
+
+  # ==============================================================================
+  # Test Matrix (Multiple Python Versions)
+  # ==============================================================================
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-xdist
+
+          # Install PyTorch CPU version for faster CI
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+          # Install project dependencies (if requirements.txt exists)
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run tests with coverage
+        run: |
+          echo "::group::Running Tests"
+          pytest tests/ \
+            --verbose \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-branch \
+            --cov-fail-under=45 \
+            -n auto
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Upload coverage to Codecov (Python 3.10 only)
+        if: matrix.python-version == '3.10'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false  # Don't fail if Codecov is down
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ==============================================================================
+  # Security Scanning
+  # ==============================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run Bandit (Security Linter)
+        run: |
+          echo "::group::Bandit Security Scan"
+          bandit -r src/ -f json -o bandit-report.json || true
+          bandit -r src/ -f screen
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          echo "::group::Safety Check"
+          pip freeze | safety check --stdin || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+  # ==============================================================================
+  # Build Verification
+  # ==============================================================================
+  build:
+    name: Build & Install Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Build package
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Verify package can be installed
+        run: |
+          pip install dist/*.whl
+          python -c "import src; print('Package installed successfully')"
+
+  # ==============================================================================
+  # Summary Job (Required Status Check)
+  # ==============================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test, security, build]
+    if: always()
+
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "❌ Lint job failed"
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ Test job failed"
+            exit 1
+          fi
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ Build job failed"
+            exit 1
+          fi
+          echo "✅ All required CI jobs passed"
