@@ -9,6 +9,12 @@ import os
 import json
 from typing import Dict, Any, Optional
 
+from src.utils.logging import get_logger
+
+# Initialize module logger
+logger = get_logger(__name__)
+
+
 class ConfigManager:
     """Manager for application configuration values."""
     
