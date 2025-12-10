@@ -10,19 +10,19 @@ Tests cover:
 - DecoupledContrastiveLoss
 """
 
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 from src.training.losses import (
     ContrastiveLoss,
-    MultiModalMixedContrastiveLoss,
-    MemoryQueueContrastiveLoss,
-    HardNegativeMiningContrastiveLoss,
-    DynamicTemperatureContrastiveLoss,
     DecoupledContrastiveLoss,
+    DynamicTemperatureContrastiveLoss,
+    HardNegativeMiningContrastiveLoss,
+    MemoryQueueContrastiveLoss,
+    MultiModalMixedContrastiveLoss,
 )
 
 

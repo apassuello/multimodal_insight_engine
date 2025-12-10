@@ -10,12 +10,14 @@ Tests cover:
 - Other specialized losses
 """
 
+from typing import Any, Dict
+
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from typing import Dict, Any
+
 
 # Import loss functions
 try:

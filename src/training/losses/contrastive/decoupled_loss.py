@@ -7,13 +7,13 @@ Separates vision-to-text and text-to-vision learning objectives, and adds
 instance discrimination within each modality for better representation learning.
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Any, Dict, List
+
+import torch
 
 from ..base import BaseContrastiveLoss
+
 
 logger = logging.getLogger(__name__)
 

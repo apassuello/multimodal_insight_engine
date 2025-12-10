@@ -1,11 +1,11 @@
 # src/configs/flickr30k_multistage_config.py
 
 from src.configs.training_config import (
-    TrainingConfig,
-    StageConfig,
+    ComponentConfig,
     LossConfig,
     OptimizerConfig,
-    ComponentConfig,
+    StageConfig,
+    TrainingConfig,
 )
 
 

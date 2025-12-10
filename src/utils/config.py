@@ -5,11 +5,12 @@ This module provides functionality for managing configuration settings
 across the application with support for loading from files and environment.
 """
 
-import os
 import json
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
 
 from src.utils.logging import get_logger
+
 
 # Initialize module logger
 logger = get_logger(__name__)
@@ -17,7 +18,7 @@ logger = get_logger(__name__)
 
 class ConfigManager:
     """Manager for application configuration values."""
-    
+
     def __init__(self, config_path: Optional[str] = None):
         """
         Initialize the configuration manager.
@@ -26,13 +27,13 @@ class ConfigManager:
             config_path: Optional path to a JSON configuration file
         """
         self.config: Dict[str, Any] = {}
-        
+
         # Load from file if provided
         if config_path and os.path.exists(config_path):
             self.load_from_file(config_path)
-        
+
         # Override with environment variables (future extension)
-    
+
     def load_from_file(self, config_path: str) -> None:
         """
         Load configuration from a JSON file.
@@ -41,11 +42,11 @@ class ConfigManager:
             config_path: Path to the JSON config file
         """
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 self.config.update(json.load(f))
         except Exception as e:
             logger.info(f"Error loading config from {config_path}: {e}")
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a configuration value.
@@ -58,7 +59,7 @@ class ConfigManager:
             Configuration value or default
         """
         return self.config.get(key, default)
-    
+
     def set(self, key: str, value: Any) -> None:
         """
         Set a configuration value.
@@ -68,7 +69,7 @@ class ConfigManager:
             value: Value to set
         """
         self.config[key] = value
-    
+
     def save_to_file(self, config_path: str) -> None:
         """
         Save current configuration to a JSON file.

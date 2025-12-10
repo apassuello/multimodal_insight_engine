@@ -9,16 +9,16 @@ Tests cover:
 - EMA MoCo losses
 """
 
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 from src.training.losses import (
-    VICRegLoss,
     BarlowTwinsLoss,
     HybridPretrainVICRegLoss,
+    VICRegLoss,
 )
 
 

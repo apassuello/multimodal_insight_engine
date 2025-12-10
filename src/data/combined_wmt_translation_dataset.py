@@ -1,8 +1,8 @@
-import os
 import json
+import os
+
+from datasets import concatenate_datasets, load_dataset
 from torch.utils.data import Dataset
-from datasets import load_dataset, concatenate_datasets
-import random
 
 
 class CombinedTranslationDataset(Dataset):
@@ -72,7 +72,7 @@ def load_dataset_from_file(path="combined_de_en_dataset.jsonl", max_samples=None
 
     logger.info(f"Loading dataset from {path}...")
     data = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
             if max_samples and i >= max_samples:
                 break

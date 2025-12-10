@@ -25,26 +25,28 @@ SPECIAL NOTES:
 """
 
 # src/training/trainers/transformer_trainer.py
+import math
+import os
+import time
+from typing import Any, Callable, Optional, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from typing import Dict, List, Tuple, Optional, Any, Callable
-import time
-import math
-import matplotlib.pyplot as plt
-import numpy as np
 from tqdm import tqdm
-import os
 
 from src.utils.logging import get_logger
+
 
 # Module logger
 logger = get_logger(__name__)
 
 from src.training.transformer_utils import (
-    create_padding_mask,
-    create_causal_mask,
     LabelSmoothing,
+    create_causal_mask,
+    create_padding_mask,
 )
 
 

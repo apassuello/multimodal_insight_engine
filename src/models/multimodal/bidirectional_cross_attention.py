@@ -15,9 +15,10 @@ DEPENDENCIES:
 """
 
 import os
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple, Any
 
 from .gated_cross_modal_attention import GatedCrossModalAttention
 

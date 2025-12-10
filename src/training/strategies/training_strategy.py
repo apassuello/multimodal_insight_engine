@@ -1,11 +1,13 @@
 # src/training/strategies/training_strategy.py
 
+import logging
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
 from torch.optim.optimizer import Optimizer
-from typing import Dict, List, Optional, Any, Callable, Union
-import logging
+
 
 logger = logging.getLogger(__name__)
 

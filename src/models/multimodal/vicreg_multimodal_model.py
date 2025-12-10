@@ -16,17 +16,27 @@ DEPENDENCIES:
 """
 
 import os
+
 import torch
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 import torch.nn as nn
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 import torch.nn.functional as F
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
+
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
 
 
 class VICRegMultimodalModel(nn.Module):
@@ -44,11 +54,11 @@ class VICRegMultimodalModel(nn.Module):
 
         # Temporarily move to CPU for initialization if needed
         if vision_device != cpu_device:
-            logger.info(f"Temporarily moving vision model to CPU for initialization")
+            logger.info("Temporarily moving vision model to CPU for initialization")
             vision_model = vision_model.to(cpu_device)
 
         if text_device != cpu_device:
-            logger.info(f"Temporarily moving text model to CPU for initialization")
+            logger.info("Temporarily moving text model to CPU for initialization")
             text_model = text_model.to(cpu_device)
 
         # Store models

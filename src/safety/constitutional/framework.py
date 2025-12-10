@@ -12,7 +12,9 @@ SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's
 """
 
 import inspect
-from typing import Callable, Dict, Any, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+
 try:
     import torch
 except ImportError:
@@ -503,7 +505,7 @@ class ConstitutionalFramework:
         )
 
         # Count violations per principle
-        principle_violation_counts = {name: 0 for name in self.principles.keys()}
+        principle_violation_counts = dict.fromkeys(self.principles.keys(), 0)
         for entry in self.evaluation_history:
             for principle_name in entry["evaluation"]["flagged_principles"]:
                 principle_violation_counts[principle_name] += 1

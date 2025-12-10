@@ -20,11 +20,12 @@ SPECIAL NOTES:
 """
 
 import logging
-from typing import Dict, Optional, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 
 logger = logging.getLogger(__name__)
 

@@ -4,22 +4,24 @@ Tests the four constitutional principle evaluators and default framework setup.
 Tests both regex-based (fast fallback) and AI-based (accurate) evaluation modes.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
 import torch
-from unittest.mock import Mock, patch
+
 from src.safety.constitutional.principles import (
-    evaluate_harm_potential,
+    _evaluate_fairness_with_regex,
+    _evaluate_harm_with_regex,
+    _parse_json_response,
     analyze_potential_consequences,
+    evaluate_autonomy_respect,
+    evaluate_fairness,
+    evaluate_harm_potential,
     evaluate_truthfulness,
-    identify_unsupported_claims,
     identify_logical_contradictions,
     identify_misleading_statistics,
-    evaluate_fairness,
-    evaluate_autonomy_respect,
+    identify_unsupported_claims,
     setup_default_framework,
-    _parse_json_response,
-    _evaluate_harm_with_regex,
-    _evaluate_fairness_with_regex
 )
 
 

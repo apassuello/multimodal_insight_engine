@@ -13,16 +13,20 @@ SPECIAL NOTES: Implements four core constitutional principles from Constitutiona
 """
 
 import re
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
 import json
-import numpy as np
+from typing import Any, Dict, List, Optional
+
 import torch
-from typing import Dict, List, Any, Optional
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
-from .framework import ConstitutionalPrinciple, ConstitutionalFramework
-from .model_utils import generate_text, GenerationConfig
+from .framework import ConstitutionalFramework, ConstitutionalPrinciple
+from .model_utils import GenerationConfig, generate_text
+
 
 # =============================================================================
 # DEBUG CONFIGURATION
@@ -55,7 +59,7 @@ def get_eval_debug_level() -> int:
 
 def _debug_print(message: str, level: int = 1, prefix: str = "") -> None:
     """Print debug message if current debug level is sufficient."""
-    if EVAL_DEBUG_LEVEL >= level:
+    if level <= EVAL_DEBUG_LEVEL:
         if prefix:
             logger.info(f"[{prefix}] {message}")
         else:
@@ -324,7 +328,7 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
             parsed = json.loads(json_str)
 
             # Fill in missing keys with defaults
-            for key in default_structure.keys():
+            for key in default_structure:
                 if key not in parsed:
                     parsed[key] = default_structure[key]
 

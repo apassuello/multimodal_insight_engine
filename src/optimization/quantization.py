@@ -8,14 +8,15 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, typing, logging
 SPECIAL NOTES: Supports dynamic, static, and quantization-aware training methods."""
 
+import os
+from typing import Any, Dict, List, Optional, Tuple, Type
+
 import torch
 import torch.nn as nn
 import torch.quantization as quantization
-from typing import Dict, List, Optional, Union, Any, Callable, Type, Tuple
-import logging
-from torch.nn.intrinsic import ConvBnReLU2d, ConvBn2d, LinearReLU, LinearBn1d
-from torch.quantization import default_observer, MinMaxObserver
-import os
+from torch.nn.intrinsic import ConvBn2d, ConvBnReLU2d, LinearBn1d, LinearReLU
+from torch.quantization import MinMaxObserver, default_observer
+
 
 class QuantizationConfig:
     """
@@ -24,7 +25,7 @@ class QuantizationConfig:
     This class centralizes the parameters for different quantization approaches,
     making it easier to experiment with various configurations.
     """
-    
+
     def __init__(
         self,
         quantization_type: str = "dynamic",  # "dynamic", "static", or "qat" (quantization-aware training)
@@ -53,7 +54,7 @@ class QuantizationConfig:
         self.bits = bits
         self.symmetric = symmetric
         self.per_channel = per_channel
-        
+
         # Set dtype based on bits if not provided
         if dtype is None:
             if bits == 8:
@@ -64,7 +65,7 @@ class QuantizationConfig:
                 raise ValueError(f"Unsupported bit width: {bits}. Use 8 or 16.")
         else:
             self.dtype = dtype
-    
+
     def __str__(self) -> str:
         """String representation of the configuration."""
         return (
@@ -82,7 +83,7 @@ class ModelOptimizer:
     This provides a common interface for all optimization methods
     (quantization, pruning, distillation, etc.).
     """
-    
+
     def __init__(self, model: nn.Module):
         """
         Initialize the model optimizer.
@@ -93,13 +94,13 @@ class ModelOptimizer:
         self.model = model
         self.original_state_dict = None
         self._save_original_state()
-    
+
     def _save_original_state(self):
         """Save the original model state for potential restoration."""
         self.original_state_dict = {
             k: v.clone() for k, v in self.model.state_dict().items()
         }
-    
+
     def optimize(self) -> nn.Module:
         """
         Apply optimization to the model.
@@ -108,12 +109,12 @@ class ModelOptimizer:
             Optimized model
         """
         raise NotImplementedError("Subclasses must implement optimize method")
-    
+
     def restore_original(self):
         """Restore the model to its original state."""
         if self.original_state_dict is not None:
             self.model.load_state_dict(self.original_state_dict)
-    
+
     def get_size_info(self) -> Dict[str, Any]:
         """
         Get information about model size before and after optimization.
@@ -132,7 +133,7 @@ class DynamicQuantizer(ModelOptimizer):
     floating point. Weights are quantized ahead of time but activations are
     quantized during inference, based on observed activation ranges.
     """
-    
+
     def __init__(
         self,
         model: nn.Module,
@@ -157,7 +158,7 @@ class DynamicQuantizer(ModelOptimizer):
             nn.GRU: torch.quantization.default_dynamic_qconfig,
         }
         self.quantized_model = None
-    
+
     def optimize(self) -> nn.Module:
         """
         Apply dynamic quantization to the model.
@@ -168,20 +169,20 @@ class DynamicQuantizer(ModelOptimizer):
         # Create a copy of the model for quantization
         model_to_quantize = type(self.model)()
         model_to_quantize.load_state_dict(self.model.state_dict())
-        
+
         # Fuse modules if applicable
         model_to_quantize = self._fuse_modules(model_to_quantize)
-        
+
         # Convert to quantized model
         quantized_model = torch.quantization.quantize_dynamic(
             model_to_quantize,
             qconfig_spec=self.qconfig_spec,
             dtype=self.config.dtype
         )
-        
+
         self.quantized_model = quantized_model
         return self.quantized_model
-    
+
     def _fuse_modules(self, model: nn.Module) -> nn.Module:
         """
         Fuse modules for improved quantization where applicable.
@@ -210,13 +211,13 @@ class DynamicQuantizer(ModelOptimizer):
             # Linear + BatchNorm1d
             (nn.Linear, nn.BatchNorm1d),
         ]
-        
+
         # Helper function to check if a sequence of modules matches a pattern
         def matches_pattern(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> bool:
             if len(modules) < len(pattern):
                 return False
             return all(isinstance(m, p) for m, p in zip(modules, pattern))
-        
+
         # Helper function to fuse a sequence of modules
         def fuse_sequence(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> Optional[nn.Module]:
             if pattern == (nn.Conv2d, nn.BatchNorm2d, nn.ReLU):
@@ -241,37 +242,37 @@ class DynamicQuantizer(ModelOptimizer):
                     modules[1]   # BatchNorm1d
                 )
             return None
-        
+
         # Process each module in the model
         for name, module in model.named_modules():
             if not isinstance(module, (nn.Conv2d, nn.Linear)):
                 continue
-                
+
             # Get the parent module
             parent_name = '.'.join(name.split('.')[:-1])
             if not parent_name:
                 continue
-                
+
             parent = model
             for part in parent_name.split('.'):
                 parent = getattr(parent, part)
-            
+
             # Get the sequence of modules starting from the current module
             current = module
             sequence: List[nn.Module] = [current]
-            
+
             # Try to build sequences that match our patterns
             for pattern in fusion_patterns:
                 if len(sequence) >= len(pattern):
                     continue
-                    
+
                 next_module = None
                 if hasattr(parent, name.split('.')[-1]):
                     next_module = getattr(parent, name.split('.')[-1])
-                
+
                 if next_module is not None:
                     sequence.append(next_module)
-                    
+
                     if matches_pattern(sequence, pattern):
                         # Create the fused module
                         fused_module = fuse_sequence(sequence, pattern)
@@ -279,9 +280,9 @@ class DynamicQuantizer(ModelOptimizer):
                             # Replace the sequence with the fused module
                             setattr(parent, name.split('.')[-1], fused_module)
                             break
-        
+
         return model
-    
+
     def get_size_info(self) -> Dict[str, Any]:
         """
         Get information about model size before and after quantization.
@@ -291,14 +292,14 @@ class DynamicQuantizer(ModelOptimizer):
         """
         if self.quantized_model is None:
             return {"error": "Model has not been quantized yet. Call optimize() first."}
-        
+
         # Get size information
         original_size = sum(p.numel() * p.element_size() for p in self.model.parameters())
         quantized_size = sum(
             p.numel() * (1 if p.dtype == torch.qint8 else p.element_size())
             for p in self.quantized_model.parameters()
         )
-        
+
         return {
             "original_size_mb": original_size / (1024 * 1024),
             "quantized_size_mb": quantized_size / (1024 * 1024),
@@ -314,7 +315,7 @@ class StaticQuantizer(ModelOptimizer):
     Static quantization quantizes both weights and activations to int8 based on
     calibration data. It requires a representative dataset for calibration.
     """
-    
+
     def __init__(
         self,
         model: nn.Module,
@@ -333,10 +334,10 @@ class StaticQuantizer(ModelOptimizer):
         self.config = config or QuantizationConfig(quantization_type="static", dtype=torch.qint8)
         self.calibration_loader = calibration_loader
         self.quantized_model = None
-        
+
         # Set backend for static quantization
         self.backend = "fbgemm" if not torch.backends.mps.is_available() else "qnnpack"
-    
+
     def optimize(self) -> nn.Module:
         """
         Apply static quantization to the model.
@@ -346,17 +347,17 @@ class StaticQuantizer(ModelOptimizer):
         """
         if self.calibration_loader is None:
             raise ValueError("Static quantization requires calibration data")
-        
+
         # Create a copy of the model for quantization
         model_to_quantize = type(self.model)()
         model_to_quantize.load_state_dict(self.model.state_dict())
-        
+
         # Ensure model is in eval mode
         model_to_quantize.eval()
-        
+
         # Fuse modules if applicable
         model_to_quantize = self._fuse_modules(model_to_quantize)
-        
+
         # Set the qconfig for the model
         if self.config.per_channel:
             qconfig = torch.quantization.get_default_qconfig(self.backend)
@@ -365,22 +366,22 @@ class StaticQuantizer(ModelOptimizer):
                 activation=default_observer,
                 weight=MinMaxObserver.with_args(dtype=torch.qint8)
             )
-        
+
         # Set the quantization configuration
         model_to_quantize.qconfig = qconfig  # type: ignore
-        
+
         # Prepare the model for static quantization
         model_prepared = torch.quantization.prepare(model_to_quantize)
-        
+
         # Calibrate the model using the calibration data
         self._calibrate_model(model_prepared)
-        
+
         # Convert the model to a quantized version
         quantized_model = torch.quantization.convert(model_prepared)
-        
+
         self.quantized_model = quantized_model
         return self.quantized_model
-    
+
     def _calibrate_model(self, model: nn.Module):
         """
         Calibrate the model using the calibration dataset.
@@ -390,7 +391,7 @@ class StaticQuantizer(ModelOptimizer):
         """
         if self.calibration_loader is None:
             return
-            
+
         # Run the calibration data through the model to collect activation statistics
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.calibration_loader):
@@ -403,14 +404,14 @@ class StaticQuantizer(ModelOptimizer):
                     inputs = batch[0]
                 else:
                     inputs = batch
-                
+
                 # Forward pass to record activation stats
                 model(inputs)
-                
+
                 # Limit calibration to a reasonable number of batches
                 if batch_idx >= 100:
                     break
-    
+
     def _fuse_modules(self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None) -> nn.Module:
         """
         Fuse modules for improved quantization.
@@ -428,7 +429,7 @@ class StaticQuantizer(ModelOptimizer):
             (nn.Linear, nn.ReLU),       # Linear + ReLU
             (nn.Linear, nn.GELU),       # Linear + GELU
         ]
-        
+
         # Use custom patterns if provided
         fusion_patterns = fusion_patterns or default_fusion_patterns
 
@@ -460,7 +461,7 @@ class StaticQuantizer(ModelOptimizer):
                 continue
 
             parent = model
-            for part in parent_name.split('.'):  
+            for part in parent_name.split('.'):
                 parent = getattr(parent, part)
 
             # Get the sequence of modules starting from the current module
@@ -488,7 +489,7 @@ class StaticQuantizer(ModelOptimizer):
                             break
 
         return model
-    
+
     def get_size_info(self) -> Dict[str, Any]:
         """
         Get information about model size before and after quantization.
@@ -498,10 +499,10 @@ class StaticQuantizer(ModelOptimizer):
         """
         if self.quantized_model is None:
             return {"error": "Model has not been quantized yet. Call optimize() first."}
-        
+
         # Get size information
         original_size = sum(p.numel() * p.element_size() for p in self.model.parameters())
-        
+
         # For static quantization, we need to be more careful about size calculation
         quantized_size = 0
         for name, module in self.quantized_model.named_modules():
@@ -511,7 +512,7 @@ class StaticQuantizer(ModelOptimizer):
             else:
                 # Regular module
                 quantized_size += sum(p.numel() * p.element_size() for p in module.parameters())
-        
+
         return {
             "original_size_mb": original_size / (1024 * 1024),
             "quantized_size_mb": quantized_size / (1024 * 1024),

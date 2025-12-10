@@ -1,20 +1,19 @@
 # src/training/strategies/end_to_end_strategy.py
 
-import torch
-import torch.nn as nn
-from torch.optim.adamw import AdamW
-from typing import Dict, List, Optional, Any, Callable, Union
 import logging
 import os
-from tqdm import tqdm
-import torch.nn.functional as F
+from typing import Any, Dict
 
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.utils.learningrate_scheduler import WarmupCosineScheduler
-from src.utils.gradient_handler import GradientHandler
-from src.utils.metrics_tracker import MetricsTracker
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim.adamw import AdamW
+
 from src.training.losses import HardNegativeMiningContrastiveLoss
-from src.training.losses.feature_consistency_loss import FeatureConsistencyLoss
+from src.training.strategies.training_strategy import TrainingStrategy
+from src.utils.gradient_handler import GradientHandler
+from src.utils.learningrate_scheduler import WarmupCosineScheduler
+
 
 logger = logging.getLogger(__name__)
 
@@ -188,9 +187,7 @@ class EndToEndStrategy(TrainingStrategy):
             # Vision projection dimension
             if hasattr(self.model, "vision_projection"):
                 vision_proj = self.model.vision_projection
-                if isinstance(vision_proj, nn.Linear):
-                    return vision_proj.out_features
-                elif hasattr(vision_proj, "out_features"):
+                if isinstance(vision_proj, nn.Linear) or hasattr(vision_proj, "out_features"):
                     return vision_proj.out_features
                 elif isinstance(vision_proj, nn.Sequential) and hasattr(
                     vision_proj[-1], "out_features"
@@ -203,7 +200,7 @@ class EndToEndStrategy(TrainingStrategy):
                 if hasattr(cross_attn, "embed_dim"):
                     return cross_attn.embed_dim
 
-        except (AttributeError, TypeError, IndexError) as e:
+        except (AttributeError, TypeError, IndexError):
             pass  # Silently fail and use default
 
         # Default to 512 as a common projection dimension

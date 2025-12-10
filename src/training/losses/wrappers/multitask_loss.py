@@ -16,12 +16,13 @@ SPECIAL NOTES:
 - Designed for use in multimodal and multitask learning scenarios
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Callable, Any, Union, Optional, Tuple
 import logging
 import os
+from typing import Any, Dict, Optional
+
+import torch
+import torch.nn as nn
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class MultitaskLoss(nn.Module):
         # Initialize weights (equal if not specified)
         if loss_weights is None:
             weight_value = 1.0 / len(self.task_names)
-            self.loss_weights = {task: weight_value for task in self.task_names}
+            self.loss_weights = dict.fromkeys(self.task_names, weight_value)
         else:
             # Normalize weights to sum to 1
             total_weight = sum(loss_weights.values())
@@ -70,7 +71,7 @@ class MultitaskLoss(nn.Module):
 
         # For dynamic weighting: store running statistics of losses
         if dynamic_weighting:
-            self.running_losses = {task: 1.0 for task in self.task_names}
+            self.running_losses = dict.fromkeys(self.task_names, 1.0)
             self.momentum = 0.9  # For exponential moving average
 
     def forward(

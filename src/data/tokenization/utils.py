@@ -16,11 +16,11 @@ SPECIAL NOTES:
 """
 
 # src/data/tokenization/utils.py
-from typing import List, Dict, Tuple, Optional, Union, Any
-import torch
-import torch.nn.functional as F  # Add this import
-from torch.utils.data import Dataset, DataLoader
 import os
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 from .base_tokenizer import BaseTokenizer
 

@@ -8,9 +8,10 @@ DEPENDENCIES: transformers, torch
 SPECIAL NOTES: Provides model integration for constitutional training
 """
 
-import torch
-from typing import List, Optional, Dict, Any, Union
 from dataclasses import dataclass
+from typing import List, Optional
+
+import torch
 
 
 @dataclass
@@ -75,7 +76,7 @@ def load_model(
     if not load_in_8bit:
         model = model.to(device)
 
-    logger.info(f"Model loaded successfully")
+    logger.info("Model loaded successfully")
     logger.info(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     return model, tokenizer

@@ -20,13 +20,13 @@ SPECIAL NOTES:
 """
 
 import logging
-from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Callable, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
+
 
 logger = logging.getLogger(__name__)
 

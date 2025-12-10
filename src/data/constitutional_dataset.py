@@ -9,13 +9,12 @@ DEPENDENCIES: torch, typing, pathlib, json, csv, datasets (optional)
 SPECIAL NOTES: Supports multiple data formats and HuggingFace datasets integration
 """
 
-import json
 import csv
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Callable
+import json
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
-import torch
 from torch.utils.data import Dataset
 
 
@@ -140,7 +139,7 @@ class PromptDataset(Dataset):
 
     def _load_json(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from JSON file."""
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
 
         if isinstance(data, list):
@@ -160,7 +159,7 @@ class PromptDataset(Dataset):
     def _load_jsonl(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from JSONL file (one JSON object per line)."""
         data = []
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -175,7 +174,7 @@ class PromptDataset(Dataset):
     def _load_csv(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from CSV file."""
         data = []
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 data.append(row)

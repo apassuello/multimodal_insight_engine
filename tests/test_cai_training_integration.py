@@ -9,23 +9,24 @@ Tests the complete training workflows including:
 - Metrics tracking and validation
 """
 
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List
+
 import pytest
 import torch
 import torch.nn as nn
-from typing import List, Dict, Any
-import tempfile
-import os
-from pathlib import Path
 
 # Import CAI components
 from src.safety.constitutional import (
-    ConstitutionalPipeline,
     ConstitutionalFramework,
+    ConstitutionalPipeline,
     ConstitutionalPrinciple,
-    RLAIFTrainer,
     PPOTrainer,
     RewardModel,
-    setup_default_framework
+    RLAIFTrainer,
+    setup_default_framework,
 )
 
 

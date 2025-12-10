@@ -1,9 +1,10 @@
+import os
+import time
+from typing import Any, Callable, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Callable, Optional, Union, Any
 from tqdm import tqdm
-import time
-import os
 
 
 def train_model(
@@ -47,7 +48,7 @@ def train_model(
             optimizer = model.configure_optimizers(lr=learning_rate)
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    
+
     # At this point, optimizer should never be None
     assert optimizer is not None, "Optimizer should be configured"
 

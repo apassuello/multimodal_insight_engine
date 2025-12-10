@@ -4,12 +4,12 @@ Tests metrics collection, history tracking, and visualization.
 """
 
 import os
-import tempfile
 import shutil
+import tempfile
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
 
 from src.training.trainers.multimodal import MetricsCollector
 

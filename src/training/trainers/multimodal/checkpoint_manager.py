@@ -14,13 +14,14 @@ SPECIAL NOTES:
 - Creates checkpoint directories automatically
 """
 
-import os
 import logging
-from typing import Dict, Optional, Any
+import os
 from collections import defaultdict
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
+
 
 logger = logging.getLogger(__name__)
 

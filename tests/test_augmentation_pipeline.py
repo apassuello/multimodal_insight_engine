@@ -10,12 +10,13 @@ Tests cover:
 - Determinism and reproducibility
 """
 
+import random
+
+import numpy as np
 import pytest
 import torch
 import torchvision.transforms as T
 from PIL import Image
-import random
-import numpy as np
 
 from src.data.augmentation_pipeline import MultimodalAugmentationPipeline
 

@@ -10,13 +10,13 @@ Supports:
 - Configurable weighting for mined negatives
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Any, Dict, List, Optional
+
+import torch
 
 from ..base import BaseContrastiveLoss
+
 
 logger = logging.getLogger(__name__)
 

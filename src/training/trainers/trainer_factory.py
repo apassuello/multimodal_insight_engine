@@ -1,26 +1,27 @@
 # src/training/trainers/trainer_factory.py
 
-import torch
-import torch.nn as nn
-from typing import Dict, Optional, Any, Union, List, Type
 import logging
 import os
+from typing import Any, Dict, List, Optional, Union
 
+import torch
+import torch.nn as nn
+
+from src.training.strategies.cross_modal_strategy import CrossModalStrategy
+from src.training.strategies.end_to_end_strategy import EndToEndStrategy
+from src.training.strategies.single_modality_strategy import SingleModalityStrategy
+
+# Import strategies
 # Import trainers
 from src.training.trainers.multimodal import MultimodalTrainer
 from src.training.trainers.multistage_trainer import MultistageTrainer
 
-# Import strategies
-from src.training.strategies.training_strategy import TrainingStrategy
-from src.training.strategies.single_modality_strategy import SingleModalityStrategy
-from src.training.strategies.cross_modal_strategy import CrossModalStrategy
-from src.training.strategies.end_to_end_strategy import EndToEndStrategy
-
 # Import utilities
 from src.utils.learningrate_scheduler import (
-    WarmupCosineScheduler,
     LinearWarmupScheduler,
+    WarmupCosineScheduler,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +135,8 @@ class TrainerFactory:
         accumulation_steps = config.get("accumulation_steps", 1)
         evaluation_steps = config.get("evaluation_steps", 0)
         log_steps = config.get("log_steps", 50)
-        early_stopping_patience = config.get("early_stopping_patience", None)
-        clip_grad_norm = config.get("clip_grad_norm", None)
+        early_stopping_patience = config.get("early_stopping_patience")
+        clip_grad_norm = config.get("clip_grad_norm")
         balance_modality_gradients = config.get("balance_modality_gradients", False)
 
         # Create directories
@@ -215,10 +216,10 @@ class TrainerFactory:
                     gamma=config.get("gamma", 0.1),
                 )
         else:
-            scheduler = config.get("scheduler", None)
+            scheduler = config.get("scheduler")
 
         # Create loss function if needed
-        loss_fn = config.get("loss_fn", None)
+        loss_fn = config.get("loss_fn")
 
         # Create trainer
         trainer = MultimodalTrainer(

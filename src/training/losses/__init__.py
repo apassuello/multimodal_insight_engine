@@ -1,18 +1,26 @@
-from .contrastive import SimCLRLoss, CLIPLoss, MoCoLoss, HardNegativeLoss, DynamicTemperatureLoss, DecoupledLoss
-from .multimodal import MixedMultimodalLoss
-from .supervised import SupervisedContrastiveLoss as SupervisedLoss
-from .self_supervised import VICRegLoss, BarlowTwinsLoss
-from .wrappers import CombinedLoss, MultitaskLoss
+from .contrastive import (
+    CLIPLoss,
+    DecoupledLoss,
+    DynamicTemperatureLoss,
+    HardNegativeLoss,
+    MoCoLoss,
+    SimCLRLoss,
+)
+from .contrastive_learning import (
+    compute_recall_at_k,
+    nt_xent_loss,
+    supervised_contrastive_loss,
+)
 from .hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
 from .losses import (
     CrossEntropyLoss,
     MeanSquaredError,
 )
-from .contrastive_learning import (
-    nt_xent_loss,
-    supervised_contrastive_loss,
-    compute_recall_at_k,
-)
+from .multimodal import MixedMultimodalLoss
+from .self_supervised import BarlowTwinsLoss, VICRegLoss
+from .supervised import SupervisedContrastiveLoss as SupervisedLoss
+from .wrappers import CombinedLoss, MultitaskLoss
+
 
 # Backward compatibility aliases
 ContrastiveLoss = SimCLRLoss

@@ -7,14 +7,15 @@ integration of all 5 extracted modules.
 
 import os
 import tempfile
+
 import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from src.training.trainers.multimodal.trainer import (
-    MultimodalTrainer,
     ModalityBalancingScheduler,
+    MultimodalTrainer,
 )
 
 

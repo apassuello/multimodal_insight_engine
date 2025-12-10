@@ -9,13 +9,15 @@ This tests the two-tier safety architecture:
 2. ML model (slower, catches nuanced violations)
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
 import torch
 import torch.nn as nn
-from unittest.mock import Mock, MagicMock, patch
+
 from src.safety.constitutional.evaluator import ConstitutionalSafetyEvaluator
-from src.safety.constitutional.reward_model import RewardModel
 from src.safety.constitutional.principles import setup_default_framework
+from src.safety.constitutional.reward_model import RewardModel
 
 
 # Mock classes matching the pattern from test_cai_training_integration.py

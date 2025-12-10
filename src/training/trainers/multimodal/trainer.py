@@ -19,11 +19,10 @@ DEPENDENCIES:
 """
 
 # Standard library imports
+import logging
 import os
 import time
-import logging
-from collections import defaultdict
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 # Third-party imports
 import torch
@@ -31,16 +30,18 @@ import torch.nn as nn
 from torch.optim.adamw import AdamW
 from torch.utils.data import DataLoader
 
-# Local imports
-from .checkpoint_manager import CheckpointManager
-from .metrics_collector import MetricsCollector
-from .training_loop import TrainingLoop
-from .evaluation import Evaluator
-from .data_handler import DataHandler
+from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
 from src.training.losses import (
     MultiModalMixedContrastiveLoss,
 )
-from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
+
+# Local imports
+from .checkpoint_manager import CheckpointManager
+from .data_handler import DataHandler
+from .evaluation import Evaluator
+from .metrics_collector import MetricsCollector
+from .training_loop import TrainingLoop
+
 
 logger = logging.getLogger(__name__)
 

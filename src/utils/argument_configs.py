@@ -7,7 +7,6 @@ for multimodal training scripts with consistent options and defaults.
 """
 
 import argparse
-from typing import Dict, Any
 
 
 def get_multimodal_training_args() -> argparse.ArgumentParser:
@@ -253,7 +252,7 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         default=None,
         help="Weight factor for hard negatives (higher = more emphasis)",
     )
-    
+
     # VICReg specific arguments
     parser.add_argument(
         "--sim_weight",

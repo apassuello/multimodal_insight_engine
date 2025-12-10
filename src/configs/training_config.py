@@ -1,11 +1,13 @@
 # src/configs/training_config.py
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union, Any
-import os
 import json
-import yaml
 import logging
+import os
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+import yaml
+
 
 logger = logging.getLogger(__name__)
 
@@ -103,10 +105,10 @@ class TrainingConfig:
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
         if path.endswith(".json"):
-            with open(path, "r") as f:
+            with open(path) as f:
                 config_dict = json.load(f)
         elif path.endswith((".yaml", ".yml")):
-            with open(path, "r") as f:
+            with open(path) as f:
                 config_dict = yaml.safe_load(f)
         else:
             raise ValueError(f"Unsupported file format: {path}")

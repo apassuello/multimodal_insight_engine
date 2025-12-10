@@ -1,12 +1,17 @@
 # src/data/sequence_data.py
+from typing import Any, Dict, List, Optional
+
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
-from typing import Dict, List, Tuple, Optional, Any, Callable, Union
+from torch.utils.data import DataLoader, Dataset
+
 from src.utils.logging import get_logger
+
+
 logger = get_logger(__name__)
-import numpy as np
 import os
-import torch.nn.functional as F
+
+import numpy as np
+
 from src.data.curriculum_dataset import CurriculumTranslationDataset
 
 
@@ -153,13 +158,13 @@ class TransformerDataset(Dataset):
         logger.info(f"Total examples: {len(self.source_sequences)}")
 
         if src_lengths:
-            logger.info(f"\nSource sequence statistics:")
+            logger.info("\nSource sequence statistics:")
             logger.info(f"  Min length: {min(src_lengths)}")
             logger.info(f"  Max length: {max(src_lengths)}")
             logger.info(f"  Average length: {sum(src_lengths)/len(src_lengths):.2f}")
 
         if tgt_lengths:
-            logger.info(f"\nTarget sequence statistics:")
+            logger.info("\nTarget sequence statistics:")
             logger.info(f"  Min length: {min(tgt_lengths)}")
             logger.info(f"  Max length: {max(tgt_lengths)}")
             logger.info(f"  Average length: {sum(tgt_lengths)/len(tgt_lengths):.2f}")

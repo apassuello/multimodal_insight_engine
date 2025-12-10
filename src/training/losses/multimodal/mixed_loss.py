@@ -9,13 +9,14 @@ Combines multiple contrastive objectives:
 - Supervised contrastive loss (with class labels)
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any
 import logging
+from typing import Any, Dict, List, Optional, Tuple
+
+import torch
+import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
+
 
 logger = logging.getLogger(__name__)
 

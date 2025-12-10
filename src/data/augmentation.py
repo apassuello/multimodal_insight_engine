@@ -1,11 +1,13 @@
 # src/data/augmentation.py
-  import torch
-  import torch.nn as nn
-  import torchvision.transforms as T
-  from typing import List, Dict, Optional, Tuple, Union, Callable
-  import random
+import random
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
-  class MultimodalAugmentationPipeline:
+import torch
+import torch.nn as nn
+import torchvision.transforms as T
+
+
+class MultimodalAugmentationPipeline:
       """
       Advanced augmentation pipeline for multimodal data with configurable strategies
       for both image and text modalities.
