@@ -40,6 +40,7 @@ from src.training.strategies.single_modality_strategy import SingleModalityStrat
 from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.metrics_tracker import MetricsTracker
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -7,6 +7,7 @@ configurable weighting strategies.
 from .combined_loss import CombinedLoss
 from .multitask_loss import MultitaskLoss
 
+
 __all__ = [
     "CombinedLoss",
     "MultitaskLoss",

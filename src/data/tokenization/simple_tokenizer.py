@@ -7,6 +7,7 @@ from .base_tokenizer import BaseTokenizer
 from .preprocessing import clean_text, segment_on_punc
 from .vocabulary import Vocabulary
 
+
 logger = get_logger(__name__)
 
 

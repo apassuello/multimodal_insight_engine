@@ -11,6 +11,7 @@ from .trainers.multimodal import MultimodalTrainer
 from .trainers.trainer import train_model
 from .trainers.transformer_trainer import TransformerTrainer
 
+
 # Optional Constitutional AI trainer
 try:
     from .trainers.constitutional_trainer import ConstitutionalTrainer
@@ -39,6 +40,7 @@ from .optimizers import (
     LinearWarmupLR,
     OneCycleLR,
 )
+
 
 __all__ = [
     "train_model",

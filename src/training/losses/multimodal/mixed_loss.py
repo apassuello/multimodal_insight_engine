@@ -17,6 +17,7 @@ import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
 
+
 logger = logging.getLogger(__name__)
 
 
