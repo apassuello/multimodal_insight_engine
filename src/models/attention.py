@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 """MODULE: attention.py
 PURPOSE: Implements various attention mechanisms for transformer architectures
 KEY COMPONENTS:

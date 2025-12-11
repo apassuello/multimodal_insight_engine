@@ -29,6 +29,7 @@ from src.utils.logging import get_logger
 
 from ..models.vision.vision_transformer import VisionTransformer
 
+
 logger = get_logger(__name__)
 
 

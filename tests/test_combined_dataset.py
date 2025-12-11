@@ -4,6 +4,7 @@ import pytest
 
 from src.data.combined_translation_dataset import CombinedTranslationDataset
 
+
 # Mock the OpenSubtitlesDataset import
 with patch("src.data.combined_translation_dataset.OpenSubtitlesDataset", Mock):
     from src.data.combined_translation_dataset import CombinedTranslationDataset

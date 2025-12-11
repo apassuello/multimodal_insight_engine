@@ -11,6 +11,7 @@ from .hard_negative_loss import HardNegativeLoss
 from .moco_loss import MoCoLoss
 from .simclr_loss import SimCLRLoss
 
+
 __all__ = [
     "CLIPLoss",
     "SimCLRLoss",

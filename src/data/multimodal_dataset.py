@@ -30,6 +30,7 @@ from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
+
 logger = get_logger(__name__)
 from collections import defaultdict
 
@@ -706,6 +707,7 @@ class Flickr30kDataset(MultimodalDataset):
 import logging
 
 from datasets import load_dataset
+
 
 logger = logging.getLogger(__name__)
 
