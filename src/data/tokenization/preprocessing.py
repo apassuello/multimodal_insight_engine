@@ -22,10 +22,10 @@ import unicodedata
 def normalize_unicode(text: str) -> str:
     """
     Normalize Unicode characters in text.
-    
+
     Args:
         text: Input text
-    
+
     Returns:
         Normalized text
     """
@@ -41,14 +41,14 @@ def clean_text(
 ) -> str:
     """
     Clean and normalize text with configurable options.
-    
+
     Args:
         text: Input text
         lower: Whether to convert to lowercase
         remove_accents: Whether to remove accents
         strip_html: Whether to remove HTML tags and entities
         handle_contractions: Whether to standardize contractions
-    
+
     Returns:
         Cleaned text
     """
@@ -94,10 +94,10 @@ def clean_text(
 def segment_on_punc(text: str) -> str:
     """
     Add spaces around punctuation.
-    
+
     Args:
         text: Input text
-    
+
     Returns:
         Text with spaces around punctuation
     """

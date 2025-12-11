@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 class BarlowTwinsLoss(nn.Module):
     """
     Implements Barlow Twins loss for multimodal learning.
-    
+
     Barlow Twins loss creates embeddings that are invariant to distortions
     by minimizing redundancy between the components of the embedding vectors
     through a cross-correlation matrix that is pushed to the identity.
-    
-    This implementation supports multimodal applications where the two views 
+
+    This implementation supports multimodal applications where the two views
     come from different modalities (vision and text) rather than augmentations
     of the same modality as in the original paper.
-    
+
     Reference: J. Zbontar et al., "Barlow Twins: Self-Supervised Learning via Redundancy Reduction"
     https://arxiv.org/abs/2103.03230
     """
@@ -103,11 +103,11 @@ class BarlowTwinsLoss(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Apply projection heads to features if enabled.
-        
+
         Args:
             vision_features: Vision features [batch_size, vision_dim]
             text_features: Text features [batch_size, text_dim]
-            
+
         Returns:
             Tuple of (projected_vision_features, projected_text_features)
         """
@@ -136,11 +136,11 @@ class BarlowTwinsLoss(nn.Module):
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """
         Compute Barlow Twins loss between vision and text features.
-        
+
         Args:
             vision_features: Vision features [batch_size, vision_dim]
             text_features: Text features [batch_size, text_dim]
-            
+
         Returns:
             Tuple containing:
             - Loss tensor
@@ -194,10 +194,10 @@ class BarlowTwinsLoss(nn.Module):
     def train(self, mode: bool = True):
         """
         Set the module in training mode.
-        
+
         Args:
             mode: Whether to set training mode (True) or evaluation mode (False)
-            
+
         Returns:
             self
         """
@@ -209,10 +209,10 @@ class BarlowTwinsLoss(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

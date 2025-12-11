@@ -137,7 +137,7 @@ class TestImageAugmentation:
             )
 
             try:
-                result = pipeline(sample_image, "test")
+                pipeline(sample_image, "test")
                 # Check size matches expected
                 assert True  # Basic check that it runs
             except Exception:
@@ -570,7 +570,7 @@ class TestAugmentationIntegration:
 
         # Simulate dataset __getitem__
         try:
-            for i in range(5):
+            for _i in range(5):
                 result = pipeline(sample_image.copy(), sample_text)
                 assert result is not None
         except Exception:

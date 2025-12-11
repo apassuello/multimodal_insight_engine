@@ -362,7 +362,7 @@ class TestTrainStep:
         assert 'mean_advantage' in metrics
 
         # Check that all metrics are numbers
-        for key, value in metrics.items():
+        for _key, value in metrics.items():
             assert isinstance(value, (int, float))
 
     @pytest.mark.slow
@@ -434,7 +434,7 @@ class TestTrainStep:
         prompts = ["Test"]
 
         # Run training step
-        metrics = trainer.train_step(
+        trainer.train_step(
             prompts,
             num_epochs_per_batch=1,
             max_length=15

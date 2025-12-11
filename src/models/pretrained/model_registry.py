@@ -29,11 +29,11 @@ class ModelRegistry:
     def get_model(cls, model_type: str, **kwargs) -> nn.Module:
         """
         Get a model instance by type.
-        
+
         Args:
             model_type: Type of model to instantiate
             **kwargs: Arguments to pass to the model constructor
-            
+
         Returns:
             Model instance
         """
@@ -47,7 +47,7 @@ class ModelRegistry:
     def register_model(cls, model_type: str, model_class: Type[nn.Module]) -> None:
         """
         Register a new model type.
-        
+
         Args:
             model_type: Type name for the model
             model_class: Model class to instantiate
@@ -57,10 +57,10 @@ class ModelRegistry:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

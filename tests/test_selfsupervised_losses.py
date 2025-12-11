@@ -117,7 +117,7 @@ class TestVICRegLoss:
         if isinstance(result, dict) and len(result) > 1:
             possible_keys = ['sim_loss', 'var_loss', 'cov_loss',
                            'invariance', 'variance', 'covariance']
-            has_components = any(key in result for key in possible_keys)
+            any(key in result for key in possible_keys)
             # If components are returned, they should be tensors
             for key in result:
                 if key != 'loss':

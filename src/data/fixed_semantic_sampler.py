@@ -22,7 +22,7 @@ class FixedSemanticBatchSampler(Sampler):
     """
     A batch sampler that ensures each batch contains multiple examples with the same match_id.
     This is critical for contrastive learning to have positive pairs within each batch.
-    
+
     Improved with:
     - Robust match_id extraction from different dataset formats
     - Better handling of minimum samples per group requirement
@@ -42,7 +42,7 @@ class FixedSemanticBatchSampler(Sampler):
     ):
         """
         Initialize the semantic batch sampler.
-        
+
         Args:
             dataset: Dataset to sample from
             batch_size: Size of each batch
@@ -260,8 +260,7 @@ class FixedSemanticBatchSampler(Sampler):
         if self.shuffle:
             random.shuffle(self.batches)
 
-        for batch in self.batches:
-            yield batch
+        yield from self.batches
 
     def __len__(self) -> int:
         """Return the number of batches."""
@@ -278,7 +277,7 @@ def create_semantic_dataloader(
 ) -> torch.utils.data.DataLoader:
     """
     Create a DataLoader with semantic batch sampling.
-    
+
     Args:
         dataset: Dataset to load
         batch_size: Batch size
@@ -286,7 +285,7 @@ def create_semantic_dataloader(
         shuffle: Whether to shuffle the dataset
         num_workers: Number of workers for data loading
         verbose: Whether to print detailed information
-        
+
     Returns:
         DataLoader with semantic batch sampling
     """

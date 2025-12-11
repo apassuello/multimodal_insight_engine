@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 class RedTeamingFramework:
     """
     A framework for conducting red teaming exercises on language models.
-    
+
     This framework helps organize, execute, and analyze various adversarial
     testing strategies designed to probe model boundaries and identify
     potential vulnerabilities.
@@ -22,7 +22,7 @@ class RedTeamingFramework:
     ):
         """
         Initialize the red teaming framework.
-        
+
         Args:
             output_dir: Directory to store red teaming results
             log_results: Whether to log results to disk
@@ -47,7 +47,7 @@ class RedTeamingFramework:
     ) -> None:
         """
         Register an attack strategy function.
-        
+
         Args:
             name: Name of the attack strategy
             strategy_fn: Function that generates adversarial inputs from a base prompt
@@ -62,12 +62,12 @@ class RedTeamingFramework:
     ) -> Dict[str, List[str]]:
         """
         Generate adversarial inputs using registered strategies.
-        
+
         Args:
             base_prompts: List of base prompts to modify
             strategy_name: Name of specific strategy to use (None = use all)
             num_variations: Number of variations to generate per base prompt
-            
+
         Returns:
             Dictionary mapping strategy names to lists of generated inputs
         """
@@ -108,13 +108,13 @@ class RedTeamingFramework:
     ) -> Dict[str, Any]:
         """
         Evaluate model robustness against adversarial inputs.
-        
+
         Args:
             model_fn: Function that takes a text input and returns model output
             adversarial_inputs: Dictionary mapping strategies to input lists
             evaluation_fn: Function that evaluates model output quality/safety
             model_name: Name identifier for the model
-            
+
         Returns:
             Dictionary with evaluation results
         """
@@ -202,11 +202,11 @@ class RedTeamingFramework:
     ) -> str:
         """
         Generate a human-readable report from evaluation results.
-        
+
         Args:
             results: Results to report (uses latest results if None)
             include_details: Whether to include detailed input/output pairs
-            
+
         Returns:
             Formatted report string
         """
@@ -258,10 +258,10 @@ class RedTeamingFramework:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

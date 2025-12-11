@@ -89,15 +89,10 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             )
 
         # Check text model dimension first to determine appropriate vision model
-        text_model_dim = 0
         if args.use_pretrained_text:
             # MobileBERT has 512 dim, BERT-base has 768 dim, MiniLM-384 has 384 dim
-            if args.text_model == "mobilebert":
-                text_model_dim = 512
-            elif args.text_model in ["bert-base", "roberta-base"] or args.text_model == "distilbert-base" or args.text_model == "albert-base":
-                text_model_dim = 768
-            elif args.text_model == "minilm-384":
-                text_model_dim = 384
+            if args.text_model == "mobilebert" or args.text_model in ["bert-base", "roberta-base"] or args.text_model == "distilbert-base" or args.text_model == "albert-base" or args.text_model == "minilm-384":
+                pass
 
         # Keep things simple - use standard timm models
         # For 768 dimensions, use vit_base_patch16_224 which is standard and well-supported

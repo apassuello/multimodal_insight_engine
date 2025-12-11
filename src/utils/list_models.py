@@ -9,6 +9,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from safety.red_teaming.model_loader import ModelLoader
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def main(args):
@@ -118,10 +122,10 @@ if __name__ == "__main__":
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

@@ -223,7 +223,6 @@ class TestBLEUScore:
         # Multiple calls to update() with same hypothesis
         hypothesis = "the cat sat on the mat"
         reference1 = "the cat sat on the mat"
-        reference2 = "a cat was sitting on the mat"
 
         metric.update(hypothesis, reference1)
         bleu = metric.compute()

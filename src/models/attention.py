@@ -363,7 +363,7 @@ class MultiHeadAttention(nn.Module):
         if value is None:
             value = query
 
-        batch_size = query.size(0)
+        query.size(0)
 
         # Linear projections
         q = self.query_projection(query)  # [batch_size, num_queries, input_dim]
@@ -407,23 +407,23 @@ class MultiHeadAttention(nn.Module):
 
 class GroupedQueryAttention(nn.Module):
     """Implements Grouped-Query Attention (GQA) mechanism as described in papers like PaLM-2.
-    
+
     This attention mechanism reduces computational and memory costs by sharing key-value heads
     across multiple query heads. Each key-value head serves a group of query heads, making it
     more efficient than standard multi-head attention while maintaining model quality.
-    
+
     Args:
         d_model (int): Total dimension of the model (must be divisible by num_heads)
         num_heads (int): Total number of attention heads (must be divisible by num_key_value_heads)
         num_key_value_heads (int): Number of key/value heads to use (fewer than num_heads)
-        
+
     Attributes:
         head_dim (int): Dimension of each attention head (d_model // num_heads)
         q_proj (nn.Linear): Query projection layer
         k_proj (nn.Linear): Key projection layer (shared across groups)
         v_proj (nn.Linear): Value projection layer (shared across groups)
         out_proj (nn.Linear): Output projection layer
-        
+
     Shape:
         - Input: (batch_size, seq_len, d_model)
         - Output: (batch_size, seq_len, d_model)
@@ -452,12 +452,12 @@ class GroupedQueryAttention(nn.Module):
 
     def forward(self, x, mask=None):
         """Forward pass for the Grouped-Query Attention mechanism.
-        
+
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, seq_len, d_model)
             mask (torch.Tensor, optional): Attention mask of shape (batch_size, seq_len, seq_len).
                                          Positions with 0 are masked out. Defaults to None.
-                                         
+
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, seq_len, d_model)
         """
@@ -507,31 +507,31 @@ class GroupedQueryAttention(nn.Module):
 
 class ALiBiAttention(nn.Module):
     """Attention Layer with Linear Biases (ALiBi) for enhanced position encoding.
-    
+
     ALiBi replaces traditional positional embeddings with linear biases added to attention scores.
     This approach has been shown to extrapolate better to longer sequences than learned or
     sinusoidal position embeddings. The bias term decreases linearly with distance between
     tokens, with different slopes for each attention head.
-    
+
     Args:
         hidden_size (int): Size of the hidden/embedding dimension. Must be divisible by num_heads.
         num_heads (int): Number of attention heads.
         max_seq_length (int, optional): Maximum sequence length to pre-compute biases for.
             Defaults to 2048.
-            
+
     Attributes:
         head_dim (int): Dimension of each attention head (hidden_size // num_heads)
         q_proj (nn.Linear): Query projection layer
         k_proj (nn.Linear): Key projection layer
         v_proj (nn.Linear): Value projection layer
         out_proj (nn.Linear): Output projection layer
-        bias (torch.Tensor): Pre-computed ALiBi attention biases of shape 
+        bias (torch.Tensor): Pre-computed ALiBi attention biases of shape
             [1, num_heads, max_seq_length, max_seq_length]
-            
+
     References:
         "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation"
         https://arxiv.org/abs/2108.12409
-        
+
     Shape:
         - Input x: (batch_size, seq_length, hidden_size)
         - Output: (batch_size, seq_length, hidden_size)
@@ -563,14 +563,14 @@ class ALiBiAttention(nn.Module):
 
     def _get_slopes(self, n):
         """Calculate attention head-specific slopes for ALiBi position biases.
-        
+
         The slopes are calculated using a geometric sequence, where each head gets
         a different slope that decreases by a power of 2. For non-power-of-2 number
         of heads, the slopes are interpolated from the nearest power of 2.
-        
+
         Args:
             n (int): Number of attention heads
-            
+
         Returns:
             list: List of n slopes, one for each attention head
         """
@@ -587,16 +587,16 @@ class ALiBiAttention(nn.Module):
 
     def forward(self, x, mask=None):
         """Forward pass of the ALiBi attention layer.
-        
+
         Computes multi-head attention with linear biases added to the attention scores.
         The biases are pre-computed during initialization and depend on the relative
         positions of queries and keys.
-        
+
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, seq_length, hidden_size)
             mask (torch.Tensor, optional): Attention mask of shape (batch_size, seq_length, seq_length).
                                          Values of 0 indicate positions to mask out. Defaults to None.
-                                         
+
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, seq_length, hidden_size)
         """
@@ -634,10 +634,10 @@ class ALiBiAttention(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

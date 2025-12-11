@@ -90,7 +90,7 @@ class SimpleContrastiveLoss(nn.Module):
         # Create target matrix based on match_ids
         if match_ids is None:
             # If no match_ids, use identity matrix (diagonal matching)
-            targets = torch.arange(batch_size, device=logits.device)
+            torch.arange(batch_size, device=logits.device)
             positive_mask = torch.eye(batch_size, device=logits.device).bool()
         else:
             # Create mask where pairs with same match_id are positives (vectorized)

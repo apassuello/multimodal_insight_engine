@@ -18,7 +18,7 @@ import torch.nn as nn
 class MixedPrecisionConverter:
     """
     Converts models to use mixed precision formats for training and inference.
-    
+
     This class provides utilities for using FP16 or BF16 mixed precision, with
     special handling for Apple Silicon MPS acceleration.
     """
@@ -31,7 +31,7 @@ class MixedPrecisionConverter:
     ):
         """
         Initialize the mixed precision converter.
-        
+
         Args:
             model: The model to convert
             dtype: Target data type (torch.float16 or torch.bfloat16)
@@ -66,7 +66,7 @@ class MixedPrecisionConverter:
     def convert_to_mixed_precision(self) -> nn.Module:
         """
         Convert the model to use mixed precision.
-        
+
         Returns:
             Model with mixed precision
         """
@@ -112,7 +112,7 @@ class MixedPrecisionConverter:
 class MixedPrecisionWrapper(nn.Module):
     """
     Wrapper for mixed precision inference with autocast.
-    
+
     This wrapper automatically applies torch.autocast around the forward method
     to ensure mixed precision is used during inference.
     """
@@ -120,7 +120,7 @@ class MixedPrecisionWrapper(nn.Module):
     def __init__(self, model: nn.Module, dtype: torch.dtype = torch.float16):
         """
         Initialize the mixed precision wrapper.
-        
+
         Args:
             model: The model to wrap
             dtype: Data type to use for mixed precision
@@ -138,10 +138,10 @@ class MixedPrecisionWrapper(nn.Module):
     def forward(self, *args, **kwargs):
         """
         Forward pass with automatic mixed precision.
-        
+
         Args:
             *args, **kwargs: Arguments to pass to the wrapped model
-            
+
         Returns:
             Model outputs
         """

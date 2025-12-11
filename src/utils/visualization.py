@@ -18,13 +18,18 @@ import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 def plot_training_history(history: Dict[str, List[float]],
                          figsize: Tuple[int, int] = (12, 8),
                          save_path: Optional[str] = None) -> None:
     """
     Plot training metrics history.
-    
+
     Args:
         history: Dictionary mapping metric names to lists of values
         figsize: Figure size as (width, height)
@@ -56,7 +61,7 @@ def plot_attention_weights(attention_weights: torch.Tensor,
                           save_path: Optional[str] = None) -> None:
     """
     Visualize attention weights from a transformer model.
-    
+
     Args:
         attention_weights: Tensor of attention weights with shape [layers, heads, seq_len, seq_len]
         tokens: Optional list of token strings for axis labels
@@ -69,7 +74,7 @@ def plot_attention_weights(attention_weights: torch.Tensor,
     weights = attention_weights[layer, head].cpu().detach().numpy()
 
     plt.figure(figsize=figsize)
-    ax = sns.heatmap(weights,
+    sns.heatmap(weights,
                     annot=False,
                     cmap='viridis',
                     xticklabels=tokens if tokens else [],
@@ -95,7 +100,7 @@ def plot_embeddings_tsne(embeddings: torch.Tensor,
                         save_path: Optional[str] = None) -> None:
     """
     Visualize embeddings using t-SNE dimensionality reduction.
-    
+
     Args:
         embeddings: Tensor of embeddings to visualize
         labels: Optional list of labels for color-coding
@@ -143,10 +148,10 @@ def plot_embeddings_tsne(embeddings: torch.Tensor,
 def count_parameters(model: nn.Module) -> int:
     """
     Count the total number of trainable parameters in a model.
-    
+
     Args:
         model: PyTorch model
-        
+
     Returns:
         int: Total number of trainable parameters
     """
@@ -324,7 +329,7 @@ def visualize_test_samples(
     with torch.no_grad():
         # First, get embeddings for the visualization images
         if "text" in vis_batch:
-            vis_text_data = {
+            {
                 "src": (
                     vis_batch["text"]["src"].to(device)
                     if vis_batch["text"]["src"].dim() == 2
@@ -493,7 +498,7 @@ def visualize_test_samples(
             wrap=True,
             fontsize=10,
             color=color,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={'boxstyle': "round", 'facecolor': "white", 'alpha': 0.8},
         )
         axes[i, 1].axis("off")
 
@@ -559,10 +564,10 @@ def visualize_test_samples(
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

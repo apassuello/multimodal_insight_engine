@@ -2,7 +2,7 @@
 """
 Data modules for the MultiModal Insight Engine.
 
-This package contains components for loading, preprocessing, and 
+This package contains components for loading, preprocessing, and
 managing data for various model architectures.
 """
 

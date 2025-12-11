@@ -18,7 +18,7 @@ import torch.nn.utils.prune as prune
 class PruningConfig:
     """
     Configuration class for model pruning settings.
-    
+
     This class centralizes parameters for different pruning approaches,
     making it easier to experiment with various configurations.
     """
@@ -35,7 +35,7 @@ class PruningConfig:
     ):
         """
         Initialize pruning configuration.
-        
+
         Args:
             method: Pruning method to use
             amount: Amount to prune (between 0 and 1 for percentage)
@@ -66,7 +66,7 @@ class PruningConfig:
 class ModelPruner:
     """
     Implements various pruning techniques for neural networks.
-    
+
     Pruning removes weights from a neural network to reduce its size and
     potentially improve its inference speed, with minimal impact on accuracy.
     """
@@ -78,7 +78,7 @@ class ModelPruner:
     ):
         """
         Initialize the model pruner.
-        
+
         Args:
             model: The model to prune
             config: Pruning configuration
@@ -95,7 +95,7 @@ class ModelPruner:
     def prune_model(self) -> nn.Module:
         """
         Apply pruning to the model.
-        
+
         Returns:
             Pruned model
         """
@@ -111,9 +111,9 @@ class ModelPruner:
     def _apply_magnitude_pruning(self) -> nn.Module:
         """
         Apply magnitude-based unstructured pruning.
-        
+
         This method prunes the smallest weights by absolute value.
-        
+
         Returns:
             Pruned model
         """
@@ -144,10 +144,10 @@ class ModelPruner:
     def _apply_structured_pruning(self) -> nn.Module:
         """
         Apply structured pruning along specified dimensions.
-        
+
         Structured pruning removes entire rows, columns, or other structures,
         which can better leverage hardware acceleration.
-        
+
         Returns:
             Pruned model
         """
@@ -179,10 +179,10 @@ class ModelPruner:
     def _apply_iterative_pruning(self) -> nn.Module:
         """
         Apply iterative magnitude pruning.
-        
+
         Iterative pruning gradually increases sparsity over multiple iterations,
         often resulting in better accuracy than one-shot pruning.
-        
+
         Returns:
             Pruned model
         """
@@ -220,7 +220,7 @@ class ModelPruner:
     def _calculate_sparsity(self) -> Dict[str, float]:
         """
         Calculate model sparsity after pruning.
-        
+
         Returns:
             Dictionary with sparsity statistics
         """
@@ -246,7 +246,7 @@ class ModelPruner:
     def get_pruning_info(self) -> Dict[str, Any]:
         """
         Get information about pruning results.
-        
+
         Returns:
             Dictionary with pruning information
         """

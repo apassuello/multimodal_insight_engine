@@ -2,7 +2,7 @@
 """
 Model implementations for the MultiModal Insight Engine.
 
-This package contains modules for creating, loading, and managing 
+This package contains modules for creating, loading, and managing
 various neural network model architectures.
 """
 

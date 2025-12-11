@@ -242,7 +242,7 @@ class TestTrainingLoop:
 
         initial_lr = optimizer.param_groups[0]["lr"]
 
-        metrics = loop.train_epoch(
+        loop.train_epoch(
             dataloader=dataloader,
             epoch=0,
             num_epochs=1,
@@ -328,7 +328,7 @@ class TestTrainingLoop:
             device=device,
         )
 
-        metrics = loop.train_epoch(
+        loop.train_epoch(
             dataloader=dataloader,
             epoch=0,
             num_epochs=1,
@@ -445,7 +445,7 @@ class TestTrainingLoop:
             evaluation_count[0] += 1
             return {"val_loss": 0.5}
 
-        metrics = training_loop.train_epoch(
+        training_loop.train_epoch(
             dataloader=dataloader,
             epoch=0,
             num_epochs=1,

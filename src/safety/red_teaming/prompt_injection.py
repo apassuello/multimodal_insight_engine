@@ -15,7 +15,7 @@ import datetime
 class PromptInjectionTester:
     """
     Specialized tester for prompt injection vulnerabilities.
-    
+
     This class focuses on testing and analyzing language models'
     vulnerability to prompt injection attacks, where malicious instructions
     are inserted to override the model's intended behavior.
@@ -24,11 +24,11 @@ class PromptInjectionTester:
     def __init__(self, prefix_weight: float = 0.3, suffix_weight: float = 0.5):
         """
         Initialize the prompt injection tester.
-        
+
         Args:
             prefix_weight: Weight for prefix injections (before legit prompt)
             suffix_weight: Weight for suffix injections (after legit prompt)
-            
+
         Note:
             The remaining weight (1 - prefix - suffix) is for middle injections
         """
@@ -243,12 +243,12 @@ class PromptInjectionTester:
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate a prompt injection based on a legitimate prompt.
-        
+
         Args:
             prompt: Legitimate prompt to inject into
             target_action: Specific target action (random if None)
             injection_position: Where to inject (prefix, middle, suffix, both, random)
-            
+
         Returns:
             Tuple of (injected prompt, injection metadata)
         """
@@ -323,12 +323,12 @@ class PromptInjectionTester:
     ) -> Dict[str, Any]:
         """
         Evaluate if a prompt injection was successful.
-        
+
         Args:
             injected_prompt: The prompt with injection
             response: Model's response
             metadata: Metadata about the injection attempt
-            
+
         Returns:
             Dictionary with evaluation results
         """
@@ -467,12 +467,12 @@ class PromptInjectionTester:
     ) -> Dict[str, Any]:
         """
         Run the full test suite on a model.
-        
+
         Args:
             model_fn: Function that takes a prompt and returns model response
             model_name: Name identifier for the model
             num_variations: Number of variations to generate per test case
-            
+
         Returns:
             Dictionary with test results
         """

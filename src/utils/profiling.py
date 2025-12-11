@@ -10,11 +10,16 @@ import psutil
 import seaborn as sns
 import torch
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class ModelProfiler:
     """
     A utility for profiling PyTorch models.
-    
+
     This class provides methods for measuring execution time, memory usage,
     and other performance metrics for PyTorch models.
     """
@@ -22,7 +27,7 @@ class ModelProfiler:
     def __init__(self, model: torch.nn.Module, device: Optional[torch.device] = None):
         """
         Initialize the profiler.
-        
+
         Args:
             model: The PyTorch model to profile
             device: The device to run profiling on (defaults to model's device)
@@ -52,7 +57,7 @@ class ModelProfiler:
     def _count_parameters(self) -> Dict[str, int]:
         """
         Count the number of parameters in the model.
-        
+
         Returns:
             Dictionary with parameter counts
         """
@@ -73,12 +78,12 @@ class ModelProfiler:
     ) -> Dict[str, float]:
         """
         Measure the execution time of a forward pass.
-        
+
         Args:
             input_data: Input tensor or dictionary of tensors
             iterations: Number of iterations to average over
             warmup: Number of warmup iterations (not measured)
-            
+
         Returns:
             Dictionary with timing metrics
         """
@@ -126,10 +131,10 @@ class ModelProfiler:
     ) -> Dict[str, float]:
         """
         Measure the memory usage during a forward pass.
-        
+
         Args:
             input_data: Input tensor or dictionary of tensors
-            
+
         Returns:
             Dictionary with memory metrics
         """
@@ -172,10 +177,10 @@ class ModelProfiler:
     def generate_report(self, save_path: Optional[str] = None) -> str:
         """
         Generate a human-readable report of the profiling results.
-        
+
         Args:
             save_path: Optional path to save the report
-            
+
         Returns:
             Report string
         """
@@ -243,10 +248,10 @@ class ModelProfiler:
     def plot_metrics(self, save_dir: Optional[str] = None) -> Dict[str, plt.Figure]:
         """
         Plot various metrics from the profiling results.
-        
+
         Args:
             save_dir: Optional directory to save the plots
-            
+
         Returns:
             Dictionary of matplotlib figures
         """
@@ -305,7 +310,7 @@ class ModelProfiler:
     ) -> None:
         """
         Profile the model using PyTorch's built-in profiler.
-        
+
         Args:
             input_data: Input tensor or dictionary of tensors
             use_mps: Whether to use MPS profiling
@@ -407,14 +412,14 @@ class ModelProfiler:
     ) -> pd.DataFrame:
         """
         Benchmark the model across different batch sizes and sequence lengths.
-        
+
         Args:
             input_generator: Function that generates inputs given batch_size and seq_length
             batch_sizes: List of batch sizes to test
             sequence_lengths: List of sequence lengths to test
             num_iterations: Number of iterations for each configuration
             save_dir: Directory to save results
-            
+
         Returns:
             DataFrame with benchmarking results
         """
@@ -494,11 +499,11 @@ class ModelProfiler:
     ) -> Dict[str, float]:
         """
         Trace memory usage by layer in the model.
-        
+
         Args:
             input_data: Input tensor or dictionary of tensors
             save_path: Path to save the trace
-            
+
         Returns:
             Dictionary with memory usage by layer
         """
@@ -595,13 +600,13 @@ class ModelProfiler:
     ) -> pd.DataFrame:
         """
         Monitor hardware utilization during model training or inference.
-        
+
         Args:
             train_fn: Function that runs the training or inference process
             duration: Maximum duration to monitor (in seconds)
             interval: Sampling interval (in seconds)
             save_path: Path to save the results
-            
+
         Returns:
             DataFrame with hardware utilization metrics
         """
@@ -633,7 +638,6 @@ class ModelProfiler:
 
                 # Apple silicon-specific metrics
                 apple_silicon = torch.backends.mps.is_available()
-                gpu_utilization = None
                 mps_tensors = None
                 # MPS doesn't provide direct GPU utilization metrics, but we can track model's device
                 if apple_silicon:
@@ -707,7 +711,7 @@ class ModelProfiler:
 class ModelBenchmarkSuite:
     """
     A comprehensive suite for benchmarking and profiling transformer models.
-    
+
     This class provides methods for:
     1. Measuring performance across configurations
     2. Profiling memory and computation
@@ -718,7 +722,7 @@ class ModelBenchmarkSuite:
     def __init__(self, save_dir: str = "benchmark_results"):
         """
         Initialize the benchmark suite.
-        
+
         Args:
             save_dir: Directory to save benchmark results
         """
@@ -736,8 +740,8 @@ class ModelBenchmarkSuite:
         model: torch.nn.Module,
         model_name: str,
         input_generator: Callable[[int, int], torch.Tensor],
-        batch_sizes: List[int] = [1, 2, 4, 8],
-        sequence_lengths: List[int] = [16, 32, 64, 128, 256],
+        batch_sizes: List[int] = None,
+        sequence_lengths: List[int] = None,
         num_iterations: int = 5,
         profile_with_pytorch: bool = True,
         trace_memory: bool = True,
@@ -745,7 +749,7 @@ class ModelBenchmarkSuite:
     ) -> Dict[str, Any]:
         """
         Run a comprehensive benchmark on a model.
-        
+
         Args:
             model: The PyTorch model to benchmark
             model_name: Name identifier for the model
@@ -756,11 +760,15 @@ class ModelBenchmarkSuite:
             profile_with_pytorch: Whether to use PyTorch profiler
             trace_memory: Whether to trace memory by layer
             device: Device to run on (default: model's device)
-            
+
         Returns:
             Dictionary with benchmark results
         """
         # Create model-specific directory
+        if sequence_lengths is None:
+            sequence_lengths = [16, 32, 64, 128, 256]
+        if batch_sizes is None:
+            batch_sizes = [1, 2, 4, 8]
         model_dir = os.path.join(self.save_dir, model_name)
         os.makedirs(model_dir, exist_ok=True)
 
@@ -829,12 +837,12 @@ class ModelBenchmarkSuite:
     ) -> pd.DataFrame:
         """
         Compare performance metrics across multiple models.
-        
+
         Args:
             model_names: List of model names to compare (None = all)
             metric: Metric to compare ('avg_time', 'memory_used_mb', etc.)
             save_path: Path to save comparison results
-            
+
         Returns:
             DataFrame with comparison results
         """
@@ -884,7 +892,7 @@ class ModelBenchmarkSuite:
     ) -> None:
         """
         Plot comparison between models.
-        
+
         Args:
             comparison_df: DataFrame with comparison data
             metric: Metric to compare
@@ -978,10 +986,10 @@ class ModelBenchmarkSuite:
     ) -> str:
         """
         Generate optimization recommendations based on profiling results.
-        
+
         Args:
             model_name: Name of the model to analyze
-            
+
         Returns:
             String with optimization recommendations
         """
@@ -1084,10 +1092,10 @@ class ModelBenchmarkSuite:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

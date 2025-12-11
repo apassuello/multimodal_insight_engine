@@ -10,7 +10,7 @@ from src.safety.evaluator import SafetyEvaluator
 class AdversarialRobustnessEvaluator:
     """
     Evaluator for measuring model robustness against adversarial inputs.
-    
+
     This class provides methods for evaluating how well a model withstands
     different types of adversarial attacks.
     """
@@ -23,7 +23,7 @@ class AdversarialRobustnessEvaluator:
     ):
         """
         Initialize the adversarial robustness evaluator.
-        
+
         Args:
             safety_evaluator: SafetyEvaluator instance for content analysis
             jailbreak_phrases: List of phrases that indicate successful jailbreaking
@@ -63,11 +63,11 @@ class AdversarialRobustnessEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate whether a jailbreak attempt was successful.
-        
+
         Args:
             prompt: The adversarial prompt
             response: The model's response
-            
+
         Returns:
             Evaluation results
         """
@@ -111,11 +111,11 @@ class AdversarialRobustnessEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate whether the response contains harmful content.
-        
+
         Args:
             prompt: The adversarial prompt
             response: The model's response
-            
+
         Returns:
             Evaluation results
         """
@@ -138,11 +138,11 @@ class AdversarialRobustnessEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate whether the response is consistent or shows signs of manipulation.
-        
+
         Args:
             prompt: The adversarial prompt
             response: The model's response
-            
+
         Returns:
             Evaluation results
         """
@@ -183,7 +183,7 @@ class AdversarialRobustnessEvaluator:
                     mean = sum(values) / len(values)
 
                     # Simple outlier detection
-                    for i, val in enumerate(values):
+                    for _i, val in enumerate(values):
                         if abs(val - mean) > 2 * sum(abs(v - mean) for v in values) / len(values):
                             tone_shift = True
                             break
@@ -202,11 +202,11 @@ class AdversarialRobustnessEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate whether the model improperly followed harmful instructions.
-        
+
         Args:
             prompt: The adversarial prompt
             response: The model's response
-            
+
         Returns:
             Evaluation results
         """
@@ -255,11 +255,11 @@ class AdversarialRobustnessEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate model robustness based on prompt-response pair.
-        
+
         Args:
             prompt: The adversarial prompt
             response: The model's response
-            
+
         Returns:
             Comprehensive evaluation results
         """
@@ -296,10 +296,10 @@ class AdversarialRobustnessEvaluator:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

@@ -201,7 +201,7 @@ class MetricsCollector:
 
         # Group metrics by type
         metric_groups = {}
-        for key in self.history.keys():
+        for key in self.history:
             # Skip if there are no values
             if not self.history[key]:
                 continue

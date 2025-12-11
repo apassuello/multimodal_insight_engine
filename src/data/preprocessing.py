@@ -12,7 +12,7 @@ class DataPreprocessor:
     def __init__(self, method: str = 'standard'):
         """
         Initialize the preprocessor.
-        
+
         Args:
             method: Scaling method to use ('standard' or 'minmax')
         """
@@ -23,7 +23,7 @@ class DataPreprocessor:
     def fit(self, data: Union[torch.Tensor, np.ndarray]) -> None:
         """
         Fit the preprocessor on the data.
-        
+
         Args:
             data: Input data to fit on
         """
@@ -35,10 +35,10 @@ class DataPreprocessor:
     def transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Transform the data using the fitted preprocessor.
-        
+
         Args:
             data: Input data to transform
-            
+
         Returns:
             Transformed data as torch.Tensor
         """
@@ -54,10 +54,10 @@ class DataPreprocessor:
     def fit_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Fit the preprocessor and transform the data.
-        
+
         Args:
             data: Input data to fit and transform
-            
+
         Returns:
             Transformed data as torch.Tensor
         """
@@ -67,10 +67,10 @@ class DataPreprocessor:
     def inverse_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Inverse transform the data back to original scale.
-        
+
         Args:
             data: Transformed data to inverse transform
-            
+
         Returns:
             Original scale data as torch.Tensor
         """
@@ -86,11 +86,11 @@ class DataPreprocessor:
 def create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Create sequences from time series data.
-    
+
     Args:
         data: Input time series data
         seq_length: Length of each sequence
-        
+
     Returns:
         Tuple of (sequences, targets)
     """
@@ -106,12 +106,12 @@ def create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor,
 def split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Split data into train, validation, and test sets.
-    
+
     Args:
         data: Input data to split
         train_ratio: Ratio of data to use for training
         val_ratio: Ratio of data to use for validation
-        
+
     Returns:
         Tuple of (train_data, val_data, test_data)
     """
@@ -128,10 +128,10 @@ def split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

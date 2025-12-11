@@ -11,11 +11,16 @@ import torch
 from matplotlib.figure import Figure
 from torch.nn import functional as F
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class LanguageModelEvaluator:
     """
     Evaluation utilities for language models.
-    
+
     This class provides methods for evaluating language model performance
     using metrics like perplexity, and visualizing generation results.
     """
@@ -28,7 +33,7 @@ class LanguageModelEvaluator:
     ):
         """
         Initialize the evaluator.
-        
+
         Args:
             model: Language model to evaluate
             tokenizer: Tokenizer for encoding/decoding text
@@ -59,13 +64,13 @@ class LanguageModelEvaluator:
     def calculate_perplexity(self, text: str) -> float:
         """
         Calculate perplexity of a text under the model.
-        
+
         Perplexity is a measure of how well a model predicts a sample.
         Lower perplexity indicates better prediction.
-        
+
         Args:
             text: Text to evaluate
-            
+
         Returns:
             Perplexity score
         """
@@ -103,10 +108,10 @@ class LanguageModelEvaluator:
     def calculate_batch_perplexity(self, texts: List[str]) -> Dict[str, Union[float, List[float]]]:
         """
         Calculate perplexity for a batch of texts.
-        
+
         Args:
             texts: List of texts to evaluate
-            
+
         Returns:
             Dictionary with perplexity metrics
         """
@@ -203,10 +208,10 @@ class LanguageModelEvaluator:
     def analyze_token_probabilities(self, text: str) -> Dict[str, Any]:
         """
         Analyze token probabilities in a text.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Dictionary with token probability analysis
         """
@@ -296,14 +301,14 @@ class LanguageModelEvaluator:
     ) -> Figure:
         """
         Visualize attention patterns for a given text.
-        
+
         Args:
             text: Input text
             layer: Layer index to visualize (-1 for last layer)
             head: Attention head to visualize
             attention_type: Type of attention to visualize (self, cross)
             cmap: Colormap for the heatmap
-            
+
         Returns:
             Matplotlib figure with attention visualization
         """
@@ -428,11 +433,11 @@ class LanguageModelEvaluator:
     ) -> List[Figure]:
         """
         Visualize attention patterns across all layers and heads.
-        
+
         Args:
             text: Text to visualize attention for
             save_dir: Directory to save visualizations
-            
+
         Returns:
             List of Matplotlib figures
         """
@@ -516,11 +521,11 @@ class LanguageModelEvaluator:
     ) -> Dict[str, Any]:
         """
         Evaluate the model on a dataset of texts.
-        
+
         Args:
             texts: List of texts to evaluate
             save_path: Path to save the evaluation results
-            
+
         Returns:
             Dictionary with evaluation results
         """
@@ -541,8 +546,8 @@ class LanguageModelEvaluator:
         # Calculate statistics
         avg_perplexity = np.mean(perplexities)
         median_perplexity = np.median(perplexities)
-        min_perplexity = np.min(perplexities)
-        max_perplexity = np.max(perplexities)
+        np.min(perplexities)
+        np.max(perplexities)
         std_perplexity = np.std(perplexities)
 
         # Create results dictionary
@@ -570,11 +575,11 @@ class LanguageModelEvaluator:
     ) -> Figure:
         """
         Plot the distribution of perplexities.
-        
+
         Args:
             perplexities: List of perplexity values
             save_path: Path to save the plot
-            
+
         Returns:
             Matplotlib figure
         """
@@ -613,10 +618,10 @@ class LanguageModelEvaluator:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

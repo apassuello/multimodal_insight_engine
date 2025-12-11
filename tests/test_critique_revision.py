@@ -280,7 +280,7 @@ class TestConstitutionalDataset:
     def test_dataset_tokenizes_prompt_and_response(self):
         """Test dataset concatenates prompt and response."""
         dataset = ConstitutionalDataset(self.training_data, self.mock_tokenizer)
-        item = dataset[0]
+        dataset[0]
 
         # Check tokenizer was called with concatenated text
         self.mock_tokenizer.assert_called()

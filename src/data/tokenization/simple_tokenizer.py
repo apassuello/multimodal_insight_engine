@@ -1,15 +1,20 @@
 # src/data/tokenization/simple_tokenizer.py
 from typing import Dict, List, Optional
 
+from src.utils.logging import get_logger
+
 from .base_tokenizer import BaseTokenizer
 from .preprocessing import clean_text, segment_on_punc
 from .vocabulary import Vocabulary
 
 
+logger = get_logger(__name__)
+
+
 class WhitespaceTokenizer(BaseTokenizer):
     """
     A simple tokenizer that splits text on whitespace.
-    
+
     This tokenizer provides a baseline implementation that splits text on
     whitespace after optional preprocessing.
     """
@@ -22,7 +27,7 @@ class WhitespaceTokenizer(BaseTokenizer):
     ):
         """
         Initialize the whitespace tokenizer.
-        
+
         Args:
             vocab: Optional vocabulary to use
             split_on_punct: Whether to add spaces around punctuation
@@ -40,10 +45,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def preprocess(self, text: str) -> str:
         """
         Preprocess text before tokenization.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             Preprocessed text
         """
@@ -59,10 +64,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def tokenize(self, text: str) -> List[str]:
         """
         Convert a text string into a list of tokens.
-        
+
         Args:
             text: The input text to tokenize
-            
+
         Returns:
             A list of tokens
         """
@@ -77,10 +82,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def encode(self, text: str) -> List[int]:
         """
         Convert a text string into a list of token indices.
-        
+
         Args:
             text: The input text to encode
-            
+
         Returns:
             A list of token indices
         """
@@ -90,10 +95,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def decode(self, token_ids: List[int]) -> str:
         """
         Convert a list of token indices back into a text string.
-        
+
         Args:
             token_ids: The token indices to decode
-            
+
         Returns:
             The reconstructed text
         """
@@ -103,10 +108,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
         Encode a batch of texts into token indices.
-        
+
         Args:
             texts: List of input texts to encode
-            
+
         Returns:
             List of token index lists
         """
@@ -116,7 +121,7 @@ class WhitespaceTokenizer(BaseTokenizer):
     def vocab_size(self) -> int:
         """
         Get the vocabulary size of this tokenizer.
-        
+
         Returns:
             The number of tokens in the vocabulary
         """
@@ -126,7 +131,7 @@ class WhitespaceTokenizer(BaseTokenizer):
     def special_tokens(self) -> Dict[str, int]:
         """
         Get the special tokens used by this tokenizer.
-        
+
         Returns:
             Dictionary mapping special token names to their indices
         """
@@ -135,10 +140,10 @@ class WhitespaceTokenizer(BaseTokenizer):
     def add_tokens(self, tokens: List[str]) -> int:
         """
         Add tokens to the vocabulary.
-        
+
         Args:
             tokens: List of tokens to add
-            
+
         Returns:
             Number of tokens added
         """
@@ -152,7 +157,7 @@ class WhitespaceTokenizer(BaseTokenizer):
     def save_pretrained(self, path: str) -> None:
         """
         Save the tokenizer vocabulary to a directory.
-        
+
         Args:
             path: Directory path to save to
         """
@@ -162,11 +167,11 @@ class WhitespaceTokenizer(BaseTokenizer):
     def from_pretrained(cls, path: str, **kwargs) -> "WhitespaceTokenizer":
         """
         Load a tokenizer from a saved vocabulary.
-        
+
         Args:
             path: Directory path to load from
             **kwargs: Additional arguments to pass to the constructor
-            
+
         Returns:
             Loaded tokenizer
         """
@@ -177,7 +182,7 @@ class WhitespaceTokenizer(BaseTokenizer):
 class SimpleTokenizer:
     """
     A HuggingFace-compatible tokenizer adapter for use with multimodal models.
-    
+
     This tokenizer provides a simple wrapper around HuggingFace tokenizers,
     with fallback to WhitespaceTokenizer when a pre-trained model is not specified.
     """
@@ -190,7 +195,7 @@ class SimpleTokenizer:
     ):
         """
         Initialize the tokenizer adapter.
-        
+
         Args:
             pretrained_model_name: HuggingFace model name to use (optional)
             max_length: Maximum sequence length for tokenization
@@ -276,10 +281,10 @@ class SimpleTokenizer:
     def encode(self, text: str) -> List[int]:
         """
         Convert text to token indices.
-        
+
         Args:
             text: Input text to encode
-            
+
         Returns:
             List of token indices
         """
@@ -311,10 +316,10 @@ class SimpleTokenizer:
     def decode(self, token_ids: List[int]) -> str:
         """
         Convert token indices back to text.
-        
+
         Args:
             token_ids: List of token indices
-            
+
         Returns:
             Decoded text
         """
@@ -328,10 +333,10 @@ class SimpleTokenizer:
     def tokenize(self, text: str) -> List[str]:
         """
         Split text into tokens without converting to indices.
-        
+
         Args:
             text: Input text to tokenize
-            
+
         Returns:
             List of tokens
         """
@@ -345,10 +350,10 @@ class SimpleTokenizer:
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
         Encode a batch of texts.
-        
+
         Args:
             texts: List of input texts
-            
+
         Returns:
             List of token index lists
         """
@@ -372,7 +377,7 @@ class SimpleTokenizer:
     def special_tokens(self) -> Dict[str, int]:
         """
         Get the special tokens used by this tokenizer.
-        
+
         Returns:
             Dictionary mapping special token names to their indices
         """
@@ -382,7 +387,7 @@ class SimpleTokenizer:
     def vocab_size(self) -> int:
         """
         Get the vocabulary size.
-        
+
         Returns:
             Size of vocabulary
         """

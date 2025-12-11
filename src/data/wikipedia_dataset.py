@@ -6,11 +6,16 @@ import tensorflow as tf
 import torch
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class WikipediaDataset:
     """
     Dataset class for the Wikipedia Web2M dataset.
-    
+
     This class handles loading and preprocessing data from the WikiWeb2M dataset
     stored in TFRecord format.
     """
@@ -27,7 +32,7 @@ class WikipediaDataset:
     ):
         """
         Initialize the Wikipedia dataset.
-        
+
         Args:
             data_dir: Directory containing the Wikipedia data
             split: Data split to use ('train', 'val', or 'test')
@@ -58,7 +63,7 @@ class WikipediaDataset:
     def _get_file_paths(self) -> List[str]:
         """
         Get file paths for the specified split.
-        
+
         Returns:
             List of file paths for the specified split
         """
@@ -77,10 +82,10 @@ class WikipediaDataset:
     def _parse_example(self, example_proto):
         """
         Parse a single example from the TFRecord.
-        
+
         Args:
             example_proto: Serialized example from TFRecord
-            
+
         Returns:
             Parsed feature dictionary
         """
@@ -100,10 +105,10 @@ class WikipediaDataset:
     def _process_image(self, image_data):
         """
         Process image data from raw bytes.
-        
+
         Args:
             image_data: Raw image bytes
-            
+
         Returns:
             Processed image tensor
         """
@@ -115,10 +120,10 @@ class WikipediaDataset:
     def _process_text(self, text_data):
         """
         Process text data from raw bytes.
-        
+
         Args:
             text_data: Raw text bytes
-            
+
         Returns:
             Processed text string
         """
@@ -132,7 +137,7 @@ class WikipediaDataset:
     def load_data(self) -> Dict[str, List[Any]]:
         """
         Load and preprocess the data.
-        
+
         Returns:
             Dictionary containing processed data
         """
@@ -202,7 +207,7 @@ class WikipediaDataset:
     def to_pytorch_dataset(self):
         """
         Convert to a PyTorch dataset compatible with the MultimodalDataset class.
-        
+
         Returns:
             Dictionary of tensors ready for MultimodalDataset
         """
@@ -230,7 +235,7 @@ def create_wiki_dataloaders(
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     """
     Create DataLoaders for train, validation, and test sets.
-    
+
     Args:
         data_dir: Directory containing the Wikipedia data
         batch_size: Batch size for the DataLoaders
@@ -238,7 +243,7 @@ def create_wiki_dataloaders(
         num_workers: Number of worker processes
         image_size: Size to resize images to
         random_seed: Random seed for reproducibility
-        
+
     Returns:
         Tuple of (train_loader, val_loader, test_loader)
     """
@@ -303,10 +308,10 @@ def create_wiki_dataloaders(
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

@@ -4,6 +4,11 @@ from typing import Any, Dict, Optional
 import torch
 import torch.nn as nn
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 """MODULE: base_model.py
 PURPOSE: Provides the foundational base class for all neural network models in the MultiModal Insight Engine
@@ -15,7 +20,7 @@ SPECIAL NOTES: All model classes in the project should inherit from this base cl
 class BaseModel(nn.Module):
     """
     Base class for all models in the MultiModal Insight Engine.
-    
+
     This class extends PyTorch's nn.Module with additional functionality for
     saving/loading models, parameter counting, and other utilities that will be
     common across all models in the project.
@@ -29,10 +34,10 @@ class BaseModel(nn.Module):
     def forward(self, x):
         """
         Forward pass of the model.
-        
+
         Args:
             x: Input tensor or dictionary of tensors
-            
+
         Returns:
             Model output
         """
@@ -43,7 +48,7 @@ class BaseModel(nn.Module):
              additional_info: Optional[Dict[str, Any]] = None):
         """
         Save model weights and training state to a file.
-        
+
         Args:
             path: Path to save the model
             optimizer: Optional optimizer to save state
@@ -77,11 +82,11 @@ class BaseModel(nn.Module):
     def load(self, path: str, map_location: Optional[str] = None):
         """
         Load model weights from a file.
-        
+
         Args:
             path: Path to the saved model
             map_location: Optional device mapping (e.g., 'cpu', 'cuda')
-            
+
         Returns:
             Dictionary containing loaded information besides model weights
         """
@@ -105,7 +110,7 @@ class BaseModel(nn.Module):
     def count_parameters(self):
         """
         Count the number of trainable parameters.
-        
+
         Returns:
             int: Number of trainable parameters
         """
@@ -114,7 +119,7 @@ class BaseModel(nn.Module):
     def get_device(self):
         """
         Get the device where the model is currently located.
-        
+
         Returns:
             torch.device: Device of the first parameter
         """
@@ -123,10 +128,10 @@ class BaseModel(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

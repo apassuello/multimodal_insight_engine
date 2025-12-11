@@ -30,11 +30,11 @@ from nltk.translate.bleu_score import corpus_bleu
 class Accuracy:
     """
     Computes classification accuracy with support for top-k accuracy.
-    
+
     This metric can be used for both binary and multi-class classification tasks.
     It supports computing top-k accuracy where the prediction is considered correct
     if the true class is among the k most probable classes.
-    
+
     Args:
         top_k (int, optional): Number of top predictions to consider. Defaults to 1.
         reduction (str, optional): Specifies the reduction to apply to the output:
@@ -54,7 +54,7 @@ class Accuracy:
     def update(self, pred: torch.Tensor, target: torch.Tensor):
         """
         Update the metric with new predictions and targets.
-        
+
         Args:
             pred: Predicted logits of shape (N, C) where C is the number of classes
             target: Target indices of shape (N,) where values are 0 ≤ targets[i] ≤ C-1
@@ -70,7 +70,7 @@ class Accuracy:
     def compute(self) -> float:
         """
         Compute the current accuracy value.
-        
+
         Returns:
             float: The computed accuracy value
         """
@@ -82,11 +82,11 @@ class Accuracy:
 class Perplexity:
     """
     Computes perplexity for language models.
-    
+
     Perplexity is a measure of how well a probability model predicts a sample.
     A lower perplexity indicates better performance. This implementation supports
     both token-level and sequence-level perplexity computation.
-    
+
     Args:
         reduction (str, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
@@ -104,7 +104,7 @@ class Perplexity:
     def update(self, loss: torch.Tensor, num_tokens: int):
         """
         Update the metric with new loss values and token counts.
-        
+
         Args:
             loss: Cross-entropy loss value
             num_tokens: Number of tokens in the current batch
@@ -115,7 +115,7 @@ class Perplexity:
     def compute(self) -> float:
         """
         Compute the current perplexity value.
-        
+
         Returns:
             float: The computed perplexity value
         """
@@ -127,10 +127,10 @@ class Perplexity:
 class F1Score:
     """
     Computes F1 score for classification tasks.
-    
+
     The F1 score is the harmonic mean of precision and recall. This implementation
     supports both binary and multi-class classification with macro and micro averaging.
-    
+
     Args:
         num_classes (int): Number of classes
         average (str, optional): Averaging method: 'macro' | 'micro' | 'weighted'.
@@ -151,7 +151,7 @@ class F1Score:
     def update(self, pred: torch.Tensor, target: torch.Tensor):
         """
         Update the metric with new predictions and targets.
-        
+
         Args:
             pred: Predicted class indices
             target: Target class indices
@@ -164,7 +164,7 @@ class F1Score:
     def compute(self) -> float:
         """
         Compute the current F1 score.
-        
+
         Returns:
             float: The computed F1 score
         """
@@ -191,11 +191,11 @@ class F1Score:
 class BLEUScore:
     """
     Computes BLEU score for machine translation.
-    
+
     BLEU (Bilingual Evaluation Understudy) is an algorithm for evaluating the quality
     of machine-translated text. This implementation uses NLTK's BLEU implementation
     with support for different n-gram weights.
-    
+
     Args:
         weights (tuple, optional): Weights for different n-grams. Defaults to (0.25, 0.25, 0.25, 0.25).
     """
@@ -212,7 +212,7 @@ class BLEUScore:
     def update(self, hypothesis: str, reference: str):
         """
         Update the metric with new hypothesis and reference.
-        
+
         Args:
             hypothesis: Generated translation
             reference: Ground truth translation
@@ -223,7 +223,7 @@ class BLEUScore:
     def compute(self) -> float:
         """
         Compute the current BLEU score.
-        
+
         Returns:
             float: The computed BLEU score
         """
@@ -236,7 +236,7 @@ class BLEUScore:
 class CustomMetric:
     """
     Base class for implementing custom metrics.
-    
+
     This class provides a template for implementing custom metrics with a consistent
     interface. It includes methods for resetting the metric state, updating with new
     values, and computing the final metric value.
@@ -252,7 +252,7 @@ class CustomMetric:
     def update(self, *args, **kwargs):
         """
         Update the metric with new values. Override this method in subclasses.
-        
+
         Args:
             *args: Positional arguments for the update
             **kwargs: Keyword arguments for the update
@@ -262,7 +262,7 @@ class CustomMetric:
     def compute(self) -> Any:
         """
         Compute the current metric value. Override this method in subclasses.
-        
+
         Returns:
             Any: The computed metric value
         """
@@ -272,10 +272,10 @@ class CustomMetric:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

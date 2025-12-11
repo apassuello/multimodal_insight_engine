@@ -6,6 +6,11 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 def train_model(
     model: nn.Module,
@@ -34,7 +39,7 @@ def train_model(
         device: Device to train on (will use CUDA if available if not specified)
         callbacks: List of callback functions to call after each epoch
 
-    Returns:    
+    Returns:
         Dictionary containing training history (losses, metrics, etc.)
     """
     # Set device
@@ -190,10 +195,10 @@ def train_model(
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

@@ -544,7 +544,7 @@ class TransformerTrainer:
             self.current_epoch = epoch
 
             # Train one epoch
-            train_loss = self.train_epoch()
+            self.train_epoch()
 
             # Save epoch metrics plot if save_path is provided
             if save_path:
@@ -692,7 +692,7 @@ class TransformerTrainer:
             checkpoint = torch.load(path, map_location=self.device, weights_only=True)
 
             # Check what's in the checkpoint
-            checkpoint_contains = [k for k in checkpoint.keys()]
+            checkpoint_contains = list(checkpoint.keys())
             logger.debug(f"Checkpoint contains: {checkpoint_contains}")
 
             # Load model state

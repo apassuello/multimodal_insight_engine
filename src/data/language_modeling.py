@@ -7,13 +7,18 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
 from .tokenization import OptimizedBPETokenizer
+
+
+logger = get_logger(__name__)
 
 
 class LanguageModelingDataset(Dataset):
     """
     Dataset for causal language modeling tasks.
-    
+
     This dataset takes tokenized text and creates inputs/targets for
     next-token prediction tasks used in language model training.
     """
@@ -29,7 +34,7 @@ class LanguageModelingDataset(Dataset):
     ):
         """
         Initialize the language modeling dataset.
-        
+
         Args:
             texts: List of text samples
             tokenizer: Tokenizer for encoding texts
@@ -73,13 +78,13 @@ class LanguageModelingDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
         Get an example from the dataset.
-        
+
         For language modeling, the input is the sequence and the target
         is the same sequence shifted by one position (to predict the next token).
-        
+
         Args:
             idx: Index of the example
-            
+
         Returns:
             Dictionary with input_ids and labels
         """
@@ -104,11 +109,11 @@ class LanguageModelingDataset(Dataset):
 def lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[str, torch.Tensor]:
     """
     Collate function for language modeling batches.
-    
+
     Args:
         batch: List of examples
         pad_idx: Padding token index
-        
+
     Returns:
         Dictionary with batched and padded tensors
     """
@@ -143,7 +148,7 @@ def create_lm_dataloaders(
 ) -> tuple:
     """
     Create training and validation dataloaders for language modeling.
-    
+
     Args:
         texts: List of text samples
         tokenizer: Tokenizer for encoding texts
@@ -151,7 +156,7 @@ def create_lm_dataloaders(
         max_length: Maximum sequence length
         val_split: Fraction of data to use for validation
         seed: Random seed for reproducibility
-        
+
     Returns:
         Tuple of (train_dataloader, val_dataloader)
     """
@@ -194,7 +199,8 @@ def create_lm_dataloaders(
     )
 
     # Create collate function with the padding index
-    collate_fn = lambda batch: lm_collate_fn(batch, pad_idx)
+    def collate_fn(batch):
+        return lm_collate_fn(batch, pad_idx)
 
     # Create dataloaders
     train_dataloader = DataLoader(
@@ -216,10 +222,10 @@ def create_lm_dataloaders(
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

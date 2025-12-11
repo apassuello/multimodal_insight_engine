@@ -333,7 +333,7 @@ class FlickrMultistageTrainer:
         )
 
         # 3. Create learning rate scheduler with warmup and restarts
-        total_steps = len(self.train_dataloader) * self.stage2_epochs
+        len(self.train_dataloader) * self.stage2_epochs
         scheduler = CosineAnnealingWarmRestarts(
             optimizer,
             T_0=len(self.train_dataloader) * 5,  # Restart every 5 epochs
@@ -422,7 +422,7 @@ class FlickrMultistageTrainer:
 
         # 3. Create learning rate scheduler with warmup and 2 cycles
         total_steps = len(self.train_dataloader) * self.stage3_epochs
-        warmup_steps = int(0.05 * total_steps)  # 5% warmup
+        int(0.05 * total_steps)  # 5% warmup
 
         # Custom cosine scheduler with 2 cycles and restarts
         scheduler = CosineAnnealingWarmRestarts(
@@ -440,7 +440,7 @@ class FlickrMultistageTrainer:
         )
 
         # Create hard negative mining loss
-        hard_negative_loss = HardNegativeMiningContrastiveLoss(
+        HardNegativeMiningContrastiveLoss(
             temperature=0.07,
             hard_negative_factor=0.5,
             mining_strategy="semi-hard",

@@ -343,7 +343,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         device: torch.device
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Create targets for global loss."""
-        batch_size = indices.shape[0]
+        indices.shape[0]
         global_indices = self.global_indices[:actual_global_size]
 
         v2t_targets = []

@@ -22,13 +22,13 @@ def calculate_tokenizer_metrics(
 ) -> Dict[str, Any]:
     """
     Calculate various metrics to evaluate tokenizer quality.
-    
+
     Args:
         tokenizer: The tokenizer to evaluate
         text_samples: List of text samples to tokenize
         sample_size: Number of samples to use for detailed analysis
         verbose: Whether to print detailed metrics
-        
+
     Returns:
         Dictionary of tokenizer quality metrics
     """
@@ -158,13 +158,13 @@ def calculate_semantic_token_metrics(
 ) -> Dict[str, Any]:
     """
     Calculate metrics for tokenization of semantically related texts.
-    
+
     Args:
         tokenizer: The tokenizer to evaluate
         semantic_groups: Dictionary mapping group IDs to lists of related texts
         sample_size: Number of semantic groups to analyze
         verbose: Whether to print detailed metrics
-        
+
     Returns:
         Dictionary of semantic tokenization metrics
     """
@@ -264,13 +264,13 @@ def log_tokenizer_evaluation(
 ) -> Dict[str, Any]:
     """
     Evaluate tokenizer quality and log results.
-    
+
     Args:
         tokenizer: Tokenizer to evaluate
         text_data: List of text samples
         match_ids: Optional list of match IDs for semantic grouping
         epoch: Current epoch (for logging)
-        
+
     Returns:
         Combined metrics dictionary
     """

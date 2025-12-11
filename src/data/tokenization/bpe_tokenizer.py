@@ -14,7 +14,7 @@ from .vocabulary import Vocabulary
 class BPETokenizer(BaseTokenizer):
     """
     A Byte Pair Encoding (BPE) tokenizer.
-    
+
     BPE is a subword tokenization algorithm that starts with characters and
     iteratively merges the most frequent pairs of adjacent tokens.
     """
@@ -28,7 +28,7 @@ class BPETokenizer(BaseTokenizer):
     ):
         """
         Initialize the BPE tokenizer.
-        
+
         Args:
             vocab: Optional vocabulary to use
             merges: Optional list of merge operations
@@ -51,10 +51,10 @@ class BPETokenizer(BaseTokenizer):
     def preprocess(self, text: str) -> str:
         """
         Preprocess text before tokenization.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             Preprocessed text
         """
@@ -69,7 +69,7 @@ class BPETokenizer(BaseTokenizer):
     ) -> None:
         """
         Train the BPE tokenizer on a corpus of texts.
-        
+
         Args:
             texts: List of training texts
             vocab_size: Target vocabulary size
@@ -158,10 +158,10 @@ class BPETokenizer(BaseTokenizer):
     def _tokenize_word(self, word: str) -> List[str]:
         """
         Tokenize a single word using BPE.
-        
+
         Args:
             word: The word to tokenize
-            
+
         Returns:
             List of BPE tokens
         """
@@ -195,10 +195,10 @@ class BPETokenizer(BaseTokenizer):
     def tokenize(self, text: str) -> List[str]:
         """
         Convert a text string into a list of tokens.
-        
+
         Args:
             text: The input text to tokenize
-            
+
         Returns:
             A list of tokens
         """
@@ -218,10 +218,10 @@ class BPETokenizer(BaseTokenizer):
     def encode(self, text: str) -> List[int]:
         """
         Convert a text string into a list of token indices.
-        
+
         Args:
             text: The input text to encode
-            
+
         Returns:
             A list of token indices
         """
@@ -231,10 +231,10 @@ class BPETokenizer(BaseTokenizer):
     def decode(self, token_ids: List[int]) -> str:
         """
         Convert a list of token indices back into a text string.
-        
+
         Args:
             token_ids: The token indices to decode
-            
+
         Returns:
             The reconstructed text
         """
@@ -246,10 +246,10 @@ class BPETokenizer(BaseTokenizer):
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
         Encode a batch of texts into token indices.
-        
+
         Args:
             texts: List of input texts to encode
-            
+
         Returns:
             List of token index lists
         """
@@ -259,7 +259,7 @@ class BPETokenizer(BaseTokenizer):
     def vocab_size(self) -> int:
         """
         Get the vocabulary size of this tokenizer.
-        
+
         Returns:
             The number of tokens in the vocabulary
         """
@@ -269,7 +269,7 @@ class BPETokenizer(BaseTokenizer):
     def special_tokens(self) -> Dict[str, int]:
         """
         Get the special tokens used by this tokenizer.
-        
+
         Returns:
             Dictionary mapping special token names to their indices
         """
@@ -278,7 +278,7 @@ class BPETokenizer(BaseTokenizer):
     def save_pretrained(self, path: str) -> None:
         """
         Save the tokenizer to a directory.
-        
+
         Args:
             path: Directory path to save to
         """
@@ -304,10 +304,10 @@ class BPETokenizer(BaseTokenizer):
     def from_pretrained(cls, path: str) -> "BPETokenizer":
         """
         Load a tokenizer from a saved directory.
-        
+
         Args:
             path: Directory path to load from
-            
+
         Returns:
             Loaded tokenizer
         """
@@ -344,7 +344,7 @@ def preprocess_data_with_optimized_bpe(
 ):
     """
     Optimized preprocessing function for translation datasets.
-    
+
     Args:
         dataset: Dataset with src_data and tgt_data attributes
         de_tokenizer: German BPE tokenizer
@@ -352,7 +352,7 @@ def preprocess_data_with_optimized_bpe(
         batch_size: Size of batches for processing
         use_multiprocessing: Whether to use multiprocessing for CPU parallelism
         num_workers: Number of worker processes when using multiprocessing
-        
+
     Returns:
         Lists of tokenized source and target sequences
     """
@@ -473,10 +473,10 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

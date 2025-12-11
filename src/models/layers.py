@@ -5,6 +5,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 """MODULE: layers.py
 PURPOSE: Implements fundamental neural network layers with advanced features like initialization, normalization, and residual connections
@@ -22,7 +27,7 @@ class LinearLayer(nn.Module):
                  use_layer_norm: bool = False):
         """
         Initialize the linear layer.
-        
+
         Args:
             in_features: Size of each input sample
             out_features: Size of each output sample
@@ -60,10 +65,10 @@ class LinearLayer(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the linear layer.
-        
+
         Args:
             x: Input tensor
-            
+
         Returns:
             Transformed output tensor
         """
@@ -95,7 +100,7 @@ class FeedForwardBlock(nn.Module):
                  use_residual: bool = False):
         """
         Initialize the feed-forward block.
-        
+
         Args:
             input_dim: Dimension of input features
             hidden_dim: Dimension of hidden layer (if None, uses 4*input_dim)
@@ -141,10 +146,10 @@ class FeedForwardBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the feed-forward block.
-        
+
         Args:
             x: Input tensor
-            
+
         Returns:
             Transformed output tensor
         """
@@ -181,10 +186,10 @@ class FeedForwardBlock(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

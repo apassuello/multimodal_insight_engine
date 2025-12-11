@@ -1,9 +1,8 @@
 # src/data/augmentation.py
 import random
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import torch
-import torch.nn as nn
 import torchvision.transforms as T
 
 
@@ -55,15 +54,15 @@ class MultimodalAugmentationPipeline:
           return text_data
 
       def __call__(
-          self, 
+          self,
           batch: Dict[str, Union[torch.Tensor, Dict]]
       ) -> Dict[str, Union[torch.Tensor, Dict]]:
           """
           Apply augmentations to a batch of multimodal data.
-          
+
           Args:
               batch: Dictionary with 'image' and 'text' keys
-              
+
           Returns:
               Augmented batch with same structure
           """

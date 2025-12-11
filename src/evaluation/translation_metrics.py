@@ -6,6 +6,11 @@ import numpy as np
 from nltk.metrics.distance import edit_distance
 from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 # Download required NLTK data
 try:
@@ -16,12 +21,12 @@ except LookupError:
 def calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[float, ...] = (0.4, 0.3, 0.2, 0.1)) -> float:
     """
     Calculate BLEU score using NLTK's implementation.
-    
+
     Args:
         hypotheses: List of generated translations
         references: List of reference translations
         weights: Weights for n-gram precision (default: (0.4, 0.3, 0.2, 0.1))
-        
+
     Returns:
         BLEU score
     """
@@ -42,11 +47,11 @@ def calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[
 def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
     """
     Calculate Translation Edit Rate (TER).
-    
+
     Args:
         hypotheses: List of generated translations
         references: List of reference translations
-        
+
     Returns:
         Average TER score (lower is better)
     """
@@ -69,11 +74,11 @@ def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
 def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[str, float]:
     """
     Evaluate translation quality using multiple metrics.
-    
+
     Args:
         hypotheses: List of generated translations
         references: List of reference translations
-        
+
     Returns:
         Dictionary containing BLEU and TER scores
     """
@@ -88,7 +93,7 @@ def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[s
 def print_evaluation_results(scores: Dict[str, float]):
     """
     Print evaluation results in a formatted way.
-    
+
     Args:
         scores: Dictionary containing metric scores
     """
@@ -100,10 +105,10 @@ def print_evaluation_results(scores: Dict[str, float]):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

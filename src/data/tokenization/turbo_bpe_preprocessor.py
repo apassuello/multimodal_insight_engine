@@ -6,13 +6,18 @@ import time
 import torch
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
 from .vocabulary import Vocabulary
+
+
+logger = get_logger(__name__)
 
 
 class TurboBPEPreprocessor:
     """
     A high-performance BPE preprocessing system specifically optimized for Apple Silicon.
-    
+
     This preprocessor uses aggressive caching, parallel processing, and avoids
     unnecessary CPU-GPU transfers for maximum performance on M-series chips.
     """
@@ -20,7 +25,7 @@ class TurboBPEPreprocessor:
     def __init__(self, cache_dir="tokenizer_cache"):
         """
         Initialize the preprocessor.
-        
+
         Args:
             cache_dir: Directory for storing cache files
         """
@@ -282,13 +287,13 @@ class TurboBPEPreprocessor:
 def turbo_preprocess_data(dataset, de_tokenizer, en_tokenizer, force_regenerate=False):
     """
     High-performance preprocessing function for translation datasets.
-    
+
     Args:
         dataset: Dataset with src_data and tgt_data attributes
         de_tokenizer: German BPE tokenizer
         en_tokenizer: English BPE tokenizer
         force_regenerate: Whether to force regeneration of preprocessed data
-        
+
     Returns:
         Lists of tokenized source and target sequences
     """

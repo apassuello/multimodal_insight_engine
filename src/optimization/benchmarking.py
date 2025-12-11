@@ -21,7 +21,7 @@ SPECIAL NOTES: Supports benchmarking for quantization, pruning, and mixed precis
 class OptimizationBenchmark:
     """
     Framework for measuring and comparing model optimization techniques.
-    
+
     This class provides utilities for benchmarking models before and after
     various optimization techniques like quantization, pruning, and mixed precision.
     """
@@ -30,13 +30,13 @@ class OptimizationBenchmark:
         self,
         model: nn.Module,
         input_generator: Callable[[int], Union[torch.Tensor, Dict[str, torch.Tensor]]],
-        batch_sizes: List[int] = [1, 4, 16, 32],
+        batch_sizes: List[int] = None,
         precision: float = 0.001,  # Desired time measurement precision
         save_dir: str = "benchmark_results",
     ):
         """
         Initialize the optimization benchmark.
-        
+
         Args:
             model: The original model to benchmark
             input_generator: Function to generate inputs of specified batch size
@@ -44,6 +44,8 @@ class OptimizationBenchmark:
             precision: Desired time measurement precision
             save_dir: Directory to save benchmark results
         """
+        if batch_sizes is None:
+            batch_sizes = [1, 4, 16, 32]
         self.model = model
         self.input_generator = input_generator
         self.batch_sizes = batch_sizes
@@ -62,7 +64,7 @@ class OptimizationBenchmark:
     def benchmark_original_model(self) -> Dict[str, Any]:
         """
         Benchmark the original unoptimized model.
-        
+
         Returns:
             Dictionary with benchmark results
         """
@@ -76,11 +78,11 @@ class OptimizationBenchmark:
     ) -> Dict[str, Any]:
         """
         Benchmark an optimized model.
-        
+
         Args:
             model: The optimized model to benchmark
             name: Name to identify this optimization
-            
+
         Returns:
             Dictionary with benchmark results
         """
@@ -97,11 +99,11 @@ class OptimizationBenchmark:
     ) -> Dict[str, Any]:
         """
         Benchmark a model's performance.
-        
+
         Args:
             model: The model to benchmark
             name: Name to identify this model
-            
+
         Returns:
             Dictionary with benchmark results
         """
@@ -201,10 +203,10 @@ class OptimizationBenchmark:
     def compare_optimizations(self, save_plot: bool = True) -> Dict[str, Any]:
         """
         Compare all benchmarked optimizations.
-        
+
         Args:
             save_plot: Whether to save comparison plots
-            
+
         Returns:
             Dictionary with comparison results
         """
@@ -253,7 +255,7 @@ class OptimizationBenchmark:
     def _plot_comparison(self, comparison: Dict[str, Any]):
         """
         Plot comparison of optimization techniques.
-        
+
         Args:
             comparison: Comparison results from compare_optimizations
         """
@@ -328,7 +330,7 @@ class OptimizationBenchmark:
     def save_results(self, filename: str = "optimization_benchmark.json"):
         """
         Save benchmark results to a file.
-        
+
         Args:
             filename: Name of the file to save results to
         """
@@ -339,7 +341,7 @@ class OptimizationBenchmark:
     def generate_report(self) -> str:
         """
         Generate a human-readable report of benchmark results.
-        
+
         Returns:
             Markdown report as string
         """
@@ -417,10 +419,10 @@ class OptimizationBenchmark:
     def _generate_recommendations(self, comparison: Dict[str, Any]) -> List[str]:
         """
         Generate optimization recommendations based on benchmark results.
-        
+
         Args:
             comparison: Comparison results from compare_optimizations
-            
+
         Returns:
             List of recommendation strings
         """

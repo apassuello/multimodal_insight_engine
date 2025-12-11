@@ -353,7 +353,7 @@ def critique_revision_pipeline(
                 )
 
             # Iterative critique and revision
-            for iteration in range(num_revisions):
+            for _iteration in range(num_revisions):
                 critique = generate_critique(
                     prompt, response, principles, model, tokenizer, device, logger=logger
                 )

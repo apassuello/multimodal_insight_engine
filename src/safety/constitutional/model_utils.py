@@ -13,6 +13,11 @@ from typing import List, Optional
 
 import torch
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class GenerationConfig:

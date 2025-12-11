@@ -15,11 +15,11 @@ import torch.nn.functional as F
 class GELU(nn.Module):
     """
     Gaussian Error Linear Unit activation function.
-    
+
     GELU is a smooth, non-linear activation function that is commonly used in transformer
     architectures. It approximates the cumulative distribution function of the normal
     distribution and has been shown to work well in deep neural networks.
-    
+
     The implementation uses the approximate form: x * 0.5 * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
     """
 
@@ -30,10 +30,10 @@ class GELU(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Apply the GELU activation function.
-        
+
         Args:
             x: Input tensor of any shape
-            
+
         Returns:
             Tensor of the same shape as input with GELU activation applied
         """
@@ -42,10 +42,10 @@ class GELU(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

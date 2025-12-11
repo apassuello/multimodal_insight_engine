@@ -96,7 +96,7 @@ def test_training_with_callbacks(test_model, train_dataloader):
         nonlocal callback_called
         callback_called = True
 
-    history = train_model(
+    train_model(
         model=test_model,
         train_dataloader=train_dataloader,
         epochs=2,
@@ -109,7 +109,7 @@ def test_training_device_selection(test_model, train_dataloader):
     """Test training on different devices."""
     if torch.cuda.is_available():
         # Test CUDA training
-        history = train_model(
+        train_model(
             model=test_model,
             train_dataloader=train_dataloader,
             epochs=2,
@@ -118,7 +118,7 @@ def test_training_device_selection(test_model, train_dataloader):
         assert test_model.get_device().type == 'cuda'
 
     # Test CPU training
-    history = train_model(
+    train_model(
         model=test_model,
         train_dataloader=train_dataloader,
         epochs=2,

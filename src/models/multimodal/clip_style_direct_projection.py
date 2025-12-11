@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 class CLIPStyleDirectProjection(nn.Module):
     """
     CLIP-style model with direct projection between modalities.
-    
+
     This model implements an architecture similar to CLIP (Contrastive Language-Image Pre-training)
     with direct projection from each modality to a shared embedding space, without
     cross-attention or other complex interaction mechanisms.
-    
+
     It focuses on learning strong aligned representations through contrastive learning,
     with careful design choices to prevent representation collapse.
-    
+
     Reference: Radford et al., "Learning Transferable Visual Models From Natural Language Supervision"
     https://arxiv.org/abs/2103.00020
     """
@@ -39,7 +39,7 @@ class CLIPStyleDirectProjection(nn.Module):
     ):
         """
         Initialize the CLIP-style model.
-        
+
         Args:
             vision_model: Vision encoder model
             text_model: Text encoder model
@@ -141,10 +141,10 @@ class CLIPStyleDirectProjection(nn.Module):
     def _get_model_dimension(self, model: nn.Module) -> int:
         """
         Extract the output dimension from a model.
-        
+
         Args:
             model: Neural network model
-            
+
         Returns:
             The dimension of the model's output embeddings
         """
@@ -171,10 +171,10 @@ class CLIPStyleDirectProjection(nn.Module):
     ) -> torch.Tensor:
         """
         Extract features from the text model.
-        
+
         Args:
             text_data: Input text data (could be a tensor or dict with 'src' and 'src_mask')
-            
+
         Returns:
             Text features tensor
         """
@@ -230,10 +230,10 @@ class CLIPStyleDirectProjection(nn.Module):
     def extract_vision_features(self, images: torch.Tensor) -> torch.Tensor:
         """
         Extract features from the vision model.
-        
+
         Args:
             images: Input image tensor [batch_size, channels, height, width]
-            
+
         Returns:
             Vision features tensor
         """
@@ -276,11 +276,11 @@ class CLIPStyleDirectProjection(nn.Module):
     ) -> Dict[str, Any]:
         """
         Forward pass for the CLIP-style model.
-        
+
         Args:
             images: Optional image inputs [batch_size, channels, height, width]
             text_data: Optional text inputs (tensor or dict with 'src' and 'src_mask')
-            
+
         Returns:
             Dictionary with vision_features, text_features, and similarity if both are provided
         """
@@ -374,7 +374,7 @@ class MultiHeadProjection(nn.Module):
     ):
         """
         Initialize multi-head projection.
-        
+
         Args:
             input_dim: Input feature dimension
             output_dim: Output feature dimension
@@ -409,10 +409,10 @@ class MultiHeadProjection(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Project input features through multiple heads and concatenate.
-        
+
         Args:
             x: Input features [batch_size, input_dim]
-            
+
         Returns:
             Projected features [batch_size, output_dim]
         """
@@ -426,10 +426,10 @@ class MultiHeadProjection(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

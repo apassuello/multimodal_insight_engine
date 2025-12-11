@@ -21,6 +21,10 @@ from src.models.multimodal.bidirectional_cross_attention import (
 from src.models.multimodal.co_attention_fusion import CoAttentionFusion
 from src.models.transformer import EncoderDecoderTransformer
 from src.models.vision.vision_transformer import VisionTransformer
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
 
 
 class MultiModalTransformer(BaseModel):

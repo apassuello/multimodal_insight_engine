@@ -4,7 +4,12 @@ import os
 import torch
 from transformers import ViTModel
 
+from src.utils.logging import get_logger
+
 from .base_wrapper import PretrainedModelWrapper
+
+
+logger = get_logger(__name__)
 
 
 class VisionTransformerWrapper(PretrainedModelWrapper):
@@ -35,10 +40,10 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the Vision Transformer.
-        
+
         Args:
             pixel_values: Tensor of shape [batch_size, channels, height, width]
-            
+
         Returns:
             Image embeddings of shape [batch_size, sequence_length, hidden_size]
         """
@@ -48,10 +53,10 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

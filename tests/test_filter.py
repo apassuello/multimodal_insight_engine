@@ -417,7 +417,7 @@ class TestFilterBiasedContent:
 
         text = "People always do this"
         filtered_strict = filter_strict._filter_biased_content(text, evaluation)
-        filtered_normal = filter_normal._filter_biased_content(text, evaluation)
+        filter_normal._filter_biased_content(text, evaluation)
 
         # Strict mode should be more aggressive
         assert filtered_strict != text
@@ -533,7 +533,7 @@ class TestApplyConstitutionalFiltering:
 
         filtering_info = {}
         text = "All people always do this"
-        filtered = filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
+        filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
 
         assert "truthfulness_qualifiers" in filtering_info["transformations_applied"]
 
@@ -550,7 +550,7 @@ class TestApplyConstitutionalFiltering:
 
         filtering_info = {}
         text = "All men are aggressive"
-        filtered = filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
+        filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
 
         assert "bias_filtering" in filtering_info["transformations_applied"]
 
@@ -567,7 +567,7 @@ class TestApplyConstitutionalFiltering:
 
         filtering_info = {}
         text = "You must do this"
-        filtered = filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
+        filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
 
         assert "autonomy_filtering" in filtering_info["transformations_applied"]
 
@@ -585,7 +585,7 @@ class TestApplyConstitutionalFiltering:
 
         filtering_info = {}
         text = "How to hurt someone. All people always do this."
-        filtered = filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
+        filter_obj._apply_constitutional_filtering(text, evaluation, filtering_info)
 
         assert len(filtering_info["transformations_applied"]) >= 2
 

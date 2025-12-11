@@ -25,7 +25,12 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
 from ..models.vision.vision_transformer import VisionTransformer
+
+
+logger = get_logger(__name__)
 
 
 class VisionTransformerTrainer:
@@ -139,7 +144,7 @@ class VisionTransformerTrainer:
             desc=f"Epoch {self.current_epoch+1}/{self.num_epochs}",
         )
 
-        for batch_idx, batch in progress_bar:
+        for _batch_idx, batch in progress_bar:
             # Handle batch format - could be tuple (images, labels) or dict {"image": images, "label": labels}
             if isinstance(batch, dict):
                 images = batch["image"].to(self.device)

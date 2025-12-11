@@ -346,7 +346,7 @@ class SingleModalityStrategy(TrainingStrategy):
                     similarity = torch.matmul(vision_features, text_features.T)
                     diag_sim = torch.diagonal(similarity).mean().item()
                     mean_sim = similarity.mean().item()
-                    std_sim = similarity.std().item()
+                    similarity.std().item()
 
                     # Add to metrics
                     metrics["diag_similarity"] = diag_sim

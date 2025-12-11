@@ -15,6 +15,8 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+from src.utils.logging import get_logger
+
 from .evaluator import SafetyEvaluator
 from .utils import (
     ALL_CATEGORIES,
@@ -24,6 +26,9 @@ from .utils import (
     CATEGORY_SAFE_BASELINE,
     CATEGORY_TOXICITY,
 )
+
+
+logger = get_logger(__name__)
 
 
 class SafetyTestHarness:
@@ -364,10 +369,10 @@ class SafetyTestHarness:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

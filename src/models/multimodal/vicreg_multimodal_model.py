@@ -207,7 +207,7 @@ class VICRegMultimodalModel(nn.Module):
         # Special handling for different dataset formats
         if isinstance(x, dict):
             # We have a "raw" text representation
-            if "input_ids" not in x.keys() and "text" in x.keys():
+            if "input_ids" not in x and "text" in x:
                 if should_print:
                     logger.info("Converting raw text to features using fallback")
                 # In a real implementation, we would tokenize the text here
@@ -307,13 +307,12 @@ class VICRegMultimodalModel(nn.Module):
         # Print input info for debugging (less frequently)
         if should_print and images is not None:
             logger.info(f"Input images shape: {images.shape}")
-        if should_print and text_data is not None:
-            if isinstance(text_data, dict):
-                logger.info(f"Input text_data keys: {text_data.keys()}")
-                if "input_ids" in text_data:
-                    logger.info(
-                        f"Input text_data['input_ids'] shape: {text_data['input_ids'].shape}"
-                    )
+        if should_print and text_data is not None and isinstance(text_data, dict):
+            logger.info(f"Input text_data keys: {text_data.keys()}")
+            if "input_ids" in text_data:
+                logger.info(
+                    f"Input text_data['input_ids'] shape: {text_data['input_ids'].shape}"
+                )
 
         # Process vision
         if images is not None:
