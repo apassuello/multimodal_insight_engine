@@ -14,7 +14,6 @@ from .utils import (
     TOXICITY_PATTERNS,
 )
 
-
 """MODULE: filter.py
 PURPOSE: Implements safety filtering mechanisms for model inputs and outputs
 KEY COMPONENTS:

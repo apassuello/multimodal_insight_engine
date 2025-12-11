@@ -6,7 +6,6 @@ that leverage the base classes to eliminate code duplication.
 
 from .mixed_loss import MixedMultimodalLoss
 
-
 __all__ = [
     "MixedMultimodalLoss",
 ]

@@ -8,7 +8,6 @@ from src.utils.logging import get_logger
 
 from .base_wrapper import PretrainedModelWrapper
 
-
 logger = get_logger(__name__)
 
 

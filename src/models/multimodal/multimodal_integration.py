@@ -23,7 +23,6 @@ from src.models.transformer import EncoderDecoderTransformer
 from src.models.vision.vision_transformer import VisionTransformer
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 

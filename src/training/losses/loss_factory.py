@@ -23,7 +23,6 @@ from .multimodal import MixedMultimodalLoss
 from .self_supervised import BarlowTwinsLoss, VICRegLoss
 from .wrappers import CombinedLoss
 
-
 # Backward compatibility aliases
 ContrastiveLoss = SimCLRLoss
 MultiModalMixedContrastiveLoss = MixedMultimodalLoss

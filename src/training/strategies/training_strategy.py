@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 from torch.optim.optimizer import Optimizer
 
-
 logger = logging.getLogger(__name__)
 
 """

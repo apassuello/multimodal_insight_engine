@@ -20,7 +20,6 @@ from PIL import Image
 
 from src.data.augmentation_pipeline import MultimodalAugmentationPipeline
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

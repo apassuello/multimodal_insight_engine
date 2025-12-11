@@ -4,13 +4,11 @@ import argparse
 import os
 import sys
 
-
 # Add src directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from safety.red_teaming.model_loader import ModelLoader
 from src.utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 

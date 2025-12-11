@@ -4,7 +4,6 @@ import os
 import torch
 import torch.nn as nn
 
-
 """MODULE: transformer_utils.py
 PURPOSE: Provides utility functions and classes for transformer model training, including attention masking and label smoothing implementations.
 

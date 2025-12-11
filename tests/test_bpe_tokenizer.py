@@ -9,7 +9,6 @@ import pytest
 import torch
 from tqdm import tqdm
 
-
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.europarl_dataset import EuroparlDataset

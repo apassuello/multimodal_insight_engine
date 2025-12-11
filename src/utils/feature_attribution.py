@@ -28,7 +28,6 @@ import torch
 import torch.nn as nn
 from PIL import Image
 
-
 logger = logging.getLogger(__name__)
 
 

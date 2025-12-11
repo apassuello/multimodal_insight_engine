@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 
 from .filter import SafetyFilter
 
-
 """MODULE: integration.py
 PURPOSE: Provides integration layer for augmenting models with safety mechanisms
 KEY COMPONENTS:

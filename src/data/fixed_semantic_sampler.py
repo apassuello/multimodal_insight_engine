@@ -14,7 +14,6 @@ from typing import Dict, Iterator, List, Optional
 import torch
 from torch.utils.data import Dataset, Sampler
 
-
 logger = logging.getLogger(__name__)
 
 

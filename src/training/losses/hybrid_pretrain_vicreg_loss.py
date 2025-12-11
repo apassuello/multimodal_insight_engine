@@ -25,7 +25,6 @@ import torch.nn.functional as F
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 from src.training.losses.self_supervised import VICRegLoss
 
-
 logger = logging.getLogger(__name__)
 
 

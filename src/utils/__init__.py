@@ -22,7 +22,6 @@ from .visualization import (
     visualize_test_samples,
 )
 
-
 __all__ = [
     "get_config",
     "set_config",
