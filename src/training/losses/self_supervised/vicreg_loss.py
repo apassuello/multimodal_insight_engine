@@ -23,7 +23,6 @@ import torch.nn.functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -131,9 +130,7 @@ class VICRegLoss(nn.Module):
 
             # Use smoother growth curve (cubic) instead of square root
             progress = self.current_step / max(1, warmup_steps)
-            raw_factor = min(
-                max_factor, progress**0.33
-            )  # Cubic root for even smoother growth
+            raw_factor = min(max_factor, progress**0.33)  # Cubic root for even smoother growth
             return max(min_factor, raw_factor)
 
         # Fallback to epoch-based warmup with same smoothing
@@ -173,12 +170,8 @@ class VICRegLoss(nn.Module):
 
             # For the first epoch, focus almost entirely on invariance (similarity)
             if self.current_epoch == 0:
-                effective_var_coeff *= (
-                    0.1  # Only 10% of standard variance regularization
-                )
-                effective_cov_coeff *= (
-                    0.1  # Only 10% of standard covariance regularization
-                )
+                effective_var_coeff *= 0.1  # Only 10% of standard variance regularization
+                effective_cov_coeff *= 0.1  # Only 10% of standard covariance regularization
         else:
             # No curriculum, use standard coefficients
             effective_var_coeff = self.var_coeff

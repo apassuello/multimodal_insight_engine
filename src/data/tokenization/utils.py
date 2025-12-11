@@ -207,9 +207,7 @@ def transformer_collate_fn(
         # Pad sequences
         max_len = max(seq.size(0) for seq in input_ids)
         padded_ids = torch.zeros((len(batch), max_len), dtype=input_ids[0].dtype)
-        padded_masks = torch.zeros(
-            (len(batch), max_len), dtype=attention_masks[0].dtype
-        )
+        padded_masks = torch.zeros((len(batch), max_len), dtype=attention_masks[0].dtype)
 
         for i, (ids, mask) in enumerate(zip(input_ids, attention_masks)):
             padded_ids[i, : ids.size(0)] = ids

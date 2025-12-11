@@ -265,9 +265,7 @@ class TestMultimodalTrainer:
 
         # Verify checkpoints
         for epoch in range(1, 4):
-            checkpoint_path = os.path.join(
-                temp_dir, "checkpoints", f"checkpoint_epoch_{epoch}.pt"
-            )
+            checkpoint_path = os.path.join(temp_dir, "checkpoints", f"checkpoint_epoch_{epoch}.pt")
             assert os.path.exists(checkpoint_path)
 
     def test_early_stopping(self, model, dataloaders, temp_dir, device):

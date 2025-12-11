@@ -14,7 +14,6 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.gradient_handler import GradientHandler
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -77,14 +76,11 @@ class SingleModalityStrategy(TrainingStrategy):
 
             # For text model, unfreeze top layers and pooler
             text_patterns = [
-                f"text_model.encoder.layer.{i}"
-                for i in range(12 - unfreeze_layer_count, 12)
+                f"text_model.encoder.layer.{i}" for i in range(12 - unfreeze_layer_count, 12)
             ] + ["text_model.pooler"]
 
             self.unfreeze_parameters(vision_patterns + text_patterns)
-            logger.info(
-                f"Selectively unfroze top {unfreeze_layer_count} layers of base models"
-            )
+            logger.info(f"Selectively unfroze top {unfreeze_layer_count} layers of base models")
 
         # Always unfreeze projection layers - these are critical for adaptation
         projection_patterns = ["projection", "projector", "adapter"]
@@ -336,12 +332,8 @@ class SingleModalityStrategy(TrainingStrategy):
 
                 # Normalize features for cosine similarity
                 if vision_features.dim() > 1 and text_features.dim() > 1:
-                    vision_features = torch.nn.functional.normalize(
-                        vision_features, p=2, dim=1
-                    )
-                    text_features = torch.nn.functional.normalize(
-                        text_features, p=2, dim=1
-                    )
+                    vision_features = torch.nn.functional.normalize(vision_features, p=2, dim=1)
+                    text_features = torch.nn.functional.normalize(text_features, p=2, dim=1)
 
                     # Compute similarity matrix
                     similarity = torch.matmul(vision_features, text_features.T)
@@ -512,9 +504,7 @@ class SingleModalityStrategy(TrainingStrategy):
             )
 
         # Other parameters: default learning rate
-        other_params = get_unassigned_params(
-            lambda n: True  # Get all remaining parameters
-        )
+        other_params = get_unassigned_params(lambda n: True)  # Get all remaining parameters
         if other_params:
             param_groups.append(
                 {
@@ -571,17 +561,14 @@ class SingleModalityStrategy(TrainingStrategy):
         if self.config.get("progressive_unfreezing", False) and epoch > 0:
             if epoch % self.config.get("unfreezing_interval", 5) == 0:
                 # Determine layers to unfreeze based on current epoch
-                layers_to_unfreeze = min(
-                    3, (epoch // self.config.get("unfreezing_interval", 5))
-                )
+                layers_to_unfreeze = min(3, (epoch // self.config.get("unfreezing_interval", 5)))
 
                 # Unfreeze additional layers
                 vision_patterns = [
                     f"vision_model.layer{i}" for i in range(12 - layers_to_unfreeze, 12)
                 ]
                 text_patterns = [
-                    f"text_model.encoder.layer.{i}"
-                    for i in range(12 - layers_to_unfreeze, 12)
+                    f"text_model.encoder.layer.{i}" for i in range(12 - layers_to_unfreeze, 12)
                 ]
 
                 self.unfreeze_parameters(vision_patterns + text_patterns)

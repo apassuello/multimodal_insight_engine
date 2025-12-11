@@ -99,9 +99,7 @@ class CombinedLoss(nn.Module):
                 secondary_output = {"loss": secondary_loss_value}
 
             # Add to combined loss
-            combined_loss = (
-                combined_loss + self.secondary_loss_weight * secondary_loss_value
-            )
+            combined_loss = combined_loss + self.secondary_loss_weight * secondary_loss_value
 
             # Add secondary loss components to output
             combined_output["secondary_loss"] = (
@@ -128,9 +126,7 @@ class CombinedLoss(nn.Module):
                 tertiary_output = {"loss": tertiary_loss_value}
 
             # Add to combined loss
-            combined_loss = (
-                combined_loss + self.tertiary_loss_weight * tertiary_loss_value
-            )
+            combined_loss = combined_loss + self.tertiary_loss_weight * tertiary_loss_value
 
             # Add tertiary loss components to output
             combined_output["tertiary_loss"] = (

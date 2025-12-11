@@ -25,7 +25,6 @@ import torch
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 from collections import defaultdict
 from dataclasses import dataclass
@@ -33,7 +32,6 @@ from dataclasses import dataclass
 from torch.utils.data import BatchSampler, DataLoader, Sampler, SubsetRandomSampler
 
 from .multimodal_dataset import EnhancedMultimodalDataset
-
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +63,7 @@ class SemanticBatchSampler(Sampler):
             semantic_groups[match_id].append(idx)
 
         # Filter groups that are too small
-        return {
-            k: v
-            for k, v in semantic_groups.items()
-            if len(v) >= self.min_samples_per_group
-        }
+        return {k: v for k, v in semantic_groups.items() if len(v) >= self.min_samples_per_group}
 
     def __iter__(self):
         # Select semantic groups until batch is filled
@@ -148,9 +142,7 @@ class SemanticGroupBatchSampler(BatchSampler):
             original_group_sizes = [len(indices) for indices in self.groups.values()]
             max_original = max(original_group_sizes) if original_group_sizes else 0
             avg_original = (
-                sum(original_group_sizes) / len(original_group_sizes)
-                if original_group_sizes
-                else 0
+                sum(original_group_sizes) / len(original_group_sizes) if original_group_sizes else 0
             )
 
             # Apply capping strategy
@@ -168,9 +160,7 @@ class SemanticGroupBatchSampler(BatchSampler):
             capped_group_sizes = [len(indices) for indices in self.groups.values()]
             max_capped = max(capped_group_sizes) if capped_group_sizes else 0
             avg_capped = (
-                sum(capped_group_sizes) / len(capped_group_sizes)
-                if capped_group_sizes
-                else 0
+                sum(capped_group_sizes) / len(capped_group_sizes) if capped_group_sizes else 0
             )
 
             logger.info(
@@ -230,9 +220,7 @@ class SemanticGroupBatchSampler(BatchSampler):
         # Try different approaches to get match_ids
         if hasattr(self.dataset, "match_ids"):
             return self.dataset.match_ids
-        elif hasattr(self.dataset, "get_match_ids") and callable(
-            self.dataset.get_match_ids
-        ):
+        elif hasattr(self.dataset, "get_match_ids") and callable(self.dataset.get_match_ids):
             return self.dataset.get_match_ids()
         else:
             # Try to extract from each item
@@ -249,9 +237,7 @@ class SemanticGroupBatchSampler(BatchSampler):
                 logger.warning(f"Error extracting match_ids from items: {e}")
 
             # Fallback: use indices as unique match_ids
-            logger.warning(
-                "Could not find match_ids in dataset, using indices as fallback"
-            )
+            logger.warning("Could not find match_ids in dataset, using indices as fallback")
             return [f"id_{i}" for i in range(len(self.dataset))]
 
     def _group_samples_by_match_id(self) -> Dict[str, List[int]]:
@@ -321,9 +307,7 @@ class SemanticGroupBatchSampler(BatchSampler):
                 # Create subgroups
                 for i in range(num_subgroups):
                     start_idx = i * self.max_samples_per_group
-                    end_idx = min(
-                        (i + 1) * self.max_samples_per_group, len(shuffled_indices)
-                    )
+                    end_idx = min((i + 1) * self.max_samples_per_group, len(shuffled_indices))
                     subgroup_indices = shuffled_indices[start_idx:end_idx]
 
                     # Skip if this subgroup is too small
@@ -341,16 +325,12 @@ class SemanticGroupBatchSampler(BatchSampler):
         # Calculate how many complete batches we can make
         if self.drop_last:
             # We need to estimate how many batches we can create with our constraints
-            total_valid_samples = sum(
-                len(indices) for indices in self.valid_groups.values()
-            )
+            total_valid_samples = sum(len(indices) for indices in self.valid_groups.values())
             # Approximate number of batches we can create
             self.length = total_valid_samples // self.batch_size
         else:
             # With drop_last=False, we need to account for the last incomplete batch
-            total_valid_samples = sum(
-                len(indices) for indices in self.valid_groups.values()
-            )
+            total_valid_samples = sum(len(indices) for indices in self.valid_groups.values())
             self.length = (total_valid_samples + self.batch_size - 1) // self.batch_size
 
     def __iter__(self) -> Iterator[List[int]]:
@@ -360,9 +340,7 @@ class SemanticGroupBatchSampler(BatchSampler):
         random.shuffle(group_ids)
 
         # Create a copy of groups data to modify during iteration
-        groups_data = {
-            group_id: indices.copy() for group_id, indices in self.valid_groups.items()
-        }
+        groups_data = {group_id: indices.copy() for group_id, indices in self.valid_groups.items()}
 
         # Shuffle samples within each group
         for indices in groups_data.values():
@@ -372,10 +350,7 @@ class SemanticGroupBatchSampler(BatchSampler):
         active_groups = set(group_ids)
 
         # Generate batches
-        while (
-            active_groups
-            and sum(len(groups_data[g]) for g in active_groups) >= self.batch_size
-        ):
+        while active_groups and sum(len(groups_data[g]) for g in active_groups) >= self.batch_size:
             batch = []
 
             # Select groups for this batch (up to groups_per_batch)
@@ -388,9 +363,7 @@ class SemanticGroupBatchSampler(BatchSampler):
 
             # Calculate samples per group for this batch
             # Start by ensuring min_samples_per_group for each selected group
-            remaining_space = self.batch_size - self.min_samples_per_group * len(
-                batch_groups
-            )
+            remaining_space = self.batch_size - self.min_samples_per_group * len(batch_groups)
 
             # Distribute remaining space proportionally based on group sizes
             if remaining_space > 0:
@@ -402,14 +375,10 @@ class SemanticGroupBatchSampler(BatchSampler):
                 for g in batch_groups:
                     # Proportional allocation of remaining samples
                     share = (
-                        int(remaining_space * group_sizes[g] / total_size)
-                        if total_size > 0
-                        else 0
+                        int(remaining_space * group_sizes[g] / total_size) if total_size > 0 else 0
                     )
                     # Ensure we don't take more samples than available
-                    extra_samples[g] = min(
-                        share, group_sizes[g] - self.min_samples_per_group
-                    )
+                    extra_samples[g] = min(share, group_sizes[g] - self.min_samples_per_group)
 
                 # Distribute any remaining samples
                 leftover = remaining_space - sum(extra_samples.values())
@@ -428,14 +397,12 @@ class SemanticGroupBatchSampler(BatchSampler):
 
                 # Final samples per group
                 samples_per_group = {
-                    g: self.min_samples_per_group + extra_samples[g]
-                    for g in batch_groups
+                    g: self.min_samples_per_group + extra_samples[g] for g in batch_groups
                 }
             else:
                 # If batch size is too small, just distribute evenly
                 samples_per_group = {
-                    g: min(self.min_samples_per_group, len(groups_data[g]))
-                    for g in batch_groups
+                    g: min(self.min_samples_per_group, len(groups_data[g])) for g in batch_groups
                 }
 
             # Take samples from each group
@@ -519,9 +486,7 @@ def randomize_dataset_positions(dataset: Any) -> List[int]:
             match_id_groups[match_id] = []
         match_id_groups[match_id].append(idx)
 
-    logger.info(
-        f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items"
-    )
+    logger.info(f"Found {len(match_id_groups)} match groups in dataset with {len(dataset)} items")
 
     # Create shuffled indices that preserve semantic relationships but break position
     shuffled_indices = []
@@ -613,9 +578,7 @@ def create_data_loaders(
                 image_preprocessor=image_preprocessor,
                 tokenizer=tokenizer,
                 max_text_length=args.max_text_length,
-                synthetic_samples=(
-                    synthetic_samples // 4 if synthetic_samples > 0 else 0
-                ),
+                synthetic_samples=(synthetic_samples // 4 if synthetic_samples > 0 else 0),
                 cache_dir=os.path.join(args.data_dir, "flickr30k"),
                 max_samples=args.max_val_examples,
                 captions_per_image=captions_per_image,
@@ -631,9 +594,7 @@ def create_data_loaders(
                 image_preprocessor=image_preprocessor,
                 tokenizer=tokenizer,
                 max_text_length=args.max_text_length,
-                synthetic_samples=(
-                    synthetic_samples // 4 if synthetic_samples > 0 else 0
-                ),
+                synthetic_samples=(synthetic_samples // 4 if synthetic_samples > 0 else 0),
                 cache_dir=os.path.join(args.data_dir, "flickr30k"),
                 max_samples=args.max_test_examples,
                 captions_per_image=captions_per_image,
@@ -658,17 +619,11 @@ def create_data_loaders(
             train_synthetic_samples = args.max_train_examples
 
         val_synthetic_samples = args.synthetic_samples // 4
-        if (
-            args.max_val_examples is not None
-            and args.max_val_examples < val_synthetic_samples
-        ):
+        if args.max_val_examples is not None and args.max_val_examples < val_synthetic_samples:
             val_synthetic_samples = args.max_val_examples
 
         test_synthetic_samples = args.synthetic_samples // 4
-        if (
-            args.max_test_examples is not None
-            and args.max_test_examples < test_synthetic_samples
-        ):
+        if args.max_test_examples is not None and args.max_test_examples < test_synthetic_samples:
             test_synthetic_samples = args.max_test_examples
 
         train_dataset = EnhancedMultimodalDataset(
@@ -925,9 +880,7 @@ class MultimodalDataset:
             Diversity score tensor
         """
         # Normalize features
-        normalized_features = (features - self.vision_stats.mean) / (
-            self.vision_stats.std + 1e-6
-        )
+        normalized_features = (features - self.vision_stats.mean) / (self.vision_stats.std + 1e-6)
 
         # Compute pairwise cosine similarities
         similarities = torch.mm(normalized_features, normalized_features.t())
@@ -984,9 +937,7 @@ class MultimodalDataset:
 
         return vision_features, text_features
 
-    def get_diverse_features(
-        self, num_features: int
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_diverse_features(self, num_features: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Get diverse features by selecting from different semantic groups.
 
@@ -1002,9 +953,7 @@ class MultimodalDataset:
         # Select features from different groups
         for group_id in list(self.semantic_groups.keys())[:num_features]:
             vision_feats, text_feats = self.get_group_features(group_id)
-            selected_features.append(
-                vision_feats[0]
-            )  # Take first feature from each group
+            selected_features.append(vision_feats[0])  # Take first feature from each group
             selected_texts.append(text_feats[0])
 
         return torch.stack(selected_features), torch.stack(selected_texts)

@@ -23,7 +23,6 @@ from .multimodal import MixedMultimodalLoss
 from .self_supervised import BarlowTwinsLoss, VICRegLoss
 from .wrappers import CombinedLoss
 
-
 # Backward compatibility aliases
 ContrastiveLoss = SimCLRLoss
 MultiModalMixedContrastiveLoss = MixedMultimodalLoss
@@ -76,9 +75,7 @@ class SimpleContrastiveLoss(nn.Module):
             with torch.no_grad():
                 v_var = torch.var(vision_features).item()
                 t_var = torch.var(text_features).item()
-                logger.info(
-                    f"Raw feature variance - Vision: {v_var:.4f}, Text: {t_var:.4f}"
-                )
+                logger.info(f"Raw feature variance - Vision: {v_var:.4f}, Text: {t_var:.4f}")
 
         # L2 normalize the features
         vision_features = torch.nn.functional.normalize(vision_features, p=2, dim=1)
@@ -99,8 +96,7 @@ class SimpleContrastiveLoss(nn.Module):
                 # For string IDs, create a unique integer mapping
                 unique_ids = {mid: idx for idx, mid in enumerate(set(match_ids))}
                 match_ids_tensor = torch.tensor(
-                    [unique_ids[mid] for mid in match_ids],
-                    device=logits.device
+                    [unique_ids[mid] for mid in match_ids], device=logits.device
                 )
             else:
                 # For numeric IDs, convert directly
@@ -114,9 +110,7 @@ class SimpleContrastiveLoss(nn.Module):
         row_sums = positive_mask.float().sum(dim=1, keepdim=True)
         if (row_sums == 0).any():
             # Add self as positive if no other positives exist
-            identity_mask = torch.eye(
-                batch_size, dtype=torch.bool, device=logits.device
-            )
+            identity_mask = torch.eye(batch_size, dtype=torch.bool, device=logits.device)
             positive_mask = positive_mask | identity_mask
 
         # Create standard targets for cross-entropy
@@ -161,9 +155,7 @@ class SimpleContrastiveLoss(nn.Module):
                 len(pos_indices) > 0 and len(pos_indices) < batch_size
             ):  # Make sure not all samples match
                 j = pos_indices[torch.randint(0, len(pos_indices), (1,))].item()
-                mse_loss += torch.nn.functional.mse_loss(
-                    vision_features[i], text_features[j]
-                )
+                mse_loss += torch.nn.functional.mse_loss(vision_features[i], text_features[j])
                 mse_pairs += 1
 
         if mse_pairs > 0:
@@ -175,26 +167,16 @@ class SimpleContrastiveLoss(nn.Module):
             v2t_pred = torch.argmax(logits, dim=1)
             t2v_pred = torch.argmax(logits.T, dim=1)
 
-            v2t_correct = torch.sum(
-                positive_mask[torch.arange(batch_size), v2t_pred]
-            ).float()
-            t2v_correct = torch.sum(
-                positive_mask[t2v_pred, torch.arange(batch_size)]
-            ).float()
+            v2t_correct = torch.sum(positive_mask[torch.arange(batch_size), v2t_pred]).float()
+            t2v_correct = torch.sum(positive_mask[t2v_pred, torch.arange(batch_size)]).float()
 
             v2t_acc = v2t_correct / batch_size
             t2v_acc = t2v_correct / batch_size
             accuracy = (v2t_acc + t2v_acc) / 2
 
             # Calculate positive and negative similarity statistics
-            pos_sim = (
-                logits[positive_mask].mean().item() if positive_mask.sum() > 0 else 0.0
-            )
-            neg_sim = (
-                logits[~positive_mask].mean().item()
-                if (~positive_mask).sum() > 0
-                else 0.0
-            )
+            pos_sim = logits[positive_mask].mean().item() if positive_mask.sum() > 0 else 0.0
+            neg_sim = logits[~positive_mask].mean().item() if (~positive_mask).sum() > 0 else 0.0
             separation = pos_sim - neg_sim
 
             # Log stats occasionally
@@ -207,9 +189,7 @@ class SimpleContrastiveLoss(nn.Module):
         decor_loss = kwargs.get("decor_loss", 0.0)
         if isinstance(decor_loss, torch.Tensor):
             decor_weight = 0.2  # Moderate weight
-            total_loss = (
-                (loss_v2t + loss_t2v) / 2 + 0.5 * mse_loss + decor_weight * decor_loss
-            )
+            total_loss = (loss_v2t + loss_t2v) / 2 + 0.5 * mse_loss + decor_weight * decor_loss
         else:
             total_loss = (loss_v2t + loss_t2v) / 2 + 0.5 * mse_loss
 
@@ -224,9 +204,7 @@ class SimpleContrastiveLoss(nn.Module):
             "neg_sim": neg_sim,
             "separation": separation,
             "temperature": self.temperature,
-            "decor_loss": (
-                decor_loss.item() if isinstance(decor_loss, torch.Tensor) else 0.0
-            ),
+            "decor_loss": (decor_loss.item() if isinstance(decor_loss, torch.Tensor) else 0.0),
         }
 
 
@@ -261,9 +239,7 @@ def create_loss_function(
     # Use args.use_mixed_loss to override if it's explicitly set
     if args.use_mixed_loss:
         loss_type = "mixed"
-        logger.info(
-            "Overriding to Mixed Contrastive Loss based on --use_mixed_loss flag"
-        )
+        logger.info("Overriding to Mixed Contrastive Loss based on --use_mixed_loss flag")
 
     # CRITICAL: Get the actual model dimensions for proper projection setup
     # This should match what the model factory uses
@@ -309,9 +285,7 @@ def create_loss_function(
         # Determine correlation mode (cross_modal or within_batch)
         correlation_mode = getattr(args, "correlation_mode", "cross_modal")
 
-        logger.info(
-            f"Barlow Twins config - Lambda: {lambda_coeff}, BatchNorm: {batch_norm_last}"
-        )
+        logger.info(f"Barlow Twins config - Lambda: {lambda_coeff}, BatchNorm: {batch_norm_last}")
         logger.info(f"Correlation mode: {correlation_mode}")
 
         # Create and return the Barlow Twins loss
@@ -320,8 +294,7 @@ def create_loss_function(
             batch_norm_last_layer=batch_norm_last,
             correlation_mode=correlation_mode,
             add_projection=True,  # Always use projection for Barlow Twins
-            projection_dim=model_dim
-            * 2,  # Barlow Twins works better with larger projection dim
+            projection_dim=model_dim * 2,  # Barlow Twins works better with larger projection dim
             input_dim=model_dim,
             normalize_embeddings=True,
         )
@@ -337,9 +310,7 @@ def create_loss_function(
         cov_weight = getattr(args, "cov_weight", 1.0)
 
         # Log values to confirm they're being applied
-        logger.debug(
-            f"VICReg weights: sim={sim_weight}, var={var_weight}, cov={cov_weight}"
-        )
+        logger.debug(f"VICReg weights: sim={sim_weight}, var={var_weight}, cov={cov_weight}")
 
         # Get curriculum and warmup parameters
         warmup_epochs = getattr(args, "vicreg_warmup_epochs", 5)
@@ -461,9 +432,7 @@ def create_loss_function(
         # Generally needs slightly higher temperature than standard contrastive
         adjusted_temp = args.temperature * 1.1
 
-        logger.info(
-            f"Memory Queue size: {queue_size}, Temperature: {adjusted_temp:.4f}"
-        )
+        logger.info(f"Memory Queue size: {queue_size}, Temperature: {adjusted_temp:.4f}")
 
         logger.info(f"Creating MemoryQueueContrastiveLoss with dimension {model_dim}")
         return MemoryQueueContrastiveLoss(
@@ -494,9 +463,7 @@ def create_loss_function(
             f"Dynamic Temperature - Base: {base_temp:.4f}, Range: [{min_temp:.4f}, {max_temp:.4f}]"
         )
 
-        logger.info(
-            f"Creating DynamicTemperatureContrastiveLoss with dimension {model_dim}"
-        )
+        logger.info(f"Creating DynamicTemperatureContrastiveLoss with dimension {model_dim}")
         return DynamicTemperatureContrastiveLoss(
             base_temperature=base_temp,
             min_temp=min_temp,
@@ -532,9 +499,7 @@ def create_loss_function(
             f"Hard Negative Mining - Strategy: {mining_strategy}, Weight: {hard_negative_factor:.1f}x"
         )
 
-        logger.info(
-            f"Creating HardNegativeMiningContrastiveLoss with dimension {model_dim}"
-        )
+        logger.info(f"Creating HardNegativeMiningContrastiveLoss with dimension {model_dim}")
         return HardNegativeMiningContrastiveLoss(
             temperature=args.temperature,
             hard_negative_factor=hard_negative_factor,
@@ -558,9 +523,7 @@ def create_loss_function(
             input_dim=args.dim if args.dim else None,
         )
 
-        logger.info(
-            f"Creating MultiModalMixedContrastiveLoss with dimension {model_dim}"
-        )
+        logger.info(f"Creating MultiModalMixedContrastiveLoss with dimension {model_dim}")
         return loss_fn
 
     elif loss_type == "decoupled":
@@ -571,9 +534,7 @@ def create_loss_function(
         lambda_v = getattr(args, "lambda_v", 0.5)
         lambda_t = getattr(args, "lambda_t", 0.5)
 
-        logger.info(
-            f"Decoupled loss config - Lambda V: {lambda_v}, Lambda T: {lambda_t}"
-        )
+        logger.info(f"Decoupled loss config - Lambda V: {lambda_v}, Lambda T: {lambda_t}")
 
         return DecoupledContrastiveLoss(
             temperature=args.temperature,
@@ -708,9 +669,7 @@ def create_loss_function(
         # ALWAYS USE PROJECTION FOR ALL LOSSES
         # This ensures we have trainable parameters in stage 1
         add_projection = True
-        logger.info(
-            "Using projection to ensure trainable parameters in early training stages"
-        )
+        logger.info("Using projection to ensure trainable parameters in early training stages")
 
         return ContrastiveLoss(
             temperature=adjusted_temp,
@@ -720,8 +679,7 @@ def create_loss_function(
             projection_dim=projection_dim,  # Use full dimension if projection is enabled
             input_dim=model_dim,  # Use the detected model dimension
             sampling_strategy=sampling_strategy,
-            memory_bank_size=args.memory_bank_size
-            * 2,  # INCREASED: Use larger memory bank
+            memory_bank_size=args.memory_bank_size * 2,  # INCREASED: Use larger memory bank
             dataset_size=dataset_size,
         )
 

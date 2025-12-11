@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torch.optim.sgd import SGD
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -87,9 +86,9 @@ class WarmupCosineScheduler(_LRScheduler):
             # Warmup phase
             if current_step < self.warmup_steps:
                 # Linear warmup from warmup_start_factor to 100%
-                warmup_factor = self.warmup_start_factor + (
-                    1 - self.warmup_start_factor
-                ) * (current_step / self.warmup_steps)
+                warmup_factor = self.warmup_start_factor + (1 - self.warmup_start_factor) * (
+                    current_step / self.warmup_steps
+                )
                 lr = base_lr * warmup_factor
             else:
                 # Cosine annealing phase

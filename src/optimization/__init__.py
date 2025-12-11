@@ -9,12 +9,7 @@ from .quantization import DynamicQuantizer, QuantizationConfig, StaticQuantizer
 
 # Convenience functions for easy access
 def quantize_model(
-    model,
-    quantization_type="dynamic",
-    dtype=None,
-    bits=8,
-    calibration_loader=None,
-    **kwargs
+    model, quantization_type="dynamic", dtype=None, bits=8, calibration_loader=None, **kwargs
 ):
     """
     Quantize a model using the specified approach.
@@ -31,10 +26,7 @@ def quantize_model(
         Quantized model
     """
     config = QuantizationConfig(
-        quantization_type=quantization_type,
-        dtype=dtype,
-        bits=bits,
-        **kwargs
+        quantization_type=quantization_type, dtype=dtype, bits=bits, **kwargs
     )
 
     if quantization_type == "dynamic":
@@ -46,12 +38,8 @@ def quantize_model(
 
     return quantizer.optimize()
 
-def prune_model(
-    model,
-    method="magnitude",
-    amount=0.2,
-    **kwargs
-):
+
+def prune_model(model, method="magnitude", amount=0.2, **kwargs):
     """
     Prune a model using the specified approach.
 
@@ -64,20 +52,13 @@ def prune_model(
     Returns:
         Pruned model
     """
-    config = PruningConfig(
-        method=method,
-        amount=amount,
-        **kwargs
-    )
+    config = PruningConfig(method=method, amount=amount, **kwargs)
 
     pruner = ModelPruner(model, config)
     return pruner.prune_model()
 
-def convert_to_mixed_precision(
-    model,
-    dtype=None,
-    use_auto_cast=True
-):
+
+def convert_to_mixed_precision(model, dtype=None, use_auto_cast=True):
     """
     Convert a model to use mixed precision.
 
@@ -99,12 +80,8 @@ def convert_to_mixed_precision(
     converter = MixedPrecisionConverter(model, dtype, use_auto_cast)
     return converter.convert_to_mixed_precision()
 
-def benchmark_optimizations(
-    model,
-    input_generator,
-    optimizations=None,
-    **kwargs
-):
+
+def benchmark_optimizations(model, input_generator, optimizations=None, **kwargs):
     """
     Benchmark a model with different optimizations.
 

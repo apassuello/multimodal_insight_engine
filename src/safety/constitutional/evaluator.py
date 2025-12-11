@@ -27,7 +27,7 @@ class ConstitutionalSafetyEvaluator:
         self,
         framework: Optional[ConstitutionalFramework] = None,
         critique_model: Optional[nn.Module] = None,
-        use_self_critique: bool = True
+        use_self_critique: bool = True,
     ):
         """
         Initialize the constitutional safety evaluator.
@@ -46,7 +46,7 @@ class ConstitutionalSafetyEvaluator:
             "total_evaluations": 0,
             "flagged_by_direct": 0,
             "flagged_by_critique": 0,
-            "flagged_by_both": 0
+            "flagged_by_both": 0,
         }
 
     def evaluate(self, text: str, include_critique: Optional[bool] = None) -> Dict[str, Any]:
@@ -69,7 +69,7 @@ class ConstitutionalSafetyEvaluator:
         result = {
             "direct_evaluation": direct_evaluation,
             "flagged": direct_evaluation["any_flagged"],
-            "source": "direct" if direct_evaluation["any_flagged"] else "none"
+            "source": "direct" if direct_evaluation["any_flagged"] else "none",
         }
 
         # Stage 2: Generate self-critique if enabled
@@ -113,10 +113,7 @@ class ConstitutionalSafetyEvaluator:
         return self.evaluate(text, include_critique=True)
 
     def generate_improved_response(
-        self,
-        prompt: str,
-        initial_response: str,
-        max_iterations: int = 3
+        self, prompt: str, initial_response: str, max_iterations: int = 3
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate improved response based on constitutional evaluation.
@@ -148,9 +145,7 @@ class ConstitutionalSafetyEvaluator:
 
             # Create improvement prompt
             improvement_prompt = self._create_improvement_prompt(
-                prompt,
-                current_response,
-                evaluation
+                prompt, current_response, evaluation
             )
 
             # Generate improved response (placeholder - needs actual generation logic)
@@ -187,11 +182,7 @@ class ConstitutionalSafetyEvaluator:
         # Analyze critique for issues
         flagged = critique_indicates_issues(critique_text)
 
-        return {
-            "text": critique_text,
-            "flagged": flagged,
-            "prompt": critique_prompt
-        }
+        return {"text": critique_text, "flagged": flagged, "prompt": critique_prompt}
 
     def _create_critique_prompt(self, text: str, direct_evaluation: Dict[str, Any]) -> str:
         """Create prompt for critique generation."""
@@ -210,10 +201,7 @@ Provide a detailed analysis of potential issues:"""
         return prompt
 
     def _create_improvement_prompt(
-        self,
-        prompt: str,
-        response: str,
-        evaluation: Dict[str, Any]
+        self, prompt: str, response: str, evaluation: Dict[str, Any]
     ) -> str:
         """Create prompt for generating improved response."""
         issues = evaluation.get("reasoning", "Unspecified issues")
@@ -241,7 +229,7 @@ Please provide an improved response that addresses these issues while still bein
             from .model_utils import GenerationConfig, generate_text
 
             # Check if model has tokenizer attribute
-            if hasattr(self.critique_model, 'tokenizer'):
+            if hasattr(self.critique_model, "tokenizer"):
                 tokenizer = self.critique_model.tokenizer
                 model = self.critique_model
             else:
@@ -249,11 +237,7 @@ Please provide an improved response that addresses these issues while still bein
                 return "[Model requires tokenizer - use model_utils.load_model()]"
 
             # Generate critique
-            config = GenerationConfig(
-                max_length=256,
-                temperature=0.7,
-                do_sample=True
-            )
+            config = GenerationConfig(max_length=256, temperature=0.7, do_sample=True)
 
             critique = generate_text(model, tokenizer, prompt, config)
             return critique
@@ -274,9 +258,7 @@ Please provide an improved response that addresses these issues while still bein
         return self._generate_with_model(prompt)
 
     def _synthesize_reasoning(
-        self,
-        direct_evaluation: Dict[str, Any],
-        critique: Optional[Dict[str, Any]] = None
+        self, direct_evaluation: Dict[str, Any], critique: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Combine direct evaluation and critique into coherent reasoning.
@@ -295,7 +277,9 @@ Please provide an improved response that addresses these issues while still bein
             reasoning_parts.append("Direct evaluation issues:")
             for principle_name in direct_evaluation["flagged_principles"]:
                 principle_result = direct_evaluation["principle_results"][principle_name]
-                reasoning_parts.append(f"  - {principle_name}: {principle_result.get('reasoning', 'Violation detected')}")
+                reasoning_parts.append(
+                    f"  - {principle_name}: {principle_result.get('reasoning', 'Violation detected')}"
+                )
         else:
             reasoning_parts.append("Direct evaluation: No issues detected")
 
@@ -309,10 +293,7 @@ Please provide an improved response that addresses these issues while still bein
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get evaluation statistics."""
-        return {
-            **self.stats,
-            "framework_stats": self.framework.get_statistics()
-        }
+        return {**self.stats, "framework_stats": self.framework.get_statistics()}
 
     def reset_statistics(self) -> None:
         """Reset evaluation statistics."""
@@ -320,7 +301,7 @@ Please provide an improved response that addresses these issues while still bein
             "total_evaluations": 0,
             "flagged_by_direct": 0,
             "flagged_by_critique": 0,
-            "flagged_by_both": 0
+            "flagged_by_both": 0,
         }
         self.framework.clear_history()
 
@@ -337,9 +318,21 @@ def critique_indicates_issues(critique: str) -> bool:
     """
     # Check for concern indicators
     concern_phrases = [
-        "violates", "violation", "problematic", "issue", "concern",
-        "inappropriate", "harmful", "bias", "biased", "misleading", "deceptive",
-        "unfair", "coercive", "manipulative", "dangerous"
+        "violates",
+        "violation",
+        "problematic",
+        "issue",
+        "concern",
+        "inappropriate",
+        "harmful",
+        "bias",
+        "biased",
+        "misleading",
+        "deceptive",
+        "unfair",
+        "coercive",
+        "manipulative",
+        "dangerous",
     ]
 
     critique_lower = critique.lower()
@@ -366,7 +359,7 @@ def combine_reasoning(direct_evaluation: Dict[str, Any], critique: str) -> str:
     # Add direct check results
     for principle, result in direct_evaluation.items():
         if isinstance(result, dict) and result.get("flagged", False):
-            principle_name = principle.replace('_', ' ').title()
+            principle_name = principle.replace("_", " ").title()
             reasoning += f"- {principle_name}: Potential violation detected\n"
 
     # Add summary of critique

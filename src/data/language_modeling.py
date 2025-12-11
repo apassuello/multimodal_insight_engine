@@ -11,7 +11,6 @@ from src.utils.logging import get_logger
 
 from .tokenization import OptimizedBPETokenizer
 
-
 logger = get_logger(__name__)
 
 
@@ -63,7 +62,7 @@ class LanguageModelingDataset(Dataset):
 
             # Truncate if needed, leaving room for EOS token
             if len(token_ids) >= self.max_length:
-                token_ids = token_ids[:self.max_length-1]
+                token_ids = token_ids[: self.max_length - 1]
 
             # Add EOS token at the end
             token_ids = token_ids + [self.eos_idx]
@@ -101,10 +100,8 @@ class LanguageModelingDataset(Dataset):
         input_ids = torch.tensor(input_ids, dtype=torch.long)
         labels = torch.tensor(labels, dtype=torch.long)
 
-        return {
-            "input_ids": input_ids,
-            "labels": labels
-        }
+        return {"input_ids": input_ids, "labels": labels}
+
 
 def lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[str, torch.Tensor]:
     """
@@ -132,11 +129,8 @@ def lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[st
         labels[i, :seq_len] = example["labels"]
         attention_mask[i, :seq_len] = 1  # 1 means attended to, 0 means masked
 
-    return {
-        "input_ids": input_ids,
-        "labels": labels,
-        "attention_mask": attention_mask
-    }
+    return {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
+
 
 def create_lm_dataloaders(
     texts: List[str],
@@ -219,6 +213,7 @@ def create_lm_dataloaders(
 
     return train_dataloader, val_dataloader
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -240,30 +235,30 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, texts: List[str], tokenizer: BPETokenizer, max_length: int = 512, pad_idx: int = 0, bos_idx: int = 1, eos_idx: int = 2)",
-                        "brief_description": "Initializes dataset and tokenizes all texts upfront for efficiency"
+                        "brief_description": "Initializes dataset and tokenizes all texts upfront for efficiency",
                     },
                     {
                         "name": "__getitem__",
                         "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
-                        "brief_description": "Creates input-target pairs for next-token prediction tasks"
-                    }
+                        "brief_description": "Creates input-target pairs for next-token prediction tasks",
+                    },
                 ],
                 "inheritance": "Dataset",
-                "dependencies": ["torch", "torch.utils.data", "tokenization.BPETokenizer"]
+                "dependencies": ["torch", "torch.utils.data", "tokenization.BPETokenizer"],
             }
         ],
         "key_functions": [
             {
                 "name": "lm_collate_fn",
                 "signature": "lm_collate_fn(batch: List[Dict[str, torch.Tensor]], pad_idx: int) -> Dict[str, torch.Tensor]",
-                "brief_description": "Collates and pads batches for efficient training"
+                "brief_description": "Collates and pads batches for efficient training",
             },
             {
                 "name": "create_lm_dataloaders",
                 "signature": "create_lm_dataloaders(texts: List[str], tokenizer: BPETokenizer, batch_size: int = 16, max_length: int = 512, val_split: float = 0.1, seed: int = 42) -> tuple",
-                "brief_description": "Creates training and validation dataloaders with proper data splitting"
-            }
+                "brief_description": "Creates training and validation dataloaders with proper data splitting",
+            },
         ],
         "external_dependencies": ["torch", "tqdm", "random"],
-        "complexity_score": 5  # Moderate complexity due to batching and dataloader configuration
+        "complexity_score": 5,  # Moderate complexity due to batching and dataloader configuration
     }

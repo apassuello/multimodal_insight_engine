@@ -31,13 +31,13 @@ from src.safety.constitutional.reward_model import (
 @pytest.fixture
 def device():
     """Get available device for testing."""
-    return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 @pytest.fixture
 def tokenizer():
     """Load tokenizer for testing."""
-    tokenizer = AutoTokenizer.from_pretrained('gpt2')
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
@@ -46,7 +46,7 @@ def tokenizer():
 @pytest.fixture
 def base_model(device):
     """Load small base model for testing."""
-    model = AutoModelForCausalLM.from_pretrained('gpt2')
+    model = AutoModelForCausalLM.from_pretrained("gpt2")
     model = model.to(device)
     return model
 
@@ -62,25 +62,25 @@ def sample_preference_data():
     """Create sample preference data for testing."""
     return [
         {
-            'prompt': 'What is photosynthesis?',
-            'response_chosen': 'Photosynthesis is the process by which plants convert sunlight, water, and CO2 into glucose and oxygen.',
-            'response_rejected': 'Plants make food.'
+            "prompt": "What is photosynthesis?",
+            "response_chosen": "Photosynthesis is the process by which plants convert sunlight, water, and CO2 into glucose and oxygen.",
+            "response_rejected": "Plants make food.",
         },
         {
-            'prompt': 'Explain gravity.',
-            'response_chosen': 'Gravity is a fundamental force that attracts objects with mass toward each other.',
-            'response_rejected': 'Things fall down.'
+            "prompt": "Explain gravity.",
+            "response_chosen": "Gravity is a fundamental force that attracts objects with mass toward each other.",
+            "response_rejected": "Things fall down.",
         },
         {
-            'prompt': 'What is machine learning?',
-            'response_chosen': 'Machine learning is a field of AI where computers learn patterns from data without explicit programming.',
-            'response_rejected': 'Computers learning stuff.'
+            "prompt": "What is machine learning?",
+            "response_chosen": "Machine learning is a field of AI where computers learn patterns from data without explicit programming.",
+            "response_rejected": "Computers learning stuff.",
         },
         {
-            'prompt': 'How does the internet work?',
-            'response_chosen': 'The internet works by connecting computers globally through protocols like TCP/IP.',
-            'response_rejected': 'Magic wires.'
-        }
+            "prompt": "How does the internet work?",
+            "response_chosen": "The internet works by connecting computers globally through protocols like TCP/IP.",
+            "response_rejected": "Magic wires.",
+        },
     ]
 
 
@@ -102,9 +102,9 @@ class TestRewardModel:
 
         # Create dummy input
         text = "This is a test response."
-        inputs = tokenizer(text, return_tensors='pt', padding=True)
-        input_ids = inputs['input_ids'].to(device)
-        attention_mask = inputs['attention_mask'].to(device)
+        inputs = tokenizer(text, return_tensors="pt", padding=True)
+        input_ids = inputs["input_ids"].to(device)
+        attention_mask = inputs["attention_mask"].to(device)
 
         # Forward pass
         rewards = reward_model(input_ids, attention_mask)
@@ -118,14 +118,10 @@ class TestRewardModel:
         reward_model = reward_model.to(device)
 
         # Create batch input
-        texts = [
-            "First response.",
-            "Second response.",
-            "Third response."
-        ]
-        inputs = tokenizer(texts, return_tensors='pt', padding=True)
-        input_ids = inputs['input_ids'].to(device)
-        attention_mask = inputs['attention_mask'].to(device)
+        texts = ["First response.", "Second response.", "Third response."]
+        inputs = tokenizer(texts, return_tensors="pt", padding=True)
+        input_ids = inputs["input_ids"].to(device)
+        attention_mask = inputs["attention_mask"].to(device)
 
         # Forward pass
         rewards = reward_model(input_ids, attention_mask)
@@ -139,13 +135,10 @@ class TestRewardModel:
         reward_model = reward_model.to(device)
 
         # Create inputs of different lengths
-        texts = [
-            "Short.",
-            "This is a much longer response with many more tokens in it."
-        ]
-        inputs = tokenizer(texts, return_tensors='pt', padding=True)
-        input_ids = inputs['input_ids'].to(device)
-        attention_mask = inputs['attention_mask'].to(device)
+        texts = ["Short.", "This is a much longer response with many more tokens in it."]
+        inputs = tokenizer(texts, return_tensors="pt", padding=True)
+        input_ids = inputs["input_ids"].to(device)
+        attention_mask = inputs["attention_mask"].to(device)
 
         # Forward pass
         rewards = reward_model(input_ids, attention_mask)
@@ -174,9 +167,9 @@ class TestRewardModel:
 
         # Create input
         text = "Test response"
-        inputs = tokenizer(text, return_tensors='pt', padding=True)
-        input_ids = inputs['input_ids'].to(device)
-        attention_mask = inputs['attention_mask'].to(device)
+        inputs = tokenizer(text, return_tensors="pt", padding=True)
+        input_ids = inputs["input_ids"].to(device)
+        attention_mask = inputs["attention_mask"].to(device)
 
         # Forward pass
         reward = reward_model(input_ids, attention_mask)
@@ -228,7 +221,9 @@ class TestComputeRewardLoss:
 
         # For equal rewards, loss should be around -log(0.5) = 0.693
         expected_loss = 0.693
-        assert abs(loss.item() - expected_loss) < 0.01, f"Expected ~{expected_loss}, got {loss.item()}"
+        assert (
+            abs(loss.item() - expected_loss) < 0.01
+        ), f"Expected ~{expected_loss}, got {loss.item()}"
 
     def test_loss_when_rejected_better(self):
         """Test that loss is high when rejected > chosen (wrong preference)."""
@@ -267,17 +262,19 @@ class TestTrainRewardModel:
             num_epochs=2,
             batch_size=2,
             learning_rate=1e-5,
-            device=device
+            device=device,
         )
 
         # Check that metrics are returned
-        assert 'losses' in metrics
-        assert 'accuracy' in metrics
-        assert 'epochs' in metrics
-        assert len(metrics['losses']) == 2
-        assert len(metrics['accuracy']) == 2
+        assert "losses" in metrics
+        assert "accuracy" in metrics
+        assert "epochs" in metrics
+        assert len(metrics["losses"]) == 2
+        assert len(metrics["accuracy"]) == 2
 
-    def test_training_improves_accuracy(self, reward_model, sample_preference_data, tokenizer, device):
+    def test_training_improves_accuracy(
+        self, reward_model, sample_preference_data, tokenizer, device
+    ):
         """Test that training improves accuracy over epochs."""
         # Use more epochs to see improvement
         metrics = train_reward_model(
@@ -287,15 +284,17 @@ class TestTrainRewardModel:
             num_epochs=3,
             batch_size=2,
             learning_rate=1e-4,  # Higher LR for faster learning in test
-            device=device
+            device=device,
         )
 
         # Accuracy should generally improve or stay high
         # Note: With small data, this might not always hold, so we just check it's reasonable
-        assert metrics['accuracy'][-1] >= 0.0, "Accuracy should be non-negative"
-        assert metrics['accuracy'][-1] <= 1.0, "Accuracy should not exceed 1.0"
+        assert metrics["accuracy"][-1] >= 0.0, "Accuracy should be non-negative"
+        assert metrics["accuracy"][-1] <= 1.0, "Accuracy should not exceed 1.0"
 
-    def test_training_with_validation(self, reward_model, sample_preference_data, tokenizer, device):
+    def test_training_with_validation(
+        self, reward_model, sample_preference_data, tokenizer, device
+    ):
         """Test training with validation data."""
         # Split data
         train_data = sample_preference_data[:3]
@@ -309,14 +308,14 @@ class TestTrainRewardModel:
             batch_size=2,
             learning_rate=1e-5,
             device=device,
-            validation_data=val_data
+            validation_data=val_data,
         )
 
         # Check validation metrics
-        assert 'val_losses' in metrics
-        assert 'val_accuracy' in metrics
-        assert len(metrics['val_losses']) == 2
-        assert len(metrics['val_accuracy']) == 2
+        assert "val_losses" in metrics
+        assert "val_accuracy" in metrics
+        assert len(metrics["val_losses"]) == 2
+        assert len(metrics["val_accuracy"]) == 2
 
     def test_training_loss_decreases(self, reward_model, sample_preference_data, tokenizer, device):
         """Test that loss generally decreases during training."""
@@ -327,12 +326,12 @@ class TestTrainRewardModel:
             num_epochs=3,
             batch_size=2,
             learning_rate=1e-4,
-            device=device
+            device=device,
         )
 
         # Check that loss is finite
-        assert all(not torch.isnan(torch.tensor(loss)).item() for loss in metrics['losses'])
-        assert all(not torch.isinf(torch.tensor(loss)).item() for loss in metrics['losses'])
+        assert all(not torch.isnan(torch.tensor(loss)).item() for loss in metrics["losses"])
+        assert all(not torch.isinf(torch.tensor(loss)).item() for loss in metrics["losses"])
 
 
 class TestEvaluateRewardModel:
@@ -345,7 +344,7 @@ class TestEvaluateRewardModel:
             evaluation_data=sample_preference_data,
             tokenizer=tokenizer,
             device=device,
-            batch_size=2
+            batch_size=2,
         )
 
         # Check outputs
@@ -354,7 +353,9 @@ class TestEvaluateRewardModel:
         assert loss >= 0
         assert 0 <= accuracy <= 1
 
-    def test_evaluation_after_training(self, reward_model, sample_preference_data, tokenizer, device):
+    def test_evaluation_after_training(
+        self, reward_model, sample_preference_data, tokenizer, device
+    ):
         """Test evaluation after training."""
         # Train first
         train_reward_model(
@@ -363,7 +364,7 @@ class TestEvaluateRewardModel:
             tokenizer=tokenizer,
             num_epochs=2,
             batch_size=2,
-            device=device
+            device=device,
         )
 
         # Evaluate
@@ -372,7 +373,7 @@ class TestEvaluateRewardModel:
             evaluation_data=sample_preference_data,
             tokenizer=tokenizer,
             device=device,
-            batch_size=2
+            batch_size=2,
         )
 
         # Accuracy should be reasonable after training
@@ -389,7 +390,7 @@ class TestRewardModelTrainer:
             tokenizer=tokenizer,
             device=device,
             learning_rate=1e-5,
-            batch_size=4
+            batch_size=4,
         )
 
         assert trainer.reward_model is reward_model
@@ -400,74 +401,62 @@ class TestRewardModelTrainer:
 
     def test_train_method(self, reward_model, sample_preference_data, tokenizer, device):
         """Test trainer train method."""
-        trainer = RewardModelTrainer(
-            reward_model=reward_model,
-            tokenizer=tokenizer,
-            device=device
-        )
+        trainer = RewardModelTrainer(reward_model=reward_model, tokenizer=tokenizer, device=device)
 
         metrics = trainer.train(
-            training_data=sample_preference_data,
-            num_epochs=2,
-            validation_split=0.25
+            training_data=sample_preference_data, num_epochs=2, validation_split=0.25
         )
 
-        assert 'losses' in metrics
-        assert 'accuracy' in metrics
-        assert len(metrics['losses']) == 2
+        assert "losses" in metrics
+        assert "accuracy" in metrics
+        assert len(metrics["losses"]) == 2
 
     def test_save_and_load_checkpoint(self, reward_model, tokenizer, device):
         """Test checkpoint saving and loading."""
-        trainer = RewardModelTrainer(
-            reward_model=reward_model,
-            tokenizer=tokenizer,
-            device=device
-        )
+        trainer = RewardModelTrainer(reward_model=reward_model, tokenizer=tokenizer, device=device)
 
         # Create temporary directory
         with tempfile.TemporaryDirectory() as tmpdir:
-            checkpoint_path = Path(tmpdir) / 'test_checkpoint'
+            checkpoint_path = Path(tmpdir) / "test_checkpoint"
 
             # Save checkpoint
             trainer.save_checkpoint(str(checkpoint_path))
 
             # Check files exist
-            assert (checkpoint_path.parent / f'{checkpoint_path.name}.pt').exists()
-            assert (checkpoint_path.parent / f'{checkpoint_path.name}_metadata.json').exists()
+            assert (checkpoint_path.parent / f"{checkpoint_path.name}.pt").exists()
+            assert (checkpoint_path.parent / f"{checkpoint_path.name}_metadata.json").exists()
 
             # Create new trainer and load checkpoint
             new_model = RewardModel(reward_model.base_model, hidden_size=768)
             new_trainer = RewardModelTrainer(
-                reward_model=new_model,
-                tokenizer=tokenizer,
-                device=device
+                reward_model=new_model, tokenizer=tokenizer, device=device
             )
             new_trainer.load_checkpoint(str(checkpoint_path))
 
             # Check that weights match
-            for p1, p2 in zip(reward_model.reward_head.parameters(), new_model.reward_head.parameters()):
+            for p1, p2 in zip(
+                reward_model.reward_head.parameters(), new_model.reward_head.parameters()
+            ):
                 assert torch.allclose(p1, p2), "Loaded weights don't match saved weights"
 
     def test_evaluate_method(self, reward_model, sample_preference_data, tokenizer, device):
         """Test trainer evaluate method."""
-        trainer = RewardModelTrainer(
-            reward_model=reward_model,
-            tokenizer=tokenizer,
-            device=device
-        )
+        trainer = RewardModelTrainer(reward_model=reward_model, tokenizer=tokenizer, device=device)
 
         results = trainer.evaluate(sample_preference_data)
 
-        assert 'loss' in results
-        assert 'accuracy' in results
-        assert isinstance(results['loss'], float)
-        assert isinstance(results['accuracy'], float)
+        assert "loss" in results
+        assert "accuracy" in results
+        assert isinstance(results["loss"], float)
+        assert isinstance(results["accuracy"], float)
 
 
 class TestIntegrationWithPreferenceDataset:
     """Test integration with PreferenceDataset from preference_comparison.py."""
 
-    def test_works_with_preference_dataset(self, reward_model, sample_preference_data, tokenizer, device):
+    def test_works_with_preference_dataset(
+        self, reward_model, sample_preference_data, tokenizer, device
+    ):
         """Test that reward model works with PreferenceDataset."""
         from torch.utils.data import DataLoader
 
@@ -475,9 +464,7 @@ class TestIntegrationWithPreferenceDataset:
 
         # Create dataset
         dataset = PreferenceDataset(
-            data=sample_preference_data,
-            tokenizer=tokenizer,
-            max_length=512
+            data=sample_preference_data, tokenizer=tokenizer, max_length=512
         )
 
         # Create dataloader
@@ -487,17 +474,17 @@ class TestIntegrationWithPreferenceDataset:
         batch = next(iter(dataloader))
 
         # Check batch format
-        assert 'chosen_input_ids' in batch
-        assert 'chosen_attention_mask' in batch
-        assert 'rejected_input_ids' in batch
-        assert 'rejected_attention_mask' in batch
+        assert "chosen_input_ids" in batch
+        assert "chosen_attention_mask" in batch
+        assert "rejected_input_ids" in batch
+        assert "rejected_attention_mask" in batch
 
         # Use reward model
         reward_model = reward_model.to(device)
-        chosen_ids = batch['chosen_input_ids'].to(device)
-        chosen_mask = batch['chosen_attention_mask'].to(device)
-        rejected_ids = batch['rejected_input_ids'].to(device)
-        rejected_mask = batch['rejected_attention_mask'].to(device)
+        chosen_ids = batch["chosen_input_ids"].to(device)
+        chosen_mask = batch["chosen_attention_mask"].to(device)
+        rejected_ids = batch["rejected_input_ids"].to(device)
+        rejected_mask = batch["rejected_attention_mask"].to(device)
 
         reward_chosen = reward_model(chosen_ids, chosen_mask)
         reward_rejected = reward_model(rejected_ids, rejected_mask)
@@ -522,7 +509,7 @@ class TestEdgeCases:
                 training_data=[],
                 tokenizer=tokenizer,
                 num_epochs=1,
-                device=device
+                device=device,
             )
 
     def test_single_example(self, reward_model, sample_preference_data, tokenizer, device):
@@ -536,20 +523,22 @@ class TestEdgeCases:
             tokenizer=tokenizer,
             num_epochs=1,
             batch_size=1,
-            device=device
+            device=device,
         )
 
-        assert len(metrics['losses']) == 1
+        assert len(metrics["losses"]) == 1
 
     def test_very_long_sequences(self, reward_model, tokenizer, device):
         """Test handling of very long sequences."""
         long_text = "This is a test. " * 100  # Very long text
 
-        preference_data = [{
-            'prompt': 'Test prompt',
-            'response_chosen': long_text,
-            'response_rejected': 'Short response'
-        }]
+        preference_data = [
+            {
+                "prompt": "Test prompt",
+                "response_chosen": long_text,
+                "response_rejected": "Short response",
+            }
+        ]
 
         # Should handle with truncation
         metrics = train_reward_model(
@@ -559,11 +548,11 @@ class TestEdgeCases:
             num_epochs=1,
             batch_size=1,
             max_length=512,
-            device=device
+            device=device,
         )
 
-        assert len(metrics['losses']) == 1
+        assert len(metrics["losses"]) == 1
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

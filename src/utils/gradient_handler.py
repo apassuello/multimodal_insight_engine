@@ -9,7 +9,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -258,9 +257,7 @@ class GradientHandler:
                 correction_factors[component] = 1.0
 
             # Limit correction to avoid extreme changes
-            correction_factors[component] = max(
-                0.1, min(10.0, correction_factors[component])
-            )
+            correction_factors[component] = max(0.1, min(10.0, correction_factors[component]))
 
         # Apply corrections to learning rates in optimizer
         for _i, param_group in enumerate(optimizer.param_groups):
@@ -314,9 +311,7 @@ class GradientHandler:
 
         # Log vision-text ratio if available
         if stats["vision_text_ratio"] > 0:
-            logger.info(
-                f"  Vision/Text gradient ratio: {stats['vision_text_ratio']:.2f}"
-            )
+            logger.info(f"  Vision/Text gradient ratio: {stats['vision_text_ratio']:.2f}")
 
             # Warn if ratio is extremely unbalanced
             if stats["vision_text_ratio"] > 10.0 or stats["vision_text_ratio"] < 0.1:
@@ -345,9 +340,7 @@ class GradientHandler:
             self.grad_history["vision_grad_norm"],
             label="Vision",
         )
-        ax.plot(
-            self.grad_history["step"], self.grad_history["text_grad_norm"], label="Text"
-        )
+        ax.plot(self.grad_history["step"], self.grad_history["text_grad_norm"], label="Text")
         ax.plot(
             self.grad_history["step"],
             self.grad_history["fusion_grad_norm"],
@@ -409,11 +402,7 @@ class GradientHandler:
 
         # Adjust layout and save
         plt.tight_layout()
-        plt.savefig(
-            os.path.join(
-                self.visualization_dir, f"gradients_step_{self.step_count}.png"
-            )
-        )
+        plt.savefig(os.path.join(self.visualization_dir, f"gradients_step_{self.step_count}.png"))
         plt.close(fig)
 
 

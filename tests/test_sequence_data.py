@@ -18,6 +18,7 @@ def device():
         return torch.device("mps:0")
     return torch.device("cpu")
 
+
 @pytest.fixture
 def sample_sequences():
     """Sample sequences for testing."""
@@ -32,7 +33,7 @@ def sample_sequences():
             [20, 21],
             [22, 23, 24, 25],
             [26, 27],
-            [28, 29, 30, 31]
+            [28, 29, 30, 31],
         ],
         "target": [
             [32, 33, 34],
@@ -44,9 +45,10 @@ def sample_sequences():
             [51, 52],
             [53, 54, 55, 56],
             [57, 58],
-            [59, 60, 61, 62]
-        ]
+            [59, 60, 61, 62],
+        ],
     }
+
 
 def test_transformer_collate_fn(sample_sequences, device):
     """Test the transformer collate function."""
@@ -87,6 +89,7 @@ def test_transformer_collate_fn(sample_sequences, device):
     assert torch.all(collated["tgt"][1, :2] == torch.tensor([35, 36], device=device))
     assert torch.all(collated["tgt"][2, :4] == torch.tensor([37, 38, 39, 40], device=device))
 
+
 def test_transformer_dataset_initialization(sample_sequences):
     """Test initialization of TransformerDataset."""
     dataset = TransformerDataset(
@@ -96,7 +99,7 @@ def test_transformer_dataset_initialization(sample_sequences):
         max_tgt_len=5,
         pad_idx=0,
         bos_idx=1,
-        eos_idx=2
+        eos_idx=2,
     )
 
     assert len(dataset) == 10
@@ -105,6 +108,7 @@ def test_transformer_dataset_initialization(sample_sequences):
     assert dataset.pad_idx == 0
     assert dataset.bos_idx == 1
     assert dataset.eos_idx == 2
+
 
 def test_transformer_dataset_getitem(sample_sequences, device):
     """Test getting items from the dataset."""
@@ -115,7 +119,7 @@ def test_transformer_dataset_getitem(sample_sequences, device):
         max_tgt_len=5,
         pad_idx=0,
         bos_idx=1,
-        eos_idx=2
+        eos_idx=2,
     )
 
     # Get first item
@@ -140,7 +144,10 @@ def test_transformer_dataset_getitem(sample_sequences, device):
 
     # Check content
     assert torch.all(item["src_tokens"] == torch.tensor([1, 2, 3], device=device))
-    assert torch.all(item["tgt_tokens"] == torch.tensor([1, 32, 33, 34, 2], device=device))  # With BOS and EOS
+    assert torch.all(
+        item["tgt_tokens"] == torch.tensor([1, 32, 33, 34, 2], device=device)
+    )  # With BOS and EOS
+
 
 def test_transformer_dataset_truncation(sample_sequences, device):
     """Test that sequences are properly truncated."""
@@ -151,7 +158,7 @@ def test_transformer_dataset_truncation(sample_sequences, device):
         max_tgt_len=2,
         pad_idx=0,
         bos_idx=1,
-        eos_idx=2
+        eos_idx=2,
     )
 
     # Get first item
@@ -167,7 +174,10 @@ def test_transformer_dataset_truncation(sample_sequences, device):
 
     # Check content after truncation
     assert torch.all(item["src_tokens"] == torch.tensor([1, 2], device=device))
-    assert torch.all(item["tgt_tokens"] == torch.tensor([1, 32], device=device))  # BOS + first token
+    assert torch.all(
+        item["tgt_tokens"] == torch.tensor([1, 32], device=device)
+    )  # BOS + first token
+
 
 def test_transformer_collator(sample_sequences, device):
     """Test the TransformerCollator class."""
@@ -195,6 +205,7 @@ def test_transformer_collator(sample_sequences, device):
     assert collated["src"].device == device
     assert collated["tgt"].device == device
 
+
 def test_transformer_data_module_initialization(sample_sequences):
     """Test initialization of TransformerDataModule."""
     data_module = TransformerDataModule(
@@ -208,7 +219,7 @@ def test_transformer_data_module_initialization(sample_sequences):
         eos_idx=2,
         val_split=0.2,
         shuffle=True,
-        num_workers=1
+        num_workers=1,
     )
 
     assert data_module.batch_size == 2
@@ -220,6 +231,7 @@ def test_transformer_data_module_initialization(sample_sequences):
     assert data_module.val_split == 0.2
     assert data_module.shuffle is True
     assert data_module.num_workers == 1
+
 
 def test_transformer_data_module_dataloaders(sample_sequences, device):
     """Test creation of dataloaders in TransformerDataModule."""
@@ -234,7 +246,7 @@ def test_transformer_data_module_dataloaders(sample_sequences, device):
         eos_idx=2,
         val_split=0.2,
         shuffle=True,
-        num_workers=1
+        num_workers=1,
     )
 
     # Get dataloaders

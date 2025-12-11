@@ -222,7 +222,7 @@ class TestTrainingLoop:
         for p in model.parameters():
             if p.grad is not None:
                 total_norm += p.grad.norm().item() ** 2
-        total_norm = total_norm ** 0.5
+        total_norm = total_norm**0.5
 
         # After clipping, total norm should be <= clip_grad_norm
         # (may be less if gradients were small to begin with)
@@ -316,10 +316,7 @@ class TestTrainingLoop:
     def test_model_weights_update(self, model, loss_fn, optimizer, device, dataloader):
         """Test that model weights are updated during training."""
         # Get initial weights
-        initial_weights = {
-            name: param.clone()
-            for name, param in model.named_parameters()
-        }
+        initial_weights = {name: param.clone() for name, param in model.named_parameters()}
 
         loop = TrainingLoop(
             model=model,
@@ -348,6 +345,7 @@ class TestTrainingLoop:
 
     def test_loss_anomaly_detection(self, model, optimizer, device, dataloader, capsys):
         """Test detection of loss anomalies."""
+
         class AnomalousLoss(nn.Module):
             def __init__(self):
                 super().__init__()
@@ -357,7 +355,7 @@ class TestTrainingLoop:
                 self.call_count += 1
                 # Return NaN on second call
                 if self.call_count == 2:
-                    loss = torch.tensor(float('nan'))
+                    loss = torch.tensor(float("nan"))
                 else:
                     loss = nn.functional.mse_loss(output, target)
                 return {"loss": loss, "accuracy": 0.85}
@@ -386,6 +384,7 @@ class TestTrainingLoop:
 
     def test_feature_collapse_detection(self, device, dataloader):
         """Test feature collapse detection for multimodal training."""
+
         class MultimodalModel(nn.Module):
             def __init__(self):
                 super().__init__()
@@ -461,6 +460,7 @@ class TestTrainingLoop:
 
     def test_nested_metrics(self, model, optimizer, device, dataloader):
         """Test handling of nested metrics."""
+
         class NestedMetricsLoss(nn.Module):
             def forward(self, output, target):
                 loss = nn.functional.mse_loss(output, target)

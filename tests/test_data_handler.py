@@ -201,6 +201,7 @@ class TestDataHandler:
 
     def test_prepare_loss_inputs_enhanced_features(self, data_handler):
         """Test loss inputs with enhanced features (priority)."""
+
         class EnhancedModel(nn.Module):
             def __init__(self):
                 super().__init__()
@@ -215,8 +216,10 @@ class TestDataHandler:
 
         handler = DataHandler(model=EnhancedModel(), device=data_handler.device)
         batch = {"images": torch.randn(4, 10)}
-        outputs = {"vision_features_enhanced": torch.randn(4, 128),
-                   "text_features_enhanced": torch.randn(4, 128)}
+        outputs = {
+            "vision_features_enhanced": torch.randn(4, 128),
+            "text_features_enhanced": torch.randn(4, 128),
+        }
 
         loss_inputs = handler.prepare_loss_inputs(batch, outputs)
 
@@ -320,7 +323,7 @@ class TestDataHandler:
     def test_diagnose_features_with_nan(self, data_handler, capsys):
         """Test diagnostics with NaN values."""
         vision_features = torch.randn(10, 128)
-        vision_features[0, 0] = float('nan')
+        vision_features[0, 0] = float("nan")
         text_features = torch.randn(10, 128)
 
         data_handler._diagnose_features(vision_features, text_features, "test_source")

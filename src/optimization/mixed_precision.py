@@ -6,7 +6,8 @@ KEY COMPONENTS:
 - MixedPrecisionConverter: Converts models to use mixed precision formats.
 - MixedPrecisionWrapper: Wrapper for mixed precision inference with autocast.
 DEPENDENCIES: torch, typing, logging
-SPECIAL NOTES: Supports FP16 and BF16 mixed precision, with special handling for Apple Silicon MPS acceleration."""
+SPECIAL NOTES: Supports FP16 and BF16 mixed precision, with special handling for Apple Silicon MPS acceleration.
+"""
 
 import logging
 import os
@@ -76,10 +77,14 @@ class MixedPrecisionConverter:
 
         # Define lists of layer types to keep in FP32 for numerical stability
         fp32_layer_types = [
-            "layer_norm", "LayerNorm", "norm",
-            "embedding", "Embedding", "embed",
+            "layer_norm",
+            "LayerNorm",
+            "norm",
+            "embedding",
+            "Embedding",
+            "embed",
             "bias",  # Bias terms often better in FP32
-            "positional"  # Positional encoding/embeddings
+            "positional",  # Positional encoding/embeddings
         ]
 
         for name, param in state_dict.items():
@@ -177,21 +182,21 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, dtype: torch.dtype = torch.float16, use_auto_cast: bool = True)",
-                        "brief_description": "Initialize the mixed precision converter."
+                        "brief_description": "Initialize the mixed precision converter.",
                     },
                     {
                         "name": "convert_to_mixed_precision",
                         "signature": "(self) -> nn.Module",
-                        "brief_description": "Convert the model to use mixed precision."
+                        "brief_description": "Convert the model to use mixed precision.",
                     },
                     {
                         "name": "restore_original_precision",
                         "signature": "(self)",
-                        "brief_description": "Restore the model to its original precision."
-                    }
+                        "brief_description": "Restore the model to its original precision.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing", "logging"]
+                "dependencies": ["torch", "typing", "logging"],
             },
             {
                 "name": "MixedPrecisionWrapper",
@@ -200,22 +205,22 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, dtype: torch.dtype = torch.float16)",
-                        "brief_description": "Initialize the mixed precision wrapper."
+                        "brief_description": "Initialize the mixed precision wrapper.",
                     },
                     {
                         "name": "forward",
                         "signature": "(self, *args, **kwargs)",
-                        "brief_description": "Forward pass with automatic mixed precision."
+                        "brief_description": "Forward pass with automatic mixed precision.",
                     },
                     {
                         "name": "__getattr__",
                         "signature": "(self, name)",
-                        "brief_description": "Delegate attribute access to the wrapped model."
-                    }
+                        "brief_description": "Delegate attribute access to the wrapped model.",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "typing", "logging"]
-            }
+                "dependencies": ["torch", "typing", "logging"],
+            },
         ],
         "external_dependencies": ["torch", "typing", "logging"],
         "complexity_score": 5,

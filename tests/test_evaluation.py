@@ -306,6 +306,7 @@ class TestEvaluator:
 
     def test_enhanced_features_fallback(self, model, device):
         """Test fallback to enhanced features if available."""
+
         class EnhancedModel(nn.Module):
             def __init__(self):
                 super().__init__()

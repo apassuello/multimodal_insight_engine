@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 
 from .filter import SafetyFilter
 
-
 """MODULE: integration.py
 PURPOSE: Provides integration layer for augmenting models with safety mechanisms
 KEY COMPONENTS:
@@ -52,9 +51,7 @@ class SafetyAugmentedModel:
         # Store safety events for monitoring
         self.safety_events = []
 
-    def predict(
-        self, input_text: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def predict(self, input_text: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Generate a prediction with safety guardrails.
 
@@ -70,9 +67,7 @@ class SafetyAugmentedModel:
 
         # Step 1: Input validation
         if self.enable_input_validation:
-            is_safe, validation_info = self.safety_filter.validate_input(
-                input_text, meta
-            )
+            is_safe, validation_info = self.safety_filter.validate_input(input_text, meta)
             result["safety_info"]["input_validation"] = validation_info
 
             if not is_safe and self.safe_mode:
@@ -105,9 +100,7 @@ class SafetyAugmentedModel:
 
         # Step 3: Output filtering
         if self.enable_output_filtering:
-            filtered_output, filtering_info = self.safety_filter.filter_output(
-                output_text, meta
-            )
+            filtered_output, filtering_info = self.safety_filter.filter_output(output_text, meta)
             result["safety_info"]["output_filtering"] = filtering_info
 
             if filtering_info["was_filtered"]:
@@ -140,15 +133,15 @@ class SafetyAugmentedModel:
         elif "toxicity" in categories:
             return "I'm unable to process that input as it contains language that violates our content policy."
         elif "bias" in categories:
-            return "I'm unable to engage with that input as it contains potentially biased statements."
+            return (
+                "I'm unable to engage with that input as it contains potentially biased statements."
+            )
         elif "personal_information" in categories:
             return "I've detected what appears to be personal information in your input. For privacy and security reasons, please remove sensitive information before proceeding."
         else:
             return "I'm unable to process that input due to safety concerns. Please try rephrasing your request."
 
-    def _log_safety_event(
-        self, event_type: str, content: str, details: Dict[str, Any]
-    ) -> None:
+    def _log_safety_event(self, event_type: str, content: str, details: Dict[str, Any]) -> None:
         """
         Log a safety event for monitoring.
 
@@ -177,6 +170,7 @@ class SafetyAugmentedModel:
         """
         return self.safety_events
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -198,21 +192,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "predict",
                         "signature": "def predict(self, input_text: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]",
-                        "brief_description": "Main method for safe model inference with input validation and output filtering"
+                        "brief_description": "Main method for safe model inference with input validation and output filtering",
                     },
                     {
                         "name": "_generate_rejection_message",
                         "signature": "def _generate_rejection_message(self, validation_info: Dict[str, Any]) -> str",
-                        "brief_description": "Generates appropriate rejection messages based on safety violations"
+                        "brief_description": "Generates appropriate rejection messages based on safety violations",
                     },
                     {
                         "name": "_log_safety_event",
                         "signature": "def _log_safety_event(self, event_type: str, content: str, details: Dict[str, Any]) -> None",
-                        "brief_description": "Logs safety-related events for monitoring"
-                    }
+                        "brief_description": "Logs safety-related events for monitoring",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["typing", "datetime", "filter"]
+                "dependencies": ["typing", "datetime", "filter"],
             }
         ],
         "external_dependencies": [],

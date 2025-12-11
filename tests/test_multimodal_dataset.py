@@ -24,7 +24,6 @@ from torch.utils.data import DataLoader
 
 from src.data.multimodal_dataset import MultimodalDataset
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -48,25 +47,27 @@ def fake_image_dataset(temp_dataset_dir):
     images_data = []
     for i in range(10):
         # Create a simple colored image
-        img = Image.new('RGB', (224, 224), color=(i*25, i*25, i*25))
+        img = Image.new("RGB", (224, 224), color=(i * 25, i * 25, i * 25))
         img_path = image_dir / f"img_{i:03d}.jpg"
         img.save(img_path)
 
-        images_data.append({
-            "image_path": f"img_{i:03d}.jpg",
-            "caption": f"This is caption number {i}",
-            "split": "train" if i < 7 else "val",
-            "label": f"class_{i % 3}"  # 3 classes
-        })
+        images_data.append(
+            {
+                "image_path": f"img_{i:03d}.jpg",
+                "caption": f"This is caption number {i}",
+                "split": "train" if i < 7 else "val",
+                "label": f"class_{i % 3}",  # 3 classes
+            }
+        )
 
     # Create metadata file
     metadata = {
         "train": [d for d in images_data if d["split"] == "train"],
-        "val": [d for d in images_data if d["split"] == "val"]
+        "val": [d for d in images_data if d["split"] == "val"],
     }
 
     metadata_path = temp_dataset_dir / "metadata.json"
-    with open(metadata_path, 'w') as f:
+    with open(metadata_path, "w") as f:
         json.dump(metadata, f)
 
     return temp_dataset_dir, metadata
@@ -81,19 +82,17 @@ def fake_flat_metadata_dataset(temp_dataset_dir):
     # Create images
     images_data = []
     for i in range(5):
-        img = Image.new('RGB', (224, 224), color=(i*50, i*50, i*50))
+        img = Image.new("RGB", (224, 224), color=(i * 50, i * 50, i * 50))
         img_path = image_dir / f"img_{i}.jpg"
         img.save(img_path)
 
-        images_data.append({
-            "image_path": f"img_{i}.jpg",
-            "caption": f"Caption {i}",
-            "split": "train"
-        })
+        images_data.append(
+            {"image_path": f"img_{i}.jpg", "caption": f"Caption {i}", "split": "train"}
+        )
 
     # Flat list metadata
     metadata_path = temp_dataset_dir / "metadata.json"
-    with open(metadata_path, 'w') as f:
+    with open(metadata_path, "w") as f:
         json.dump(images_data, f)
 
     return temp_dataset_dir, images_data
@@ -111,10 +110,7 @@ class TestMultimodalDatasetInitialization:
         """Test basic dataset initialization."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         assert len(dataset) == 7  # 7 train samples
         assert dataset.split == "train"
@@ -124,10 +120,7 @@ class TestMultimodalDatasetInitialization:
         """Test initialization with validation split."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="val"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="val")
 
         assert len(dataset) == 3  # 3 val samples
 
@@ -135,11 +128,7 @@ class TestMultimodalDatasetInitialization:
         """Test sample limiting."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train",
-            limit_samples=3
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train", limit_samples=3)
 
         assert len(dataset) == 3
 
@@ -149,25 +138,17 @@ class TestMultimodalDatasetInitialization:
         image_dir.mkdir()
 
         # Create image
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
         # Custom keys
-        metadata = {
-            "train": [{
-                "img": "test.jpg",
-                "text": "Test caption"
-            }]
-        }
+        metadata = {"train": [{"img": "test.jpg", "text": "Test caption"}]}
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
         dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train",
-            image_key="img",
-            caption_key="text"
+            data_root=str(temp_dataset_dir), split="train", image_key="img", caption_key="text"
         )
 
         assert len(dataset) == 1
@@ -176,9 +157,7 @@ class TestMultimodalDatasetInitialization:
         """Test error handling for missing metadata file."""
         with pytest.raises(FileNotFoundError):
             MultimodalDataset(
-                data_root=str(temp_dataset_dir),
-                split="train",
-                metadata_file="nonexistent.json"
+                data_root=str(temp_dataset_dir), split="train", metadata_file="nonexistent.json"
             )
 
     def test_invalid_split(self, fake_image_dataset):
@@ -186,10 +165,7 @@ class TestMultimodalDatasetInitialization:
         data_root, metadata = fake_image_dataset
 
         with pytest.raises(ValueError):
-            MultimodalDataset(
-                data_root=str(data_root),
-                split="invalid_split"
-            )
+            MultimodalDataset(data_root=str(data_root), split="invalid_split")
 
 
 # ============================================================================
@@ -204,10 +180,7 @@ class TestMetadataLoading:
         """Test loading dictionary-structured metadata."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         # Should load train split
         assert len(dataset) == 7
@@ -216,10 +189,7 @@ class TestMetadataLoading:
         """Test loading flat list metadata."""
         data_root, metadata = fake_flat_metadata_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         assert len(dataset) == 5
 
@@ -229,23 +199,20 @@ class TestMetadataLoading:
         image_dir.mkdir()
 
         # Create one image but metadata for two
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "existing.jpg")
 
         metadata = {
             "train": [
                 {"image_path": "existing.jpg", "caption": "Exists"},
-                {"image_path": "missing.jpg", "caption": "Missing"}
+                {"image_path": "missing.jpg", "caption": "Missing"},
             ]
         }
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         # Should only have 1 sample (missing image filtered out)
         assert len(dataset) == 1
@@ -255,23 +222,20 @@ class TestMetadataLoading:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
         metadata = {
             "train": [
                 {"image_path": "test.jpg", "caption": "Has caption"},
-                {"image_path": "test.jpg"}  # No caption
+                {"image_path": "test.jpg"},  # No caption
             ]
         }
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         assert len(dataset) == 1
 
@@ -289,23 +253,15 @@ class TestPathHandling:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
-        metadata = {
-            "train": [{
-                "image_path": "test.jpg",  # Relative path
-                "caption": "Test"
-            }]
-        }
+        metadata = {"train": [{"image_path": "test.jpg", "caption": "Test"}]}  # Relative path
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         # Path should be converted to absolute
         sample_path = dataset.samples[0]["image_path"]
@@ -317,24 +273,18 @@ class TestPathHandling:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img_abs_path = image_dir / "test.jpg"
         img.save(img_abs_path)
 
         metadata = {
-            "train": [{
-                "image_path": str(img_abs_path),  # Absolute path
-                "caption": "Test"
-            }]
+            "train": [{"image_path": str(img_abs_path), "caption": "Test"}]  # Absolute path
         }
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         assert len(dataset) == 1
 
@@ -345,19 +295,15 @@ class TestPathHandling:
 
         # Try path traversal
         metadata = {
-            "train": [{
-                "image_path": "../../../etc/passwd",  # Path traversal attempt
-                "caption": "Test"
-            }]
+            "train": [
+                {"image_path": "../../../etc/passwd", "caption": "Test"}  # Path traversal attempt
+            ]
         }
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         # Should have 0 samples (file doesn't exist or is filtered)
         assert len(dataset) == 0
@@ -375,42 +321,33 @@ class TestDataLoading:
         """Test basic __getitem__ functionality."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         # Get first sample
         sample = dataset[0]
 
         # Check return type
         assert isinstance(sample, dict)
-        assert 'image' in sample or 'pixel_values' in sample
-        assert 'text' in sample or 'caption' in sample
+        assert "image" in sample or "pixel_values" in sample
+        assert "text" in sample or "caption" in sample
 
     def test_getitem_returns_tensors(self, fake_image_dataset):
         """Test that __getitem__ returns tensors."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         sample = dataset[0]
 
         # Image should be tensor or PIL Image
-        image_key = 'image' if 'image' in sample else 'pixel_values'
+        image_key = "image" if "image" in sample else "pixel_values"
         assert isinstance(sample[image_key], (torch.Tensor, Image.Image))
 
     def test_dataloader_integration(self, fake_image_dataset):
         """Test dataset works with DataLoader."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train")
 
         # Create dataloader
         dataloader = DataLoader(dataset, batch_size=2, shuffle=False)
@@ -437,11 +374,7 @@ class TestHardNegativeMining:
         """Test that class indices are built correctly."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train",
-            label_key="label"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train", label_key="label")
 
         # Should have class indices
         assert len(dataset.class_to_indices) > 0
@@ -454,11 +387,7 @@ class TestHardNegativeMining:
         """Test getting hard negative from same class."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train",
-            label_key="label"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train", label_key="label")
 
         # Get hard negative for first sample
         neg_idx = dataset.get_hard_negative(0, neg_type="same_class")
@@ -474,11 +403,7 @@ class TestHardNegativeMining:
         """Test getting hard negative from different class."""
         data_root, metadata = fake_image_dataset
 
-        dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train",
-            label_key="label"
-        )
+        dataset = MultimodalDataset(data_root=str(data_root), split="train", label_key="label")
 
         neg_idx = dataset.get_hard_negative(0, neg_type="different_class")
 
@@ -494,9 +419,7 @@ class TestHardNegativeMining:
         data_root, metadata = fake_flat_metadata_dataset
 
         dataset = MultimodalDataset(
-            data_root=str(data_root),
-            split="train",
-            label_key=None  # No labels
+            data_root=str(data_root), split="train", label_key=None  # No labels
         )
 
         # Should still return valid index
@@ -518,20 +441,12 @@ class TestEdgeCases:
         image_dir.mkdir()
 
         # Metadata with no matching images
-        metadata = {
-            "train": [{
-                "image_path": "nonexistent.jpg",
-                "caption": "Test"
-            }]
-        }
+        metadata = {"train": [{"image_path": "nonexistent.jpg", "caption": "Test"}]}
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         assert len(dataset) == 0
 
@@ -540,23 +455,15 @@ class TestEdgeCases:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
-        metadata = {
-            "train": [{
-                "image_path": "test.jpg",
-                "caption": "Single sample"
-            }]
-        }
+        metadata = {"train": [{"image_path": "test.jpg", "caption": "Single sample"}]}
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         assert len(dataset) == 1
         sample = dataset[0]
@@ -567,26 +474,19 @@ class TestEdgeCases:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
         # Very long caption
         long_caption = "word " * 1000
 
-        metadata = {
-            "train": [{
-                "image_path": "test.jpg",
-                "caption": long_caption
-            }]
-        }
+        metadata = {"train": [{"image_path": "test.jpg", "caption": long_caption}]}
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
 
         dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train",
-            max_text_length=77
+            data_root=str(temp_dataset_dir), split="train", max_text_length=77
         )
 
         # Should handle long caption
@@ -597,22 +497,14 @@ class TestEdgeCases:
         image_dir = temp_dataset_dir / "images"
         image_dir.mkdir()
 
-        img = Image.new('RGB', (224, 224))
+        img = Image.new("RGB", (224, 224))
         img.save(image_dir / "test.jpg")
 
-        metadata = {
-            "train": [{
-                "image_path": "test.jpg",
-                "caption": "Hello 世界 🌍 Привет"
-            }]
-        }
+        metadata = {"train": [{"image_path": "test.jpg", "caption": "Hello 世界 🌍 Привет"}]}
 
-        with open(temp_dataset_dir / "metadata.json", 'w') as f:
+        with open(temp_dataset_dir / "metadata.json", "w") as f:
             json.dump(metadata, f, ensure_ascii=False)
 
-        dataset = MultimodalDataset(
-            data_root=str(temp_dataset_dir),
-            split="train"
-        )
+        dataset = MultimodalDataset(data_root=str(temp_dataset_dir), split="train")
 
         assert len(dataset) == 1

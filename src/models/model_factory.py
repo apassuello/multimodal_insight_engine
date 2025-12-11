@@ -25,7 +25,6 @@ from .multimodal.multimodal_integration import (
     CrossAttentionMultiModalTransformer,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -55,9 +54,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         is_mps = system_device.type == "mps"
 
         if (
-            args.model_size == "large"
-            or args.model_size == "small"
-            or args.model_size == "medium"
+            args.model_size == "large" or args.model_size == "small" or args.model_size == "medium"
         ):  # Use 768 dimensions for all presets
             logger.info("Using 768-dimension models")
             args.use_pretrained_text = True
@@ -67,14 +64,10 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             if is_mps:
                 # MPS-compatible alternative for Apple Silicon
                 args.text_model = "albert-base-v2"
-                logger.info(
-                    "Selected MPS-compatible models: vit-base (768) + albert-base-v2 (768)"
-                )
+                logger.info("Selected MPS-compatible models: vit-base (768) + albert-base-v2 (768)")
             else:
                 args.text_model = "bert-base-uncased"
-                logger.info(
-                    "Selected standard models: vit-base (768) + bert-base-uncased (768)"
-                )
+                logger.info("Selected standard models: vit-base (768) + bert-base-uncased (768)")
 
     logger.info("Creating multimodal model with pretrained components...")
 
@@ -85,14 +78,18 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         if args.use_pretrained:
             logger.info(f"Loading pretrained vision model: {args.vision_model}")
         else:
-            logger.info(
-                f"Creating vision model (without pretraining): {args.vision_model}"
-            )
+            logger.info(f"Creating vision model (without pretraining): {args.vision_model}")
 
         # Check text model dimension first to determine appropriate vision model
         if args.use_pretrained_text:
             # MobileBERT has 512 dim, BERT-base has 768 dim, MiniLM-384 has 384 dim
-            if args.text_model == "mobilebert" or args.text_model in ["bert-base", "roberta-base"] or args.text_model == "distilbert-base" or args.text_model == "albert-base" or args.text_model == "minilm-384":
+            if (
+                args.text_model == "mobilebert"
+                or args.text_model in ["bert-base", "roberta-base"]
+                or args.text_model == "distilbert-base"
+                or args.text_model == "albert-base"
+                or args.text_model == "minilm-384"
+            ):
                 pass
 
         # Keep things simple - use standard timm models
@@ -100,9 +97,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         if "vit-base" in args.vision_model or args.fusion_dim == 768:
             # Standard ViT-base model with 768 dims
             logger.info("Loading standard ViT-base model with 768 dimensions")
-            vision_model = timm.create_model(
-                "vit_base_patch16_224", pretrained=args.use_pretrained
-            )
+            vision_model = timm.create_model("vit_base_patch16_224", pretrained=args.use_pretrained)
             # Remove classification head
             vision_model.head = nn.Identity()
 
@@ -116,9 +111,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                 logger.info(f"Using standard ViT base dimension: {vision_dim}")
         else:
             # Generic fallback if a different model is specified
-            logger.warning(
-                f"Using fallback vision model because {args.vision_model} was specified"
-            )
+            logger.warning(f"Using fallback vision model because {args.vision_model} was specified")
             # Default to ViT-base for reliability
             model_name = "vit_base_patch16_224"
             expected_dim = 768
@@ -158,9 +151,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
         # Check if we should use a pretrained text model from HuggingFace
         if args.use_pretrained_text:
-            logger.info(
-                f"Loading pretrained text model from HuggingFace: {args.text_model}"
-            )
+            logger.info(f"Loading pretrained text model from HuggingFace: {args.text_model}")
 
             # Use exact HuggingFace model name if provided directly
             if (
@@ -191,19 +182,14 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
                 elif args.model_size == "large":  # 768 dimensions
                     if is_mps:
-                        huggingface_model_name = (
-                            "albert-base-v2"  # MPS-friendly 768-dim model
-                        )
+                        huggingface_model_name = "albert-base-v2"  # MPS-friendly 768-dim model
                     else:
                         huggingface_model_name = "bert-base-uncased"
                     logger.info(f"Using 768-dim text model: {huggingface_model_name}")
 
                 # If no model_size preset, use MPS-friendly models if on MPS
                 elif is_mps:
-                    if (
-                        args.text_model == "bert-base"
-                        or args.text_model == "bert-base-uncased"
-                    ):
+                    if args.text_model == "bert-base" or args.text_model == "bert-base-uncased":
                         huggingface_model_name = (
                             "google/mobilebert-uncased"  # MPS-friendly alternative
                         )
@@ -211,7 +197,9 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                             "⚠️ Automatically switched from BERT-base to MobileBERT for MPS compatibility"
                         )
                     elif args.text_model == "roberta-base":
-                        huggingface_model_name = "distilroberta-base"  # Smaller model for better MPS compatibility
+                        huggingface_model_name = (
+                            "distilroberta-base"  # Smaller model for better MPS compatibility
+                        )
                         logger.warning(
                             "⚠️ Automatically switched from RoBERTa-base to DistilRoBERTa for MPS compatibility"
                         )
@@ -233,10 +221,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                         )
                 else:
                     # Standard model mapping for CPU/CUDA
-                    if (
-                        args.text_model == "bert-base"
-                        or args.text_model == "bert-base-uncased"
-                    ):
+                    if args.text_model == "bert-base" or args.text_model == "bert-base-uncased":
                         huggingface_model_name = "bert-base-uncased"
                     elif args.text_model == "roberta-base":
                         huggingface_model_name = "roberta-base"
@@ -253,9 +238,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
                     else:
                         # Default to BERT-base for other cases
                         huggingface_model_name = "bert-base-uncased"
-                        logger.info(
-                            f"Defaulting to BERT-base for unknown model: {args.text_model}"
-                        )
+                        logger.info(f"Defaulting to BERT-base for unknown model: {args.text_model}")
 
             # Create model
             text_model = HuggingFaceTextModelWrapper(huggingface_model_name)
@@ -298,9 +281,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
             text_dim = text_config["d_model"]
 
     except ImportError:
-        logger.warning(
-            "transformers library not found, using standard text transformer"
-        )
+        logger.warning("transformers library not found, using standard text transformer")
         # Fallback to standard implementation
         text_config = {
             "src_vocab_size": 50000,
@@ -322,9 +303,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
     logger.info(f"Text transformer parameters: {text_params:,}")
 
     # Create multimodal model with custom initialization
-    logger.info(
-        f"Creating enhanced multimodal transformer with {args.fusion_type} fusion"
-    )
+    logger.info(f"Creating enhanced multimodal transformer with {args.fusion_type} fusion")
 
     # Set fusion_dim to match the model dimensions if specified
     # Otherwise, use the default from args
@@ -335,9 +314,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         fusion_dim = args.fusion_dim
 
     # Log dimension information for debugging
-    logger.info(
-        f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
-    )
+    logger.info(f"Model dimensions - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}")
 
     # Check for dimension mismatch between vision and text models
     if vision_dim != text_dim:
@@ -346,14 +323,9 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         )
 
         # Create a dimension alignment layer to ensure they match before fusion
-        if (
-            args.text_model == "transformer-base"
-            or args.text_model == "transformer-small"
-        ):
+        if args.text_model == "transformer-base" or args.text_model == "transformer-small":
             # For custom transformers, we can adjust the transformer itself
-            logger.info(
-                f"Setting text model dimension to match vision model: {vision_dim}"
-            )
+            logger.info(f"Setting text model dimension to match vision model: {vision_dim}")
             # Update the model's dimension
             text_model.d_model = vision_dim
             text_dim = vision_dim
@@ -373,9 +345,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
     # After alignment, dimensions should match
     # Now adjust fusion_dim to match the aligned model dimensions if needed
-    logger.info(
-        f"DIMENSION CHECK - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}"
-    )
+    logger.info(f"DIMENSION CHECK - Vision: {vision_dim}, Text: {text_dim}, Fusion: {fusion_dim}")
 
     # Get actual text model dimension from HuggingFace if available
     if hasattr(text_model, "encoder") and hasattr(text_model.encoder, "config"):
@@ -396,9 +366,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         logger.warning(
             f"Dimension mismatch detected: Vision dim: {vision_dim}, Text dim: {text_dim}, Fusion dim: {fusion_dim}"
         )
-        logger.info(
-            f"Adjusting fusion_dim to match model dimensions: {fusion_dim} → {target_dim}"
-        )
+        logger.info(f"Adjusting fusion_dim to match model dimensions: {fusion_dim} → {target_dim}")
         fusion_dim = target_dim
 
         # CRITICAL: Update the args object as well so other components can access the updated dimension
@@ -433,9 +401,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
         logger.info("All model parameters are trainable (including base models)")
 
     # Calculate trainable parameters
-    trainable_params = sum(
-        p.numel() for p in multimodal_model.parameters() if p.requires_grad
-    )
+    trainable_params = sum(p.numel() for p in multimodal_model.parameters() if p.requires_grad)
     total_params = count_parameters(multimodal_model)
     logger.info(
         f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params*100:.1f}% of total)"
@@ -455,9 +421,7 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
     logger.info(f"Model components successfully moved to {device}")
     logger.info(f"- Vision model: {next(multimodal_model.vision_model.parameters()).device}")
     logger.info(f"- Text model: {next(multimodal_model.text_model.parameters()).device}")
-    logger.info(
-        f"- Fusion module: {next(multimodal_model.fusion_module.parameters()).device}"
-    )
+    logger.info(f"- Fusion module: {next(multimodal_model.fusion_module.parameters()).device}")
 
     return multimodal_model
 

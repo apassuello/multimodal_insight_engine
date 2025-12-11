@@ -21,16 +21,13 @@ import torch
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -159,9 +156,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             self.encoder = self.encoder.to(system_device)
             logger.info(f"Successfully moved {model_name} to {system_device}")
         except Exception as e:
-            logger.info(
-                f"Could not move model to {system_device}, using CPU instead: {str(e)}"
-            )
+            logger.info(f"Could not move model to {system_device}, using CPU instead: {str(e)}")
             self.encoder = self.encoder.to("cpu")
 
         logger.info(f"Loaded {model_name} with dimension {self.d_model}")
@@ -321,9 +316,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
 
             # Regular processing with device alignment
             with torch.no_grad():
-                outputs = self.encoder(
-                    input_ids=input_ids, attention_mask=attention_mask
-                )
+                outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
 
                 # Move result back to original device
                 return outputs.last_hidden_state.to(input_device)
@@ -341,12 +334,8 @@ class HuggingFaceTextModelWrapper(nn.Module):
 
             # Final emergency fallback - generate features with correct shape
             batch_size, seq_length = src.shape
-            logger.info(
-                f"Using final fallback: zeros in correct shape on device {input_device}"
-            )
-            return torch.zeros(
-                batch_size, seq_length, self.d_model, device=input_device
-            )
+            logger.info(f"Using final fallback: zeros in correct shape on device {input_device}")
+            return torch.zeros(batch_size, seq_length, self.d_model, device=input_device)
 
     def forward(self, src, tgt=None, src_mask=None, tgt_mask=None):
         """

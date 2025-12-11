@@ -90,10 +90,9 @@ class BPETokenizer(BaseTokenizer):
             word_freqs.update(text.split())
 
         # Filter by frequency
-        word_freqs = Counter({
-            word: freq for word, freq in word_freqs.items()
-            if freq >= min_frequency
-        })
+        word_freqs = Counter(
+            {word: freq for word, freq in word_freqs.items() if freq >= min_frequency}
+        )
 
         # Initialize with characters
         vocab = set()
@@ -132,7 +131,7 @@ class BPETokenizer(BaseTokenizer):
             merges.append(best_pair)
 
             # Create new token for this pair
-            new_token = ''.join(best_pair)
+            new_token = "".join(best_pair)
             self.vocab.add_token(new_token)
 
             # Update word splits
@@ -141,8 +140,10 @@ class BPETokenizer(BaseTokenizer):
                 new_pieces = []
                 i = 0
                 while i < len(word_pieces):
-                    if (i < len(word_pieces) - 1 and
-                        (word_pieces[i], word_pieces[i + 1]) == best_pair):
+                    if (
+                        i < len(word_pieces) - 1
+                        and (word_pieces[i], word_pieces[i + 1]) == best_pair
+                    ):
                         new_pieces.append(new_token)
                         i += 2
                     else:
@@ -173,11 +174,11 @@ class BPETokenizer(BaseTokenizer):
         while len(pieces) > 1:
             # Find the best merge
             best_idx = -1
-            best_rank = float('inf')
+            best_rank = float("inf")
 
             for i in range(len(pieces) - 1):
                 pair = (pieces[i], pieces[i + 1])
-                rank = self.merges_dict.get(pair, float('inf'))
+                rank = self.merges_dict.get(pair, float("inf"))
 
                 if rank < best_rank:
                     best_rank = rank
@@ -242,7 +243,7 @@ class BPETokenizer(BaseTokenizer):
         tokens = self.vocab.indices_to_tokens(token_ids)
         # Simple concatenation - in a real BPE implementation, this would need
         # to handle special splitting characters if used during training
-        return ''.join(tokens)
+        return "".join(tokens)
 
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
@@ -335,13 +336,14 @@ class BPETokenizer(BaseTokenizer):
 
         return tokenizer
 
+
 def preprocess_data_with_optimized_bpe(
     dataset,
     de_tokenizer,
     en_tokenizer,
     batch_size=4000,  # Larger batch size for better GPU utilization
     use_multiprocessing=False,
-    num_workers=4
+    num_workers=4,
 ):
     """
     Optimized preprocessing function for translation datasets.
@@ -362,9 +364,8 @@ def preprocess_data_with_optimized_bpe(
             dataset, de_tokenizer, en_tokenizer, batch_size, num_workers
         )
     else:
-        return _preprocess_without_multiprocessing(
-            dataset, de_tokenizer, en_tokenizer, batch_size
-        )
+        return _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size)
+
 
 def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size):
     """Process without multiprocessing (better for GPU utilization)."""
@@ -380,9 +381,11 @@ def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, bat
     # Process in batches
     total_batches = (len(dataset.src_data) + batch_size - 1) // batch_size
 
-    for i in tqdm(range(0, len(dataset.src_data), batch_size),
-                 total=total_batches,
-                 desc="Preprocessing batches"):
+    for i in tqdm(
+        range(0, len(dataset.src_data), batch_size),
+        total=total_batches,
+        desc="Preprocessing batches",
+    ):
         # Get batch
         batch_end = min(i + batch_size, len(dataset.src_data))
         batch_src = dataset.src_data[i:batch_end]
@@ -399,6 +402,7 @@ def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, bat
 
     return src_sequences, tgt_sequences
 
+
 def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers):
     """Process with multiprocessing (better for CPU-bound tasks)."""
     from multiprocessing import Pool
@@ -407,17 +411,19 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
     batches = []
     for i in range(0, len(dataset.src_data), batch_size):
         batch_end = min(i + batch_size, len(dataset.src_data))
-        batches.append((
-            dataset.src_data[i:batch_end],
-            dataset.tgt_data[i:batch_end],
-        ))
+        batches.append(
+            (
+                dataset.src_data[i:batch_end],
+                dataset.tgt_data[i:batch_end],
+            )
+        )
 
     # Get special token indices
     special_tokens = {
-        'src_bos': de_tokenizer.special_tokens["bos_token_idx"],
-        'src_eos': de_tokenizer.special_tokens["eos_token_idx"],
-        'tgt_bos': en_tokenizer.special_tokens["bos_token_idx"],
-        'tgt_eos': en_tokenizer.special_tokens["eos_token_idx"],
+        "src_bos": de_tokenizer.special_tokens["bos_token_idx"],
+        "src_eos": de_tokenizer.special_tokens["eos_token_idx"],
+        "tgt_bos": en_tokenizer.special_tokens["bos_token_idx"],
+        "tgt_eos": en_tokenizer.special_tokens["eos_token_idx"],
     }
 
     # Function to process a single batch
@@ -428,13 +434,13 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         cpu_de_tokenizer = OptimizedBPETokenizer(
             vocab=de_tokenizer.vocab,
             merges=de_tokenizer.merges,
-            device="mps"  # Force CPU for multiprocessing compatibility
+            device="mps",  # Force CPU for multiprocessing compatibility
         )
 
         cpu_en_tokenizer = OptimizedBPETokenizer(
             vocab=en_tokenizer.vocab,
             merges=en_tokenizer.merges,
-            device="mps"  # Force CPU for multiprocessing compatibility
+            device="mps",  # Force CPU for multiprocessing compatibility
         )
 
         # Process batch
@@ -446,8 +452,12 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         tgt_sequences = []
 
         for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
-            src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
-            tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
+            src_sequences.append(
+                [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
+            )
+            tgt_sequences.append(
+                [special_tokens["tgt_bos"]] + tgt_ids + [special_tokens["tgt_eos"]]
+            )
 
         return src_sequences, tgt_sequences
 
@@ -457,7 +467,7 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
             tqdm(
                 pool.imap(process_batch, batches),
                 total=len(batches),
-                desc="Preprocessing batches (multiprocessing)"
+                desc="Preprocessing batches (multiprocessing)",
             )
         )
 
@@ -470,6 +480,7 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         tgt_sequences.extend(tgt_batch)
 
     return src_sequences, tgt_sequences
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -492,80 +503,80 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "preprocess",
                         "signature": "preprocess(self, text: str) -> str",
-                        "brief_description": "Preprocess text before tokenization"
+                        "brief_description": "Preprocess text before tokenization",
                     },
                     {
                         "name": "train",
                         "signature": "train(self, texts: List[str], vocab_size: Optional[int] = None, min_frequency: int = 2, show_progress: bool = True) -> None",
-                        "brief_description": "Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs"
+                        "brief_description": "Train the BPE tokenizer on a corpus of texts by iteratively merging frequent character pairs",
                     },
                     {
                         "name": "_tokenize_word",
                         "signature": "_tokenize_word(self, word: str) -> List[str]",
-                        "brief_description": "Tokenize a single word using BPE merge operations"
+                        "brief_description": "Tokenize a single word using BPE merge operations",
                     },
                     {
                         "name": "tokenize",
                         "signature": "tokenize(self, text: str) -> List[str]",
-                        "brief_description": "Convert text into subword tokens based on learned merge operations"
+                        "brief_description": "Convert text into subword tokens based on learned merge operations",
                     },
                     {
                         "name": "encode",
                         "signature": "encode(self, text: str) -> List[int]",
-                        "brief_description": "Convert text to token indices using the vocabulary"
+                        "brief_description": "Convert text to token indices using the vocabulary",
                     },
                     {
                         "name": "batch_encode",
                         "signature": "batch_encode(self, texts: List[str]) -> List[List[int]]",
-                        "brief_description": "Encode a batch of texts into token indices"
+                        "brief_description": "Encode a batch of texts into token indices",
                     },
                     {
                         "name": "decode",
                         "signature": "decode(self, token_ids: List[int]) -> str",
-                        "brief_description": "Convert token indices back to text"
+                        "brief_description": "Convert token indices back to text",
                     },
                     {
                         "name": "save_pretrained",
                         "signature": "save_pretrained(self, path: str) -> None",
-                        "brief_description": "Save tokenizer configuration, vocabulary and merges to disk"
+                        "brief_description": "Save tokenizer configuration, vocabulary and merges to disk",
                     },
                     {
                         "name": "from_pretrained",
                         "signature": "from_pretrained(cls, path: str) -> 'BPETokenizer'",
-                        "brief_description": "Load a tokenizer from a saved directory"
+                        "brief_description": "Load a tokenizer from a saved directory",
                     },
                     {
                         "name": "vocab_size",
                         "signature": "vocab_size(self) -> int",
-                        "brief_description": "Get the size of the tokenizer vocabulary (property)"
+                        "brief_description": "Get the size of the tokenizer vocabulary (property)",
                     },
                     {
                         "name": "special_tokens",
                         "signature": "special_tokens(self) -> Dict[str, int]",
-                        "brief_description": "Get the special token IDs (property)"
-                    }
+                        "brief_description": "Get the special token IDs (property)",
+                    },
                 ],
                 "inheritance": "BaseTokenizer",
-                "dependencies": [".base_tokenizer", ".vocabulary", ".preprocessing"]
+                "dependencies": [".base_tokenizer", ".vocabulary", ".preprocessing"],
             }
         ],
         "key_functions": [
             {
                 "name": "preprocess_data_with_optimized_bpe",
                 "signature": "preprocess_data_with_optimized_bpe(dataset, de_tokenizer, en_tokenizer, batch_size=4000, use_multiprocessing=False, num_workers=4)",
-                "brief_description": "Optimized preprocessing function for translation datasets"
+                "brief_description": "Optimized preprocessing function for translation datasets",
             },
             {
                 "name": "_preprocess_without_multiprocessing",
                 "signature": "_preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size)",
-                "brief_description": "Process dataset without multiprocessing (better for GPU utilization)"
+                "brief_description": "Process dataset without multiprocessing (better for GPU utilization)",
             },
             {
                 "name": "_preprocess_with_multiprocessing",
                 "signature": "_preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers)",
-                "brief_description": "Process dataset with multiprocessing (better for CPU-bound tasks)"
-            }
+                "brief_description": "Process dataset with multiprocessing (better for CPU-bound tasks)",
+            },
         ],
         "external_dependencies": ["json", "tqdm", "collections.Counter", "multiprocessing.Pool"],
-        "complexity_score": 7  # High complexity due to BPE training algorithm and merging logic
+        "complexity_score": 7,  # High complexity due to BPE training algorithm and merging logic
     }

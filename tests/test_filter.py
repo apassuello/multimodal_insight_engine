@@ -96,10 +96,7 @@ class TestValidateInput:
 
     def test_validate_with_override(self):
         """Test that override allows unsafe content."""
-        is_safe, info = self.filter.validate_input(
-            "How to harm someone",
-            override=True
-        )
+        is_safe, info = self.filter.validate_input("How to harm someone", override=True)
 
         assert is_safe is True
         assert info["overridden"] is True
@@ -263,7 +260,7 @@ class TestFilterHarmfulContent:
             "Here's how to harm someone",
             "Ways to hurt people",
             "Instructions for injuring others",
-            "How to attack someone"
+            "How to attack someone",
         ]
 
         for text in texts:
@@ -279,7 +276,7 @@ class TestFilterHarmfulContent:
             "How to make a weapon",
             "Create a bomb",
             "Build an explosive",
-            "Construct a poison"
+            "Construct a poison",
         ]
 
         for text in texts:
@@ -299,11 +296,7 @@ class TestFilterHarmfulContent:
         """Test that filtering is case-insensitive."""
         evaluation = {"explicit_harm_detected": True}
 
-        texts = [
-            "HOW TO HARM someone",
-            "how to HURT someone",
-            "How To Kill Someone"
-        ]
+        texts = ["HOW TO HARM someone", "how to HURT someone", "How To Kill Someone"]
 
         for text in texts:
             filtered = self.filter._filter_harmful_content(text, evaluation)
@@ -349,11 +342,7 @@ class TestAddTruthfulnessQualifiers:
 
     def test_no_qualifiers_for_clean_content(self):
         """Test that clean content gets no qualifiers."""
-        evaluation = {
-            "unsupported_claims": [],
-            "contradictions": [],
-            "misleading_statistics": []
-        }
+        evaluation = {"unsupported_claims": [], "contradictions": [], "misleading_statistics": []}
 
         text = "This is factual content"
         filtered = self.filter._add_truthfulness_qualifiers(text, evaluation)
@@ -386,7 +375,7 @@ class TestFilterBiasedContent:
         texts = [
             ("All men are tall", "some"),
             ("Every woman is emotional", "some"),
-            ("All people from there", "some")
+            ("All people from there", "some"),
         ]
 
         for text, expected in texts:
@@ -401,7 +390,7 @@ class TestFilterBiasedContent:
             ("primitive people", "traditional"),
             ("backward culture", "different"),
             ("normal people", "most people"),
-            ("regular people", "many people")
+            ("regular people", "many people"),
         ]
 
         for text, expected_word in replacements:
@@ -456,7 +445,7 @@ class TestFilterAutonomyViolations:
             ("You must do this", "may want to"),
             ("You have to comply", "may want to"),
             ("You need to follow", "may want to"),
-            ("Required to participate", "recommended to")
+            ("Required to participate", "recommended to"),
         ]
 
         for text, expected_phrase in replacements:
@@ -471,7 +460,7 @@ class TestFilterAutonomyViolations:
             ("If you really cared", "interested"),
             ("If you were smart", "smart approach"),
             ("Everyone knows that", "commonly believed"),
-            ("Obviously this is true", "arguably")
+            ("Obviously this is true", "arguably"),
         ]
 
         for text, expected_word in replacements:
@@ -506,9 +495,7 @@ class TestApplyConstitutionalFiltering:
 
         evaluation = {
             "flagged_principles": ["harm_prevention"],
-            "principle_results": {
-                "harm_prevention": {"explicit_harm_detected": True}
-            }
+            "principle_results": {"harm_prevention": {"explicit_harm_detected": True}},
         }
 
         filtering_info = {}
@@ -525,10 +512,8 @@ class TestApplyConstitutionalFiltering:
         evaluation = {
             "flagged_principles": ["truthfulness"],
             "principle_results": {
-                "truthfulness": {
-                    "unsupported_claims": ["claim1", "claim2", "claim3"]
-                }
-            }
+                "truthfulness": {"unsupported_claims": ["claim1", "claim2", "claim3"]}
+            },
         }
 
         filtering_info = {}
@@ -545,7 +530,7 @@ class TestApplyConstitutionalFiltering:
             "flagged_principles": ["fairness"],
             "principle_results": {
                 "fairness": {"stereotypes": ["test"], "biased_language": ["test"]}
-            }
+            },
         }
 
         filtering_info = {}
@@ -560,9 +545,7 @@ class TestApplyConstitutionalFiltering:
 
         evaluation = {
             "flagged_principles": ["autonomy_respect"],
-            "principle_results": {
-                "autonomy_respect": {"coercive_language": ["test"]}
-            }
+            "principle_results": {"autonomy_respect": {"coercive_language": ["test"]}},
         }
 
         filtering_info = {}
@@ -579,8 +562,8 @@ class TestApplyConstitutionalFiltering:
             "flagged_principles": ["harm_prevention", "truthfulness"],
             "principle_results": {
                 "harm_prevention": {"explicit_harm_detected": True},
-                "truthfulness": {"unsupported_claims": ["c1", "c2", "c3"]}
-            }
+                "truthfulness": {"unsupported_claims": ["c1", "c2", "c3"]},
+            },
         }
 
         filtering_info = {}

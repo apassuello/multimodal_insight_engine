@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -225,9 +224,7 @@ class TrainingConfig:
                 monitor_mode=stage_dict.get("monitor_mode", "min"),
                 clip_grad_norm=stage_dict.get("clip_grad_norm", 1.0),
                 mixed_precision=stage_dict.get("mixed_precision", True),
-                gradient_accumulation_steps=stage_dict.get(
-                    "gradient_accumulation_steps", 1
-                ),
+                gradient_accumulation_steps=stage_dict.get("gradient_accumulation_steps", 1),
             )
 
             stages.append(stage)
@@ -253,20 +250,14 @@ class TrainingConfig:
             batch_size=64,
             optimizer=OptimizerConfig(lr=5e-5),
             losses=[
-                LossConfig(
-                    name="contrastive_loss", weight=1.0, params={"temperature": 0.07}
-                ),
+                LossConfig(name="contrastive_loss", weight=1.0, params={"temperature": 0.07}),
                 LossConfig(name="decorrelation_loss", weight=0.25, params={}),
             ],
             components=[
                 ComponentConfig(name="vision_model", freeze=True, lr_multiplier=0.1),
                 ComponentConfig(name="text_model", freeze=True, lr_multiplier=0.1),
-                ComponentConfig(
-                    name="vision_projection", freeze=False, lr_multiplier=1.0
-                ),
-                ComponentConfig(
-                    name="text_projection", freeze=False, lr_multiplier=1.0
-                ),
+                ComponentConfig(name="vision_projection", freeze=False, lr_multiplier=1.0),
+                ComponentConfig(name="text_projection", freeze=False, lr_multiplier=1.0),
                 ComponentConfig(name="cross_attention", freeze=True, lr_multiplier=0.0),
             ],
             monitor_metric="val_alignment_score",
@@ -290,15 +281,9 @@ class TrainingConfig:
             components=[
                 ComponentConfig(name="vision_model", freeze=True, lr_multiplier=0.0),
                 ComponentConfig(name="text_model", freeze=True, lr_multiplier=0.0),
-                ComponentConfig(
-                    name="vision_projection", freeze=False, lr_multiplier=0.5
-                ),
-                ComponentConfig(
-                    name="text_projection", freeze=False, lr_multiplier=0.5
-                ),
-                ComponentConfig(
-                    name="cross_attention", freeze=False, lr_multiplier=1.0
-                ),
+                ComponentConfig(name="vision_projection", freeze=False, lr_multiplier=0.5),
+                ComponentConfig(name="text_projection", freeze=False, lr_multiplier=0.5),
+                ComponentConfig(name="cross_attention", freeze=False, lr_multiplier=1.0),
             ],
             monitor_metric="val_alignment_score",
             monitor_mode="max",
@@ -326,15 +311,9 @@ class TrainingConfig:
             components=[
                 ComponentConfig(name="vision_model", freeze=False, lr_multiplier=0.01),
                 ComponentConfig(name="text_model", freeze=False, lr_multiplier=0.01),
-                ComponentConfig(
-                    name="vision_projection", freeze=False, lr_multiplier=0.1
-                ),
-                ComponentConfig(
-                    name="text_projection", freeze=False, lr_multiplier=0.1
-                ),
-                ComponentConfig(
-                    name="cross_attention", freeze=False, lr_multiplier=0.5
-                ),
+                ComponentConfig(name="vision_projection", freeze=False, lr_multiplier=0.1),
+                ComponentConfig(name="text_projection", freeze=False, lr_multiplier=0.1),
+                ComponentConfig(name="cross_attention", freeze=False, lr_multiplier=0.5),
             ],
             monitor_metric="val_recall_at_5",
             monitor_mode="max",

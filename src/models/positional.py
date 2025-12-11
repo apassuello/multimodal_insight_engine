@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 from matplotlib.figure import Figure
 
-
 """MODULE: positional.py
 PURPOSE: Implements various positional encoding schemes for transformer models to handle sequence order information
 KEY COMPONENTS:
@@ -83,9 +82,7 @@ class PositionalEncoding(nn.Module):
 
     def _init_learned_encoding(self):
         """Initialize learned positional embeddings."""
-        self.position_embeddings = nn.Parameter(
-            torch.zeros(1, self.max_seq_length, self.d_model)
-        )
+        self.position_embeddings = nn.Parameter(torch.zeros(1, self.max_seq_length, self.d_model))
         nn.init.xavier_normal_(self.position_embeddings)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -144,9 +141,7 @@ class PositionalEncoding(nn.Module):
             encodings = self.pe[0, :seq_length, :].cpu().numpy()
         else:  # learned
             # Get the learned embeddings
-            encodings = (
-                self.position_embeddings[0, :seq_length, :].detach().cpu().numpy()
-            )
+            encodings = self.position_embeddings[0, :seq_length, :].detach().cpu().numpy()
 
         # Create a figure and axis
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -272,8 +267,12 @@ class RotaryPositionEncoding(nn.Module):
             )
 
         # Validate input dimensions
-        assert q.size(-1) == self.head_dim, f"Query dim {q.size(-1)} doesn't match head_dim {self.head_dim}"
-        assert k.size(-1) == self.head_dim, f"Key dim {k.size(-1)} doesn't match head_dim {self.head_dim}"
+        assert (
+            q.size(-1) == self.head_dim
+        ), f"Query dim {q.size(-1)} doesn't match head_dim {self.head_dim}"
+        assert (
+            k.size(-1) == self.head_dim
+        ), f"Key dim {k.size(-1)} doesn't match head_dim {self.head_dim}"
 
         # Get the cos and sin values for the current sequence length
         cos = self.cos_cached[:seq_len]  # [seq_len, head_dim/2]
@@ -284,8 +283,14 @@ class RotaryPositionEncoding(nn.Module):
         k_reshape = k.reshape(*k.shape[:-1], -1, 2)  # [batch, seq_len, n_heads, head_dim/2, 2]
 
         # Separate real and imaginary parts
-        q_real, q_imag = q_reshape[..., 0], q_reshape[..., 1]  # Each has shape [batch, seq_len, n_heads, head_dim/2]
-        k_real, k_imag = k_reshape[..., 0], k_reshape[..., 1]  # Each has shape [batch, seq_len, n_heads, head_dim/2]
+        q_real, q_imag = (
+            q_reshape[..., 0],
+            q_reshape[..., 1],
+        )  # Each has shape [batch, seq_len, n_heads, head_dim/2]
+        k_real, k_imag = (
+            k_reshape[..., 0],
+            k_reshape[..., 1],
+        )  # Each has shape [batch, seq_len, n_heads, head_dim/2]
 
         # Reshape cos and sin for broadcasting
         # cos and sin have shape [seq_len, head_dim/2]
@@ -301,8 +306,12 @@ class RotaryPositionEncoding(nn.Module):
         k_imag_new = k_real * sin + k_imag * cos  # [batch, seq_len, n_heads, head_dim/2]
 
         # Reshape back to original shape
-        q_new = torch.stack([q_real_new, q_imag_new], dim=-1)  # [batch, seq_len, n_heads, head_dim/2, 2]
-        k_new = torch.stack([k_real_new, k_imag_new], dim=-1)  # [batch, seq_len, n_heads, head_dim/2, 2]
+        q_new = torch.stack(
+            [q_real_new, q_imag_new], dim=-1
+        )  # [batch, seq_len, n_heads, head_dim/2, 2]
+        k_new = torch.stack(
+            [k_real_new, k_imag_new], dim=-1
+        )  # [batch, seq_len, n_heads, head_dim/2, 2]
 
         q_new = q_new.reshape(*q.shape)  # [batch, seq_len, n_heads, head_dim]
         k_new = k_new.reshape(*k.shape)  # [batch, seq_len, n_heads, head_dim]
@@ -334,41 +343,52 @@ class RotaryPositionEncoding(nn.Module):
         ax1.set_title("Rotation of Query Vector (first 2 dimensions)")
         for pos in range(seq_length):
             ax1.arrow(
-                0, 0,
-                q_rot[0, pos, 0, 0].item(), q_rot[0, pos, 0, 1].item(),
-                head_width=0.05, head_length=0.1, fc=f'C{pos}', ec=f'C{pos}',
-                label=f"Position {pos}" if pos < 10 else None
+                0,
+                0,
+                q_rot[0, pos, 0, 0].item(),
+                q_rot[0, pos, 0, 1].item(),
+                head_width=0.05,
+                head_length=0.1,
+                fc=f"C{pos}",
+                ec=f"C{pos}",
+                label=f"Position {pos}" if pos < 10 else None,
             )
 
         ax1.set_xlim(-1.5, 1.5)
         ax1.set_ylim(-1.5, 1.5)
-        ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
-        ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
-        ax1.set_aspect('equal')
+        ax1.axhline(y=0, color="k", linestyle="-", alpha=0.3)
+        ax1.axvline(x=0, color="k", linestyle="-", alpha=0.3)
+        ax1.set_aspect("equal")
         ax1.grid(True, alpha=0.3)
 
         # Only show legend for first 10 positions to avoid cluttering
-        ax1.legend(loc='upper right')
+        ax1.legend(loc="upper right")
 
         # Plot the first two dimensions of k at each position
         ax2.set_title("Rotation of Key Vector (first 2 dimensions)")
         for pos in range(seq_length):
             ax2.arrow(
-                0, 0,
-                k_rot[0, pos, 0, 0].item(), k_rot[0, pos, 0, 1].item(),
-                head_width=0.05, head_length=0.1, fc=f'C{pos}', ec=f'C{pos}',
-                label=f"Position {pos}" if pos < 10 else None
+                0,
+                0,
+                k_rot[0, pos, 0, 0].item(),
+                k_rot[0, pos, 0, 1].item(),
+                head_width=0.05,
+                head_length=0.1,
+                fc=f"C{pos}",
+                ec=f"C{pos}",
+                label=f"Position {pos}" if pos < 10 else None,
             )
 
         ax2.set_xlim(-1.5, 1.5)
         ax2.set_ylim(-1.5, 1.5)
-        ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
-        ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
-        ax2.set_aspect('equal')
+        ax2.axhline(y=0, color="k", linestyle="-", alpha=0.3)
+        ax2.axvline(x=0, color="k", linestyle="-", alpha=0.3)
+        ax2.set_aspect("equal")
         ax2.grid(True, alpha=0.3)
 
         plt.tight_layout()
         return fig
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -391,21 +411,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, d_model: int, max_seq_length: int = 5000, dropout: float = 0.1, encoding_type: Literal['sinusoidal', 'learned'] = 'sinusoidal')",
-                        "brief_description": "Initializes positional encoding with configurable parameters"
+                        "brief_description": "Initializes positional encoding with configurable parameters",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Adds positional information to input embeddings"
+                        "brief_description": "Adds positional information to input embeddings",
                     },
                     {
                         "name": "visualize_encodings",
                         "signature": "visualize_encodings(self, seq_length: Optional[int] = None) -> Figure",
-                        "brief_description": "Visualizes the positional encodings as a heatmap for analysis"
-                    }
+                        "brief_description": "Visualizes the positional encodings as a heatmap for analysis",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "matplotlib.pyplot", "numpy"]
+                "dependencies": ["torch", "torch.nn", "matplotlib.pyplot", "numpy"],
             },
             {
                 "name": "RotaryPositionEncoding",
@@ -414,23 +434,23 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, head_dim: int, max_seq_length: int = 5000, base: int = 10000)",
-                        "brief_description": "Initializes rotary embeddings with given dimensions"
+                        "brief_description": "Initializes rotary embeddings with given dimensions",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple",
-                        "brief_description": "Applies rotary position encoding to query and key tensors"
+                        "brief_description": "Applies rotary position encoding to query and key tensors",
                     },
                     {
                         "name": "visualize_rotation",
                         "signature": "visualize_rotation(self, seq_length: int = 20) -> Figure",
-                        "brief_description": "Visualizes the rotation effects on different sequence positions"
-                    }
+                        "brief_description": "Visualizes the rotation effects on different sequence positions",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "math"]
-            }
+                "dependencies": ["torch", "torch.nn", "math"],
+            },
         ],
         "external_dependencies": ["torch", "matplotlib", "numpy"],
-        "complexity_score": 7  # High complexity due to mathematical computations and visualization features
+        "complexity_score": 7,  # High complexity due to mathematical computations and visualization features
     }

@@ -23,16 +23,11 @@ from ..utils.visualization import (
     visualize_test_samples,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
 def run_inference_demo(
-    model: nn.Module,
-    image_preprocessor: Any,
-    tokenizer: Any,
-    device: torch.device,
-    args: Any
+    model: nn.Module, image_preprocessor: Any, tokenizer: Any, device: torch.device, args: Any
 ) -> Dict[str, float]:
     """
     Run inference demo with the trained model.
@@ -76,9 +71,7 @@ def run_inference_demo(
     batch = next(iter(test_loader))
 
     # Move to device
-    batch = {
-        k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()
-    }
+    batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
 
     # Run inference with attention visualization
     model.eval()
@@ -96,13 +89,8 @@ def run_inference_demo(
         similarity = outputs["similarity"]
     else:
         # Compute similarity from features - prefer enhanced features if available
-        if (
-            "vision_features_enhanced" in outputs
-            and "text_features_enhanced" in outputs
-        ):
-            vision_features = F.normalize(
-                outputs["vision_features_enhanced"], p=2, dim=1
-            )
+        if "vision_features_enhanced" in outputs and "text_features_enhanced" in outputs:
+            vision_features = F.normalize(outputs["vision_features_enhanced"], p=2, dim=1)
             text_features = F.normalize(outputs["text_features_enhanced"], p=2, dim=1)
         else:
             vision_features = F.normalize(outputs["vision_features"], p=2, dim=1)
@@ -150,9 +138,7 @@ def run_inference_demo(
     # Create match matrix based on match IDs if available
     batch_size = len(similarity)
     if match_ids:
-        match_matrix = torch.zeros(
-            (batch_size, batch_size), dtype=torch.bool, device=device
-        )
+        match_matrix = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=device)
         for i in range(batch_size):
             for j in range(batch_size):
                 match_matrix[i, j] = match_ids[i] == match_ids[j]
@@ -177,9 +163,7 @@ def run_inference_demo(
             topk_indices = torch.topk(similarity[i], min(k, batch_size), dim=0)[1]
 
             # Check if any matching text is in the top-k predictions
-            hit = any(
-                idx.item() in matching_text_indices.tolist() for idx in topk_indices
-            )
+            hit = any(idx.item() in matching_text_indices.tolist() for idx in topk_indices)
             i2t_hits += int(hit)
 
         # For each text, find if any of its matching images are in the top-k
@@ -193,9 +177,7 @@ def run_inference_demo(
             topk_indices = torch.topk(similarity[:, j], min(k, batch_size), dim=0)[1]
 
             # Check if any matching image is in the top-k predictions
-            hit = any(
-                idx.item() in matching_image_indices.tolist() for idx in topk_indices
-            )
+            hit = any(idx.item() in matching_image_indices.tolist() for idx in topk_indices)
             t2i_hits += int(hit)
 
         # Calculate recall
@@ -267,6 +249,7 @@ def extract_file_metadata(file_path=__file__):
         dict: Structured metadata about the module's purpose and components
     """
     import os
+
     return {
         "filename": os.path.basename(file_path),
         "module_purpose": "Inference demo utilities for multimodal models",
@@ -274,9 +257,9 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "run_inference_demo",
                 "signature": "run_inference_demo(model: nn.Module, image_preprocessor: Any, tokenizer: Any, device: torch.device, args: Any) -> Dict[str, float]",
-                "brief_description": "Run inference demo with visualizations and metrics"
+                "brief_description": "Run inference demo with visualizations and metrics",
             }
         ],
         "external_dependencies": ["torch", "matplotlib", "logging"],
-        "complexity_score": 7  # Moderately high complexity for inference and visualization
+        "complexity_score": 7,  # Moderately high complexity for inference and visualization
     }

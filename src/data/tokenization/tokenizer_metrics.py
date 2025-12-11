@@ -10,7 +10,6 @@ import random
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -137,12 +136,18 @@ def calculate_tokenizer_metrics(
         logger.info("Vocabulary Coverage:")
         logger.info(f"  - Total tokens processed: {total_tokens}")
         logger.info(f"  - Unique tokens: {unique_tokens} ({metrics['unique_token_ratio']:.2%})")
-        logger.info(f"  - Unknown tokens: {unknown_tokens} ({metrics['unknown_token_percent']:.2f}%)")
-        logger.info(f"  - Special tokens: {special_tokens} ({metrics['special_token_percent']:.2f}%)")
+        logger.info(
+            f"  - Unknown tokens: {unknown_tokens} ({metrics['unknown_token_percent']:.2f}%)"
+        )
+        logger.info(
+            f"  - Special tokens: {special_tokens} ({metrics['special_token_percent']:.2f}%)"
+        )
         logger.info(f"  - Average sequence length: {metrics['avg_sequence_length']:.2f}")
 
         logger.info("Most common tokens:")
-        for i, (token, freq) in enumerate(zip(metrics["top_tokens"], metrics["top_token_frequencies"])):
+        for i, (token, freq) in enumerate(
+            zip(metrics["top_tokens"], metrics["top_token_frequencies"])
+        ):
             logger.info(f"  {i+1}. '{token}': {freq:.2%}")
 
         logger.info(f"Tokenization consistency: {metrics['tokenization_consistency']:.4f}")
@@ -154,7 +159,7 @@ def calculate_semantic_token_metrics(
     tokenizer: Any,
     semantic_groups: Dict[str, List[str]],
     sample_size: int = 5,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Dict[str, Any]:
     """
     Calculate metrics for tokenization of semantically related texts.
@@ -206,7 +211,7 @@ def calculate_semantic_token_metrics(
         # Calculate token overlap (Jaccard similarity) between all pairs
         group_overlaps = []
         for i in range(len(tokenized_texts)):
-            for j in range(i+1, len(tokenized_texts)):
+            for j in range(i + 1, len(tokenized_texts)):
                 set1 = tokenized_texts[i]
                 set2 = tokenized_texts[j]
 
@@ -242,7 +247,9 @@ def calculate_semantic_token_metrics(
         metrics["semantic_token_overlap"] = 0.0
 
     if token_diversity_scores:
-        metrics["semantic_token_diversity"] = sum(token_diversity_scores) / len(token_diversity_scores)
+        metrics["semantic_token_diversity"] = sum(token_diversity_scores) / len(
+            token_diversity_scores
+        )
     else:
         metrics["semantic_token_diversity"] = 0.0
 
@@ -250,8 +257,12 @@ def calculate_semantic_token_metrics(
     if verbose:
         logger.info("=== Semantic Tokenization Metrics ===")
         logger.info(f"Analyzed {len(token_overlap_scores)} semantic groups")
-        logger.info(f"Average token overlap between related texts: {metrics['semantic_token_overlap']:.4f}")
-        logger.info(f"Token diversity ratio within semantic groups: {metrics['semantic_token_diversity']:.4f}")
+        logger.info(
+            f"Average token overlap between related texts: {metrics['semantic_token_overlap']:.4f}"
+        )
+        logger.info(
+            f"Token diversity ratio within semantic groups: {metrics['semantic_token_diversity']:.4f}"
+        )
 
     return metrics
 
@@ -278,10 +289,7 @@ def log_tokenizer_evaluation(
 
     # Calculate basic metrics
     basic_metrics = calculate_tokenizer_metrics(
-        tokenizer,
-        text_data,
-        sample_size=min(20, len(text_data)),
-        verbose=True
+        tokenizer, text_data, sample_size=min(20, len(text_data)), verbose=True
     )
 
     # Calculate semantic metrics if match_ids are provided
@@ -296,10 +304,7 @@ def log_tokenizer_evaluation(
 
         # Get metrics for semantic groups
         semantic_metrics = calculate_semantic_token_metrics(
-            tokenizer,
-            semantic_groups,
-            sample_size=min(5, len(semantic_groups)),
-            verbose=True
+            tokenizer, semantic_groups, sample_size=min(5, len(semantic_groups)), verbose=True
         )
 
     # Combine metrics
@@ -344,6 +349,8 @@ def log_tokenizer_evaluation(
 
         all_metrics["quality_level"] = quality_level
 
-        logger.info(f"Overall tokenizer quality: {quality_level} ({all_metrics['overall_quality_score']:.4f})")
+        logger.info(
+            f"Overall tokenizer quality: {quality_level} ({all_metrics['overall_quality_score']:.4f})"
+        )
 
     return all_metrics

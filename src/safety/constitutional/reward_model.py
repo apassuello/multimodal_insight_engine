@@ -17,7 +17,6 @@ import torch.nn.functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import json
 from pathlib import Path
@@ -63,10 +62,7 @@ class RewardModel(nn.Module):
         # Reward head: projects hidden states to scalar score
         # Architecture: Linear(768->256) -> ReLU -> Dropout -> Linear(256->1)
         self.reward_head = nn.Sequential(
-            nn.Linear(hidden_size, 256),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(256, 1)
+            nn.Linear(hidden_size, 256), nn.ReLU(), nn.Dropout(0.1), nn.Linear(256, 1)
         )
 
     def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
@@ -93,9 +89,7 @@ class RewardModel(nn.Module):
         """
         # Get base model outputs with hidden states
         outputs = self.base_model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            output_hidden_states=True
+            input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True
         )
 
         # Extract last layer hidden states: [batch_size, seq_len, hidden_size]
@@ -103,14 +97,15 @@ class RewardModel(nn.Module):
 
         # Get hidden state of last token for each sequence in batch
         # We find the last non-padding token for each sequence
-        sequence_lengths = (attention_mask.sum(dim=1) - 1).long()  # -1 for 0-indexing, cast to long for indexing
+        sequence_lengths = (
+            attention_mask.sum(dim=1) - 1
+        ).long()  # -1 for 0-indexing, cast to long for indexing
         batch_size = hidden_states.shape[0]
 
         # Index to get last token hidden state for each sequence
         # Shape: [batch_size, hidden_size]
         last_token_hidden = hidden_states[
-            torch.arange(batch_size, device=hidden_states.device),
-            sequence_lengths
+            torch.arange(batch_size, device=hidden_states.device), sequence_lengths
         ]
 
         # Compute reward score through reward head
@@ -119,7 +114,14 @@ class RewardModel(nn.Module):
 
         return reward
 
-    def get_rewards(self, prompts: List[str], responses: List[str], tokenizer, device: torch.device, max_length: int = 512) -> torch.Tensor:
+    def get_rewards(
+        self,
+        prompts: List[str],
+        responses: List[str],
+        tokenizer,
+        device: torch.device,
+        max_length: int = 512,
+    ) -> torch.Tensor:
         """
         Compute rewards for a batch of (prompt, response) pairs.
 
@@ -141,20 +143,16 @@ class RewardModel(nn.Module):
             >>> rewards = reward_model.get_rewards(prompts, responses, tokenizer, device)
         """
         # Combine prompts with responses
-        texts = [p + ' ' + r for p, r in zip(prompts, responses)]
+        texts = [p + " " + r for p, r in zip(prompts, responses)]
 
         # Tokenize
         encodings = tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=max_length,
-            return_tensors='pt'
+            texts, padding=True, truncation=True, max_length=max_length, return_tensors="pt"
         )
 
         # Move to device
-        input_ids = encodings['input_ids'].to(device)
-        attention_mask = encodings['attention_mask'].to(device)
+        input_ids = encodings["input_ids"].to(device)
+        attention_mask = encodings["attention_mask"].to(device)
 
         # Compute rewards
         with torch.no_grad():
@@ -212,7 +210,7 @@ def train_reward_model(
     validation_data: Optional[List[Dict[str, Any]]] = None,
     max_length: int = 512,
     gradient_accumulation_steps: int = 1,
-    log_interval: int = 10
+    log_interval: int = 10,
 ) -> Dict[str, Any]:
     """
     Train reward model on preference pairs.
@@ -255,7 +253,7 @@ def train_reward_model(
     """
     # Setup device
     if device is None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     logger.info(f"Training reward model on {device}")
     logger.info(f"Training samples: {len(training_data)}")
@@ -269,19 +267,16 @@ def train_reward_model(
     optimizer = torch.optim.AdamW(reward_model.parameters(), lr=learning_rate)
 
     # Initialize metrics tracking
-    metrics = {
-        'losses': [],
-        'accuracy': [],
-        'epochs': []
-    }
+    metrics = {"losses": [], "accuracy": [], "epochs": []}
 
     if validation_data:
-        metrics['val_losses'] = []
-        metrics['val_accuracy'] = []
+        metrics["val_losses"] = []
+        metrics["val_accuracy"] = []
 
     # Import tqdm if available
     try:
         from tqdm import tqdm
+
         use_tqdm = True
     except ImportError:
         use_tqdm = False
@@ -299,25 +294,17 @@ def train_reward_model(
         batch_iterator = range(0, len(training_data), batch_size)
         if use_tqdm:
             batch_iterator = tqdm(
-                batch_iterator,
-                desc=f'Epoch {epoch+1}/{num_epochs}',
-                total=num_batches
+                batch_iterator, desc=f"Epoch {epoch+1}/{num_epochs}", total=num_batches
             )
 
         for i in batch_iterator:
-            batch = training_data[i:i+batch_size]
+            batch = training_data[i : i + batch_size]
 
             # Prepare texts for chosen responses
-            chosen_texts = [
-                item['prompt'] + ' ' + item['chosen']
-                for item in batch
-            ]
+            chosen_texts = [item["prompt"] + " " + item["chosen"] for item in batch]
 
             # Prepare texts for rejected responses
-            rejected_texts = [
-                item['prompt'] + ' ' + item['rejected']
-                for item in batch
-            ]
+            rejected_texts = [item["prompt"] + " " + item["rejected"] for item in batch]
 
             # Tokenize chosen responses
             chosen_encodings = tokenizer(
@@ -325,7 +312,7 @@ def train_reward_model(
                 padding=True,
                 truncation=True,
                 max_length=max_length,
-                return_tensors='pt'
+                return_tensors="pt",
             )
 
             # Tokenize rejected responses
@@ -334,14 +321,14 @@ def train_reward_model(
                 padding=True,
                 truncation=True,
                 max_length=max_length,
-                return_tensors='pt'
+                return_tensors="pt",
             )
 
             # Move to device
-            chosen_ids = chosen_encodings['input_ids'].to(device)
-            chosen_mask = chosen_encodings['attention_mask'].to(device)
-            rejected_ids = rejected_encodings['input_ids'].to(device)
-            rejected_mask = rejected_encodings['attention_mask'].to(device)
+            chosen_ids = chosen_encodings["input_ids"].to(device)
+            chosen_mask = chosen_encodings["attention_mask"].to(device)
+            rejected_ids = rejected_encodings["input_ids"].to(device)
+            rejected_mask = rejected_encodings["attention_mask"].to(device)
 
             # Forward pass
             reward_chosen = reward_model(chosen_ids, chosen_mask)
@@ -380,11 +367,13 @@ def train_reward_model(
         avg_loss = epoch_loss / num_batches
         accuracy = correct / total if total > 0 else 0.0
 
-        metrics['losses'].append(avg_loss)
-        metrics['accuracy'].append(accuracy)
-        metrics['epochs'].append(epoch + 1)
+        metrics["losses"].append(avg_loss)
+        metrics["accuracy"].append(accuracy)
+        metrics["epochs"].append(epoch + 1)
 
-        logger.info(f'Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f} ({correct}/{total})')
+        logger.info(
+            f"Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f} ({correct}/{total})"
+        )
 
         # Validation
         if validation_data:
@@ -394,17 +383,17 @@ def train_reward_model(
                 tokenizer,
                 device,
                 batch_size=batch_size,
-                max_length=max_length
+                max_length=max_length,
             )
-            metrics['val_losses'].append(val_loss)
-            metrics['val_accuracy'].append(val_accuracy)
-            logger.info(f'  Validation - Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}')
+            metrics["val_losses"].append(val_loss)
+            metrics["val_accuracy"].append(val_accuracy)
+            logger.info(f"  Validation - Loss: {val_loss:.4f}, Accuracy: {val_accuracy:.4f}")
 
     logger.info("Training complete!")
 
     # Add convenience keys for final values
-    metrics['final_loss'] = metrics['losses'][-1] if metrics['losses'] else 0.0
-    metrics['final_accuracy'] = metrics['accuracy'][-1] if metrics['accuracy'] else 0.0
+    metrics["final_loss"] = metrics["losses"][-1] if metrics["losses"] else 0.0
+    metrics["final_accuracy"] = metrics["accuracy"][-1] if metrics["accuracy"] else 0.0
 
     return metrics
 
@@ -415,7 +404,7 @@ def evaluate_reward_model(
     tokenizer,
     device: torch.device,
     batch_size: int = 4,
-    max_length: int = 512
+    max_length: int = 512,
 ) -> tuple:
     """
     Evaluate reward model on a dataset.
@@ -439,17 +428,11 @@ def evaluate_reward_model(
 
     with torch.no_grad():
         for i in range(0, len(evaluation_data), batch_size):
-            batch = evaluation_data[i:i+batch_size]
+            batch = evaluation_data[i : i + batch_size]
 
             # Prepare texts
-            chosen_texts = [
-                item['prompt'] + ' ' + item['chosen']
-                for item in batch
-            ]
-            rejected_texts = [
-                item['prompt'] + ' ' + item['rejected']
-                for item in batch
-            ]
+            chosen_texts = [item["prompt"] + " " + item["chosen"] for item in batch]
+            rejected_texts = [item["prompt"] + " " + item["rejected"] for item in batch]
 
             # Tokenize
             chosen_encodings = tokenizer(
@@ -457,21 +440,21 @@ def evaluate_reward_model(
                 padding=True,
                 truncation=True,
                 max_length=max_length,
-                return_tensors='pt'
+                return_tensors="pt",
             )
             rejected_encodings = tokenizer(
                 rejected_texts,
                 padding=True,
                 truncation=True,
                 max_length=max_length,
-                return_tensors='pt'
+                return_tensors="pt",
             )
 
             # Move to device
-            chosen_ids = chosen_encodings['input_ids'].to(device)
-            chosen_mask = chosen_encodings['attention_mask'].to(device)
-            rejected_ids = rejected_encodings['input_ids'].to(device)
-            rejected_mask = rejected_encodings['attention_mask'].to(device)
+            chosen_ids = chosen_encodings["input_ids"].to(device)
+            chosen_mask = chosen_encodings["attention_mask"].to(device)
+            rejected_ids = rejected_encodings["input_ids"].to(device)
+            rejected_mask = rejected_encodings["attention_mask"].to(device)
 
             # Forward pass
             reward_chosen = reward_model(chosen_ids, chosen_mask)
@@ -525,7 +508,7 @@ class RewardModelTrainer:
         tokenizer,
         device: Optional[torch.device] = None,
         learning_rate: float = 1e-5,
-        batch_size: int = 4
+        batch_size: int = 4,
     ):
         """
         Initialize reward model trainer.
@@ -539,7 +522,7 @@ class RewardModelTrainer:
         """
         self.reward_model = reward_model
         self.tokenizer = tokenizer
-        self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.training_history = []
@@ -552,7 +535,7 @@ class RewardModelTrainer:
         validation_data: Optional[List[Dict[str, Any]]] = None,
         save_dir: Optional[str] = None,
         save_best_only: bool = True,
-        early_stopping_patience: Optional[int] = None
+        early_stopping_patience: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Train reward model with validation and checkpointing.
@@ -587,7 +570,7 @@ class RewardModelTrainer:
             batch_size=self.batch_size,
             learning_rate=self.learning_rate,
             device=self.device,
-            validation_data=validation_data
+            validation_data=validation_data,
         )
 
         # Save training history
@@ -599,13 +582,13 @@ class RewardModelTrainer:
             save_path.mkdir(parents=True, exist_ok=True)
 
             # Determine if this is the best model
-            if save_best_only and len(metrics.get('val_accuracy', [])) > 0:
-                best_accuracy = max(metrics['val_accuracy'])
-                if metrics['val_accuracy'][-1] == best_accuracy:
-                    self.save_checkpoint(save_path / 'best_model')
+            if save_best_only and len(metrics.get("val_accuracy", [])) > 0:
+                best_accuracy = max(metrics["val_accuracy"])
+                if metrics["val_accuracy"][-1] == best_accuracy:
+                    self.save_checkpoint(save_path / "best_model")
                     logger.info(f"Saved best model with validation accuracy: {best_accuracy:.4f}")
             else:
-                self.save_checkpoint(save_path / 'final_model')
+                self.save_checkpoint(save_path / "final_model")
 
         return metrics
 
@@ -620,19 +603,22 @@ class RewardModelTrainer:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Save model state
-        torch.save({
-            'model_state_dict': self.reward_model.state_dict(),
-            'training_history': self.training_history,
-            'hidden_size': self.reward_model.hidden_size
-        }, str(path) + '.pt')
+        torch.save(
+            {
+                "model_state_dict": self.reward_model.state_dict(),
+                "training_history": self.training_history,
+                "hidden_size": self.reward_model.hidden_size,
+            },
+            str(path) + ".pt",
+        )
 
         # Save metadata
         metadata = {
-            'learning_rate': self.learning_rate,
-            'batch_size': self.batch_size,
-            'hidden_size': self.reward_model.hidden_size
+            "learning_rate": self.learning_rate,
+            "batch_size": self.batch_size,
+            "hidden_size": self.reward_model.hidden_size,
         }
-        with open(str(path) + '_metadata.json', 'w') as f:
+        with open(str(path) + "_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
         logger.info(f"Checkpoint saved to {path}")
@@ -647,16 +633,13 @@ class RewardModelTrainer:
         path = Path(path)
 
         # Load model state
-        checkpoint = torch.load(str(path) + '.pt', map_location=self.device, weights_only=True)
-        self.reward_model.load_state_dict(checkpoint['model_state_dict'])
-        self.training_history = checkpoint.get('training_history', [])
+        checkpoint = torch.load(str(path) + ".pt", map_location=self.device, weights_only=True)
+        self.reward_model.load_state_dict(checkpoint["model_state_dict"])
+        self.training_history = checkpoint.get("training_history", [])
 
         logger.info(f"Checkpoint loaded from {path}")
 
-    def evaluate(
-        self,
-        evaluation_data: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+    def evaluate(self, evaluation_data: List[Dict[str, Any]]) -> Dict[str, float]:
         """
         Evaluate model on a dataset.
 
@@ -671,10 +654,7 @@ class RewardModelTrainer:
             evaluation_data,
             self.tokenizer,
             self.device,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
-        return {
-            'loss': loss,
-            'accuracy': accuracy
-        }
+        return {"loss": loss, "accuracy": accuracy}

@@ -17,13 +17,13 @@ from typing import Any, Callable, Dict, Optional
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
 @dataclass
 class HFAPIConfig:
     """Configuration for HuggingFace API evaluator."""
+
     # Model to use for toxicity classification
     # Options: "unitary/toxic-bert", "martin-ha/toxic-comment-model", etc.
     toxicity_model: str = "unitary/toxic-bert"
@@ -100,9 +100,7 @@ def get_hf_api_client():
 
 
 def evaluate_toxicity_api(
-    text: str,
-    config: Optional[HFAPIConfig] = None,
-    verbose: bool = False
+    text: str, config: Optional[HFAPIConfig] = None, verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Evaluate text toxicity using HuggingFace Inference API.
@@ -132,7 +130,7 @@ def evaluate_toxicity_api(
             "toxicity_score": 0.0,
             "labels": [],
             "method": "hf_api_disabled",
-            "model": None
+            "model": None,
         }
 
     client = get_hf_api_client()
@@ -143,7 +141,7 @@ def evaluate_toxicity_api(
             "labels": [],
             "method": "hf_api_unavailable",
             "model": None,
-            "error": "API client unavailable"
+            "error": "API client unavailable",
         }
 
     # Truncate text if too long (API has limits)
@@ -159,10 +157,7 @@ def evaluate_toxicity_api(
                 logger.info(f"[HF-API] Evaluating with {config.toxicity_model}...")
 
             # Call the text classification endpoint
-            result = client.text_classification(
-                text,
-                model=config.toxicity_model
-            )
+            result = client.text_classification(text, model=config.toxicity_model)
 
             if verbose:
                 logger.info(f"[HF-API] Response: {result}")
@@ -177,11 +172,11 @@ def evaluate_toxicity_api(
             if isinstance(result, list):
                 labels = result
                 for item in result:
-                    label = item.get('label', '').lower()
-                    score = item.get('score', 0.0)
+                    label = item.get("label", "").lower()
+                    score = item.get("score", 0.0)
 
                     # Different models use different label names
-                    if label in ['toxic', 'label_1', 'positive', 'hate', 'offensive']:
+                    if label in ["toxic", "label_1", "positive", "hate", "offensive"]:
                         toxicity_score = max(toxicity_score, score)
 
             flagged = toxicity_score >= config.toxicity_threshold
@@ -191,7 +186,7 @@ def evaluate_toxicity_api(
                 "toxicity_score": toxicity_score,
                 "labels": labels,
                 "method": "hf_api",
-                "model": config.toxicity_model
+                "model": config.toxicity_model,
             }
 
         except Exception as e:
@@ -201,7 +196,7 @@ def evaluate_toxicity_api(
 
             # Check for rate limiting
             if "rate limit" in str(e).lower() or "429" in str(e):
-                wait_time = config.retry_delay * (2 ** attempt)  # Exponential backoff
+                wait_time = config.retry_delay * (2**attempt)  # Exponential backoff
                 if verbose:
                     logger.info(f"[HF-API] Rate limited, waiting {wait_time}s...")
                 time.sleep(wait_time)
@@ -215,14 +210,12 @@ def evaluate_toxicity_api(
         "labels": [],
         "method": "hf_api_error",
         "model": config.toxicity_model,
-        "error": last_error
+        "error": last_error,
     }
 
 
 def evaluate_harm_with_hf_api(
-    text: str,
-    config: Optional[HFAPIConfig] = None,
-    verbose: bool = False
+    text: str, config: Optional[HFAPIConfig] = None, verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Evaluate harm potential using HuggingFace API.
@@ -257,7 +250,9 @@ def evaluate_harm_with_hf_api(
         if explicit_harm:
             reasoning = f"HF API detected explicit harmful content (toxicity: {toxicity_score:.2%})"
         else:
-            reasoning = f"HF API detected potentially harmful content (toxicity: {toxicity_score:.2%})"
+            reasoning = (
+                f"HF API detected potentially harmful content (toxicity: {toxicity_score:.2%})"
+            )
     else:
         reasoning = f"HF API found no significant harmful content (toxicity: {toxicity_score:.2%})"
 
@@ -275,7 +270,7 @@ def evaluate_harm_with_hf_api(
         "subtle_harm_score": toxicity_score,
         "reasoning": reasoning,
         "method": method,
-        "raw_labels": result.get("labels", [])
+        "raw_labels": result.get("labels", []),
     }
 
 
@@ -298,7 +293,7 @@ class HuggingFaceAPIEvaluator:
         toxicity_model: str = "unitary/toxic-bert",
         api_token: Optional[str] = None,
         toxicity_threshold: float = 0.5,
-        enabled: bool = True
+        enabled: bool = True,
     ):
         """
         Initialize the HF API evaluator.
@@ -313,7 +308,7 @@ class HuggingFaceAPIEvaluator:
             toxicity_model=toxicity_model,
             api_token=api_token or os.environ.get("HF_API_TOKEN"),
             toxicity_threshold=toxicity_threshold,
-            enabled=enabled
+            enabled=enabled,
         )
         self._client = None
 
@@ -323,6 +318,7 @@ class HuggingFaceAPIEvaluator:
         if self._client is None and self.config.enabled:
             try:
                 from huggingface_hub import InferenceClient
+
                 self._client = InferenceClient(token=self.config.api_token)
             except Exception as e:
                 logger.info(f"[HF-API] Failed to create client: {e}")
@@ -367,8 +363,10 @@ class HuggingFaceAPIEvaluator:
         Returns:
             Function that takes text and returns evaluation dict
         """
+
         def eval_fn(text: str, **kwargs) -> Dict[str, Any]:
             return self.evaluate_harm(text)
+
         return eval_fn
 
 

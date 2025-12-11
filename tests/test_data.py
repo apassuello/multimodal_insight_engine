@@ -11,18 +11,20 @@ def sample_data():
     """Create sample data for testing."""
     return torch.randn(100, 5)
 
+
 @pytest.fixture
 def sample_multimodal_data():
     """Create sample multimodal data for testing."""
     return {
-        'text': torch.randn(100, 10),
-        'image': torch.randn(100, 3, 32, 32),
-        'audio': torch.randn(100, 20)
+        "text": torch.randn(100, 10),
+        "image": torch.randn(100, 3, 32, 32),
+        "audio": torch.randn(100, 20),
     }
+
 
 def test_data_preprocessor_standard(sample_data):
     """Test standard scaling preprocessing."""
-    preprocessor = DataPreprocessor(method='standard')
+    preprocessor = DataPreprocessor(method="standard")
 
     # Test fit_transform
     transformed = preprocessor.fit_transform(sample_data)
@@ -34,13 +36,14 @@ def test_data_preprocessor_standard(sample_data):
     assert torch.allclose(original, sample_data, atol=1e-6)
 
     # Test transform without fit
-    preprocessor = DataPreprocessor(method='standard')
+    preprocessor = DataPreprocessor(method="standard")
     with pytest.raises(RuntimeError):
         preprocessor.transform(sample_data)
 
+
 def test_data_preprocessor_minmax(sample_data):
     """Test min-max scaling preprocessing."""
-    preprocessor = DataPreprocessor(method='minmax')
+    preprocessor = DataPreprocessor(method="minmax")
 
     # Test fit_transform
     transformed = preprocessor.fit_transform(sample_data)
@@ -50,6 +53,7 @@ def test_data_preprocessor_minmax(sample_data):
     # Test inverse transform
     original = preprocessor.inverse_transform(transformed)
     assert torch.allclose(original, sample_data, atol=1e-6)
+
 
 def test_create_sequences(sample_data):
     """Test sequence creation from time series data."""
@@ -62,6 +66,7 @@ def test_create_sequences(sample_data):
     assert sequences.shape[2] == sample_data.shape[1]
     assert targets.shape[1] == sample_data.shape[1]
     assert len(sequences) == len(sample_data) - seq_length
+
 
 def test_split_data(sample_data):
     """Test data splitting functionality."""
@@ -77,6 +82,7 @@ def test_split_data(sample_data):
     assert len(val_data) == int(total_size * 0.1)
     assert len(test_data) == total_size - len(train_data) - len(val_data)
 
+
 def test_multimodal_dataset(sample_multimodal_data):
     """Test multimodal dataset functionality."""
     dataset = MultimodalDataset(sample_multimodal_data)
@@ -91,9 +97,10 @@ def test_multimodal_dataset(sample_multimodal_data):
 
     # Test invalid data lengths
     invalid_data = sample_multimodal_data.copy()
-    invalid_data['text'] = torch.randn(90, 10)  # Different length
+    invalid_data["text"] = torch.randn(90, 10)  # Different length
     with pytest.raises(ValueError):
         MultimodalDataset(invalid_data)
+
 
 def test_create_dataloader(sample_multimodal_data):
     """Test dataloader creation."""
@@ -110,6 +117,7 @@ def test_create_dataloader(sample_multimodal_data):
     assert all(isinstance(value, torch.Tensor) for value in batch.values())
     assert all(value.shape[0] == 32 for value in batch.values())
 
+
 def test_get_dataloaders(sample_multimodal_data):
     """Test creation of train, validation, and test dataloaders."""
     # Create validation and test data
@@ -120,7 +128,7 @@ def test_get_dataloaders(sample_multimodal_data):
         sample_multimodal_data,
         val_data=val_data,
         test_data=test_data,
-        batch_size=16  # Smaller batch size that works for all datasets
+        batch_size=16,  # Smaller batch size that works for all datasets
     )
 
     assert isinstance(train_loader, torch.utils.data.DataLoader)

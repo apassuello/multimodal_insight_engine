@@ -13,7 +13,6 @@ from torch.nn import functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -44,9 +43,11 @@ class LanguageModelEvaluator:
 
         # Set device
         if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else
-                                     "mps" if torch.backends.mps.is_available() else
-                                     "cpu")
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.backends.mps.is_available() else "cpu"
+            )
         else:
             self.device = device
 
@@ -97,8 +98,7 @@ class LanguageModelEvaluator:
 
             # Calculate loss
             loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.pad_idx)
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                          shift_labels.view(-1))
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
             # Calculate perplexity
             perplexity = math.exp(loss.item())
@@ -136,7 +136,7 @@ class LanguageModelEvaluator:
         attention_mask = (input_ids != self.pad_idx).long()
 
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
 
         # Calculate perplexity
         with torch.no_grad():
@@ -148,20 +148,13 @@ class LanguageModelEvaluator:
                 tgt = input_ids.clone()  # Use same sequence for source and target
                 src_mask = attention_mask
 
-                outputs = self.model(
-                    src=src,
-                    tgt=tgt,
-                    src_mask=src_mask
-                )
+                outputs = self.model(src=src, tgt=tgt, src_mask=src_mask)
 
                 # Already have log probs outputs
                 logits = outputs
             else:
                 # For standard models
-                outputs = self.model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask
-                )
+                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
 
                 # Get logits
                 logits = outputs.logits if hasattr(outputs, "logits") else outputs
@@ -171,9 +164,8 @@ class LanguageModelEvaluator:
             shift_labels = input_ids[..., 1:].contiguous()
 
             # Calculate loss
-            loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.pad_idx, reduction='none')
-            losses = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                           shift_labels.view(-1))
+            loss_fct = torch.nn.CrossEntropyLoss(ignore_index=self.pad_idx, reduction="none")
+            losses = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
             # Reshape losses to match input shape
             losses = losses.view(shift_labels.size())
@@ -225,7 +217,7 @@ class LanguageModelEvaluator:
         input_ids = torch.tensor([input_ids], dtype=torch.long).to(self.device)
 
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
 
         # Analyze token probabilities
         with torch.no_grad():
@@ -236,11 +228,7 @@ class LanguageModelEvaluator:
                 tgt = input_ids.clone()
                 src_mask = torch.ones_like(input_ids, dtype=torch.long)
 
-                outputs = self.model(
-                    src=src,
-                    tgt=tgt,
-                    src_mask=src_mask
-                )
+                outputs = self.model(src=src, tgt=tgt, src_mask=src_mask)
 
                 # Already have probabilities
                 probs = outputs
@@ -325,10 +313,10 @@ class LanguageModelEvaluator:
         input_ids = torch.tensor([input_ids], dtype=torch.long).to(self.device)
 
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
 
         # Enable attention output
-        if hasattr(self.model, 'output_attentions'):
+        if hasattr(self.model, "output_attentions"):
             self.model.output_attentions = True
 
         # Get attention weights
@@ -345,46 +333,50 @@ class LanguageModelEvaluator:
                 memory = self.model.encoder(src, mask=src_mask)
 
                 # Extract encoder self-attention if that's what we want
-                if attention_type == "self" and hasattr(self.model.encoder, 'layers'):
+                if attention_type == "self" and hasattr(self.model.encoder, "layers"):
                     # Get the requested layer
                     actual_layer = layer if layer >= 0 else len(self.model.encoder.layers) + layer
                     if 0 <= actual_layer < len(self.model.encoder.layers):
                         # Get self-attention module from the specified layer
                         attn_layer = self.model.encoder.layers[actual_layer]
-                        if hasattr(attn_layer, 'self_attn'):
+                        if hasattr(attn_layer, "self_attn"):
                             # Get normalized input
                             norm_x = attn_layer.norm1(src)
                             # Calculate query, key, value
                             q, k, v = attn_layer.self_attn.prepare_qkv(norm_x, norm_x, norm_x)
                             # Get attention weights
-                            _, attention_weights = attn_layer.self_attn.attention(q, k, v, None, self.device)
+                            _, attention_weights = attn_layer.self_attn.attention(
+                                q, k, v, None, self.device
+                            )
                             attention_weights = attention_weights.cpu().numpy()
 
                 # Run decoder with memory from encoder to get cross-attention
                 outputs = self.model.decoder(tgt, memory, tgt_mask=None, memory_mask=None)
 
                 # For cross-attention between encoder and decoder
-                if attention_type == "cross" and hasattr(self.model.decoder, 'layers'):
+                if attention_type == "cross" and hasattr(self.model.decoder, "layers"):
                     # Get the requested layer
                     actual_layer = layer if layer >= 0 else len(self.model.decoder.layers) + layer
                     if 0 <= actual_layer < len(self.model.decoder.layers):
                         # Get cross-attention module from the specified layer
                         attn_layer = self.model.decoder.layers[actual_layer]
-                        if hasattr(attn_layer, 'encoder_attn'):
+                        if hasattr(attn_layer, "encoder_attn"):
                             # Get normalized input for cross-attention
                             norm_x = attn_layer.norm2(tgt)
                             # Calculate query, key, value
                             q = attn_layer.encoder_attn.prepare_query(norm_x)
                             k, v = attn_layer.encoder_attn.prepare_key_value(memory, memory)
                             # Get attention weights
-                            _, attention_weights = attn_layer.encoder_attn.attention(q, k, v, None, self.device)
+                            _, attention_weights = attn_layer.encoder_attn.attention(
+                                q, k, v, None, self.device
+                            )
                             attention_weights = attention_weights.cpu().numpy()
             else:
                 # For standard models
                 outputs = self.model(input_ids=input_ids)
 
                 # Extract attention weights
-                if hasattr(outputs, 'attentions') and outputs.attentions:
+                if hasattr(outputs, "attentions") and outputs.attentions:
                     # Use the specified layer
                     layer_idx = layer if layer >= 0 else len(outputs.attentions) + layer
                     attention_weights = outputs.attentions[layer_idx][0, head].cpu().numpy()
@@ -417,8 +409,8 @@ class LanguageModelEvaluator:
         ax.set_title(f"{attention_name}-Attention Weights (Layer {layer}, Head {head})")
 
         # Add grid lines
-        ax.set_xticks(np.arange(-.5, len(tokens), 1), minor=True)
-        ax.set_yticks(np.arange(-.5, len(tokens), 1), minor=True)
+        ax.set_xticks(np.arange(-0.5, len(tokens), 1), minor=True)
+        ax.set_yticks(np.arange(-0.5, len(tokens), 1), minor=True)
         ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.5)
 
         # Ensure layout fits
@@ -495,9 +487,9 @@ class LanguageModelEvaluator:
                 ax.set_yticklabels(tokens)
 
                 # Set grid and labels
-                ax.set_xticks(np.arange(-.5, len(tokens), 1), minor=True)
-                ax.set_yticks(np.arange(-.5, len(tokens), 1), minor=True)
-                ax.grid(which="minor", color="w", linestyle='-', linewidth=2)
+                ax.set_xticks(np.arange(-0.5, len(tokens), 1), minor=True)
+                ax.set_yticks(np.arange(-0.5, len(tokens), 1), minor=True)
+                ax.grid(which="minor", color="w", linestyle="-", linewidth=2)
                 ax.tick_params(which="minor", bottom=False, left=False)
 
                 # Set title
@@ -507,8 +499,10 @@ class LanguageModelEvaluator:
 
                 # Save figure if directory is provided
                 if save_dir:
-                    plt.savefig(f"{save_dir}/attention_L{layer_idx+1}_H{head_idx+1}.png",
-                              bbox_inches="tight")
+                    plt.savefig(
+                        f"{save_dir}/attention_L{layer_idx+1}_H{head_idx+1}.png",
+                        bbox_inches="tight",
+                    )
 
                 figures.append(fig)
 
@@ -595,10 +589,13 @@ class LanguageModelEvaluator:
         avg_perplexity = float(np.mean(perplexities))
         median_perplexity = float(np.median(perplexities))
 
-        ax.axvline(avg_perplexity, color="red", linestyle="--",
-                 label=f"Mean: {avg_perplexity:.2f}")
-        ax.axvline(median_perplexity, color="green", linestyle=":",
-                 label=f"Median: {median_perplexity:.2f}")
+        ax.axvline(avg_perplexity, color="red", linestyle="--", label=f"Mean: {avg_perplexity:.2f}")
+        ax.axvline(
+            median_perplexity,
+            color="green",
+            linestyle=":",
+            label=f"Median: {median_perplexity:.2f}",
+        )
 
         # Add labels and title
         ax.set_xlabel("Perplexity")
@@ -614,6 +611,7 @@ class LanguageModelEvaluator:
             plt.savefig(save_path, bbox_inches="tight")
 
         return fig
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -636,43 +634,43 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "calculate_perplexity",
                         "signature": "calculate_perplexity(self, text: str) -> float",
-                        "brief_description": "Calculates perplexity score for a given text under the model"
+                        "brief_description": "Calculates perplexity score for a given text under the model",
                     },
                     {
                         "name": "calculate_batch_perplexity",
                         "signature": "calculate_batch_perplexity(self, texts: List[str]) -> Dict[str, Union[float, List[float]]]",
-                        "brief_description": "Calculate perplexity for a batch of texts with optimized processing"
+                        "brief_description": "Calculate perplexity for a batch of texts with optimized processing",
                     },
                     {
                         "name": "visualize_attention",
                         "signature": "visualize_attention(self, text: str, layer: int = -1, head: int = 0, attention_type: str = 'self', cmap: str = 'viridis') -> Figure",
-                        "brief_description": "Visualizes attention patterns for a given text at specified layer and head"
+                        "brief_description": "Visualizes attention patterns for a given text at specified layer and head",
                     },
                     {
                         "name": "visualize_attention_patterns",
                         "signature": "visualize_attention_patterns(self, text: str, save_dir: Optional[str] = None) -> List[Figure]",
-                        "brief_description": "Visualizes attention patterns across all layers and heads"
+                        "brief_description": "Visualizes attention patterns across all layers and heads",
                     },
                     {
                         "name": "analyze_token_probabilities",
                         "signature": "analyze_token_probabilities(self, text: str) -> Dict[str, Any]",
-                        "brief_description": "Analyzes token probabilities in a text to identify high and low confidence predictions"
+                        "brief_description": "Analyzes token probabilities in a text to identify high and low confidence predictions",
                     },
                     {
                         "name": "evaluate_on_dataset",
                         "signature": "evaluate_on_dataset(self, texts: List[str], save_path: Optional[str] = None) -> Dict[str, Any]",
-                        "brief_description": "Evaluates model performance on a dataset of texts"
+                        "brief_description": "Evaluates model performance on a dataset of texts",
                     },
                     {
                         "name": "plot_perplexity_distribution",
                         "signature": "plot_perplexity_distribution(self, perplexities: List[float], save_path: Optional[str] = None) -> Figure",
-                        "brief_description": "Plot the distribution of perplexities as a histogram with statistics"
-                    }
+                        "brief_description": "Plot the distribution of perplexities as a histogram with statistics",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "numpy", "matplotlib", "seaborn"]
+                "dependencies": ["torch", "numpy", "matplotlib", "seaborn"],
             }
         ],
         "external_dependencies": ["torch", "numpy", "matplotlib", "seaborn"],
-        "complexity_score": 7  # High complexity due to visualization features and comprehensive evaluation metrics
+        "complexity_score": 7,  # High complexity due to visualization features and comprehensive evaluation metrics
     }

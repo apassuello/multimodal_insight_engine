@@ -14,7 +14,6 @@ import torch
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +36,7 @@ class DecoupledLoss(BaseContrastiveLoss):
         lambda_v: float = 0.5,  # Weight for vision instance discrimination
         lambda_t: float = 0.5,  # Weight for text instance discrimination
         reduction: str = "mean",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize decoupled contrastive loss.
@@ -49,10 +48,7 @@ class DecoupledLoss(BaseContrastiveLoss):
             reduction: Loss reduction method
         """
         super().__init__(
-            temperature=temperature,
-            normalize_features=True,
-            reduction=reduction,
-            **kwargs
+            temperature=temperature, normalize_features=True, reduction=reduction, **kwargs
         )
 
         self.lambda_v = lambda_v
@@ -63,7 +59,7 @@ class DecoupledLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         match_ids: List[str],
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute decoupled contrastive loss.
@@ -84,7 +80,9 @@ class DecoupledLoss(BaseContrastiveLoss):
         if batch_size == 0:
             return {"loss": torch.tensor(0.0, device=device)}
         if batch_size != text_features.shape[0]:
-            raise ValueError(f"Batch size mismatch: {vision_features.shape[0]} vs {text_features.shape[0]}")
+            raise ValueError(
+                f"Batch size mismatch: {vision_features.shape[0]} vs {text_features.shape[0]}"
+            )
 
         # Normalize features (uses base class mixin)
         vision_features = self.normalize(vision_features)
@@ -117,15 +115,11 @@ class DecoupledLoss(BaseContrastiveLoss):
 
         # Combine losses with weights
         total_loss = (
-            cross_modal_loss
-            + self.lambda_v * vision_inst_loss
-            + self.lambda_t * text_inst_loss
+            cross_modal_loss + self.lambda_v * vision_inst_loss + self.lambda_t * text_inst_loss
         )
 
         # Compute metrics
-        metrics = self._compute_metrics(
-            vision_features, text_features, match_matrix
-        )
+        metrics = self._compute_metrics(vision_features, text_features, match_matrix)
 
         return {
             "loss": total_loss,
@@ -135,14 +129,11 @@ class DecoupledLoss(BaseContrastiveLoss):
             "t2v_loss": t2v_loss,
             "vision_inst_loss": vision_inst_loss,
             "text_inst_loss": text_inst_loss,
-            **metrics
+            **metrics,
         }
 
     def _create_match_matrix(
-        self,
-        batch_size: int,
-        match_ids: List[str],
-        device: torch.device
+        self, batch_size: int, match_ids: List[str], device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating matches."""
         match_matrix = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=device)
@@ -152,10 +143,7 @@ class DecoupledLoss(BaseContrastiveLoss):
         return match_matrix
 
     def _compute_cross_modal_loss(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor,
-        match_matrix: torch.Tensor
+        self, vision_features: torch.Tensor, text_features: torch.Tensor, match_matrix: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute cross-modal contrastive losses."""
         batch_size = vision_features.shape[0]
@@ -197,10 +185,7 @@ class DecoupledLoss(BaseContrastiveLoss):
 
         return v2t_loss, t2v_loss
 
-    def _compute_instance_loss(
-        self,
-        features: torch.Tensor
-    ) -> torch.Tensor:
+    def _compute_instance_loss(self, features: torch.Tensor) -> torch.Tensor:
         """Compute instance discrimination loss within a modality."""
         batch_size = features.shape[0]
 
@@ -213,10 +198,12 @@ class DecoupledLoss(BaseContrastiveLoss):
             pos_indices = torch.tensor([i], device=features.device)
 
             # Negatives: all others
-            neg_indices = torch.cat([
-                torch.arange(0, i, device=features.device),
-                torch.arange(i + 1, batch_size, device=features.device)
-            ])
+            neg_indices = torch.cat(
+                [
+                    torch.arange(0, i, device=features.device),
+                    torch.arange(i + 1, batch_size, device=features.device),
+                ]
+            )
 
             if len(neg_indices) == 0:
                 continue
@@ -231,18 +218,19 @@ class DecoupledLoss(BaseContrastiveLoss):
         return inst_loss
 
     def _compute_metrics(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor,
-        match_matrix: torch.Tensor
+        self, vision_features: torch.Tensor, text_features: torch.Tensor, match_matrix: torch.Tensor
     ) -> Dict[str, torch.Tensor]:
         """Compute accuracy metrics."""
         with torch.no_grad():
             batch_size = vision_features.shape[0]
 
             # Compute similarities
-            v2t_similarity = self.compute_similarity(vision_features, text_features, normalize=False)
-            t2v_similarity = self.compute_similarity(text_features, vision_features, normalize=False)
+            v2t_similarity = self.compute_similarity(
+                vision_features, text_features, normalize=False
+            )
+            t2v_similarity = self.compute_similarity(
+                text_features, vision_features, normalize=False
+            )
 
             v2t_pred = torch.argmax(v2t_similarity, dim=1)
             t2v_pred = torch.argmax(t2v_similarity, dim=1)
@@ -266,5 +254,5 @@ class DecoupledLoss(BaseContrastiveLoss):
             return {
                 "v2t_accuracy": v2t_accuracy,
                 "t2v_accuracy": t2v_accuracy,
-                "accuracy": (v2t_accuracy + t2v_accuracy) / 2
+                "accuracy": (v2t_accuracy + t2v_accuracy) / 2,
             }

@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
+
 
 class BarlowTwinsLoss(nn.Module):
     """
@@ -114,7 +114,10 @@ class BarlowTwinsLoss(nn.Module):
         if self.use_projection:
             # Make sure projection heads are on the same device as the input tensors
             device = vision_features.device
-            if list(self.vision_projection.parameters()) and next(self.vision_projection.parameters()).device != device:
+            if (
+                list(self.vision_projection.parameters())
+                and next(self.vision_projection.parameters()).device != device
+            ):
                 self.vision_projection = self.vision_projection.to(device)
                 self.text_projection = self.text_projection.to(device)
 
@@ -151,7 +154,10 @@ class BarlowTwinsLoss(nn.Module):
 
         # Safety check for empty batch
         if batch_size == 0:
-            return torch.tensor(0.0, device=vision_features.device), {"diagonal_loss": 0.0, "off_diagonal_loss": 0.0}
+            return torch.tensor(0.0, device=vision_features.device), {
+                "diagonal_loss": 0.0,
+                "off_diagonal_loss": 0.0,
+            }
 
         # Apply projection (and normalization if enabled)
         vision_features, text_features = self.project(vision_features, text_features)
@@ -175,11 +181,13 @@ class BarlowTwinsLoss(nn.Module):
 
         # Loss computation
         # Diagonal terms: push cross-correlation of corresponding features to 1
-        diagonal_loss = torch.mean((torch.diagonal(cross_correlation) - 1)**2)
+        diagonal_loss = torch.mean((torch.diagonal(cross_correlation) - 1) ** 2)
 
         # Off-diagonal terms: push cross-correlation of different features to 0
-        off_diagonal_mask = 1 - torch.eye(cross_correlation.shape[0], device=cross_correlation.device)
-        off_diagonal_loss = torch.mean((cross_correlation * off_diagonal_mask)**2)
+        off_diagonal_mask = 1 - torch.eye(
+            cross_correlation.shape[0], device=cross_correlation.device
+        )
+        off_diagonal_loss = torch.mean((cross_correlation * off_diagonal_mask) ** 2)
 
         # Combine the losses with lambda coefficient for off-diagonal terms
         loss = diagonal_loss + self.lambda_coeff * off_diagonal_loss
@@ -206,6 +214,7 @@ class BarlowTwinsLoss(nn.Module):
             self.text_projection.train(mode)
         return super().train(mode)
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -229,23 +238,23 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, lambda_coeff: float = 0.005, batch_norm_last_layer: bool = True, correlation_mode: str = 'cross_modal', use_projection: bool = False, projection_dim: int = 8192, input_dim: Optional[int] = None, normalize_embeddings: bool = True)",
-                        "brief_description": "Initialize the Barlow Twins loss module with configurable parameters"
+                        "brief_description": "Initialize the Barlow Twins loss module with configurable parameters",
                     },
                     {
                         "name": "project",
                         "signature": "project(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]",
-                        "brief_description": "Apply projection heads to features if enabled"
+                        "brief_description": "Apply projection heads to features if enabled",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]",
-                        "brief_description": "Compute Barlow Twins loss between vision and text features"
-                    }
+                        "brief_description": "Compute Barlow Twins loss between vision and text features",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "typing"]
+                "dependencies": ["torch", "torch.nn", "typing"],
             }
         ],
         "external_dependencies": ["torch"],
-        "complexity_score": 6  # Moderate complexity
+        "complexity_score": 6,  # Moderate complexity
     }

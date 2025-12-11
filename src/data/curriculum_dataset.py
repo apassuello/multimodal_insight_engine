@@ -22,7 +22,6 @@ from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import os
 
@@ -122,19 +121,13 @@ class CurriculumTranslationDataset(Dataset):
 
             # Calculate inverse frequency (rarity) for each token
             total_tokens = sum(counter.values())
-            token_rarity = {
-                token: total_tokens / count for token, count in counter.items()
-            }
+            token_rarity = {token: total_tokens / count for token, count in counter.items()}
 
             # Calculate average token rarity for each example
             for src, tgt in zip(self.source_sequences, self.target_sequences):
                 # Average rarity across both source and target
-                src_rarity = sum(token_rarity.get(t, 1.0) for t in src) / max(
-                    1, len(src)
-                )
-                tgt_rarity = sum(token_rarity.get(t, 1.0) for t in tgt) / max(
-                    1, len(tgt)
-                )
+                src_rarity = sum(token_rarity.get(t, 1.0) for t in src) / max(1, len(src))
+                tgt_rarity = sum(token_rarity.get(t, 1.0) for t in tgt) / max(1, len(tgt))
                 difficulty = (src_rarity + tgt_rarity) / 2
                 difficulties.append(difficulty)
 
@@ -307,8 +300,7 @@ class CurriculumTranslationDataset(Dataset):
             "percent_available": 100 * available_length / total_length,
             "min_difficulty": min(available_difficulties),
             "max_difficulty": max(available_difficulties),
-            "mean_difficulty": sum(available_difficulties)
-            / len(available_difficulties),
+            "mean_difficulty": sum(available_difficulties) / len(available_difficulties),
         }
 
     def print_curriculum_progression_summary(self) -> None:
@@ -364,29 +356,29 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "_calculate_difficulties",
                         "signature": "_calculate_difficulties(self) -> List[float]",
-                        "brief_description": "Calculate difficulty scores for all examples based on selected strategy"
+                        "brief_description": "Calculate difficulty scores for all examples based on selected strategy",
                     },
                     {
                         "name": "update_stage",
                         "signature": "update_stage(self, new_stage: int) -> None",
-                        "brief_description": "Update the curriculum stage to expose more complex examples"
+                        "brief_description": "Update the curriculum stage to expose more complex examples",
                     },
                     {
                         "name": "__getitem__",
                         "signature": "__getitem__(self, idx: int) -> Dict[str, torch.Tensor]",
-                        "brief_description": "Get an item from the dataset based on curriculum stage"
+                        "brief_description": "Get an item from the dataset based on curriculum stage",
                     },
                     {
                         "name": "get_curriculum_stats",
                         "signature": "get_curriculum_stats(self) -> Dict[str, Any]",
-                        "brief_description": "Get statistics about the current curriculum stage"
-                    }
+                        "brief_description": "Get statistics about the current curriculum stage",
+                    },
                 ],
                 "inheritance": "Dataset",
-                "dependencies": ["torch.utils.data.Dataset", "numpy", "collections.Counter"]
+                "dependencies": ["torch.utils.data.Dataset", "numpy", "collections.Counter"],
             }
         ],
         "key_functions": [],
         "external_dependencies": ["torch", "numpy", "collections"],
-        "complexity_score": 7  # Relatively complex due to multiple curriculum strategies and dynamic filtering
+        "complexity_score": 7,  # Relatively complex due to multiple curriculum strategies and dynamic filtering
     }

@@ -22,7 +22,6 @@ from typing import Any, Dict, Optional
 import torch
 import torch.nn as nn
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -92,8 +91,12 @@ class CheckpointManager:
             "optimizer_state_dict": self.optimizer.state_dict(),
             "current_epoch": current_epoch if current_epoch is not None else self.current_epoch,
             "global_step": global_step if global_step is not None else self.global_step,
-            "best_val_metric": best_val_metric if best_val_metric is not None else self.best_val_metric,
-            "patience_counter": patience_counter if patience_counter is not None else self.patience_counter,
+            "best_val_metric": (
+                best_val_metric if best_val_metric is not None else self.best_val_metric
+            ),
+            "patience_counter": (
+                patience_counter if patience_counter is not None else self.patience_counter
+            ),
             "history": dict(history if history is not None else self.history),
         }
 
@@ -163,8 +166,7 @@ class CheckpointManager:
             return None
 
         checkpoints = [
-            f for f in os.listdir(self.checkpoint_dir)
-            if f.endswith(".pt") or f.endswith(".pth")
+            f for f in os.listdir(self.checkpoint_dir) if f.endswith(".pt") or f.endswith(".pth")
         ]
 
         if not checkpoints:
@@ -172,8 +174,7 @@ class CheckpointManager:
 
         # Sort by modification time
         checkpoints.sort(
-            key=lambda x: os.path.getmtime(os.path.join(self.checkpoint_dir, x)),
-            reverse=True
+            key=lambda x: os.path.getmtime(os.path.join(self.checkpoint_dir, x)), reverse=True
         )
 
         latest = os.path.join(self.checkpoint_dir, checkpoints[0])

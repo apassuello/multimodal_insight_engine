@@ -13,7 +13,6 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.gradient_handler import GradientHandler
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -65,14 +64,11 @@ class CrossModalStrategy(TrainingStrategy):
 
             # Unfreeze top layers of text model
             text_patterns = [
-                f"text_model.encoder.layer.{i}"
-                for i in range(12 - unfreeze_layer_count, 12)
+                f"text_model.encoder.layer.{i}" for i in range(12 - unfreeze_layer_count, 12)
             ]
 
             self.unfreeze_parameters(vision_patterns + text_patterns)
-            logger.info(
-                f"Selectively unfroze top {unfreeze_layer_count} layers of encoder models"
-            )
+            logger.info(f"Selectively unfroze top {unfreeze_layer_count} layers of encoder models")
 
         # 3. Unfreeze cross-modal components for focused training
         cross_modal_components = [
@@ -82,9 +78,7 @@ class CrossModalStrategy(TrainingStrategy):
             "interaction",
         ]
         self.unfreeze_parameters(cross_modal_components)
-        logger.info(
-            f"Unfroze cross-modal components: {', '.join(cross_modal_components)}"
-        )
+        logger.info(f"Unfroze cross-modal components: {', '.join(cross_modal_components)}")
 
         # Always unfreeze projection layers for adaptation
         projection_patterns = ["projection", "projector", "adapter"]
@@ -322,12 +316,8 @@ class CrossModalStrategy(TrainingStrategy):
 
                 # Normalize features for cosine similarity
                 if vision_features.dim() > 1 and text_features.dim() > 1:
-                    vision_features = torch.nn.functional.normalize(
-                        vision_features, p=2, dim=1
-                    )
-                    text_features = torch.nn.functional.normalize(
-                        text_features, p=2, dim=1
-                    )
+                    vision_features = torch.nn.functional.normalize(vision_features, p=2, dim=1)
+                    text_features = torch.nn.functional.normalize(text_features, p=2, dim=1)
 
                     # Compute similarity matrix
                     similarity = torch.matmul(vision_features, text_features.T)
@@ -477,9 +467,7 @@ class CrossModalStrategy(TrainingStrategy):
             Tuple of (optimizer, scheduler)
         """
         # Extract configuration
-        base_lr = self.config.get(
-            "learning_rate", 5e-5
-        )  # Lower default LR for this stage
+        base_lr = self.config.get("learning_rate", 5e-5)  # Lower default LR for this stage
         weight_decay = self.config.get("weight_decay", 0.01)
         warmup_steps = self.config.get("warmup_steps", 200)
         total_steps = self.config.get("total_steps", 5000)
@@ -524,8 +512,7 @@ class CrossModalStrategy(TrainingStrategy):
         # Cross-modal components: full learning rate (main focus)
         cross_modal_params = get_unassigned_params(
             lambda n: any(
-                x in n
-                for x in ["cross_attention", "cross_modal", "fusion", "interaction"]
+                x in n for x in ["cross_attention", "cross_modal", "fusion", "interaction"]
             )
         )
         if cross_modal_params:
@@ -551,9 +538,7 @@ class CrossModalStrategy(TrainingStrategy):
             )
 
         # Other parameters: medium learning rate
-        other_params = get_unassigned_params(
-            lambda n: True
-        )  # Get all remaining parameters
+        other_params = get_unassigned_params(lambda n: True)  # Get all remaining parameters
         if other_params:
             param_groups.append(
                 {
@@ -609,9 +594,7 @@ class CrossModalStrategy(TrainingStrategy):
         if hasattr(self.loss_fn, "get_queue_stats"):
             queue_stats = self.loss_fn.get_queue_stats()
             if queue_stats:
-                stats_info = ", ".join(
-                    [f"{k}: {v:.4f}" for k, v in queue_stats.items()]
-                )
+                stats_info = ", ".join([f"{k}: {v:.4f}" for k, v in queue_stats.items()])
                 logger.info(f"Memory queue stats: {stats_info}")
 
 

@@ -7,7 +7,6 @@ import torch.nn.functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -19,12 +18,19 @@ KEY COMPONENTS:
 DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing
 SPECIAL NOTES: Provides building blocks for transformer architectures with modern best practices"""
 
+
 class LinearLayer(nn.Module):
     """A linear layer with initialization, dropout, and normalization options."""
 
-    def __init__(self, in_features: int, out_features: int, bias: bool = True,
-                 init_type: str = 'kaiming_uniform', dropout: float = 0.0,
-                 use_layer_norm: bool = False):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        init_type: str = "kaiming_uniform",
+        dropout: float = 0.0,
+        use_layer_norm: bool = False,
+    ):
         """
         Initialize the linear layer.
 
@@ -48,13 +54,13 @@ class LinearLayer(nn.Module):
 
     def _init_weights(self, init_type: str) -> None:
         """Initialize the weights using the specified method."""
-        if init_type == 'kaiming_uniform':
-            nn.init.kaiming_uniform_(self.linear.weight, nonlinearity='relu')
-        elif init_type == 'kaiming_normal':
-            nn.init.kaiming_normal_(self.linear.weight, nonlinearity='relu')
-        elif init_type == 'xavier_uniform':
+        if init_type == "kaiming_uniform":
+            nn.init.kaiming_uniform_(self.linear.weight, nonlinearity="relu")
+        elif init_type == "kaiming_normal":
+            nn.init.kaiming_normal_(self.linear.weight, nonlinearity="relu")
+        elif init_type == "xavier_uniform":
             nn.init.xavier_uniform_(self.linear.weight)
-        elif init_type == 'xavier_normal':
+        elif init_type == "xavier_normal":
             nn.init.xavier_normal_(self.linear.weight)
         else:
             raise ValueError(f"Unknown initialization type: {init_type}")
@@ -93,11 +99,16 @@ class FeedForwardBlock(nn.Module):
     A feed-forward block with optional residual connection.
     """
 
-    def __init__(self, input_dim: int, hidden_dim: Optional[int] = None,
-                 output_dim: Optional[int] = None,
-                 activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu',
-                 dropout: float = 0.0, use_layer_norm: bool = False,
-                 use_residual: bool = False):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: Optional[int] = None,
+        output_dim: Optional[int] = None,
+        activation: Literal["relu", "gelu", "tanh", "sigmoid"] = "relu",
+        dropout: float = 0.0,
+        use_layer_norm: bool = False,
+        use_residual: bool = False,
+    ):
         """
         Initialize the feed-forward block.
 
@@ -119,25 +130,27 @@ class FeedForwardBlock(nn.Module):
         # Check if residual connection is possible
         self.use_residual = use_residual and input_dim == output_dim
         if use_residual and input_dim != output_dim:
-            logger.info(f"Warning: Cannot use residual connection when input_dim ({input_dim}) "
-                  f"!= output_dim ({output_dim}). Disabling residual connection.")
+            logger.info(
+                f"Warning: Cannot use residual connection when input_dim ({input_dim}) "
+                f"!= output_dim ({output_dim}). Disabling residual connection."
+            )
 
         # First linear layer
         self.linear1 = LinearLayer(
             input_dim,
             hidden_dim,
-            init_type='kaiming_uniform' if activation == 'relu' else 'xavier_uniform',
+            init_type="kaiming_uniform" if activation == "relu" else "xavier_uniform",
             dropout=0.0,
-            use_layer_norm=False
+            use_layer_norm=False,
         )
 
         # Second linear layer
         self.linear2 = LinearLayer(
             hidden_dim,
             output_dim,
-            init_type='xavier_uniform',
+            init_type="xavier_uniform",
             dropout=dropout,
-            use_layer_norm=use_layer_norm
+            use_layer_norm=use_layer_norm,
         )
 
         # Store the activation type
@@ -163,13 +176,13 @@ class FeedForwardBlock(nn.Module):
         x = self.linear1(x)
 
         # Apply activation function
-        if self.activation == 'relu':
+        if self.activation == "relu":
             x = F.relu(x)
-        elif self.activation == 'gelu':
+        elif self.activation == "gelu":
             x = torch.nn.GELU()(x)
-        elif self.activation == 'tanh':
+        elif self.activation == "tanh":
             x = torch.tanh(x)
-        elif self.activation == 'sigmoid':
+        elif self.activation == "sigmoid":
             x = torch.sigmoid(x)
         else:
             raise ValueError(f"Unknown activation function: {self.activation}")
@@ -182,6 +195,7 @@ class FeedForwardBlock(nn.Module):
             x = x + residual
 
         return x
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -204,21 +218,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, in_features: int, out_features: int, bias: bool = True, init_type: str = 'kaiming_uniform', dropout: float = 0.0, use_layer_norm: bool = False)",
-                        "brief_description": "Initialize the enhanced linear layer with optional features"
+                        "brief_description": "Initialize the enhanced linear layer with optional features",
                     },
                     {
                         "name": "_init_weights",
                         "signature": "_init_weights(self, init_type: str) -> None",
-                        "brief_description": "Initialize weights using specified method (kaiming/xavier)"
+                        "brief_description": "Initialize weights using specified method (kaiming/xavier)",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Apply linear transformation with optional normalization and dropout"
-                    }
+                        "brief_description": "Apply linear transformation with optional normalization and dropout",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
             },
             {
                 "name": "FeedForwardBlock",
@@ -227,17 +241,17 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, input_dim: int, hidden_dim: Optional[int] = None, output_dim: Optional[int] = None, activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu', dropout: float = 0.0, use_layer_norm: bool = False, use_residual: bool = False)",
-                        "brief_description": "Initialize the feed-forward block with configurable architecture"
+                        "brief_description": "Initialize the feed-forward block with configurable architecture",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Apply feed-forward transformation with optional residual connection"
-                    }
+                        "brief_description": "Apply feed-forward transformation with optional residual connection",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
-            }
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
+            },
         ],
         "external_dependencies": ["torch"],
         "complexity_score": 4,  # Moderate complexity due to multiple features and configurations

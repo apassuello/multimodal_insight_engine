@@ -6,7 +6,6 @@ from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -49,9 +48,7 @@ def create_combined_dataset_jsonl(
     opus_dataset = load_dataset("opus_books", f"{src_lang}-{tgt_lang}", split="train")
     n_opus = min(n_opus, len(opus_dataset))
     opus = opus_dataset.select(range(n_opus))
-    logger.info(
-        f"Selected {n_opus} samples from OPUS Books (total available: {len(opus_dataset)})"
-    )
+    logger.info(f"Selected {n_opus} samples from OPUS Books (total available: {len(opus_dataset)})")
 
     logger.info("Normalizing format...")
     wmt = wmt.map(lambda x: to_standard_format(x, src_lang, tgt_lang))

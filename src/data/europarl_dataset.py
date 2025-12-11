@@ -6,7 +6,6 @@ from typing import List, Optional, Tuple
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -24,7 +23,7 @@ class EuroparlDataset:
         src_lang: str = "de",
         tgt_lang: str = "en",
         max_examples: Optional[int] = None,
-        random_seed: int = 42
+        random_seed: int = 42,
     ):
         """
         Initialize the Europarl dataset.
@@ -59,20 +58,22 @@ class EuroparlDataset:
         # Try multiple possible file structures
         possible_patterns = [
             # Pattern 1: Direct language files in the main directory
-            (f"{self.data_dir}/europarl-v7.{self.src_lang}-{self.tgt_lang}.{self.src_lang}",
-             f"{self.data_dir}/europarl-v7.{self.src_lang}-{self.tgt_lang}.{self.tgt_lang}"),
-
+            (
+                f"{self.data_dir}/europarl-v7.{self.src_lang}-{self.tgt_lang}.{self.src_lang}",
+                f"{self.data_dir}/europarl-v7.{self.src_lang}-{self.tgt_lang}.{self.tgt_lang}",
+            ),
             # Pattern 2: Language pair subdirectory
-            (f"{self.data_dir}/{self.src_lang}-{self.tgt_lang}/europarl.{self.src_lang}",
-             f"{self.data_dir}/{self.src_lang}-{self.tgt_lang}/europarl.{self.tgt_lang}"),
-
+            (
+                f"{self.data_dir}/{self.src_lang}-{self.tgt_lang}/europarl.{self.src_lang}",
+                f"{self.data_dir}/{self.src_lang}-{self.tgt_lang}/europarl.{self.tgt_lang}",
+            ),
             # Pattern 3: Language files with different naming
-            (f"{self.data_dir}/europarl.{self.src_lang}",
-             f"{self.data_dir}/europarl.{self.tgt_lang}"),
-
+            (
+                f"{self.data_dir}/europarl.{self.src_lang}",
+                f"{self.data_dir}/europarl.{self.tgt_lang}",
+            ),
             # Pattern 4: Simple text files named by language
-            (f"{self.data_dir}/{self.src_lang}.txt",
-             f"{self.data_dir}/{self.tgt_lang}.txt"),
+            (f"{self.data_dir}/{self.src_lang}.txt", f"{self.data_dir}/{self.tgt_lang}.txt"),
         ]
 
         # Try each pattern until we find files that exist
@@ -92,17 +93,19 @@ class EuroparlDataset:
 
         # Read data files
         logger.info(f"Loading source data from: {src_file}")
-        with open(src_file, encoding='utf-8') as f:
+        with open(src_file, encoding="utf-8") as f:
             src_data = [line.strip() for line in f if line.strip()]
 
         logger.info(f"Loading target data from: {tgt_file}")
-        with open(tgt_file, encoding='utf-8') as f:
+        with open(tgt_file, encoding="utf-8") as f:
             tgt_data = [line.strip() for line in f if line.strip()]
 
         # Ensure same length
         if len(src_data) != len(tgt_data):
-            logger.info(f"Warning: Source and target files have different lengths. "
-                  f"Source: {len(src_data)}, Target: {len(tgt_data)}")
+            logger.info(
+                f"Warning: Source and target files have different lengths. "
+                f"Source: {len(src_data)}, Target: {len(tgt_data)}"
+            )
             min_len = min(len(src_data), len(tgt_data))
             src_data = src_data[:min_len]
             tgt_data = tgt_data[:min_len]
@@ -123,7 +126,7 @@ class EuroparlDataset:
         # Shuffle and limit
         random.shuffle(filtered_pairs)
         if self.max_examples is not None and self.max_examples < len(filtered_pairs):
-            filtered_pairs = filtered_pairs[:self.max_examples]
+            filtered_pairs = filtered_pairs[: self.max_examples]
 
         # Unzip the pairs
         src_data, tgt_data = zip(*filtered_pairs) if filtered_pairs else ([], [])
@@ -131,6 +134,7 @@ class EuroparlDataset:
         logger.info(f"Loaded {len(src_data)} parallel sentences")
 
         return list(src_data), list(tgt_data)
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -153,18 +157,18 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, data_dir: str = 'data/europarl', src_lang: str = 'de', tgt_lang: str = 'en', max_examples: Optional[int] = None, random_seed: int = 42)",
-                        "brief_description": "Initialize the dataset with language pair and optional filtering"
+                        "brief_description": "Initialize the dataset with language pair and optional filtering",
                     },
                     {
                         "name": "load_data",
                         "signature": "load_data(self) -> Tuple[List[str], List[str]]",
-                        "brief_description": "Load and preprocess parallel data with multiple file pattern detection"
-                    }
+                        "brief_description": "Load and preprocess parallel data with multiple file pattern detection",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["os", "random"]
+                "dependencies": ["os", "random"],
             }
         ],
         "external_dependencies": ["os", "random"],
-        "complexity_score": 4  # Moderate complexity for handling multiple file formats
+        "complexity_score": 4,  # Moderate complexity for handling multiple file formats
     }

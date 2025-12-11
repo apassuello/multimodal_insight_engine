@@ -34,7 +34,6 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -57,7 +56,7 @@ class LanguageModelTrainer:
         max_grad_norm: float = 1.0,
         device: Optional[torch.device] = None,
         log_dir: str = "logs",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the language model trainer.
@@ -88,9 +87,11 @@ class LanguageModelTrainer:
 
         # Set device
         if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else
-                                     "mps" if torch.backends.mps.is_available() else
-                                     "cpu")
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.backends.mps.is_available() else "cpu"
+            )
         else:
             self.device = device
 
@@ -109,7 +110,7 @@ class LanguageModelTrainer:
 
         # Initialize tracking variables
         self.global_step = 0
-        self.best_val_loss = float('inf')
+        self.best_val_loss = float("inf")
         self.train_losses = []
         self.val_losses = []
         self.learning_rates = []
@@ -123,13 +124,15 @@ class LanguageModelTrainer:
         Returns:
             Learning rate scheduler
         """
+
         def lr_lambda(current_step):
             # Linear warmup
             if current_step < self.warmup_steps:
                 return float(current_step) / float(max(1, self.warmup_steps))
             # Linear decay
-            return max(0.0,
-                     float(1.0 - current_step / (len(self.train_dataloader) * self.num_epochs)))
+            return max(
+                0.0, float(1.0 - current_step / (len(self.train_dataloader) * self.num_epochs))
+            )
 
         return torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda)
 
@@ -152,7 +155,9 @@ class LanguageModelTrainer:
         # Don't print every few seconds, let the tqdm progress bar handle displaying metrics
         # Only print at milestone steps for record-keeping
         if step % 10000 == 0:
-            logger.info(f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}")
+            logger.info(
+                f"Step {step}: Loss = {loss:.4f}, Perplexity = {perplexity:.2f}, LR = {lr:.7f}"
+            )
 
     def train(self, num_epochs, save_dir="models/language", model_name="language_model"):
         """
@@ -184,8 +189,13 @@ class LanguageModelTrainer:
             num_batches = len(self.train_dataloader)
 
             # Create tqdm progress bar with additional metrics
-            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}",
-                         dynamic_ncols=True, leave=True, position=0)
+            pbar = tqdm(
+                self.train_dataloader,
+                desc=f"Epoch {epoch+1}/{num_epochs}",
+                dynamic_ncols=True,
+                leave=True,
+                position=0,
+            )
 
             for i, batch in enumerate(pbar):
                 # Move batch to device
@@ -197,7 +207,7 @@ class LanguageModelTrainer:
                     tgt=batch["labels"],
                     src_mask=batch.get("src_mask"),
                     tgt_mask=batch.get("tgt_mask"),
-                    memory_mask=batch.get("memory_mask")
+                    memory_mask=batch.get("memory_mask"),
                 )
 
                 # Calculate loss
@@ -209,8 +219,7 @@ class LanguageModelTrainer:
 
                 # Calculate loss (ignore padding)
                 loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                              shift_labels.view(-1))
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
                 # Backward pass
                 self.optimizer.zero_grad()
@@ -228,9 +237,7 @@ class LanguageModelTrainer:
 
                 # Log training information
                 self._log_training_step(
-                    loss.item(),
-                    self.scheduler.get_last_lr()[0],
-                    self.global_step
+                    loss.item(), self.scheduler.get_last_lr()[0], self.global_step
                 )
 
                 # Update training loss
@@ -240,12 +247,15 @@ class LanguageModelTrainer:
                 # Update progress bar with current metrics - force update
                 curr_avg_loss = train_loss / (i + 1)
                 curr_ppl = math.exp(curr_avg_loss)
-                pbar.set_postfix({
-                    'loss': f'{curr_loss:.4f}',
-                    'avg_loss': f'{curr_avg_loss:.4f}',
-                    'ppl': f'{curr_ppl:.2f}',
-                    'lr': f'{self.scheduler.get_last_lr()[0]:.7f}'
-                }, refresh=True)  # Force refresh
+                pbar.set_postfix(
+                    {
+                        "loss": f"{curr_loss:.4f}",
+                        "avg_loss": f"{curr_avg_loss:.4f}",
+                        "ppl": f"{curr_ppl:.2f}",
+                        "lr": f"{self.scheduler.get_last_lr()[0]:.7f}",
+                    },
+                    refresh=True,
+                )  # Force refresh
 
                 # Update global step
                 self.global_step += 1
@@ -253,12 +263,16 @@ class LanguageModelTrainer:
             # Calculate average training loss
             avg_train_loss = train_loss / num_batches
             train_perplexity = math.exp(avg_train_loss)
-            logger.info(f"Epoch {epoch+1} - Train Loss: {avg_train_loss:.4f}, Train Perplexity: {train_perplexity:.2f}")
+            logger.info(
+                f"Epoch {epoch+1} - Train Loss: {avg_train_loss:.4f}, Train Perplexity: {train_perplexity:.2f}"
+            )
 
             # Validation
             if self.val_dataloader is not None:
                 val_loss, val_perplexity = self.evaluate()
-                logger.info(f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}, Val Perplexity: {val_perplexity:.2f}")
+                logger.info(
+                    f"Epoch {epoch+1} - Val Loss: {val_loss:.4f}, Val Perplexity: {val_perplexity:.2f}"
+                )
 
                 # Save best model
                 if val_loss < self.best_val_loss:
@@ -304,8 +318,9 @@ class LanguageModelTrainer:
 
         with torch.no_grad():
             # Create tqdm progress bar with metrics
-            pbar = tqdm(self.val_dataloader, desc="Validation",
-                        dynamic_ncols=True, leave=True, position=0)
+            pbar = tqdm(
+                self.val_dataloader, desc="Validation", dynamic_ncols=True, leave=True, position=0
+            )
 
             for i, batch in enumerate(pbar):
                 # Move batch to device
@@ -317,7 +332,7 @@ class LanguageModelTrainer:
                     tgt=batch["labels"],
                     src_mask=batch.get("src_mask"),
                     tgt_mask=batch.get("tgt_mask"),
-                    memory_mask=batch.get("memory_mask")
+                    memory_mask=batch.get("memory_mask"),
                 )
 
                 # Calculate loss
@@ -329,8 +344,7 @@ class LanguageModelTrainer:
 
                 # Calculate loss (ignore padding)
                 loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                              shift_labels.view(-1))
+                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
                 # Update validation loss
                 curr_loss = loss.item()
@@ -339,11 +353,14 @@ class LanguageModelTrainer:
                 # Update progress bar
                 curr_avg_loss = val_loss / (i + 1)
                 curr_ppl = math.exp(curr_avg_loss)
-                pbar.set_postfix({
-                    'loss': f'{curr_loss:.4f}',
-                    'avg_loss': f'{curr_avg_loss:.4f}',
-                    'ppl': f'{curr_ppl:.2f}'
-                }, refresh=True)
+                pbar.set_postfix(
+                    {
+                        "loss": f"{curr_loss:.4f}",
+                        "avg_loss": f"{curr_avg_loss:.4f}",
+                        "ppl": f"{curr_ppl:.2f}",
+                    },
+                    refresh=True,
+                )
 
         # Calculate average validation loss
         avg_val_loss = val_loss / num_batches
@@ -365,16 +382,16 @@ class LanguageModelTrainer:
             path: Path where the model should be saved
         """
         checkpoint = {
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'scheduler_state_dict': self.scheduler.state_dict(),
-            'global_step': self.global_step,
-            'best_val_loss': self.best_val_loss,
-            'train_losses': self.train_losses,
-            'val_losses': self.val_losses,
-            'learning_rates': self.learning_rates,
-            'train_perplexities': self.train_perplexities,
-            'val_perplexities': self.val_perplexities,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "scheduler_state_dict": self.scheduler.state_dict(),
+            "global_step": self.global_step,
+            "best_val_loss": self.best_val_loss,
+            "train_losses": self.train_losses,
+            "val_losses": self.val_losses,
+            "learning_rates": self.learning_rates,
+            "train_perplexities": self.train_perplexities,
+            "val_perplexities": self.val_perplexities,
         }
         torch.save(checkpoint, path)
 
@@ -386,16 +403,16 @@ class LanguageModelTrainer:
             path: Path to the model checkpoint
         """
         checkpoint = torch.load(path, map_location=self.device, weights_only=True)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        self.global_step = checkpoint['global_step']
-        self.best_val_loss = checkpoint['best_val_loss']
-        self.train_losses = checkpoint['train_losses']
-        self.val_losses = checkpoint['val_losses']
-        self.learning_rates = checkpoint['learning_rates']
-        self.train_perplexities = checkpoint['train_perplexities']
-        self.val_perplexities = checkpoint['val_perplexities']
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        self.global_step = checkpoint["global_step"]
+        self.best_val_loss = checkpoint["best_val_loss"]
+        self.train_losses = checkpoint["train_losses"]
+        self.val_losses = checkpoint["val_losses"]
+        self.learning_rates = checkpoint["learning_rates"]
+        self.train_perplexities = checkpoint["train_perplexities"]
+        self.val_perplexities = checkpoint["val_perplexities"]
 
     def plot_training_curves(self, save_path=None):
         """
@@ -407,28 +424,28 @@ class LanguageModelTrainer:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
 
         # Plot losses
-        ax1.plot(self.train_losses, label='Train Loss')
+        ax1.plot(self.train_losses, label="Train Loss")
         if self.val_losses:
-            ax1.plot(self.val_losses, label='Val Loss')
-        ax1.set_title('Training and Validation Loss')
-        ax1.set_xlabel('Steps')
-        ax1.set_ylabel('Loss')
+            ax1.plot(self.val_losses, label="Val Loss")
+        ax1.set_title("Training and Validation Loss")
+        ax1.set_xlabel("Steps")
+        ax1.set_ylabel("Loss")
         ax1.legend()
 
         # Plot perplexities
-        ax2.plot(self.train_perplexities, label='Train Perplexity')
+        ax2.plot(self.train_perplexities, label="Train Perplexity")
         if self.val_perplexities:
-            ax2.plot(self.val_perplexities, label='Val Perplexity')
-        ax2.set_title('Training and Validation Perplexity')
-        ax2.set_xlabel('Steps')
-        ax2.set_ylabel('Perplexity')
+            ax2.plot(self.val_perplexities, label="Val Perplexity")
+        ax2.set_title("Training and Validation Perplexity")
+        ax2.set_xlabel("Steps")
+        ax2.set_ylabel("Perplexity")
         ax2.legend()
 
         # Plot learning rates
-        ax3.plot(self.learning_rates, label='Learning Rate')
-        ax3.set_title('Learning Rate Schedule')
-        ax3.set_xlabel('Steps')
-        ax3.set_ylabel('Learning Rate')
+        ax3.plot(self.learning_rates, label="Learning Rate")
+        ax3.set_title("Learning Rate Schedule")
+        ax3.set_xlabel("Steps")
+        ax3.set_ylabel("Learning Rate")
         ax3.legend()
 
         plt.tight_layout()
@@ -437,6 +454,7 @@ class LanguageModelTrainer:
             plt.savefig(save_path)
         else:
             plt.show()
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -459,31 +477,38 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "train",
                         "signature": "train(self, num_epochs, save_dir='models/language', model_name='language_model')",
-                        "brief_description": "Main training loop with support for validation and checkpointing"
+                        "brief_description": "Main training loop with support for validation and checkpointing",
                     },
                     {
                         "name": "evaluate",
                         "signature": "evaluate(self)",
-                        "brief_description": "Evaluates the model on validation data and returns loss and perplexity"
+                        "brief_description": "Evaluates the model on validation data and returns loss and perplexity",
                     },
                     {
                         "name": "save_model",
                         "signature": "save_model(self, path)",
-                        "brief_description": "Saves the model and training state to disk"
+                        "brief_description": "Saves the model and training state to disk",
                     },
                     {
                         "name": "load_model",
                         "signature": "load_model(self, path)",
-                        "brief_description": "Loads a saved model and training state from disk"
+                        "brief_description": "Loads a saved model and training state from disk",
                     },
                     {
                         "name": "plot_training_curves",
                         "signature": "plot_training_curves(self, save_path=None)",
-                        "brief_description": "Visualizes training metrics including loss, perplexity, and learning rate"
-                    }
+                        "brief_description": "Visualizes training metrics including loss, perplexity, and learning rate",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "numpy", "matplotlib", "tqdm"]
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "torch.nn.functional",
+                    "numpy",
+                    "matplotlib",
+                    "tqdm",
+                ],
             }
         ],
         "external_dependencies": ["torch", "numpy", "matplotlib", "tqdm"],

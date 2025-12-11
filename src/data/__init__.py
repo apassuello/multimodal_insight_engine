@@ -33,7 +33,6 @@ from .sequence_data import TransformerCollator, TransformerDataModule, Transform
 # Import tokenization utilities
 from .tokenization import BaseTokenizer, BPETokenizer, SimpleTokenizer, Vocabulary
 
-
 __all__ = [
     "LanguageModelingDataset",
     "TransformerDataset",
@@ -58,5 +57,5 @@ __all__ = [
     "DEFAULT_PROMPT_TEMPLATE",
     "INSTRUCTION_PROMPT_TEMPLATE",
     "CHAT_PROMPT_TEMPLATE",
-    "CONSTITUTIONAL_CRITIQUE_TEMPLATE"
+    "CONSTITUTIONAL_CRITIQUE_TEMPLATE",
 ]

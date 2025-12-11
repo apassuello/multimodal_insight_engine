@@ -6,7 +6,6 @@ from src.utils.logging import get_logger
 from .europarl_dataset import EuroparlDataset
 from .opensubtitles_dataset import OpenSubtitlesDataset
 
-
 logger = get_logger(__name__)
 
 
@@ -18,7 +17,7 @@ class CombinedTranslationDataset:
         src_lang: str = "de",
         tgt_lang: str = "en",
         datasets: Optional[Dict[str, int]] = None,  # Dict of dataset_name: max_examples
-        seed: int = 42
+        seed: int = 42,
     ):
         """
         Initialize the combined dataset.
@@ -41,7 +40,7 @@ class CombinedTranslationDataset:
         if datasets is None:
             datasets = {
                 "europarl": 3,  # Load 3 examples from Europarl
-                "opensubtitles": 2  # Load 2 examples from OpenSubtitles
+                "opensubtitles": 2,  # Load 2 examples from OpenSubtitles
             }
 
         # Load all specified datasets
@@ -70,6 +69,7 @@ class CombinedTranslationDataset:
 
         logger.info(f"Combined dataset contains {len(self.src_data)} parallel sentences")
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -91,11 +91,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, src_lang: str = 'de', tgt_lang: str = 'en', datasets: Dict[str, int] = None, seed: int = 42)",
-                        "brief_description": "Initialize the combined dataset with configurable sources and sample counts"
+                        "brief_description": "Initialize the combined dataset with configurable sources and sample counts",
                     }
                 ],
                 "inheritance": "",
-                "dependencies": [".europarl_dataset", ".opensubtitles_dataset"]
+                "dependencies": [".europarl_dataset", ".opensubtitles_dataset"],
             }
         ],
         "external_dependencies": [],

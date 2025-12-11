@@ -228,8 +228,7 @@ class TestMetricsCollector:
         """Test plotting and saving to directory."""
         for i in range(5):
             metrics_collector.update(
-                {"loss": 0.5 - i * 0.1, "accuracy": 0.5 + i * 0.1},
-                prefix="train"
+                {"loss": 0.5 - i * 0.1, "accuracy": 0.5 + i * 0.1}, prefix="train"
             )
 
         metrics_collector.plot_history(save_dir=temp_dir)
@@ -259,10 +258,7 @@ class TestMetricsCollector:
         loss_tensor = torch.tensor(0.5)
         accuracy_tensor = torch.tensor(0.85)
 
-        metrics_collector.update(
-            {"loss": loss_tensor, "accuracy": accuracy_tensor},
-            prefix="train"
-        )
+        metrics_collector.update({"loss": loss_tensor, "accuracy": accuracy_tensor}, prefix="train")
 
         # Should work fine with tensors
         assert len(metrics_collector.history["train_loss"]) == 1

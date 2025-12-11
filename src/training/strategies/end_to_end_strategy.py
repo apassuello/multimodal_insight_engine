@@ -14,7 +14,6 @@ from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.gradient_handler import GradientHandler
 from src.utils.learningrate_scheduler import WarmupCosineScheduler
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -132,9 +131,7 @@ class EndToEndStrategy(TrainingStrategy):
         Store initial model state for feature consistency loss if needed.
         This function is a stub for now - feature consistency is disabled.
         """
-        logger.info(
-            "Feature consistency is disabled - skipping reference model creation"
-        )
+        logger.info("Feature consistency is disabled - skipping reference model creation")
         self.reference_model = None
 
     def _configure_loss_function(self) -> None:
@@ -147,9 +144,7 @@ class EndToEndStrategy(TrainingStrategy):
         temperature = self.config.get("temperature", 0.05)  # Slightly lower temperature
 
         # Log message about the loss setup
-        logger.debug(
-            f"HardNegativeMiningContrastiveLoss initialized with dimension: {model_dim}"
-        )
+        logger.debug(f"HardNegativeMiningContrastiveLoss initialized with dimension: {model_dim}")
 
         # Create primary loss (hard negative mining contrastive loss)
         primary_loss = HardNegativeMiningContrastiveLoss(
@@ -161,9 +156,7 @@ class EndToEndStrategy(TrainingStrategy):
 
         # Just use the hard negative mining loss - disable feature consistency for now
         # Feature consistency is complicated and not essential for the demo
-        logger.info(
-            f"Using HardNegativeMiningContrastiveLoss with temperature={temperature}"
-        )
+        logger.info(f"Using HardNegativeMiningContrastiveLoss with temperature={temperature}")
         self.loss_fn = primary_loss
 
         # Disable feature consistency to avoid issues
@@ -414,16 +407,10 @@ class EndToEndStrategy(TrainingStrategy):
             Tuple of (optimizer, scheduler)
         """
         # Extract configuration
-        base_lr = self.config.get(
-            "learning_rate", 2e-5
-        )  # Very low default LR for this stage
+        base_lr = self.config.get("learning_rate", 2e-5)  # Very low default LR for this stage
         weight_decay = self.config.get("weight_decay", 0.01)
-        warmup_steps = self.config.get(
-            "warmup_steps", 100
-        )  # Shorter warmup for fine-tuning
-        total_steps = self.config.get(
-            "total_steps", 3000
-        )  # Typically shorter than earlier stages
+        warmup_steps = self.config.get("warmup_steps", 100)  # Shorter warmup for fine-tuning
+        total_steps = self.config.get("total_steps", 3000)  # Typically shorter than earlier stages
 
         # Create a dictionary to track which parameters are already assigned to a group
         assigned_params = set()
@@ -465,8 +452,7 @@ class EndToEndStrategy(TrainingStrategy):
         # Cross-modal components: low learning rate
         cross_modal_params = get_unassigned_params(
             lambda n: any(
-                x in n
-                for x in ["cross_attention", "cross_modal", "fusion", "interaction"]
+                x in n for x in ["cross_attention", "cross_modal", "fusion", "interaction"]
             )
         )
         if cross_modal_params:
@@ -492,9 +478,7 @@ class EndToEndStrategy(TrainingStrategy):
             )
 
         # Other parameters: base learning rate
-        other_params = get_unassigned_params(
-            lambda n: True
-        )  # Get all remaining parameters
+        other_params = get_unassigned_params(lambda n: True)  # Get all remaining parameters
         if other_params:
             param_groups.append(
                 {
@@ -599,9 +583,7 @@ class EndToEndStrategy(TrainingStrategy):
             if self.scheduler is not None:
                 self.scheduler.step()
 
-    def log_dict(
-        self, metrics, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True
-    ):
+    def log_dict(self, metrics, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True):
         """Log metrics
 
         Args:
@@ -614,9 +596,7 @@ class EndToEndStrategy(TrainingStrategy):
         # Just print the metrics in this simplified version
         if on_step:
             metrics_str = " ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
-            if (
-                self.train_step_counter % 10 == 0
-            ):  # Only print every 10 steps to reduce output
+            if self.train_step_counter % 10 == 0:  # Only print every 10 steps to reduce output
                 logger.info(f"Step {self.train_step_counter}: {metrics_str}")
 
     def on_train_epoch_end(self) -> None:

@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import os
 
@@ -53,14 +52,10 @@ def transformer_collate_fn(
 
     return {
         "src": src_batch.to(
-            torch.device("mps")
-            if torch.backends.mps.is_available()
-            else src_batch.device
+            torch.device("mps") if torch.backends.mps.is_available() else src_batch.device
         ),
         "tgt": tgt_batch.to(
-            torch.device("mps")
-            if torch.backends.mps.is_available()
-            else tgt_batch.device
+            torch.device("mps") if torch.backends.mps.is_available() else tgt_batch.device
         ),
     }
 
@@ -132,11 +127,7 @@ class TransformerDataset(Dataset):
         tgt_tensor = torch.LongTensor(tgt_seq)
 
         # Move to appropriate device
-        device = (
-            torch.device("mps")
-            if torch.backends.mps.is_available()
-            else torch.device("cpu")
-        )
+        device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
         return {
             "src_tokens": src_tensor.to(device),
@@ -411,9 +402,7 @@ class TransformerDataModule:
             return
 
         # Calculate new stage based on epoch
-        stages: int = (
-            int(self.curriculum_stages) if self.curriculum_stages is not None else 1
-        )
+        stages: int = int(self.curriculum_stages) if self.curriculum_stages is not None else 1
         new_stage: int = min(int(epoch), max(0, stages - 1))
 
         # Only update if dataset supports curriculum learning

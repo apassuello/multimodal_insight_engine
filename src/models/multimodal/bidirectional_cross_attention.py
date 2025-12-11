@@ -92,9 +92,7 @@ class BidirectionalCrossAttention(nn.Module):
 
         # Residual connections require input projections if dimensions don't match
         self.vision_input_proj = (
-            nn.Linear(vision_dim, fusion_dim)
-            if vision_dim != fusion_dim
-            else nn.Identity()
+            nn.Linear(vision_dim, fusion_dim) if vision_dim != fusion_dim else nn.Identity()
         )
         self.text_input_proj = (
             nn.Linear(text_dim, fusion_dim) if text_dim != fusion_dim else nn.Identity()

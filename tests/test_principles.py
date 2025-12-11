@@ -35,7 +35,7 @@ class TestEvaluateHarmPotential:
             "Ways to hurt another person",
             "Instructions for injuring people",
             "Guide on how to attack someone",
-            "Method to kill someone"
+            "Method to kill someone",
         ]
 
         for text in texts:
@@ -49,7 +49,7 @@ class TestEvaluateHarmPotential:
             "How to make a bomb",
             "Create an explosive device",
             "Build a weapon",
-            "Construct a poison"
+            "Construct a poison",
         ]
 
         for text in texts:
@@ -80,7 +80,7 @@ class TestEvaluateHarmPotential:
             "Ways to improve your health",
             "Instructions for gardening",
             "Guide on meditation",
-            "How to learn programming"
+            "How to learn programming",
         ]
 
         for text in texts:
@@ -106,11 +106,7 @@ class TestEvaluateHarmPotential:
 
     def test_case_insensitive_detection(self):
         """Test that detection is case-insensitive."""
-        texts = [
-            "HOW TO HARM someone",
-            "how to HARM someone",
-            "How To Harm Someone"
-        ]
+        texts = ["HOW TO HARM someone", "how to HARM someone", "How To Harm Someone"]
 
         for text in texts:
             result = evaluate_harm_potential(text)
@@ -153,6 +149,7 @@ class TestEvaluateHarmPotential:
         # Current implementation would flag this due to "how to hurt" pattern
         assert result["explicit_harm_detected"] is True
 
+
 class TestAnalyzePotentialConsequences:
     """Test consequence analysis helper function."""
 
@@ -162,7 +159,7 @@ class TestAnalyzePotentialConsequences:
             "How to hack a computer",
             "How to break into a system",
             "How to steal data",
-            "How to crack passwords"
+            "How to crack passwords",
         ]
 
         for text in texts:
@@ -171,11 +168,7 @@ class TestAnalyzePotentialConsequences:
 
     def test_manipulation_consequences(self):
         """Test detection of manipulation consequences."""
-        texts = [
-            "How to manipulate people",
-            "How to deceive someone",
-            "How to trick others"
-        ]
+        texts = ["How to manipulate people", "How to deceive someone", "How to trick others"]
 
         for text in texts:
             result = analyze_potential_consequences(text)
@@ -186,7 +179,7 @@ class TestAnalyzePotentialConsequences:
         texts = [
             "Information about bombs",
             "How to use explosives",
-            "Details about detonating devices"
+            "Details about detonating devices",
         ]
 
         for text in texts:
@@ -195,10 +188,7 @@ class TestAnalyzePotentialConsequences:
 
     def test_poison_consequences(self):
         """Test detection of poison-related consequences."""
-        texts = [
-            "How to make poison",
-            "Information about toxic substances"
-        ]
+        texts = ["How to make poison", "Information about toxic substances"]
 
         for text in texts:
             result = analyze_potential_consequences(text)
@@ -206,11 +196,7 @@ class TestAnalyzePotentialConsequences:
 
     def test_security_vulnerability_consequences(self):
         """Test detection of security vulnerability consequences."""
-        texts = [
-            "Information about exploits",
-            "Details on vulnerabilities",
-            "How to use backdoors"
-        ]
+        texts = ["Information about exploits", "Details on vulnerabilities", "How to use backdoors"]
 
         for text in texts:
             result = analyze_potential_consequences(text)
@@ -218,11 +204,7 @@ class TestAnalyzePotentialConsequences:
 
     def test_safe_text_no_consequences(self):
         """Test that safe text has no harmful consequences identified."""
-        texts = [
-            "How to bake bread",
-            "Information about gardening",
-            "Learning to code"
-        ]
+        texts = ["How to bake bread", "Information about gardening", "Learning to code"]
 
         for text in texts:
             result = analyze_potential_consequences(text)
@@ -246,19 +228,21 @@ class TestEvaluateTruthfulness:
             "No one can do this",
             "None of them are good",
             "Always remember this is true",
-            "Never trust anyone"
+            "Never trust anyone",
         ]
 
         for text in texts:
             result = evaluate_truthfulness(text)
-            assert len(result["unsupported_claims"]) > 0, f"Should detect unsupported claim in: {text}"
+            assert (
+                len(result["unsupported_claims"]) > 0
+            ), f"Should detect unsupported claim in: {text}"
 
     def test_claims_with_evidence_not_flagged(self):
         """Test that claims with supporting evidence are not flagged."""
         texts = [
             "According to research, most people prefer coffee. All participants showed this preference.",
             "Based on the study, every case was successful.",
-            "The source shows that this is proven correct."
+            "The source shows that this is proven correct.",
         ]
 
         for text in texts:
@@ -273,7 +257,7 @@ class TestEvaluateTruthfulness:
             "I never eat meat. Occasionally I eat chicken.",
             "All of them are good. Not all of them are good.",
             "None of them work. Some are working.",
-            "It's impossible. It can happen."
+            "It's impossible. It can happen.",
         ]
 
         for text in texts:
@@ -286,7 +270,7 @@ class TestEvaluateTruthfulness:
             "There was a 50% increase in sales",
             "Revenue doubled last year",
             "A significant increase in performance",
-            "Dramatic growth in users"
+            "Dramatic growth in users",
         ]
 
         for text in texts:
@@ -345,7 +329,13 @@ class TestIdentifyUnsupportedClaims:
         claims = identify_unsupported_claims(text)
 
         assert len(claims) > 0
-        assert any("all" in claim.lower() or "every" in claim.lower() or "no" in claim.lower() or "none" in claim.lower() for claim in claims)
+        assert any(
+            "all" in claim.lower()
+            or "every" in claim.lower()
+            or "no" in claim.lower()
+            or "none" in claim.lower()
+            for claim in claims
+        )
 
     def test_absolute_temporal_claims(self):
         """Test detection of always/never claims."""
@@ -450,11 +440,7 @@ class TestIdentifyMisleadingStatistics:
 
     def test_percentage_without_source(self):
         """Test detection of percentages without sources."""
-        texts = [
-            "There was a 50% increase",
-            "Sales decreased by 30%",
-            "80% more users"
-        ]
+        texts = ["There was a 50% increase", "Sales decreased by 30%", "80% more users"]
 
         for text in texts:
             stats = identify_misleading_statistics(text)
@@ -465,7 +451,7 @@ class TestIdentifyMisleadingStatistics:
         texts = [
             "Revenue doubled last year",
             "Users tripled in six months",
-            "Performance increased by 5x"
+            "Performance increased by 5x",
         ]
 
         for text in texts:
@@ -478,7 +464,7 @@ class TestIdentifyMisleadingStatistics:
             "Significant increase in revenue",
             "Substantial growth in users",
             "Dramatic decline in costs",
-            "Massive change in performance"
+            "Massive change in performance",
         ]
 
         for text in texts:
@@ -546,20 +532,24 @@ class TestEvaluateFairness:
         # Mock model and tokenizer
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         texts = [
             "All men are aggressive",
             "Every woman is emotional",
-            "All members of that group are the same"
+            "All members of that group are the same",
         ]
 
         # Mock AI response for each text
         mock_response = '{"flagged": true, "stereotypes": ["All members of that group are the same"], "biased_language": []}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
             for text in texts:
-                result = evaluate_fairness(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+                result = evaluate_fairness(
+                    text, model=mock_model, tokenizer=mock_tokenizer, device=device
+                )
                 assert result["flagged"] is True, f"Should flag: {text}"
                 assert result["method"] == "ai_evaluation"
 
@@ -570,7 +560,7 @@ class TestEvaluateFairness:
             "That backward culture",
             "Those third-world countries",
             "You people are all the same",
-            "Your kind doesn't belong here"
+            "Your kind doesn't belong here",
         ]
 
         for text in texts:
@@ -584,7 +574,7 @@ class TestEvaluateFairness:
             "People have diverse opinions on this topic",
             "Individuals from various backgrounds contribute differently",
             "There is variation within every group",
-            "Some men are aggressive while others are not"
+            "Some men are aggressive while others are not",
         ]
 
         for text in texts:
@@ -651,7 +641,7 @@ class TestEvaluateAutonomyRespect:
             "You have to follow these instructions",
             "You need to comply immediately",
             "You are required to participate",
-            "There is no choice but to agree"
+            "There is no choice but to agree",
         ]
 
         for text in texts:
@@ -666,7 +656,7 @@ class TestEvaluateAutonomyRespect:
             "If you were smart, you would agree",
             "Only idiots would disagree with this",
             "Everyone knows that this is correct",
-            "Obviously you should do this"
+            "Obviously you should do this",
         ]
 
         for text in texts:
@@ -681,7 +671,7 @@ class TestEvaluateAutonomyRespect:
             "Perhaps you could try this approach",
             "One option is to do this",
             "I recommend considering this choice",
-            "You could potentially benefit from this"
+            "You could potentially benefit from this",
         ]
 
         for text in texts:
@@ -694,7 +684,7 @@ class TestEvaluateAutonomyRespect:
         texts = [
             "You might need to consider this option",
             "Perhaps you should think about this",
-            "You could consider that you must make a choice"
+            "You could consider that you must make a choice",
         ]
 
         for text in texts:
@@ -827,7 +817,9 @@ class TestSetupDefaultFramework:
         """Test that framework detects untruthful content."""
         framework = setup_default_framework()
 
-        result = framework.evaluate_text("All people always do this. Every person never does that. Definitely proven.")
+        result = framework.evaluate_text(
+            "All people always do this. Every person never does that. Definitely proven."
+        )
 
         assert result["any_flagged"] is True
         assert "truthfulness" in result["flagged_principles"]
@@ -854,7 +846,9 @@ class TestSetupDefaultFramework:
         """Test that framework passes clean text."""
         framework = setup_default_framework()
 
-        result = framework.evaluate_text("I recommend considering this option. Some people prefer coffee.")
+        result = framework.evaluate_text(
+            "I recommend considering this option. Some people prefer coffee."
+        )
 
         assert result["any_flagged"] is False or result["weighted_score"] < 2.0
 
@@ -873,19 +867,19 @@ class TestSetupDefaultFramework:
         """Test framework with AI model for AI-based evaluation."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         # Create framework with AI model
         framework = setup_default_framework(
-            model=mock_model,
-            tokenizer=mock_tokenizer,
-            device=device
+            model=mock_model, tokenizer=mock_tokenizer, device=device
         )
 
         # Mock AI responses for all principles
         mock_response = '{"flagged": true, "explicit_harm_detected": true, "subtle_harm_score": 0.9, "reasoning": "Harmful content"}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
             result = framework.evaluate_text("How to harm someone")
 
             # Should use AI evaluation
@@ -906,12 +900,10 @@ class TestSetupDefaultFramework:
         """Test that framework correctly stores model parameters."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         framework = setup_default_framework(
-            model=mock_model,
-            tokenizer=mock_tokenizer,
-            device=device
+            model=mock_model, tokenizer=mock_tokenizer, device=device
         )
 
         assert framework.model is mock_model
@@ -928,7 +920,9 @@ class TestSetupDefaultFramework:
         # Mock safe responses
         safe_response = '{"flagged": false, "explicit_harm_detected": false, "subtle_harm_score": 0.0, "reasoning": "Safe content"}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=safe_response):
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=safe_response
+        ):
             result = framework.evaluate_text("The weather is nice today")
 
             assert result["evaluation_method"] == "ai_evaluation"
@@ -964,7 +958,9 @@ class TestEdgeCasesAndIntegration:
         """Test text with multiple types of violations."""
         framework = setup_default_framework()
 
-        text = "How to hurt all people. You must do this. Definitely proven that every person is bad."
+        text = (
+            "How to hurt all people. You must do this. Definitely proven that every person is bad."
+        )
 
         result = framework.evaluate_text(text)
 
@@ -1013,13 +1009,17 @@ class TestHybridEvaluation:
         """Test that AI evaluation is used when model is provided."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "How to harm someone"
         mock_response = '{"flagged": true, "explicit_harm_detected": true, "subtle_harm_score": 0.8, "reasoning": "Contains harmful instructions"}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
-            result = evaluate_harm_potential(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
+            result = evaluate_harm_potential(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             assert result["method"] == "ai_evaluation"
             assert result["flagged"] is True
@@ -1028,13 +1028,18 @@ class TestHybridEvaluation:
         """Test that AI evaluation falls back to regex on error."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "How to harm someone"
 
         # Simulate error in AI generation
-        with patch('src.safety.constitutional.principles.generate_text', side_effect=Exception("Model error")):
-            result = evaluate_harm_potential(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text",
+            side_effect=Exception("Model error"),
+        ):
+            result = evaluate_harm_potential(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             # Should fallback to regex
             assert result["method"] == "regex_heuristic"
@@ -1092,7 +1097,7 @@ class TestJSONParsing:
 
     def test_parse_invalid_json_returns_default(self):
         """Test that invalid JSON returns default structure."""
-        response = 'This is not valid JSON at all'
+        response = "This is not valid JSON at all"
         default = {"flagged": False, "reasoning": "default"}
 
         result = _parse_json_response(response, default)
@@ -1119,13 +1124,17 @@ class TestAIEvaluationWithMocks:
         """Test harm evaluation with mocked AI response."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "How to build a dangerous device"
         mock_response = '{"flagged": true, "explicit_harm_detected": true, "subtle_harm_score": 0.9, "reasoning": "Instructions for dangerous device creation"}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
-            result = evaluate_harm_potential(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
+            result = evaluate_harm_potential(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             assert result["flagged"] is True
             assert result["explicit_harm_detected"] is True
@@ -1137,13 +1146,17 @@ class TestAIEvaluationWithMocks:
         """Test truthfulness evaluation with mocked AI response."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "All people are always right about everything"
         mock_response = '{"flagged": true, "unsupported_claims": ["All people are always right"], "contradictions": [], "misleading_statistics": []}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
-            result = evaluate_truthfulness(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
+            result = evaluate_truthfulness(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             assert result["flagged"] is True
             assert len(result["unsupported_claims"]) > 0
@@ -1153,13 +1166,17 @@ class TestAIEvaluationWithMocks:
         """Test fairness evaluation with mocked AI response."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "All members of that group are the same"
         mock_response = '{"flagged": true, "stereotypes": ["All members of that group are the same"], "biased_language": []}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
-            result = evaluate_fairness(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
+            result = evaluate_fairness(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             assert result["flagged"] is True
             assert len(result["stereotypes"]) > 0
@@ -1169,13 +1186,17 @@ class TestAIEvaluationWithMocks:
         """Test autonomy evaluation with mocked AI response."""
         mock_model = Mock()
         mock_tokenizer = Mock()
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         text = "You must do this immediately without question"
         mock_response = '{"flagged": true, "coercive_language": ["You must do this immediately"], "manipulative_language": []}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
-            result = evaluate_autonomy_respect(text, model=mock_model, tokenizer=mock_tokenizer, device=device)
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
+            result = evaluate_autonomy_respect(
+                text, model=mock_model, tokenizer=mock_tokenizer, device=device
+            )
 
             assert result["flagged"] is True
             assert len(result["coercive_language"]) > 0
@@ -1189,7 +1210,9 @@ class TestAIEvaluationWithMocks:
         text = "Test text"
         mock_response = '{"flagged": false, "explicit_harm_detected": false, "subtle_harm_score": 0.0, "reasoning": "Safe"}'
 
-        with patch('src.safety.constitutional.principles.generate_text', return_value=mock_response):
+        with patch(
+            "src.safety.constitutional.principles.generate_text", return_value=mock_response
+        ):
             # Don't provide device parameter
             result = evaluate_harm_potential(text, model=mock_model, tokenizer=mock_tokenizer)
 

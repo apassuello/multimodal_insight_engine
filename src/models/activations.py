@@ -39,6 +39,7 @@ class GELU(nn.Module):
         """
         return F.gelu(x)
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -60,20 +61,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self)",
-                        "brief_description": "Initialize the GELU activation layer"
+                        "brief_description": "Initialize the GELU activation layer",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Apply the GELU activation function to the input tensor"
-                    }
+                        "brief_description": "Apply the GELU activation function to the input tensor",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
             }
         ],
         "external_dependencies": ["torch"],
         "complexity_score": 1,  # Very simple module with a single activation function
     }
+
 
 # Additional activations as needed

@@ -27,7 +27,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -78,9 +77,7 @@ class Evaluator:
         self.model.eval()
 
         # Collect all embeddings first
-        embeddings = self._collect_embeddings(
-            dataloader, prepare_model_inputs_fn, to_device_fn
-        )
+        embeddings = self._collect_embeddings(dataloader, prepare_model_inputs_fn, to_device_fn)
 
         if embeddings is None:
             logger.error("No embeddings collected during evaluation")
@@ -90,14 +87,14 @@ class Evaluator:
         all_image_embeddings, all_text_embeddings, all_original_indices = embeddings
 
         # Compute global similarity matrix
-        logger.info(f"Computing global similarity matrix of shape "
-                   f"{all_image_embeddings.shape[0]}×{all_text_embeddings.shape[0]}...")
+        logger.info(
+            f"Computing global similarity matrix of shape "
+            f"{all_image_embeddings.shape[0]}×{all_text_embeddings.shape[0]}..."
+        )
         similarity = torch.matmul(all_image_embeddings, all_text_embeddings.T)
 
         # Compute global retrieval metrics
-        global_metrics = self._compute_global_metrics(
-            similarity, all_original_indices
-        )
+        global_metrics = self._compute_global_metrics(similarity, all_original_indices)
 
         # Compute in-batch metrics for comparison
         if compute_in_batch_comparison:
@@ -154,7 +151,11 @@ class Evaluator:
                 # Extract and process image features
                 image_features = self._extract_features(
                     outputs,
-                    preferred_keys=["vision_features_enhanced", "image_features", "vision_features"]
+                    preferred_keys=[
+                        "vision_features_enhanced",
+                        "image_features",
+                        "vision_features",
+                    ],
                 )
 
                 if image_features is not None:
@@ -163,8 +164,7 @@ class Evaluator:
 
                 # Extract and process text features
                 text_features = self._extract_features(
-                    outputs,
-                    preferred_keys=["text_features_enhanced", "text_features"]
+                    outputs, preferred_keys=["text_features_enhanced", "text_features"]
                 )
 
                 if text_features is not None:
@@ -186,8 +186,10 @@ class Evaluator:
 
         # Ensure we have indices for all samples
         if len(all_original_indices) != len(all_image_embeddings):
-            logger.warning(f"Mismatch between indices ({len(all_original_indices)}) "
-                          f"and embeddings ({len(all_image_embeddings)})")
+            logger.warning(
+                f"Mismatch between indices ({len(all_original_indices)}) "
+                f"and embeddings ({len(all_image_embeddings)})"
+            )
             all_original_indices = list(range(len(all_image_embeddings)))
 
         return all_image_embeddings, all_text_embeddings, all_original_indices
@@ -393,14 +395,18 @@ class Evaluator:
     def _print_global_metrics(self, metrics: Dict[str, float]) -> None:
         """Print global evaluation metrics."""
         logger.info("\n*** GLOBAL EVALUATION METRICS (USE THESE FOR FINAL RESULTS) ***")
-        logger.info(f"  Accuracy: {metrics['global_accuracy']:.4f} "
-              f"(I2T: {metrics['global_i2t_accuracy']:.4f}, "
-              f"T2I: {metrics['global_t2i_accuracy']:.4f})")
+        logger.info(
+            f"  Accuracy: {metrics['global_accuracy']:.4f} "
+            f"(I2T: {metrics['global_i2t_accuracy']:.4f}, "
+            f"T2I: {metrics['global_t2i_accuracy']:.4f})"
+        )
 
         for k in self.recall_k_values:
-            logger.info(f"  Recall@{k}: {metrics[f'global_avg_recall@{k}']:.4f} "
-                  f"(I2T: {metrics[f'global_i2t_recall@{k}']:.4f}, "
-                  f"T2I: {metrics[f'global_t2i_recall@{k}']:.4f})")
+            logger.info(
+                f"  Recall@{k}: {metrics[f'global_avg_recall@{k}']:.4f} "
+                f"(I2T: {metrics[f'global_i2t_recall@{k}']:.4f}, "
+                f"T2I: {metrics[f'global_t2i_recall@{k}']:.4f})"
+            )
 
     def _print_metric_comparison(
         self, global_metrics: Dict[str, float], in_batch_metrics: Dict[str, float]
@@ -410,19 +416,23 @@ class Evaluator:
         logger.info("WARNING: In-batch metrics are often misleadingly high!")
 
         # Compare accuracy
-        global_acc = global_metrics['global_accuracy']
-        in_batch_acc = in_batch_metrics['accuracy']
+        global_acc = global_metrics["global_accuracy"]
+        in_batch_acc = in_batch_metrics["accuracy"]
         acc_ratio = in_batch_acc / max(1e-5, global_acc)
-        logger.info(f"  Accuracy: In-Batch={in_batch_acc:.4f}, Global={global_acc:.4f}, "
-              f"Ratio={acc_ratio:.1f}x higher (artificial)")
+        logger.info(
+            f"  Accuracy: In-Batch={in_batch_acc:.4f}, Global={global_acc:.4f}, "
+            f"Ratio={acc_ratio:.1f}x higher (artificial)"
+        )
 
         # Compare Recall@K
         for k in self.recall_k_values:
-            in_batch = in_batch_metrics[f'avg_recall@{k}']
-            global_val = global_metrics[f'global_avg_recall@{k}']
+            in_batch = in_batch_metrics[f"avg_recall@{k}"]
+            global_val = global_metrics[f"global_avg_recall@{k}"]
             ratio = in_batch / max(1e-5, global_val)
-            logger.info(f"  Recall@{k}: In-Batch={in_batch:.4f}, Global={global_val:.4f}, "
-                  f"Ratio={ratio:.1f}x higher (artificial)")
+            logger.info(
+                f"  Recall@{k}: In-Batch={in_batch:.4f}, Global={global_val:.4f}, "
+                f"Ratio={ratio:.1f}x higher (artificial)"
+            )
 
     def compute_retrieval_metrics(
         self,

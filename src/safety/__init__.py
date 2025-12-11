@@ -5,7 +5,6 @@ from .filter import SafetyFilter
 from .harness import SafetyTestHarness
 from .integration import SafetyAugmentedModel
 
-
 # Optional constitutional AI components
 try:
     from .constitutional import (
@@ -16,6 +15,7 @@ try:
         RLAIFTrainer,
         setup_default_framework,
     )
+
     CONSTITUTIONAL_AI_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_AI_AVAILABLE = False

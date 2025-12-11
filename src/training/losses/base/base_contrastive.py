@@ -25,7 +25,7 @@ class BaseContrastiveLoss(
     ProjectionMixin,
     HardNegativeMiningMixin,
     nn.Module,
-    ABC
+    ABC,
 ):
     """
     Base class for all contrastive learning losses.
@@ -54,7 +54,7 @@ class BaseContrastiveLoss(
         use_hard_negatives: bool = False,
         hard_negative_weight: float = 1.0,
         reduction: str = "mean",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize base contrastive loss.
@@ -80,15 +80,15 @@ class BaseContrastiveLoss(
             use_hard_negatives=use_hard_negatives,
             hard_negative_weight=hard_negative_weight,
         )
-        assert reduction in ["mean", "sum", "none"], \
-            f"reduction must be 'mean', 'sum', or 'none', got {reduction}"
+        assert reduction in [
+            "mean",
+            "sum",
+            "none",
+        ], f"reduction must be 'mean', 'sum', or 'none', got {reduction}"
         self.reduction = reduction
 
     def compute_similarity(
-        self,
-        features1: torch.Tensor,
-        features2: torch.Tensor,
-        normalize: bool = True
+        self, features1: torch.Tensor, features2: torch.Tensor, normalize: bool = True
     ) -> torch.Tensor:
         """
         Compute pairwise similarity between two sets of features.
@@ -117,7 +117,7 @@ class BaseContrastiveLoss(
         self,
         batch_size: int,
         match_ids: Optional[List[str]] = None,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
     ) -> torch.Tensor:
         """
         Create boolean mask indicating positive pairs.
@@ -131,7 +131,7 @@ class BaseContrastiveLoss(
             Boolean mask [batch_size, batch_size] where True indicates positive pairs
         """
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
 
         if match_ids is None:
             # Default: diagonal elements are positives (self-matching)
@@ -150,7 +150,7 @@ class BaseContrastiveLoss(
         self,
         similarity: torch.Tensor,
         positive_mask: torch.Tensor,
-        negative_mask: Optional[torch.Tensor] = None
+        negative_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Compute InfoNCE (Normalized Temperature-scaled Cross Entropy) loss.
@@ -195,10 +195,7 @@ class BaseContrastiveLoss(
 
             # For each positive, compute loss
             for pos in positives:
-                denominator = torch.logsumexp(
-                    torch.cat([pos.unsqueeze(0), negatives]),
-                    dim=0
-                )
+                denominator = torch.logsumexp(torch.cat([pos.unsqueeze(0), negatives]), dim=0)
                 loss = -pos + denominator
                 losses.append(loss)
 
@@ -215,9 +212,7 @@ class BaseContrastiveLoss(
             return losses
 
     def nt_xent_loss(
-        self,
-        features: torch.Tensor,
-        labels: Optional[torch.Tensor] = None
+        self, features: torch.Tensor, labels: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Compute NT-Xent (Normalized Temperature-scaled Cross Entropy) loss.
@@ -243,7 +238,9 @@ class BaseContrastiveLoss(
 
         # Create positive pair mask
         # In SimCLR, sample i and sample i+batch_size are augmented versions
-        positive_mask = torch.zeros(2 * batch_size, 2 * batch_size, dtype=torch.bool, device=features.device)
+        positive_mask = torch.zeros(
+            2 * batch_size, 2 * batch_size, dtype=torch.bool, device=features.device
+        )
         for i in range(batch_size):
             positive_mask[i, i + batch_size] = True
             positive_mask[i + batch_size, i] = True
@@ -255,11 +252,7 @@ class BaseContrastiveLoss(
         return self.info_nce_loss(similarity, positive_mask, negative_mask)
 
     @abstractmethod
-    def forward(
-        self,
-        *args,
-        **kwargs
-    ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+    def forward(self, *args, **kwargs) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         """
         Compute the loss.
 
@@ -270,11 +263,7 @@ class BaseContrastiveLoss(
         """
         raise NotImplementedError("Subclasses must implement forward()")
 
-    def reduce_loss(
-        self,
-        loss: torch.Tensor,
-        reduction: Optional[str] = None
-    ) -> torch.Tensor:
+    def reduce_loss(self, loss: torch.Tensor, reduction: Optional[str] = None) -> torch.Tensor:
         """
         Apply reduction to loss values.
 

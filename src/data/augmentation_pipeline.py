@@ -15,8 +15,8 @@ import torchvision.transforms as T
 from PIL import Image, ImageOps
 from torchvision.transforms import functional as F
 
-
 logger = logging.getLogger(__name__)
+
 
 class MultimodalAugmentationPipeline:
     """
@@ -37,7 +37,7 @@ class MultimodalAugmentationPipeline:
         random_erasing_scale: Tuple[float, float] = (0.02, 0.33),
         color_jitter_prob: float = 0.0,
         random_resized_crop: bool = True,
-        debug_mode: bool = False
+        debug_mode: bool = False,
     ):
         """
         Initialize the multimodal augmentation pipeline.
@@ -88,11 +88,7 @@ class MultimodalAugmentationPipeline:
             # Random resized crop (respects aspect ratio while zooming in)
             if random_resized_crop:
                 base_transforms.append(
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=crop_scale,
-                        ratio=(3/4, 4/3)
-                    )
+                    T.RandomResizedCrop(image_size, scale=crop_scale, ratio=(3 / 4, 4 / 3))
                 )
             else:
                 # If not using random crop, use resize and random crop
@@ -107,7 +103,7 @@ class MultimodalAugmentationPipeline:
                 brightness=color_strength,
                 contrast=color_strength,
                 saturation=color_strength,
-                hue=color_strength/2  # Hue usually has smaller range
+                hue=color_strength / 2,  # Hue usually has smaller range
             )
 
             # Apply color jitter with specified probability
@@ -122,17 +118,16 @@ class MultimodalAugmentationPipeline:
 
             # Gaussian blur
             base_transforms.append(
-                T.RandomApply([T.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=distortion_strength)
+                T.RandomApply(
+                    [T.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=distortion_strength
+                )
             )
 
             # Random erasing (acts like localized occlusion/dropout)
             if erasing_prob > 0:
                 base_transforms.append(
                     T.RandomErasing(
-                        p=erasing_prob,
-                        scale=random_erasing_scale,
-                        ratio=(0.3, 3.3),
-                        value=0
+                        p=erasing_prob, scale=random_erasing_scale, ratio=(0.3, 3.3), value=0
                     )
                 )
 
@@ -145,10 +140,10 @@ class MultimodalAugmentationPipeline:
         if text_augs is None:
             self.text_augs = [
                 DropWords(prob=distortion_strength),
-                ShuffleWords(prob=distortion_strength/2),
-                ReplaceWithSynonym(prob=distortion_strength/3),
-                ChangeWordOrder(prob=distortion_strength/2),
-                AddMisspelling(prob=distortion_strength/3)
+                ShuffleWords(prob=distortion_strength / 2),
+                ReplaceWithSynonym(prob=distortion_strength / 3),
+                ChangeWordOrder(prob=distortion_strength / 2),
+                AddMisspelling(prob=distortion_strength / 3),
             ]
         else:
             self.text_augs = text_augs
@@ -258,8 +253,7 @@ class MultimodalAugmentationPipeline:
             return updated_data
 
     def __call__(
-        self,
-        batch: Dict[str, Union[torch.Tensor, Dict]]
+        self, batch: Dict[str, Union[torch.Tensor, Dict]]
     ) -> Dict[str, Union[torch.Tensor, Dict]]:
         """
         Apply augmentations to a batch of multimodal data.
@@ -304,7 +298,11 @@ class MultimodalAugmentationPipeline:
                     # Apply augmentation to each image separately
                     augmented = []
                     for img in batch["image"]:
-                        if self.consistency_mode == "matched" and apply_both or self.consistency_mode != "matched":
+                        if (
+                            self.consistency_mode == "matched"
+                            and apply_both
+                            or self.consistency_mode != "matched"
+                        ):
                             augmented.append(self.augment_image(img))
                         else:
                             augmented.append(img)
@@ -319,7 +317,11 @@ class MultimodalAugmentationPipeline:
             # Handle different text data formats
             if isinstance(batch["text"], str):
                 # Raw text
-                if self.consistency_mode == "matched" and apply_both or self.consistency_mode != "matched":
+                if (
+                    self.consistency_mode == "matched"
+                    and apply_both
+                    or self.consistency_mode != "matched"
+                ):
                     result["text"] = self.augment_text(batch["text"])
                 else:
                     result["text"] = batch["text"]
@@ -327,7 +329,11 @@ class MultimodalAugmentationPipeline:
                 # Dictionary format with tokenized data
                 if "raw_text" in batch["text"]:
                     # Has raw text - augment it
-                    if self.consistency_mode == "matched" and apply_both or self.consistency_mode != "matched":
+                    if (
+                        self.consistency_mode == "matched"
+                        and apply_both
+                        or self.consistency_mode != "matched"
+                    ):
                         result["text"] = self.augment_text(batch["text"])
                     else:
                         result["text"] = batch["text"]
@@ -338,7 +344,11 @@ class MultimodalAugmentationPipeline:
                 # List of texts
                 augmented = []
                 for txt in batch["text"]:
-                    if self.consistency_mode == "matched" and apply_both or self.consistency_mode != "matched":
+                    if (
+                        self.consistency_mode == "matched"
+                        and apply_both
+                        or self.consistency_mode != "matched"
+                    ):
                         augmented.append(self.augment_text(txt))
                     else:
                         augmented.append(txt)
@@ -357,6 +367,7 @@ class MultimodalAugmentationPipeline:
 
 
 # Additional image augmentations
+
 
 class RandomPosterize(nn.Module):
     """
@@ -384,6 +395,7 @@ class RandomPosterize(nn.Module):
 
 
 # Text augmentation classes
+
 
 class TextAugmentation:
     """Base class for text augmentation transforms."""
@@ -533,7 +545,7 @@ class ReplaceWithSynonym(TextAugmentation):
             "purple": ["violet", "lavender", "indigo"],
             "yellow": ["golden", "amber", "lemon"],
             "white": ["pale", "ivory", "cream"],
-            "black": ["dark", "ebony", "jet"]
+            "black": ["dark", "ebony", "jet"],
         }
 
     def __call__(self, text: str) -> str:
@@ -613,8 +625,16 @@ class AddMisspelling(TextAugmentation):
 
         # Common character swaps for misspellings
         self.char_swaps = {
-            'a': 'ae', 'e': 'ea', 'i': 'ie', 'o': 'ou', 'u': 'uo',
-            's': 'ss', 't': 'tt', 'l': 'll', 'c': 'k', 'k': 'c'
+            "a": "ae",
+            "e": "ea",
+            "i": "ie",
+            "o": "ou",
+            "u": "uo",
+            "s": "ss",
+            "t": "tt",
+            "l": "ll",
+            "c": "k",
+            "k": "c",
         }
 
     def __call__(self, text: str) -> str:
@@ -635,16 +655,16 @@ class AddMisspelling(TextAugmentation):
 
                 if transform_type == 0 and char in self.char_swaps:
                     # Swap with common misspelling
-                    new_word = word[:pos] + self.char_swaps[char] + word[pos+1:]
+                    new_word = word[:pos] + self.char_swaps[char] + word[pos + 1 :]
                 elif transform_type == 1:
                     # Duplicate a character
                     new_word = word[:pos] + word[pos] + word[pos:]
-                elif transform_type == 2 and pos+1 < len(word):
+                elif transform_type == 2 and pos + 1 < len(word):
                     # Swap adjacent characters
-                    new_word = word[:pos] + word[pos+1] + word[pos] + word[pos+2:]
+                    new_word = word[:pos] + word[pos + 1] + word[pos] + word[pos + 2 :]
                 else:
                     # Skip a character
-                    new_word = word[:pos] + word[pos+1:]
+                    new_word = word[:pos] + word[pos + 1 :]
 
                 result.append(new_word)
             else:
@@ -676,62 +696,62 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, image_augs: Optional[List[Callable]] = None, text_augs: Optional[List[Callable]] = None, image_aug_prob: float = 0.5, text_aug_prob: float = 0.3, consistency_mode: str = 'matched', image_size: int = 224, severity: str = 'medium', random_erasing_prob: float = 0.0, random_erasing_scale: Tuple[float, float] = (0.02, 0.33), color_jitter_prob: float = 0.0, random_resized_crop: bool = True, debug_mode: bool = False)",
-                        "brief_description": "Initialize the augmentation pipeline with configurable parameters"
+                        "brief_description": "Initialize the augmentation pipeline with configurable parameters",
                     },
                     {
                         "name": "augment_image",
                         "signature": "augment_image(self, image: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Apply image augmentations with probability"
+                        "brief_description": "Apply image augmentations with probability",
                     },
                     {
                         "name": "augment_text",
                         "signature": "augment_text(self, text_data: Union[str, Dict]) -> Union[str, Dict]",
-                        "brief_description": "Apply text augmentations with probability"
+                        "brief_description": "Apply text augmentations with probability",
                     },
                     {
                         "name": "__call__",
                         "signature": "__call__(self, batch: Dict[str, Union[torch.Tensor, Dict]]) -> Dict[str, Union[torch.Tensor, Dict]]",
-                        "brief_description": "Apply augmentations to a batch of multimodal data"
-                    }
+                        "brief_description": "Apply augmentations to a batch of multimodal data",
+                    },
                 ],
-                "inheritance": "object"
+                "inheritance": "object",
             },
             {
                 "name": "TextAugmentation",
                 "purpose": "Base class for text augmentation transforms",
-                "inheritance": "object"
+                "inheritance": "object",
             },
             {
                 "name": "DropWords",
                 "purpose": "Randomly drop words from text",
-                "inheritance": "TextAugmentation"
+                "inheritance": "TextAugmentation",
             },
             {
                 "name": "ShuffleWords",
                 "purpose": "Shuffle some words within a window",
-                "inheritance": "TextAugmentation"
+                "inheritance": "TextAugmentation",
             },
             {
                 "name": "ReplaceWithSynonym",
                 "purpose": "Replace words with simple synonyms",
-                "inheritance": "TextAugmentation"
+                "inheritance": "TextAugmentation",
             },
             {
                 "name": "ChangeWordOrder",
                 "purpose": "Change the order of phrases in text",
-                "inheritance": "TextAugmentation"
+                "inheritance": "TextAugmentation",
             },
             {
                 "name": "AddMisspelling",
                 "purpose": "Add simple misspellings to text",
-                "inheritance": "TextAugmentation"
+                "inheritance": "TextAugmentation",
             },
             {
                 "name": "RandomPosterize",
                 "purpose": "Apply posterization to images",
-                "inheritance": "nn.Module"
-            }
+                "inheritance": "nn.Module",
+            },
         ],
         "external_dependencies": ["torch", "torchvision", "PIL", "random", "numpy"],
-        "complexity_score": 8  # High complexity due to multiple augmentation types and configurations
+        "complexity_score": 8,  # High complexity due to multiple augmentation types and configurations
     }

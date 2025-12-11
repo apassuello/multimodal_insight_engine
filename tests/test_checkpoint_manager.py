@@ -55,10 +55,7 @@ def optimizer(model):
 def checkpoint_manager(model, optimizer, temp_dir):
     """Create a CheckpointManager instance."""
     return CheckpointManager(
-        model=model,
-        optimizer=optimizer,
-        checkpoint_dir=temp_dir,
-        device=torch.device("cpu")
+        model=model, optimizer=optimizer, checkpoint_dir=temp_dir, device=torch.device("cpu")
     )
 
 
@@ -80,10 +77,7 @@ class TestCheckpointManager:
 
         # Update state
         checkpoint_manager.update_state(
-            current_epoch=5,
-            global_step=100,
-            best_val_metric=0.85,
-            patience_counter=2
+            current_epoch=5, global_step=100, best_val_metric=0.85, patience_counter=2
         )
 
         # Save checkpoint
@@ -107,10 +101,7 @@ class TestCheckpointManager:
 
         # Save initial state
         checkpoint_manager.update_state(
-            current_epoch=3,
-            global_step=50,
-            best_val_metric=0.75,
-            patience_counter=1
+            current_epoch=3, global_step=50, best_val_metric=0.75, patience_counter=1
         )
         checkpoint_manager.save_checkpoint(checkpoint_path)
 
@@ -121,10 +112,7 @@ class TestCheckpointManager:
 
         # Create new manager and load checkpoint
         new_manager = CheckpointManager(
-            model=model,
-            optimizer=optimizer,
-            checkpoint_dir=temp_dir,
-            device=torch.device("cpu")
+            model=model, optimizer=optimizer, checkpoint_dir=temp_dir, device=torch.device("cpu")
         )
         state = new_manager.load_checkpoint(checkpoint_path)
 
@@ -144,10 +132,7 @@ class TestCheckpointManager:
         history["train_loss"] = [0.5, 0.4, 0.3]
         history["val_loss"] = [0.6, 0.5, 0.4]
 
-        checkpoint_manager.update_state(
-            current_epoch=3,
-            history=history
-        )
+        checkpoint_manager.update_state(current_epoch=3, history=history)
 
         # Save checkpoint
         checkpoint_manager.save_checkpoint(checkpoint_path)
@@ -157,7 +142,7 @@ class TestCheckpointManager:
             model=checkpoint_manager.model,
             optimizer=checkpoint_manager.optimizer,
             checkpoint_dir=temp_dir,
-            device=torch.device("cpu")
+            device=torch.device("cpu"),
         )
         state = new_manager.load_checkpoint(checkpoint_path)
 
@@ -182,10 +167,7 @@ class TestCheckpointManager:
         history["train_loss"] = [0.5, 0.4]
 
         checkpoint_manager.save_best_checkpoint(
-            metric_value=0.92,
-            current_epoch=10,
-            global_step=200,
-            history=history
+            metric_value=0.92, current_epoch=10, global_step=200, history=history
         )
 
         best_path = os.path.join(temp_dir, "best_model.pt")
@@ -209,6 +191,7 @@ class TestCheckpointManager:
             checkpoint_manager.save_checkpoint(path)
             # Small delay to ensure different modification times
             import time
+
             time.sleep(0.01)
 
         # Get latest
@@ -225,7 +208,7 @@ class TestCheckpointManager:
             optimizer=optimizer,
             checkpoint_dir=temp_dir,
             scheduler=scheduler,
-            device=torch.device("cpu")
+            device=torch.device("cpu"),
         )
 
         checkpoint_path = os.path.join(temp_dir, "test_scheduler.pt")
@@ -243,10 +226,7 @@ class TestCheckpointManager:
     def test_update_state(self, checkpoint_manager):
         """Test updating internal state."""
         checkpoint_manager.update_state(
-            current_epoch=10,
-            global_step=500,
-            best_val_metric=0.95,
-            patience_counter=3
+            current_epoch=10, global_step=500, best_val_metric=0.95, patience_counter=3
         )
 
         assert checkpoint_manager.current_epoch == 10
@@ -277,7 +257,7 @@ class TestCheckpointManager:
             global_step=150,
             best_val_metric=0.88,
             patience_counter=2,
-            history=history
+            history=history,
         )
 
         checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
@@ -292,10 +272,7 @@ class TestCheckpointManager:
         checkpoint_path = os.path.join(temp_dir, "weights_test.pt")
 
         # Get initial weights
-        initial_weights = {
-            name: param.clone()
-            for name, param in model.named_parameters()
-        }
+        initial_weights = {name: param.clone() for name, param in model.named_parameters()}
 
         # Save checkpoint
         checkpoint_manager.save_checkpoint(checkpoint_path)

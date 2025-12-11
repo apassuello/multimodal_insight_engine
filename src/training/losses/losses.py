@@ -39,10 +39,7 @@ class CrossEntropyLoss(nn.Module):
     """
 
     def __init__(
-        self,
-        smoothing: float = 0.1,
-        reduction: str = 'mean',
-        weight: Optional[torch.Tensor] = None
+        self, smoothing: float = 0.1, reduction: str = "mean", weight: Optional[torch.Tensor] = None
     ):
         super().__init__()
         self.smoothing = smoothing
@@ -53,7 +50,7 @@ class CrossEntropyLoss(nn.Module):
         self,
         input: torch.Tensor,
         target: torch.Tensor,
-        sample_weight: Optional[torch.Tensor] = None
+        sample_weight: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Compute the cross-entropy loss with label smoothing.
@@ -74,16 +71,16 @@ class CrossEntropyLoss(nn.Module):
             log_probs = F.log_softmax(input, dim=-1)
             loss = -(smooth_one_hot * log_probs).sum(dim=-1)
         else:
-            loss = F.cross_entropy(input, target, weight=self.weight, reduction='none')
+            loss = F.cross_entropy(input, target, weight=self.weight, reduction="none")
 
         # Apply sample weights if provided
         if sample_weight is not None:
             loss = loss * sample_weight
 
         # Apply reduction
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             return loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return loss.sum()
         else:  # 'none'
             return loss
@@ -103,11 +100,7 @@ class MeanSquaredError(nn.Module):
             Defaults to None.
     """
 
-    def __init__(
-        self,
-        reduction: str = 'mean',
-        clip_grad: Optional[float] = None
-    ):
+    def __init__(self, reduction: str = "mean", clip_grad: Optional[float] = None):
         super().__init__()
         self.reduction = reduction
         self.clip_grad = clip_grad
@@ -116,7 +109,7 @@ class MeanSquaredError(nn.Module):
         self,
         input: torch.Tensor,
         target: torch.Tensor,
-        sample_weight: Optional[torch.Tensor] = None
+        sample_weight: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Compute the mean squared error loss.
@@ -137,9 +130,9 @@ class MeanSquaredError(nn.Module):
             loss = loss * sample_weight.unsqueeze(-1)
 
         # Apply reduction
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             loss = loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             loss = loss.sum()
 
         # Clip gradients if specified
@@ -170,11 +163,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-                        "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights"
+                        "brief_description": "Computes cross-entropy loss with label smoothing and optional sample weights",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
             },
             {
                 "name": "MeanSquaredError",
@@ -183,12 +176,12 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, input: torch.Tensor, target: torch.Tensor, sample_weight: Optional[torch.Tensor] = None) -> torch.Tensor",
-                        "brief_description": "Computes MSE loss with optional sample weights and gradient clipping"
+                        "brief_description": "Computes MSE loss with optional sample weights and gradient clipping",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
-            }
+                "dependencies": ["torch", "torch.nn"],
+            },
         ],
         "external_dependencies": ["torch"],
         "complexity_score": 4,  # Medium-low complexity as it's focused on loss function implementations

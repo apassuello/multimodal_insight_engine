@@ -39,7 +39,6 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 # Module logger
 logger = get_logger(__name__)
 
@@ -114,9 +113,7 @@ class TransformerTrainer:
             if torch.backends.mps.is_available():
                 self.device = torch.device("mps")
             else:
-                self.device = torch.device(
-                    "cuda" if torch.cuda.is_available() else "cpu"
-                )
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = device
 
@@ -166,18 +163,14 @@ class TransformerTrainer:
         }
 
         # Initialize epoch end callback with proper type annotation
-        self.epoch_end_callback: Optional[
-            Callable[[int, torch.nn.Module, Any], None]
-        ] = None
+        self.epoch_end_callback: Optional[Callable[[int, torch.nn.Module, Any], None]] = None
 
         # Gradient accumulation settings
         self.gradient_accumulation_steps = gradient_accumulation_steps
 
         # Calculate effective batch size, handling None case
         dataloader_batch_size = getattr(self.train_dataloader, "batch_size", None)
-        base_batch_size = (
-            dataloader_batch_size if dataloader_batch_size is not None else 32
-        )
+        base_batch_size = dataloader_batch_size if dataloader_batch_size is not None else 32
         self.effective_batch_size = base_batch_size * gradient_accumulation_steps
 
         # For logging purposes
@@ -198,9 +191,7 @@ class TransformerTrainer:
             Learning rate scheduler
         """
         # Define total steps for all schedulers that need it
-        total_steps = (
-            len(self.train_dataloader) * 100
-        )  # Assume max 100 epochs as safety
+        total_steps = len(self.train_dataloader) * 100  # Assume max 100 epochs as safety
 
         if self.scheduler_type == "inverse_sqrt":
             # Define inverse square root learning rate function with warmup
@@ -209,8 +200,7 @@ class TransformerTrainer:
                 if step == 0:
                     step = 1
                 return (
-                    min(step ** (-0.5), step * self.warmup_steps ** (-1.5))
-                    * self.warmup_steps**0.5
+                    min(step ** (-0.5), step * self.warmup_steps ** (-1.5)) * self.warmup_steps**0.5
                 )
 
             return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
@@ -228,9 +218,7 @@ class TransformerTrainer:
                     # Cosine annealing decay
                     step_adjusted = step - warmup_steps
                     total_adjusted = total_steps - warmup_steps
-                    return 0.5 * (
-                        1 + math.cos(math.pi * step_adjusted / total_adjusted)
-                    )
+                    return 0.5 * (1 + math.cos(math.pi * step_adjusted / total_adjusted))
 
             return torch.optim.lr_scheduler.LambdaLR(optimizer, cosine_warmup)
 
@@ -309,13 +297,9 @@ class TransformerTrainer:
             # Forward pass
             if self.use_gradient_scaling:
                 with torch.cuda.amp.autocast():
-                    logits = self.model(
-                        src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask
-                    )
+                    logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
             else:
-                logits = self.model(
-                    src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask
-                )
+                logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
 
             # Calculate loss
             loss = self.criterion(logits, tgt_output)
@@ -335,18 +319,14 @@ class TransformerTrainer:
                     # Gradient clipping
                     if self.clip_grad > 0:
                         self.scaler.unscale_(self.optimizer)
-                        torch.nn.utils.clip_grad_norm_(
-                            self.model.parameters(), self.clip_grad
-                        )
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad)
                     # Update weights
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
                 else:
                     # Gradient clipping
                     if self.clip_grad > 0:
-                        torch.nn.utils.clip_grad_norm_(
-                            self.model.parameters(), self.clip_grad
-                        )
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad)
                     # Update weights
                     self.optimizer.step()
 
@@ -457,13 +437,9 @@ class TransformerTrainer:
                 # Forward pass
                 if self.use_gradient_scaling:
                     with torch.cuda.amp.autocast():
-                        logits = self.model(
-                            src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask
-                        )
+                        logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
                 else:
-                    logits = self.model(
-                        src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask
-                    )
+                    logits = self.model(src, tgt_input, src_mask=src_mask, tgt_mask=tgt_mask)
 
                 # Calculate loss
                 loss = self.criterion(logits, tgt_output)
@@ -619,9 +595,9 @@ class TransformerTrainer:
                 )
 
                 # Get embedding dimensions
-                model_config["d_model"] = (
-                    self.model.encoder.token_embedding.embedding.weight.shape[1]
-                )
+                model_config["d_model"] = self.model.encoder.token_embedding.embedding.weight.shape[
+                    1
+                ]
 
                 # Get number of layers
                 if hasattr(self.model.encoder, "layers"):
@@ -631,15 +607,11 @@ class TransformerTrainer:
 
                 # Get number of attention heads if available
                 if hasattr(self.model.encoder.layers[0].self_attn, "num_heads"):
-                    model_config["num_heads"] = self.model.encoder.layers[
-                        0
-                    ].self_attn.num_heads
+                    model_config["num_heads"] = self.model.encoder.layers[0].self_attn.num_heads
 
                 # Get feed-forward dimension if available
                 if hasattr(self.model.encoder.layers[0].feed_forward, "linear1"):
-                    if hasattr(
-                        self.model.encoder.layers[0].feed_forward.linear1, "linear"
-                    ):
+                    if hasattr(self.model.encoder.layers[0].feed_forward.linear1, "linear"):
                         model_config["d_ff"] = self.model.encoder.layers[
                             0
                         ].feed_forward.linear1.linear.weight.shape[0]
@@ -698,9 +670,7 @@ class TransformerTrainer:
             # Load model state
             if "model_state_dict" in checkpoint:
                 try:
-                    self.model.load_state_dict(
-                        checkpoint["model_state_dict"], strict=strict
-                    )
+                    self.model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
                     logger.info("Successfully loaded model state")
                 except Exception as e:
                     logger.error(f"Error loading model state: {e}")
@@ -708,9 +678,7 @@ class TransformerTrainer:
                         logger.warning("Continuing with non-strict loading")
                         # Try again with strict=False if not already
                         try:
-                            self.model.load_state_dict(
-                                checkpoint["model_state_dict"], strict=False
-                            )
+                            self.model.load_state_dict(checkpoint["model_state_dict"], strict=False)
                             logger.info("Successfully loaded model state with strict=False")
                         except Exception as e2:
                             logger.error(f"Error even with non-strict loading: {e2}")
@@ -808,18 +776,14 @@ class TransformerTrainer:
 
             # Load model state dict (with proper error handling)
             try:
-                self.model.load_state_dict(
-                    checkpoint["model_state_dict"], strict=strict
-                )
+                self.model.load_state_dict(checkpoint["model_state_dict"], strict=strict)
                 logger.info("✓ Model weights restored successfully")
             except Exception as e:
                 logger.warning(f"! Error restoring model weights: {e}")
                 if not strict:
                     logger.info("  Attempting non-strict loading...")
                     try:
-                        self.model.load_state_dict(
-                            checkpoint["model_state_dict"], strict=False
-                        )
+                        self.model.load_state_dict(checkpoint["model_state_dict"], strict=False)
                         logger.info("✓ Model weights restored with strict=False")
                     except Exception as e2:
                         logger.warning(f"! Failed even with non-strict loading: {e2}")
@@ -969,9 +933,7 @@ class TransformerTrainer:
         if self.history["val_loss"]:
             val_loss_min = [stats[0] for stats in self.history["val_loss_stats"]]
             val_loss_max = [stats[1] for stats in self.history["val_loss_stats"]]
-            ax4.fill_between(
-                epochs, val_loss_min, val_loss_max, alpha=0.3, label="Val Loss Range"
-            )
+            ax4.fill_between(epochs, val_loss_min, val_loss_max, alpha=0.3, label="Val Loss Range")
 
         ax4.set_title("Loss Ranges per Epoch")
         ax4.set_xlabel("Epochs")

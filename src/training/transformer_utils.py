@@ -4,7 +4,6 @@ import os
 import torch
 import torch.nn as nn
 
-
 """MODULE: transformer_utils.py
 PURPOSE: Provides utility functions and classes for transformer model training, including attention masking and label smoothing implementations.
 
@@ -26,6 +25,7 @@ SPECIAL NOTES:
 - Includes support for padding token handling in all masking functions
 """
 
+
 def create_padding_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
     """
     Create a padding mask for attention.
@@ -43,6 +43,7 @@ def create_padding_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
 
     # Invert mask because in attention, 1 means "attend to" and 0 means "ignore"
     return ~mask  # True means "attend to", False means "ignore"
+
 
 def create_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
     """
@@ -63,6 +64,7 @@ def create_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
     mask = (mask == 0).unsqueeze(0).unsqueeze(0)
 
     return mask  # True means "attend to", False means "ignore"
+
 
 def create_combined_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
     """
@@ -92,6 +94,7 @@ def create_combined_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
 
     return combined_mask
 
+
 def subsequent_mask(size: int, device: torch.device) -> torch.Tensor:
     """
     Create a mask for subsequent positions in transformer attention.
@@ -113,6 +116,7 @@ def subsequent_mask(size: int, device: torch.device) -> torch.Tensor:
     attn_shape = (1, size, size)
     mask = torch.triu(torch.ones(attn_shape, device=device), diagonal=1).bool()
     return ~mask  # Invert so True means "attend to"
+
 
 class LabelSmoothing(nn.Module):
     """
@@ -188,6 +192,7 @@ class LabelSmoothing(nn.Module):
         else:  # 'none'
             return loss
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -209,29 +214,29 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Computes smoothed loss with proper handling of padding tokens"
+                        "brief_description": "Computes smoothed loss with proper handling of padding tokens",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             }
         ],
         "key_functions": [
             {
                 "name": "create_padding_mask",
                 "signature": "create_padding_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor",
-                "brief_description": "Creates attention masks for padding tokens"
+                "brief_description": "Creates attention masks for padding tokens",
             },
             {
                 "name": "create_causal_mask",
                 "signature": "create_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor",
-                "brief_description": "Creates causal masks to prevent attending to future tokens"
+                "brief_description": "Creates causal masks to prevent attending to future tokens",
             },
             {
                 "name": "create_combined_mask",
                 "signature": "create_combined_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor",
-                "brief_description": "Combines padding and causal masks for transformer attention"
-            }
+                "brief_description": "Combines padding and causal masks for transformer attention",
+            },
         ],
         "external_dependencies": ["torch", "numpy"],
         "complexity_score": 6,  # Medium complexity due to attention masking and label smoothing implementations

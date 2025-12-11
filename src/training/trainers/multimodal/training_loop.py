@@ -27,7 +27,6 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -180,7 +179,9 @@ class TrainingLoop:
             # Periodic logging
             if self.global_step % self.log_steps == 0:
                 lr = self.optimizer.param_groups[0]["lr"]
-                logger.debug(f"Step {self.global_step}: loss={loss_dict['loss'].item():.4f}, lr={lr:.6f}")
+                logger.debug(
+                    f"Step {self.global_step}: loss={loss_dict['loss'].item():.4f}, lr={lr:.6f}"
+                )
 
             # Periodic evaluation
             if evaluation_fn and evaluation_steps > 0 and self.global_step % evaluation_steps == 0:
@@ -289,7 +290,9 @@ class TrainingLoop:
             # Log phase information
             if hasattr(self.loss_fn, "current_phase"):
                 phase = getattr(self.loss_fn, "current_phase", "unknown")
-                logger.info(f"Training curriculum: phase={phase}, epoch={epoch}, step={self.global_step}")
+                logger.info(
+                    f"Training curriculum: phase={phase}, epoch={epoch}, step={self.global_step}"
+                )
             else:
                 logger.info(f"Training curriculum: epoch={epoch}, step={self.global_step}")
 
@@ -351,7 +354,9 @@ class TrainingLoop:
 
             # Feature collapse warning
             if vision_var < 1e-4 or text_var < 1e-4:
-                logger.warning(f"FEATURE COLLAPSE DETECTED! Vision var: {vision_var:.6f}, Text var: {text_var:.6f}")
+                logger.warning(
+                    f"FEATURE COLLAPSE DETECTED! Vision var: {vision_var:.6f}, Text var: {text_var:.6f}"
+                )
 
     def _analyze_gradients(self) -> None:
         """Analyze gradients for debugging purposes."""
@@ -396,10 +401,14 @@ class TrainingLoop:
                     if prefix in name:
                         component_grads[prefix]["count"] += 1
                         component_grads[prefix]["total_norm"] += param_norm
-                        component_grads[prefix]["max_norm"] = max(component_grads[prefix]["max_norm"], param_norm)
+                        component_grads[prefix]["max_norm"] = max(
+                            component_grads[prefix]["max_norm"], param_norm
+                        )
 
                         if param_norm > 0:
-                            component_grads[prefix]["min_norm"] = min(component_grads[prefix]["min_norm"], param_norm)
+                            component_grads[prefix]["min_norm"] = min(
+                                component_grads[prefix]["min_norm"], param_norm
+                            )
 
                         if is_zero:
                             component_grads[prefix]["has_zero"] = True
@@ -416,7 +425,9 @@ class TrainingLoop:
         # Log component summary
         if param_count > 0:
             avg_grad_norm = total_grad_norm / param_count
-            logger.info(f"Gradient Analysis - Overall avg: {avg_grad_norm:.4f}, {param_count} parameters")
+            logger.info(
+                f"Gradient Analysis - Overall avg: {avg_grad_norm:.4f}, {param_count} parameters"
+            )
 
             component_summary = []
             for prefix, stats in component_grads.items():

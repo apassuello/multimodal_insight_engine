@@ -29,7 +29,6 @@ from src.utils.logging import get_logger
 
 from ..models.vision.vision_transformer import VisionTransformer
 
-
 logger = get_logger(__name__)
 
 
@@ -89,9 +88,7 @@ class VisionTransformerTrainer:
             if torch.backends.mps.is_available():
                 self.device = torch.device("mps")
             else:
-                self.device = torch.device(
-                    "cuda" if torch.cuda.is_available() else "cpu"
-                )
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = device
 
@@ -101,9 +98,7 @@ class VisionTransformerTrainer:
         self.optimizer = optimizer or model.configure_optimizers()
 
         # Set criterion (loss function)
-        self.criterion = criterion or nn.CrossEntropyLoss(
-            label_smoothing=label_smoothing
-        )
+        self.criterion = criterion or nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
         # Set scheduler
         self.scheduler = scheduler
@@ -508,44 +503,51 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "train_epoch",
                         "signature": "train_epoch(self)",
-                        "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support"
+                        "brief_description": "Train the model for one epoch with mixup/cutmix augmentation support",
                     },
                     {
                         "name": "validate",
                         "signature": "validate(self)",
-                        "brief_description": "Validate the model on validation dataset"
+                        "brief_description": "Validate the model on validation dataset",
                     },
                     {
                         "name": "train",
                         "signature": "train(self) -> Dict[str, List[float]]",
-                        "brief_description": "Train the model for specified number of epochs with early stopping"
+                        "brief_description": "Train the model for specified number of epochs with early stopping",
                     },
                     {
                         "name": "save_checkpoint",
                         "signature": "save_checkpoint(self, filename: str) -> None",
-                        "brief_description": "Save a checkpoint of the model and training state"
+                        "brief_description": "Save a checkpoint of the model and training state",
                     },
                     {
                         "name": "load_checkpoint",
                         "signature": "load_checkpoint(self, filename: str) -> None",
-                        "brief_description": "Load a checkpoint of the model and training state"
+                        "brief_description": "Load a checkpoint of the model and training state",
                     },
                     {
                         "name": "_mixup_data",
                         "signature": "_mixup_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
-                        "brief_description": "Perform mixup data augmentation"
+                        "brief_description": "Perform mixup data augmentation",
                     },
                     {
                         "name": "_cutmix_data",
                         "signature": "_cutmix_data(self, x: torch.Tensor, y: torch.Tensor, alpha: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]",
-                        "brief_description": "Perform cutmix data augmentation"
-                    }
+                        "brief_description": "Perform cutmix data augmentation",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "torch.nn", "VisionTransformer", "matplotlib", "numpy", "tqdm"]
+                "dependencies": [
+                    "torch",
+                    "torch.nn",
+                    "VisionTransformer",
+                    "matplotlib",
+                    "numpy",
+                    "tqdm",
+                ],
             }
         ],
         "key_functions": [],
         "external_dependencies": ["torch", "matplotlib", "numpy", "tqdm"],
-        "complexity_score": 8  # High complexity due to advanced training techniques and augmentations
+        "complexity_score": 8,  # High complexity due to advanced training techniques and augmentations
     }

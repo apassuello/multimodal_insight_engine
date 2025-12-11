@@ -16,7 +16,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -41,7 +40,7 @@ class ConstitutionalPrinciple:
         description: str,
         evaluation_fn: Callable[[str], Dict[str, Any]],
         weight: float = 1.0,
-        enabled: bool = True
+        enabled: bool = True,
     ):
         """
         Initialize a constitutional principle.
@@ -65,7 +64,7 @@ class ConstitutionalPrinciple:
         model: Optional[Any] = None,
         tokenizer: Optional[Any] = None,
         device: Optional[Any] = None,
-        logger=None  # type: ignore
+        logger=None,  # type: ignore
     ) -> Dict[str, Any]:
         """
         Evaluate text against this principle.
@@ -89,7 +88,7 @@ class ConstitutionalPrinciple:
                 "reason": "Principle disabled",
                 "enabled": False,
                 "principle_name": self.name,
-                "weight": self.weight
+                "weight": self.weight,
             }
 
         # Check if evaluation function accepts model parameters (backward compatibility)
@@ -97,23 +96,14 @@ class ConstitutionalPrinciple:
         params = sig.parameters
 
         # Call evaluation function with appropriate parameters
-        if 'logger' in params:
+        if "logger" in params:
             # Function supports content logging
             result = self.evaluation_fn(
-                text,
-                model=model,
-                tokenizer=tokenizer,
-                device=device,
-                logger=logger
+                text, model=model, tokenizer=tokenizer, device=device, logger=logger
             )
-        elif 'model' in params or 'tokenizer' in params or 'device' in params:
+        elif "model" in params or "tokenizer" in params or "device" in params:
             # New-style function that accepts model parameters (without logger)
-            result = self.evaluation_fn(
-                text,
-                model=model,
-                tokenizer=tokenizer,
-                device=device
-            )
+            result = self.evaluation_fn(text, model=model, tokenizer=tokenizer, device=device)
         else:
             # Old-style function that only accepts text (backward compatibility)
             result = self.evaluation_fn(text)
@@ -147,7 +137,7 @@ class ConstitutionalFramework:
         tokenizer: Optional[Any] = None,
         device: Optional[Any] = None,
         use_hf_api: bool = False,
-        hf_api_token: Optional[str] = None
+        hf_api_token: Optional[str] = None,
     ):
         """
         Initialize the constitutional framework.
@@ -168,7 +158,7 @@ class ConstitutionalFramework:
         if device is not None:
             self.device = device
         elif torch is not None and model is not None:
-            self.device = torch.device('cpu')
+            self.device = torch.device("cpu")
         else:
             self.device = None
 
@@ -189,7 +179,7 @@ class ConstitutionalFramework:
         model: Any,
         tokenizer: Any,
         device: Optional[Any] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
     ) -> None:
         """
         Set or change the evaluation model.
@@ -207,13 +197,13 @@ class ConstitutionalFramework:
         if device is not None:
             self.device = device
         elif torch is not None:
-            self.device = torch.device('cpu')
+            self.device = torch.device("cpu")
 
         # Store model name for display
         if model_name:
             self._model_name = model_name
-        elif hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
-            self._model_name = model.config.name_or_path.split('/')[-1]
+        elif hasattr(model, "config") and hasattr(model.config, "name_or_path"):
+            self._model_name = model.config.name_or_path.split("/")[-1]
         else:
             self._model_name = "Custom Model"
 
@@ -227,8 +217,8 @@ class ConstitutionalFramework:
             return f"HF-API ({self._hf_api_evaluator.config.toxicity_model})"
         if self.model is None:
             return "Regex (no model)"
-        if hasattr(self.model, 'config') and hasattr(self.model.config, 'name_or_path'):
-            return self.model.config.name_or_path.split('/')[-1]
+        if hasattr(self.model, "config") and hasattr(self.model.config, "name_or_path"):
+            return self.model.config.name_or_path.split("/")[-1]
         return "Unknown Model"
 
     def use_regex_only(self) -> None:
@@ -257,9 +247,9 @@ class ConstitutionalFramework:
         """
         try:
             from .hf_api_evaluator import HuggingFaceAPIEvaluator
+
             self._hf_api_evaluator = HuggingFaceAPIEvaluator(
-                api_token=api_token,
-                toxicity_threshold=0.5
+                api_token=api_token, toxicity_threshold=0.5
             )
             self._use_hf_api = True
             self._model_name = "HF-API (toxic-bert)"
@@ -372,11 +362,7 @@ class ConstitutionalFramework:
 
             # Pass framework's model/tokenizer/device/logger to principle evaluation
             result = principle.evaluate(
-                text,
-                model=self.model,
-                tokenizer=self.tokenizer,
-                device=self.device,
-                logger=logger
+                text, model=self.model, tokenizer=self.tokenizer, device=self.device, logger=logger
             )
             principle_results[name] = result
 
@@ -397,22 +383,18 @@ class ConstitutionalFramework:
             "weighted_score": weighted_score,
             "num_principles_evaluated": len([p for p in self.principles.values() if p.enabled]),
             "text_length": len(text),
-            "evaluation_method": evaluation_method
+            "evaluation_method": evaluation_method,
         }
 
         if track_history:
-            self.evaluation_history.append({
-                "text": text[:100] + "..." if len(text) > 100 else text,
-                "evaluation": evaluation
-            })
+            self.evaluation_history.append(
+                {"text": text[:100] + "..." if len(text) > 100 else text, "evaluation": evaluation}
+            )
 
         return evaluation
 
     def _evaluate_with_hf_api(
-        self,
-        text: str,
-        track_history: bool = False,
-        logger=None  # type: ignore
+        self, text: str, track_history: bool = False, logger=None  # type: ignore
     ) -> Dict[str, Any]:
         """
         Evaluate text using HuggingFace API.
@@ -444,7 +426,7 @@ class ConstitutionalFramework:
                 "reasoning": hf_result.get("reasoning", ""),
                 "method": hf_result.get("method", "hf_api"),
                 "principle_name": "harm_prevention",
-                "weight": 2.0
+                "weight": 2.0,
             }
         }
 
@@ -465,15 +447,16 @@ class ConstitutionalFramework:
             "evaluation_method": hf_result.get("method", "hf_api"),
             "hf_api_details": {
                 "toxicity_score": hf_result.get("subtle_harm_score", 0.0),
-                "model": self._hf_api_evaluator.config.toxicity_model if self._hf_api_evaluator else None
-            }
+                "model": (
+                    self._hf_api_evaluator.config.toxicity_model if self._hf_api_evaluator else None
+                ),
+            },
         }
 
         if track_history:
-            self.evaluation_history.append({
-                "text": text[:100] + "..." if len(text) > 100 else text,
-                "evaluation": evaluation
-            })
+            self.evaluation_history.append(
+                {"text": text[:100] + "..." if len(text) > 100 else text, "evaluation": evaluation}
+            )
 
         return evaluation
 
@@ -497,16 +480,11 @@ class ConstitutionalFramework:
             Dictionary with statistics about evaluations
         """
         if not self.evaluation_history:
-            return {
-                "total_evaluations": 0,
-                "total_flagged": 0,
-                "flagged_rate": 0.0
-            }
+            return {"total_evaluations": 0, "total_flagged": 0, "flagged_rate": 0.0}
 
         total_evaluations = len(self.evaluation_history)
         total_flagged = sum(
-            1 for entry in self.evaluation_history
-            if entry["evaluation"]["any_flagged"]
+            1 for entry in self.evaluation_history if entry["evaluation"]["any_flagged"]
         )
 
         # Count violations per principle
@@ -523,7 +501,7 @@ class ConstitutionalFramework:
             "principle_violation_rates": {
                 name: count / total_evaluations if total_evaluations > 0 else 0.0
                 for name, count in principle_violation_counts.items()
-            }
+            },
         }
 
     def clear_history(self) -> None:

@@ -24,13 +24,13 @@ from .utils import (
     SENSITIVITY_MULTIPLIERS,
 )
 
-
 logger = get_logger(__name__)
 
 
 # Optional constitutional AI support
 try:
     from .constitutional import ConstitutionalSafetyEvaluator
+
     CONSTITUTIONAL_AI_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_AI_AVAILABLE = False
@@ -74,12 +74,13 @@ class SafetyEvaluator:
         if self.use_constitutional_ai:
             if constitutional_framework is None and CONSTITUTIONAL_AI_AVAILABLE:
                 from .constitutional import setup_default_framework
+
                 constitutional_framework = setup_default_framework()
 
             if CONSTITUTIONAL_AI_AVAILABLE:
                 self.constitutional_evaluator = ConstitutionalSafetyEvaluator(
                     framework=constitutional_framework,
-                    use_self_critique=False  # Can be enabled if critique model available
+                    use_self_critique=False,  # Can be enabled if critique model available
                 )
 
         # Set default thresholds
@@ -94,11 +95,7 @@ class SafetyEvaluator:
         if safety_thresholds is None:
             multiplier = SENSITIVITY_MULTIPLIERS.get(sensitivity, 1.0)
             adjusted_thresholds = {
-                k: (
-                    min(v * multiplier, 0.95)
-                    if multiplier > 1
-                    else max(v * multiplier, 0.2)
-                )
+                k: (min(v * multiplier, 0.95) if multiplier > 1 else max(v * multiplier, 0.2))
                 for k, v in default_thresholds.items()
             }
             self.safety_thresholds = adjusted_thresholds
@@ -136,7 +133,7 @@ class SafetyEvaluator:
                 "bias": 0.0,
                 "personal_information": 0.0,
                 "flagged_categories": [],
-                "constitutional_evaluation": None
+                "constitutional_evaluation": None,
             }
 
         # Convert to lowercase for case-insensitive matching
@@ -148,15 +145,46 @@ class SafetyEvaluator:
 
         # Check for harmful instructions
         harmful_instructions = [
-            "hacking", "hacked", "hacker", "hack", "hacking", "hacked", "hacker", "hack",
-            "weaponry", "weapon", "weaponry", "weapon",
-            "build", "made", "created", "construct", "bomb", "weapon", "explosive",
-            "forge", "steal", "launder", "smuggle",
-            "account", "email", "password", "computer",
-            "credit card", "number", "card", "secret", "pin", "passphrase",
-            "username", "user id", "login"
+            "hacking",
+            "hacked",
+            "hacker",
+            "hack",
+            "hacking",
+            "hacked",
+            "hacker",
+            "hack",
+            "weaponry",
+            "weapon",
+            "weaponry",
+            "weapon",
+            "build",
+            "made",
+            "created",
+            "construct",
+            "bomb",
+            "weapon",
+            "explosive",
+            "forge",
+            "steal",
+            "launder",
+            "smuggle",
+            "account",
+            "email",
+            "password",
+            "computer",
+            "credit card",
+            "number",
+            "card",
+            "secret",
+            "pin",
+            "passphrase",
+            "username",
+            "user id",
+            "login",
         ]
-        harmful_instructions_score = sum(phrase in text_lower for phrase in harmful_instructions) / len(harmful_instructions)
+        harmful_instructions_score = sum(
+            phrase in text_lower for phrase in harmful_instructions
+        ) / len(harmful_instructions)
 
         # Check for bias
         bias_words = ["all", "every", "men", "women", "people from", "individuals from"]
@@ -172,15 +200,19 @@ class SafetyEvaluator:
             r"\b(?:password|passphrase|pin|secret)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{6,}['\"]?)",  # Passwords
             r"\b(?:username|user id|login)(?:.{0,3})(?:is|:)(?:.{0,10})(?:['\"]?[\w\d!@#$%^&*()-+=]{3,}['\"]?)",  # Usernames
         ]
-        personal_info_score = sum(bool(re.search(pattern, text, re.IGNORECASE)) for pattern in personal_info_patterns) / len(personal_info_patterns)
+        personal_info_score = sum(
+            bool(re.search(pattern, text, re.IGNORECASE)) for pattern in personal_info_patterns
+        ) / len(personal_info_patterns)
 
         # Determine if text should be flagged
-        flagged = any([
-            toxicity_score > 0.3,
-            harmful_instructions_score > 0.3,
-            bias_score > 0.3,
-            personal_info_score > 0.3
-        ])
+        flagged = any(
+            [
+                toxicity_score > 0.3,
+                harmful_instructions_score > 0.3,
+                bias_score > 0.3,
+                personal_info_score > 0.3,
+            ]
+        )
 
         # Collect flagged categories
         flagged_categories = []
@@ -200,13 +232,17 @@ class SafetyEvaluator:
             "bias": bias_score,
             "personal_information": personal_info_score,
             "flagged_categories": flagged_categories,
-            "constitutional_evaluation": None
+            "constitutional_evaluation": None,
         }
 
         # Apply constitutional AI evaluation if enabled
-        apply_constitutional = use_constitutional if use_constitutional is not None else self.use_constitutional_ai
+        apply_constitutional = (
+            use_constitutional if use_constitutional is not None else self.use_constitutional_ai
+        )
         if apply_constitutional and self.constitutional_evaluator is not None:
-            constitutional_result = self.constitutional_evaluator.evaluate(text, include_critique=False)
+            constitutional_result = self.constitutional_evaluator.evaluate(
+                text, include_critique=False
+            )
             result["constitutional_evaluation"] = constitutional_result
 
             # Update flagged status if constitutional AI found issues
@@ -316,10 +352,7 @@ class SafetyEvaluator:
         )
 
     def validate_input(
-        self,
-        input_text: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        override: bool = False
+        self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Validate input text for safety.
@@ -341,15 +374,17 @@ class SafetyEvaluator:
         validation_info = {
             "is_safe": is_safe,
             "evaluation": evaluation,
-            "reason": "Passed all safety checks" if is_safe else f"Failed: {evaluation['flagged_categories']}"
+            "reason": (
+                "Passed all safety checks"
+                if is_safe
+                else f"Failed: {evaluation['flagged_categories']}"
+            ),
         }
 
         return is_safe, validation_info
 
     def filter_output(
-        self,
-        output_text: str,
-        metadata: Optional[Dict[str, Any]] = None
+        self, output_text: str, metadata: Optional[Dict[str, Any]] = None
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Filter output text for safety.
@@ -363,10 +398,7 @@ class SafetyEvaluator:
         """
         evaluation = self.evaluate_text(output_text)
 
-        filtering_info = {
-            "was_filtered": evaluation["flagged"],
-            "evaluation": evaluation
-        }
+        filtering_info = {"was_filtered": evaluation["flagged"], "evaluation": evaluation}
 
         # Simple filtering: if severely problematic, return warning message
         if evaluation["flagged"] and len(evaluation["flagged_categories"]) > 2:
@@ -383,7 +415,9 @@ class SafetyEvaluator:
 def import_datetime():
     """Helper function to lazily import datetime module."""
     import datetime
+
     return datetime
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -406,28 +440,28 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "evaluate_text",
                         "signature": "evaluate_text(self, text: str) -> Dict[str, Any]",
-                        "brief_description": "Evaluates text for safety concerns across multiple categories and returns detailed results"
+                        "brief_description": "Evaluates text for safety concerns across multiple categories and returns detailed results",
                     },
                     {
                         "name": "log_evaluation",
                         "signature": "log_evaluation(self, text: str, results: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> None",
-                        "brief_description": "Records safety evaluation results for analysis and tracking"
+                        "brief_description": "Records safety evaluation results for analysis and tracking",
                     },
                     {
                         "name": "set_sensitivity",
                         "signature": "set_sensitivity(self, sensitivity: str) -> None",
-                        "brief_description": "Adjusts the sensitivity level of safety checks based on application requirements"
+                        "brief_description": "Adjusts the sensitivity level of safety checks based on application requirements",
                     },
                     {
                         "name": "get_safety_summary",
                         "signature": "get_safety_summary(self) -> Dict[str, Any]",
-                        "brief_description": "Provides aggregate statistics on past evaluations and current settings"
-                    }
+                        "brief_description": "Provides aggregate statistics on past evaluations and current settings",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["typing", "re", "json", "os", ".utils"]
+                "dependencies": ["typing", "re", "json", "os", ".utils"],
             }
         ],
         "external_dependencies": ["numpy", "torch"],
-        "complexity_score": 8  # High complexity due to multiple detection methods and configuration options
+        "complexity_score": 8,  # High complexity due to multiple detection methods and configuration options
     }

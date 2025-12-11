@@ -57,14 +57,15 @@ class TestComputeGAE:
 
     def test_gae_basic_computation(self):
         """Test that GAE computes advantages correctly."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         # Create mock models
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         # Initialize trainer
@@ -75,21 +76,15 @@ class TestComputeGAE:
             tokenizer=tokenizer,
             device=device,
             gamma=0.99,
-            gae_lambda=0.95
+            gae_lambda=0.95,
         )
 
         # Test with simple rewards and values
         batch_size = 2
         seq_len = 5
 
-        rewards = torch.tensor([
-            [1.0, 0.5, 0.2, 0.1, 0.0],
-            [0.8, 0.6, 0.4, 0.2, 0.0]
-        ])
-        values = torch.tensor([
-            [0.5, 0.4, 0.3, 0.2, 0.1],
-            [0.6, 0.5, 0.4, 0.3, 0.2]
-        ])
+        rewards = torch.tensor([[1.0, 0.5, 0.2, 0.1, 0.0], [0.8, 0.6, 0.4, 0.2, 0.0]])
+        values = torch.tensor([[0.5, 0.4, 0.3, 0.2, 0.1], [0.6, 0.5, 0.4, 0.3, 0.2]])
         dones = torch.zeros(batch_size, seq_len)
 
         # Compute GAE
@@ -107,14 +102,15 @@ class TestComputeGAE:
 
     def test_gae_backwards_computation(self):
         """Test that GAE computes backwards through time."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         # Create minimal trainer
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -124,7 +120,7 @@ class TestComputeGAE:
             tokenizer=tokenizer,
             device=device,
             gamma=1.0,  # No discounting for simpler test
-            gae_lambda=0.0  # Pure TD(0) for verification
+            gae_lambda=0.0,  # Pure TD(0) for verification
         )
 
         # Simple test case
@@ -140,13 +136,14 @@ class TestComputeGAE:
 
     def test_gae_with_dones(self):
         """Test that GAE handles episode termination correctly."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -154,7 +151,7 @@ class TestComputeGAE:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         rewards = torch.tensor([[1.0, 1.0, 1.0]])
@@ -172,13 +169,14 @@ class TestComputeKLDivergence:
 
     def test_kl_divergence_identical_policies(self):
         """Test KL divergence is ~0 for identical policies."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -186,7 +184,7 @@ class TestComputeKLDivergence:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Identical log probabilities
@@ -199,13 +197,14 @@ class TestComputeKLDivergence:
 
     def test_kl_divergence_different_policies(self):
         """Test KL divergence is positive for different policies."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -213,7 +212,7 @@ class TestComputeKLDivergence:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Different log probabilities
@@ -232,13 +231,14 @@ class TestComputePPOLoss:
 
     def test_ppo_loss_no_clipping(self):
         """Test PPO loss when ratio is within clip range."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -247,7 +247,7 @@ class TestComputePPOLoss:
             reward_model=reward_model,
             tokenizer=tokenizer,
             device=device,
-            clip_epsilon=0.2
+            clip_epsilon=0.2,
         )
 
         # Small difference in log probs (ratio close to 1)
@@ -264,13 +264,14 @@ class TestComputePPOLoss:
 
     def test_ppo_loss_with_clipping(self):
         """Test PPO loss clips large ratios."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -279,7 +280,7 @@ class TestComputePPOLoss:
             reward_model=reward_model,
             tokenizer=tokenizer,
             device=device,
-            clip_epsilon=0.2
+            clip_epsilon=0.2,
         )
 
         # Large difference in log probs (ratio far from 1)
@@ -294,13 +295,14 @@ class TestComputePPOLoss:
 
     def test_ppo_loss_negative_advantages(self):
         """Test PPO loss with negative advantages."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -308,7 +310,7 @@ class TestComputePPOLoss:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         old_logprobs = torch.tensor([[-1.0, -1.0]])
@@ -327,13 +329,14 @@ class TestTrainStep:
     @pytest.mark.slow
     def test_train_step_completes(self):
         """Test that training step completes without errors."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -341,25 +344,22 @@ class TestTrainStep:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         prompts = ["Hello", "Hi there"]
 
         # Run training step with minimal epochs
         metrics = trainer.train_step(
-            prompts,
-            num_epochs_per_batch=1,
-            max_length=20,
-            temperature=1.0
+            prompts, num_epochs_per_batch=1, max_length=20, temperature=1.0
         )
 
         # Check that metrics are returned
-        assert 'policy_loss' in metrics
-        assert 'value_loss' in metrics
-        assert 'kl_divergence' in metrics
-        assert 'mean_reward' in metrics
-        assert 'mean_advantage' in metrics
+        assert "policy_loss" in metrics
+        assert "value_loss" in metrics
+        assert "kl_divergence" in metrics
+        assert "mean_reward" in metrics
+        assert "mean_advantage" in metrics
 
         # Check that all metrics are numbers
         for _key, value in metrics.items():
@@ -368,13 +368,14 @@ class TestTrainStep:
     @pytest.mark.slow
     def test_train_step_updates_parameters(self):
         """Test that training step updates policy parameters."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -382,7 +383,7 @@ class TestTrainStep:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Get initial parameters
@@ -395,11 +396,7 @@ class TestTrainStep:
         prompts = ["Test prompt"]
 
         # Run training step
-        trainer.train_step(
-            prompts,
-            num_epochs_per_batch=2,
-            max_length=20
-        )
+        trainer.train_step(prompts, num_epochs_per_batch=2, max_length=20)
 
         # Check that some parameters changed
         params_changed = False
@@ -414,13 +411,14 @@ class TestTrainStep:
     @pytest.mark.slow
     def test_train_step_gradients_flow(self):
         """Test that gradients flow properly through policy."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -428,22 +426,18 @@ class TestTrainStep:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         prompts = ["Test"]
 
         # Run training step
-        trainer.train_step(
-            prompts,
-            num_epochs_per_batch=1,
-            max_length=15
-        )
+        trainer.train_step(prompts, num_epochs_per_batch=1, max_length=15)
 
         # Check that statistics were updated
-        assert trainer.stats['total_steps'] == 1
-        assert len(trainer.stats['policy_losses']) == 1
-        assert len(trainer.stats['value_losses']) == 1
+        assert trainer.stats["total_steps"] == 1
+        assert len(trainer.stats["policy_losses"]) == 1
+        assert len(trainer.stats["value_losses"]) == 1
 
 
 class TestFullTraining:
@@ -452,13 +446,14 @@ class TestFullTraining:
     @pytest.mark.slow
     def test_train_loop_completes(self):
         """Test that full training loop completes."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -466,34 +461,30 @@ class TestFullTraining:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         prompts = ["Hello", "Hi", "Test"]
 
         # Run minimal training
         results = trainer.train(
-            prompts,
-            num_steps=2,
-            batch_size=2,
-            num_epochs_per_batch=1,
-            max_length=15
+            prompts, num_steps=2, batch_size=2, num_epochs_per_batch=1, max_length=15
         )
 
         # Check results structure
-        assert 'training_history' in results
-        assert 'final_stats' in results
+        assert "training_history" in results
+        assert "final_stats" in results
 
         # Check training history
-        history = results['training_history']
-        assert 'policy_losses' in history
-        assert 'value_losses' in history
-        assert 'kl_divergences' in history
-        assert 'mean_rewards' in history
+        history = results["training_history"]
+        assert "policy_losses" in history
+        assert "value_losses" in history
+        assert "kl_divergences" in history
+        assert "mean_rewards" in history
 
         # Check that we have data for all steps
-        assert len(history['policy_losses']) == 2
-        assert len(history['value_losses']) == 2
+        assert len(history["policy_losses"]) == 2
+        assert len(history["value_losses"]) == 2
 
 
 class TestCheckpointing:
@@ -502,13 +493,14 @@ class TestCheckpointing:
     @pytest.mark.slow
     def test_save_and_load_checkpoint(self, tmp_path):
         """Test that checkpoints can be saved and loaded."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -516,7 +508,7 @@ class TestCheckpointing:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Train a bit
@@ -528,7 +520,7 @@ class TestCheckpointing:
         trainer.save_checkpoint(checkpoint_dir, step=1)
 
         # Create new trainer
-        policy_model2 = AutoModelForCausalLM.from_pretrained('gpt2')
+        policy_model2 = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model2 = MockValueModel()
 
         trainer2 = PPOTrainer(
@@ -536,16 +528,17 @@ class TestCheckpointing:
             value_model=value_model2,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Load checkpoint
         import os
+
         checkpoint_path = os.path.join(checkpoint_dir, "ppo_checkpoint_step_1.pt")
         trainer2.load_checkpoint(checkpoint_path)
 
         # Check that stats were loaded
-        assert trainer2.stats['total_steps'] == trainer.stats['total_steps']
+        assert trainer2.stats["total_steps"] == trainer.stats["total_steps"]
 
 
 class TestIntegration:
@@ -554,13 +547,14 @@ class TestIntegration:
     @pytest.mark.slow
     def test_ppo_with_reward_model(self):
         """Test PPO integration with reward model."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -570,33 +564,30 @@ class TestIntegration:
             tokenizer=tokenizer,
             device=device,
             clip_epsilon=0.2,
-            kl_penalty=0.1
+            kl_penalty=0.1,
         )
 
         prompts = ["What is AI?"]
 
         # Run training
-        metrics = trainer.train_step(
-            prompts,
-            num_epochs_per_batch=1,
-            max_length=20
-        )
+        metrics = trainer.train_step(prompts, num_epochs_per_batch=1, max_length=20)
 
         # Verify all components work together
-        assert metrics['policy_loss'] is not None
-        assert metrics['value_loss'] is not None
-        assert metrics['kl_divergence'] is not None
-        assert metrics['mean_reward'] is not None
+        assert metrics["policy_loss"] is not None
+        assert metrics["value_loss"] is not None
+        assert metrics["kl_divergence"] is not None
+        assert metrics["mean_reward"] is not None
 
     def test_statistics_tracking(self):
         """Test that statistics are tracked correctly."""
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        policy_model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+        policy_model = AutoModelForCausalLM.from_pretrained("gpt2")
         value_model = MockValueModel()
         reward_model = MockRewardModel()
-        tokenizer = AutoTokenizer.from_pretrained('gpt2')
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
         tokenizer.pad_token = tokenizer.eos_token
 
         trainer = PPOTrainer(
@@ -604,18 +595,18 @@ class TestIntegration:
             value_model=value_model,
             reward_model=reward_model,
             tokenizer=tokenizer,
-            device=device
+            device=device,
         )
 
         # Get initial stats
         stats = trainer.get_statistics()
 
-        assert 'total_steps' in stats
-        assert 'avg_policy_loss' in stats
-        assert 'avg_value_loss' in stats
-        assert 'avg_kl_divergence' in stats
-        assert 'avg_reward' in stats
+        assert "total_steps" in stats
+        assert "avg_policy_loss" in stats
+        assert "avg_value_loss" in stats
+        assert "avg_kl_divergence" in stats
+        assert "avg_reward" in stats
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

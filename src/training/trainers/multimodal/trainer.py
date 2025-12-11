@@ -42,7 +42,6 @@ from .evaluation import Evaluator
 from .metrics_collector import MetricsCollector
 from .training_loop import TrainingLoop
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -266,9 +265,7 @@ class MultimodalTrainer:
         # Initialize modality balancing scheduler if requested
         self.grad_scheduler = None
         if balance_modality_gradients:
-            self.grad_scheduler = ModalityBalancingScheduler(
-                self.optimizer, target_ratio=1.0
-            )
+            self.grad_scheduler = ModalityBalancingScheduler(self.optimizer, target_ratio=1.0)
 
         # Initialize loss function if not provided
         if loss_fn is None:
@@ -323,9 +320,7 @@ class MultimodalTrainer:
             Model dimension for loss function projections
         """
         # Try fusion dimension first
-        if hasattr(self.model, "fusion_module") and hasattr(
-            self.model.fusion_module, "fusion_dim"
-        ):
+        if hasattr(self.model, "fusion_module") and hasattr(self.model.fusion_module, "fusion_dim"):
             return self.model.fusion_module.fusion_dim
 
         # Try vision model dimensions
@@ -370,13 +365,15 @@ class MultimodalTrainer:
                 prepare_loss_inputs_fn=self.data_handler.prepare_loss_inputs,
                 to_device_fn=self.data_handler.to_device,
                 evaluation_fn=(
-                    lambda: self.evaluator.evaluate(
-                        self.val_dataloader,
-                        self.data_handler.prepare_model_inputs,
-                        self.data_handler.to_device,
+                    lambda: (
+                        self.evaluator.evaluate(
+                            self.val_dataloader,
+                            self.data_handler.prepare_model_inputs,
+                            self.data_handler.to_device,
+                        )
+                        if self.val_dataloader
+                        else None
                     )
-                    if self.val_dataloader
-                    else None
                 ),
                 evaluation_steps=self.evaluation_steps,
             )
@@ -424,9 +421,7 @@ class MultimodalTrainer:
                 self.grad_scheduler.step(self.model)
 
         # Training completed
-        logger.info(
-            f"Training completed in {time.time() - self.start_time:.2f} seconds"
-        )
+        logger.info(f"Training completed in {time.time() - self.start_time:.2f} seconds")
 
         return self.metrics_collector.to_dict()
 
@@ -476,9 +471,7 @@ class MultimodalTrainer:
         Args:
             epoch: Current epoch number
         """
-        if not hasattr(self.model, "text_model") or not hasattr(
-            self.model.text_model, "tokenizer"
-        ):
+        if not hasattr(self.model, "text_model") or not hasattr(self.model.text_model, "tokenizer"):
             return
 
         try:

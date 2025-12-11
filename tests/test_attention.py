@@ -8,7 +8,6 @@ import seaborn as sns
 import torch
 import torch.nn.functional as F
 
-
 # Add the src directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -84,8 +83,14 @@ def test_scaled_dot_product_attention():
     visualize_attention_weights(attention_weights[0], "Scaled Dot-Product Attention")
 
     # Instead of returning, assert the expected properties
-    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
-    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
+    assert attention_weights.shape == (
+        batch_size,
+        seq_length,
+        seq_length,
+    ), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(
+        attention_weights <= 1
+    ), "Attention weights should be between 0 and 1"
 
 
 def test_simple_attention():
@@ -102,9 +107,7 @@ def test_simple_attention():
     query = torch.randn(batch_size, seq_length, input_dim)
 
     # Initialize attention layer
-    attention = SimpleAttention(
-        input_dim=input_dim, attention_dim=attention_dim, dropout=0.1
-    )
+    attention = SimpleAttention(input_dim=input_dim, attention_dim=attention_dim, dropout=0.1)
 
     # Test self-attention
     output, attention_weights = attention(query)
@@ -127,9 +130,7 @@ def test_simple_attention():
     ), "Attention weights shape is incorrect"
 
     # Test cross-attention
-    key = torch.randn(
-        batch_size, seq_length + 2, input_dim
-    )  # Different sequence length
+    key = torch.randn(batch_size, seq_length + 2, input_dim)  # Different sequence length
     value = torch.randn(batch_size, seq_length + 2, input_dim)
 
     cross_output, cross_attention_weights = attention(query, key, value)
@@ -161,8 +162,14 @@ def test_simple_attention():
     visualize_attention_weights(attention_weights[0], "Simple Attention")
 
     # Instead of returning, assert the expected properties
-    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
-    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
+    assert attention_weights.shape == (
+        batch_size,
+        seq_length,
+        seq_length,
+    ), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(
+        attention_weights <= 1
+    ), "Attention weights should be between 0 and 1"
 
 
 def test_multi_head_attention():
@@ -179,9 +186,7 @@ def test_multi_head_attention():
     query = torch.randn(batch_size, seq_length, input_dim)
 
     # Initialize attention layer
-    attention = MultiHeadAttention(
-        input_dim=input_dim, num_heads=num_heads, dropout=0.1
-    )
+    attention = MultiHeadAttention(input_dim=input_dim, num_heads=num_heads, dropout=0.1)
 
     # Test self-attention
     output, attention_weights = attention(query)
@@ -204,9 +209,7 @@ def test_multi_head_attention():
     ), "Attention weights shape is incorrect"
 
     # Test cross-attention
-    key = torch.randn(
-        batch_size, seq_length + 2, input_dim
-    )  # Different sequence length
+    key = torch.randn(batch_size, seq_length + 2, input_dim)  # Different sequence length
     value = torch.randn(batch_size, seq_length + 2, input_dim)
 
     cross_output, cross_attention_weights = attention(query, key, value)
@@ -254,9 +257,7 @@ def test_multi_head_attention():
     # In a real transformer, different heads might focus on syntactic relationships, semantic similarities,
     # or other linguistic patterns, but those specializations emerge during training.
 
-    visualize_attention_weights(
-        attention_weights[0], "Multi-Head Attention (average over heads)"
-    )
+    visualize_attention_weights(attention_weights[0], "Multi-Head Attention (average over heads)")
     # This heatmap shows multi-head attention with a causal (triangular) mask applied.
     # You should see a distinct triangular pattern where:
     # - The lower triangle (including diagonal) contains attention weights
@@ -271,16 +272,20 @@ def test_multi_head_attention():
 
     # Instead of returning, assert the expected properties
     assert output.shape == (batch_size, seq_length, input_dim), "Incorrect output shape"
-    assert attention_weights.shape == (batch_size, seq_length, seq_length), "Incorrect attention weights shape"
-    assert torch.all(attention_weights >= 0) and torch.all(attention_weights <= 1), "Attention weights should be between 0 and 1"
+    assert attention_weights.shape == (
+        batch_size,
+        seq_length,
+        seq_length,
+    ), "Incorrect attention weights shape"
+    assert torch.all(attention_weights >= 0) and torch.all(
+        attention_weights <= 1
+    ), "Attention weights should be between 0 and 1"
 
 
 def visualize_attention_weights(attention_weights, title):
     """Visualize attention weights as a heatmap."""
     plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        attention_weights.detach().cpu().numpy(), annot=True, fmt=".2f", cmap="viridis"
-    )
+    sns.heatmap(attention_weights.detach().cpu().numpy(), annot=True, fmt=".2f", cmap="viridis")
     plt.title(title)
     plt.xlabel("Key Position")
     plt.ylabel("Query Position")
@@ -312,9 +317,7 @@ def test_attention_training():
     attention = SimpleAttention(input_dim=input_dim)
 
     # Define optimizer and loss
-    optimizer = torch.optim.Adam(
-        list(model.parameters()) + list(attention.parameters()), lr=0.01
-    )
+    optimizer = torch.optim.Adam(list(model.parameters()) + list(attention.parameters()), lr=0.01)
     criterion = torch.nn.MSELoss()
 
     # Simple training loop

@@ -4,13 +4,11 @@ import argparse
 import os
 import sys
 
-
 # Add src directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from safety.red_teaming.model_loader import ModelLoader
 from src.utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -53,10 +51,7 @@ def main(args):
             logger.info("=== Popular Hugging Face Models ===")
 
             models = list_models(
-                filter="text-generation",
-                sort="downloads",
-                direction=-1,
-                limit=args.limit
+                filter="text-generation", sort="downloads", direction=-1, limit=args.limit
             )
 
             for model in models:
@@ -83,33 +78,21 @@ def main(args):
             else:
                 logger.info(f"{key}: {value}")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="List available models for red teaming")
 
     # List options
     parser.add_argument(
-        "--list-local",
-        action="store_true",
-        help="List local models in ./data/pretrained/"
+        "--list-local", action="store_true", help="List local models in ./data/pretrained/"
     )
+    parser.add_argument("--list-hf", action="store_true", help="List popular Hugging Face models")
     parser.add_argument(
-        "--list-hf",
-        action="store_true",
-        help="List popular Hugging Face models"
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=10,
-        help="Limit the number of Hugging Face models listed"
+        "--limit", type=int, default=10, help="Limit the number of Hugging Face models listed"
     )
 
     # Model info
-    parser.add_argument(
-        "--info",
-        type=str,
-        help="Get detailed information about a specific model"
-    )
+    parser.add_argument("--info", type=str, help="Get detailed information about a specific model")
 
     # Default behavior
     args = parser.parse_args()
@@ -118,6 +101,7 @@ if __name__ == "__main__":
         args.list_hf = True
 
     main(args)
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -136,9 +120,9 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "main",
                 "signature": "main(args)",
-                "brief_description": "List available models and their information based on provided arguments"
+                "brief_description": "List available models and their information based on provided arguments",
             }
         ],
         "external_dependencies": ["argparse", "huggingface_hub"],
-        "complexity_score": 4  # Moderate complexity
+        "complexity_score": 4,  # Moderate complexity
     }

@@ -28,7 +28,6 @@ import torch
 import torch.nn as nn
 from PIL import Image
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -118,9 +117,7 @@ class GradCAM:
         weighted_activations = self.activations * gradients
 
         # Generate heatmap
-        heatmap = (
-            torch.sum(weighted_activations, dim=1).squeeze().cpu().detach().numpy()
-        )
+        heatmap = torch.sum(weighted_activations, dim=1).squeeze().cpu().detach().numpy()
 
         # Apply ReLU to focus on features that have a positive influence
         heatmap = np.maximum(heatmap, 0)
@@ -392,9 +389,7 @@ class AttributionVisualizer:
         cmap = plt.get_cmap(colormap)
 
         # Plot heatmap
-        im = ax.imshow(
-            attr_np.reshape(1, -1), cmap=cmap, aspect="auto", vmin=-1, vmax=1
-        )
+        im = ax.imshow(attr_np.reshape(1, -1), cmap=cmap, aspect="auto", vmin=-1, vmax=1)
 
         # Add tokens as x-axis labels
         ax.set_xticks(range(len(tokens)))

@@ -91,9 +91,7 @@ class DualEncoder(nn.Module):
             if self.training:
                 # Scale features to increase variance explicitly
                 vision_variance = torch.var(vision_proj, dim=0).mean()
-                scaling_factor = torch.clamp(
-                    1.0 / torch.sqrt(vision_variance), min=1.0, max=10.0
-                )
+                scaling_factor = torch.clamp(1.0 / torch.sqrt(vision_variance), min=1.0, max=10.0)
                 vision_proj = vision_proj * scaling_factor
 
             outputs["vision_features"] = vision_proj
@@ -106,9 +104,7 @@ class DualEncoder(nn.Module):
             if self.training:
                 # Different scaling for text to create asymmetry
                 text_variance = torch.var(text_proj, dim=0).mean()
-                scaling_factor = torch.clamp(
-                    1.0 / torch.sqrt(text_variance), min=1.0, max=8.0
-                )
+                scaling_factor = torch.clamp(1.0 / torch.sqrt(text_variance), min=1.0, max=8.0)
                 text_proj = text_proj * scaling_factor
 
             outputs["text_features"] = text_proj

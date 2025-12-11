@@ -22,7 +22,6 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -47,12 +46,14 @@ def original_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batch
     tgt_eos_idx = en_tokenizer.special_tokens["eos_token_idx"]
 
     # Process in batches
-    for i in tqdm(range(0, len(dataset.src_data), batch_size),
-                 total=len(dataset.src_data) // batch_size + 1,
-                 desc="Preprocessing batches"):
+    for i in tqdm(
+        range(0, len(dataset.src_data), batch_size),
+        total=len(dataset.src_data) // batch_size + 1,
+        desc="Preprocessing batches",
+    ):
         # Get batch
-        batch_src = dataset.src_data[i:i + batch_size]
-        batch_tgt = dataset.tgt_data[i:i + batch_size]
+        batch_src = dataset.src_data[i : i + batch_size]
+        batch_tgt = dataset.tgt_data[i : i + batch_size]
 
         # Process source and target texts in parallel using batch_encode
         src_token_ids = de_tokenizer.batch_encode(batch_src, batch_size=batch_size)
@@ -65,13 +66,14 @@ def original_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batch
 
     return src_sequences, tgt_sequences
 
+
 # First optimization: Simple caching (from our earlier solution)
 def optimized_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batch_size=4000):
     """Optimized preprocessing with word-level caching."""
     # Initialize word token caches if they don't exist
-    if not hasattr(de_tokenizer, 'word_token_cache'):
+    if not hasattr(de_tokenizer, "word_token_cache"):
         de_tokenizer.word_token_cache = {}
-    if not hasattr(en_tokenizer, 'word_token_cache'):
+    if not hasattr(en_tokenizer, "word_token_cache"):
         en_tokenizer.word_token_cache = {}
 
     src_sequences = []
@@ -84,12 +86,14 @@ def optimized_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batc
     tgt_eos_idx = en_tokenizer.special_tokens["eos_token_idx"]
 
     # Process in batches
-    for i in tqdm(range(0, len(dataset.src_data), batch_size),
-                 total=len(dataset.src_data) // batch_size + 1,
-                 desc="Preprocessing batches"):
+    for i in tqdm(
+        range(0, len(dataset.src_data), batch_size),
+        total=len(dataset.src_data) // batch_size + 1,
+        desc="Preprocessing batches",
+    ):
         # Get batch
-        batch_src = dataset.src_data[i:i + batch_size]
-        batch_tgt = dataset.tgt_data[i:i + batch_size]
+        batch_src = dataset.src_data[i : i + batch_size]
+        batch_tgt = dataset.tgt_data[i : i + batch_size]
 
         # Process each source text with caching
         src_batch_tokens = []
@@ -148,6 +152,7 @@ def optimized_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batc
 
     return src_sequences, tgt_sequences
 
+
 def run_benchmark():
     """Run the preprocessing benchmarks and visualize results."""
     print("Loading tokenizers...")
@@ -158,16 +163,14 @@ def run_benchmark():
     print("Loading test dataset...")
     # Load a small dataset for benchmarking
     test_dataset = EuroparlDataset(
-        src_lang="de",
-        tgt_lang="en",
-        max_examples=10000  # 10k examples is enough for benchmarking
+        src_lang="de", tgt_lang="en", max_examples=10000  # 10k examples is enough for benchmarking
     )
 
     # Run benchmarks
     methods = [
         ("Original", original_preprocess_data_with_bpe, 1000),
         ("Optimized", optimized_preprocess_data_with_bpe, 4000),
-        ("Turbo", turbo_preprocess_data, None)
+        ("Turbo", turbo_preprocess_data, None),
     ]
 
     results = []
@@ -176,9 +179,9 @@ def run_benchmark():
         print(f"\nRunning benchmark for {name} method...")
 
         # Reset caches to ensure fair comparison
-        if hasattr(de_tokenizer, 'word_token_cache'):
+        if hasattr(de_tokenizer, "word_token_cache"):
             de_tokenizer.word_token_cache = {}
-        if hasattr(en_tokenizer, 'word_token_cache'):
+        if hasattr(en_tokenizer, "word_token_cache"):
             en_tokenizer.word_token_cache = {}
 
         # Clear GPU cache
@@ -189,7 +192,9 @@ def run_benchmark():
         start_time = time.time()
 
         if batch_size is not None:
-            src_sequences, tgt_sequences = method(test_dataset, de_tokenizer, en_tokenizer, batch_size=batch_size)
+            src_sequences, tgt_sequences = method(
+                test_dataset, de_tokenizer, en_tokenizer, batch_size=batch_size
+            )
         else:
             src_sequences, tgt_sequences = method(test_dataset, de_tokenizer, en_tokenizer)
 
@@ -199,47 +204,56 @@ def run_benchmark():
         examples_per_second = len(test_dataset.src_data) / elapsed
 
         # Store results
-        results.append({
-            'method': name,
-            'time': elapsed,
-            'examples_per_second': examples_per_second,
-            'src_sequences': len(src_sequences),
-            'tgt_sequences': len(tgt_sequences)
-        })
+        results.append(
+            {
+                "method": name,
+                "time": elapsed,
+                "examples_per_second": examples_per_second,
+                "src_sequences": len(src_sequences),
+                "tgt_sequences": len(tgt_sequences),
+            }
+        )
 
-        print(f"{name} method processed {len(test_dataset.src_data)} examples in {elapsed:.2f} seconds")
+        print(
+            f"{name} method processed {len(test_dataset.src_data)} examples in {elapsed:.2f} seconds"
+        )
         print(f"Speed: {examples_per_second:.2f} examples/second")
 
     # Verify that all methods produced the same output lengths
     first_result = results[0]
     for result in results[1:]:
-        if result['src_sequences'] != first_result['src_sequences'] or result['tgt_sequences'] != first_result['tgt_sequences']:
-            print(f"WARNING: Method {result['method']} produced different sequence counts compared to {first_result['method']}")
+        if (
+            result["src_sequences"] != first_result["src_sequences"]
+            or result["tgt_sequences"] != first_result["tgt_sequences"]
+        ):
+            print(
+                f"WARNING: Method {result['method']} produced different sequence counts compared to {first_result['method']}"
+            )
 
     # Visualize results
     plt.figure(figsize=(12, 6))
 
     # Processing time comparison (lower is better)
     plt.subplot(1, 2, 1)
-    methods = [r['method'] for r in results]
-    times = [r['time'] for r in results]
+    methods = [r["method"] for r in results]
+    times = [r["time"] for r in results]
 
     plt.bar(methods, times)
-    plt.title('Processing Time (seconds)')
-    plt.ylabel('Seconds')
+    plt.title("Processing Time (seconds)")
+    plt.ylabel("Seconds")
     plt.xticks(rotation=45)
 
     # Speed comparison (higher is better)
     plt.subplot(1, 2, 2)
-    speeds = [r['examples_per_second'] for r in results]
+    speeds = [r["examples_per_second"] for r in results]
 
     plt.bar(methods, speeds)
-    plt.title('Processing Speed (examples/second)')
-    plt.ylabel('Examples/second')
+    plt.title("Processing Speed (examples/second)")
+    plt.ylabel("Examples/second")
     plt.xticks(rotation=45)
 
     plt.tight_layout()
-    plt.savefig('preprocessing_benchmark_results.png')
+    plt.savefig("preprocessing_benchmark_results.png")
     plt.close()
 
     print("\nBenchmark results saved to preprocessing_benchmark_results.png")
@@ -249,7 +263,10 @@ def run_benchmark():
     print(f"{'Method':<15} {'Time (s)':<15} {'Speed (examples/s)':<20}")
     print("-" * 50)
     for result in results:
-        print(f"{result['method']:<15} {result['time']:<15.2f} {result['examples_per_second']:<20.2f}")
+        print(
+            f"{result['method']:<15} {result['time']:<15.2f} {result['examples_per_second']:<20.2f}"
+        )
+
 
 if __name__ == "__main__":
     run_benchmark()

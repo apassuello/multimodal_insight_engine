@@ -61,9 +61,7 @@ class TransformerEncoderLayer(nn.Module):
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
         # Multi-head attention layer
-        self.self_attn = MultiHeadAttention(
-            input_dim=d_model, num_heads=num_heads, dropout=dropout
-        )
+        self.self_attn = MultiHeadAttention(input_dim=d_model, num_heads=num_heads, dropout=dropout)
 
         # Rotary embeddings if specified (applied within attention)
         if use_rotary_embeddings:
@@ -195,9 +193,7 @@ class TransformerEncoder(nn.Module):
                 d_model=d_model,
                 max_seq_length=max_seq_length,
                 dropout=dropout,
-                encoding_type=(
-                    "sinusoidal" if positional_encoding == "sinusoidal" else "learned"
-                ),
+                encoding_type=("sinusoidal" if positional_encoding == "sinusoidal" else "learned"),
             )
 
         # Stack of encoder layers
@@ -333,9 +329,7 @@ class Transformer(BaseModel):
         if output_dim is not None and output_dim != d_model:
             self.output_projection = nn.Linear(d_model, output_dim)
 
-    def forward(
-        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Forward pass for the transformer.
 
@@ -416,9 +410,7 @@ class TransformerDecoderLayer(nn.Module):
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
         # 1. Self-attention layer (masked to prevent looking at future tokens)
-        self.self_attn = MultiHeadAttention(
-            input_dim=d_model, num_heads=num_heads, dropout=dropout
-        )
+        self.self_attn = MultiHeadAttention(input_dim=d_model, num_heads=num_heads, dropout=dropout)
 
         # 2. Cross-attention layer (to attend to encoder outputs)
         self.cross_attn = MultiHeadAttention(
@@ -572,9 +564,7 @@ class TransformerDecoder(nn.Module):
                 d_model=d_model,
                 max_seq_length=max_seq_length,
                 dropout=dropout,
-                encoding_type=(
-                    "sinusoidal" if positional_encoding == "sinusoidal" else "learned"
-                ),
+                encoding_type=("sinusoidal" if positional_encoding == "sinusoidal" else "learned"),
             )
 
         # Stack of decoder layers
@@ -732,22 +722,14 @@ class EncoderDecoderTransformer(BaseModel):
         # If sharing embeddings, link decoder's embedding to encoder's
         if share_embeddings:
             if src_vocab_size != tgt_vocab_size:
-                raise ValueError(
-                    "Cannot share embeddings with different vocabulary sizes"
-                )
+                raise ValueError("Cannot share embeddings with different vocabulary sizes")
             # Use Xavier uniform initialization with proper scaling
-            nn.init.xavier_uniform_(
-                self.encoder.token_embedding.embedding.weight, gain=1.0
-            )
+            nn.init.xavier_uniform_(self.encoder.token_embedding.embedding.weight, gain=1.0)
             # Initialize attention projections with smaller weights
             for layer in self.encoder.layers + self.decoder.layers:
-                nn.init.xavier_uniform_(
-                    layer.self_attn.query_projection.weight, gain=0.1
-                )
+                nn.init.xavier_uniform_(layer.self_attn.query_projection.weight, gain=0.1)
                 nn.init.xavier_uniform_(layer.self_attn.key_projection.weight, gain=0.1)
-                nn.init.xavier_uniform_(
-                    layer.self_attn.value_projection.weight, gain=0.1
-                )
+                nn.init.xavier_uniform_(layer.self_attn.value_projection.weight, gain=0.1)
             # Share the embedding layer
             self.decoder.token_embedding = self.encoder.token_embedding
 
@@ -764,9 +746,7 @@ class EncoderDecoderTransformer(BaseModel):
         Initialize model parameters with appropriate distributions for stable training.
         """
         # Initialize embeddings
-        nn.init.normal_(
-            self.encoder.token_embedding.embedding.weight, mean=0.0, std=0.02
-        )
+        nn.init.normal_(self.encoder.token_embedding.embedding.weight, mean=0.0, std=0.02)
 
         # Initialize attention projections with smaller variance
         for module in self.modules():
@@ -840,9 +820,7 @@ class EncoderDecoderTransformer(BaseModel):
         # Return logits without applying softmax
         return output
 
-    def encode(
-        self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def encode(self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Encode source sequence.
 
@@ -878,16 +856,12 @@ class EncoderDecoderTransformer(BaseModel):
             src_vocab_size=src_vocab_size,
             tgt_vocab_size=tgt_vocab_size,
             d_model=self.d_model,
-            num_heads=self.encoder.layers[
-                0
-            ].self_attn.num_heads,  # Get from the first layer
+            num_heads=self.encoder.layers[0].self_attn.num_heads,  # Get from the first layer
             num_encoder_layers=len(self.encoder.layers),
             num_decoder_layers=len(self.decoder.layers),
             d_ff=d_ff,
             dropout=(
-                self.encoder.dropout.p
-                if isinstance(self.encoder.dropout, nn.Dropout)
-                else 0.1
+                self.encoder.dropout.p if isinstance(self.encoder.dropout, nn.Dropout) else 0.1
             ),
             max_seq_length=(
                 self.encoder.position_encoding.max_len
@@ -976,9 +950,7 @@ class EncoderDecoderTransformer(BaseModel):
             tgt_mask = self.generate_square_subsequent_mask(tgt_len, device)
 
             # Get logits for next token
-            logits = self.decode(
-                tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask
-            )
+            logits = self.decode(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
             logits = logits[:, -1, :]  # Focus on last token prediction
 
             # Apply temperature
@@ -1001,9 +973,7 @@ class EncoderDecoderTransformer(BaseModel):
 
         return tgt
 
-    def generate_square_subsequent_mask(
-        self, size: int, device: torch.device
-    ) -> torch.Tensor:
+    def generate_square_subsequent_mask(self, size: int, device: torch.device) -> torch.Tensor:
         """
         Generate a square mask for the sequence.
 
@@ -1032,9 +1002,7 @@ class EncoderDecoderTransformer(BaseModel):
             Dictionary with optimizer and scheduler
         """
         # Create optimizer
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9
-        )
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
 
         # Create learning rate scheduler with warmup
         def lr_lambda(step):
@@ -1042,9 +1010,7 @@ class EncoderDecoderTransformer(BaseModel):
             warmup_steps = 4000
             if step == 0:
                 step = 1
-            return (
-                min(step ** (-0.5), step * warmup_steps ** (-1.5)) * warmup_steps**0.5
-            )
+            return min(step ** (-0.5), step * warmup_steps ** (-1.5)) * warmup_steps**0.5
 
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 

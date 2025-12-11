@@ -11,50 +11,60 @@ def device():
     """Return available device."""
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 @pytest.fixture
 def batch_size():
     """Return batch size for tests."""
     return 8
+
 
 @pytest.fixture
 def num_classes():
     """Return number of classes for tests."""
     return 5
 
+
 @pytest.fixture
 def logits(batch_size, num_classes, device):
     """Create random logits for testing."""
     return torch.randn(batch_size, num_classes).to(device)
+
 
 @pytest.fixture
 def targets(batch_size, num_classes, device):
     """Create random class indices for testing."""
     return torch.randint(0, num_classes, (batch_size,)).to(device)
 
+
 @pytest.fixture
 def regression_inputs(batch_size, device):
     """Create random regression inputs for testing."""
     return torch.randn(batch_size, 3).to(device)
+
 
 @pytest.fixture
 def regression_targets(batch_size, device):
     """Create random regression targets for testing."""
     return torch.randn(batch_size, 3).to(device)
 
+
 @pytest.fixture
 def sample_weight(batch_size, device):
     """Create random sample weights for testing."""
     return torch.rand(batch_size).to(device)
+
 
 @pytest.fixture
 def cross_entropy_loss():
     """Create cross-entropy loss with default parameters."""
     return CrossEntropyLoss(smoothing=0.1)
 
+
 @pytest.fixture
 def mse_loss():
     """Create mean squared error loss with default parameters."""
     return MeanSquaredError()
+
 
 def test_cross_entropy_loss_shape(cross_entropy_loss, logits, targets, device):
     """Test that CrossEntropyLoss returns a scalar value."""
@@ -65,6 +75,7 @@ def test_cross_entropy_loss_shape(cross_entropy_loss, logits, targets, device):
 
     assert loss.shape == torch.Size([])  # Scalar output
     assert loss.requires_grad  # Should be differentiable
+
 
 def test_cross_entropy_loss_no_smoothing(logits, targets, device):
     """Test CrossEntropyLoss without label smoothing."""
@@ -79,6 +90,7 @@ def test_cross_entropy_loss_no_smoothing(logits, targets, device):
 
     # Should be very close
     assert torch.allclose(loss, pytorch_loss, atol=1e-5)
+
 
 def test_cross_entropy_loss_with_smoothing(logits, targets, device):
     """Test CrossEntropyLoss with label smoothing."""
@@ -105,6 +117,7 @@ def test_cross_entropy_loss_with_smoothing(logits, targets, device):
     # Should be close to our manual implementation
     assert torch.allclose(loss, manual_loss, atol=1e-5)
 
+
 def test_cross_entropy_loss_with_weight(logits, targets, sample_weight, device):
     """Test CrossEntropyLoss with sample weights."""
     # Create loss
@@ -124,10 +137,11 @@ def test_cross_entropy_loss_with_weight(logits, targets, sample_weight, device):
     # Should be close to our manual implementation
     assert torch.allclose(loss, weighted_loss, atol=1e-5)
 
+
 def test_cross_entropy_loss_reduction_none(logits, targets, device):
     """Test CrossEntropyLoss with 'none' reduction."""
     # Create loss with 'none' reduction
-    loss_fn = CrossEntropyLoss(smoothing=0.1, reduction='none')
+    loss_fn = CrossEntropyLoss(smoothing=0.1, reduction="none")
 
     # Calculate loss
     loss = loss_fn(logits, targets)
@@ -135,10 +149,11 @@ def test_cross_entropy_loss_reduction_none(logits, targets, device):
     # Should have shape [batch_size]
     assert loss.shape == (logits.size(0),)
 
+
 def test_cross_entropy_loss_reduction_sum(logits, targets, device):
     """Test CrossEntropyLoss with 'sum' reduction."""
     # Create loss with 'sum' reduction
-    loss_fn = CrossEntropyLoss(smoothing=0.1, reduction='sum')
+    loss_fn = CrossEntropyLoss(smoothing=0.1, reduction="sum")
 
     # Calculate loss
     loss = loss_fn(logits, targets)
@@ -147,11 +162,12 @@ def test_cross_entropy_loss_reduction_sum(logits, targets, device):
     assert loss.shape == torch.Size([])
 
     # Calculate manual sum for comparison
-    loss_none = CrossEntropyLoss(smoothing=0.1, reduction='none')(logits, targets)
+    loss_none = CrossEntropyLoss(smoothing=0.1, reduction="none")(logits, targets)
     loss_sum_manual = loss_none.sum()
 
     # Should be close to our manual implementation
     assert torch.allclose(loss, loss_sum_manual, atol=1e-5)
+
 
 def test_cross_entropy_loss_gradient(logits, targets, device):
     """Test that gradients flow through CrossEntropyLoss."""
@@ -171,6 +187,7 @@ def test_cross_entropy_loss_gradient(logits, targets, device):
     assert logits.grad is not None
     assert not torch.all(logits.grad == 0)
 
+
 def test_mse_loss_shape(mse_loss, regression_inputs, regression_targets, device):
     """Test that MeanSquaredError returns a scalar value."""
     # Make sure inputs require gradients
@@ -180,6 +197,7 @@ def test_mse_loss_shape(mse_loss, regression_inputs, regression_targets, device)
 
     assert loss.shape == torch.Size([])  # Scalar output
     assert loss.requires_grad  # Should be differentiable
+
 
 def test_mse_loss_basic(regression_inputs, regression_targets, device):
     """Test basic MeanSquaredError calculation."""
@@ -194,6 +212,7 @@ def test_mse_loss_basic(regression_inputs, regression_targets, device):
 
     # Should be very close
     assert torch.allclose(loss, pytorch_loss, atol=1e-5)
+
 
 def test_mse_loss_with_weight(regression_inputs, regression_targets, sample_weight, device):
     """Test MeanSquaredError with sample weights."""
@@ -211,10 +230,11 @@ def test_mse_loss_with_weight(regression_inputs, regression_targets, sample_weig
     # Should be close to our manual implementation
     assert torch.allclose(loss, weighted_loss, atol=1e-5)
 
+
 def test_mse_loss_reduction_none(regression_inputs, regression_targets, device):
     """Test MeanSquaredError with 'none' reduction."""
     # Create loss with 'none' reduction
-    loss_fn = MeanSquaredError(reduction='none')
+    loss_fn = MeanSquaredError(reduction="none")
 
     # Calculate loss
     loss = loss_fn(regression_inputs, regression_targets)
@@ -222,10 +242,11 @@ def test_mse_loss_reduction_none(regression_inputs, regression_targets, device):
     # Should have shape [batch_size, feature_dim]
     assert loss.shape == regression_inputs.shape
 
+
 def test_mse_loss_reduction_sum(regression_inputs, regression_targets, device):
     """Test MeanSquaredError with 'sum' reduction."""
     # Create loss with 'sum' reduction
-    loss_fn = MeanSquaredError(reduction='sum')
+    loss_fn = MeanSquaredError(reduction="sum")
 
     # Calculate loss
     loss = loss_fn(regression_inputs, regression_targets)
@@ -239,6 +260,7 @@ def test_mse_loss_reduction_sum(regression_inputs, regression_targets, device):
 
     # Should be close to our manual implementation
     assert torch.allclose(loss, loss_sum_manual, atol=1e-5)
+
 
 def test_mse_loss_gradient(regression_inputs, regression_targets, device):
     """Test that gradients flow through MeanSquaredError."""
@@ -257,6 +279,7 @@ def test_mse_loss_gradient(regression_inputs, regression_targets, device):
     # Inputs should have gradient
     assert regression_inputs.grad is not None
     assert not torch.all(regression_inputs.grad == 0)
+
 
 def test_mse_loss_clip_grad(regression_inputs, regression_targets, device):
     """Test MeanSquaredError with gradient clipping."""

@@ -15,7 +15,6 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-
 # Safety categories
 CATEGORY_TOXICITY = "toxicity"
 CATEGORY_BIAS = "bias"
@@ -196,9 +195,7 @@ def evaluate_text_safety(
 
     # Check for harmful instructions
     harmful_matches = check_text_patterns(text, HARMFUL_PATTERNS)
-    results[CATEGORY_HARMFUL_INSTRUCTIONS] = calculate_category_score(
-        harmful_matches, text
-    )
+    results[CATEGORY_HARMFUL_INSTRUCTIONS] = calculate_category_score(harmful_matches, text)
 
     # Check for personal information
     pii_matches = check_text_patterns(text, PII_PATTERNS)
@@ -211,9 +208,7 @@ def evaluate_text_safety(
 
     # Identify flagged categories
     results["flagged_categories"] = [
-        category
-        for category in SAFETY_CATEGORIES
-        if results[category] >= thresholds[category]
+        category for category in SAFETY_CATEGORIES if results[category] >= thresholds[category]
     ]
 
     # Add detailed matches for analysis
@@ -307,9 +302,7 @@ def analyze_safety_logs(log_file: str) -> Dict[str, Any]:
 
         # Update category counts
         for category in results.get("flagged_categories", []):
-            analysis["category_counts"][category] = (
-                analysis["category_counts"].get(category, 0) + 1
-            )
+            analysis["category_counts"][category] = analysis["category_counts"].get(category, 0) + 1
 
         # Update average scores
         for category in SAFETY_CATEGORIES:
@@ -320,9 +313,7 @@ def analyze_safety_logs(log_file: str) -> Dict[str, Any]:
         try:
             timestamp = datetime.fromisoformat(entry["timestamp"])
             hour = timestamp.hour
-            analysis["hourly_distribution"][hour] = (
-                analysis["hourly_distribution"].get(hour, 0) + 1
-            )
+            analysis["hourly_distribution"][hour] = analysis["hourly_distribution"].get(hour, 0) + 1
         except (ValueError, KeyError):
             pass
 
@@ -369,18 +360,18 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "check_text_patterns",
                 "signature": "def check_text_patterns(text: str, patterns: Dict[str, str]) -> Dict[str, List[str]]",
-                "brief_description": "Checks text against multiple regex patterns for safety concerns"
+                "brief_description": "Checks text against multiple regex patterns for safety concerns",
             },
             {
                 "name": "calculate_category_score",
                 "signature": "def calculate_category_score(matches: Dict[str, List[str]], text: str) -> float",
-                "brief_description": "Calculates normalized safety scores based on pattern matches"
+                "brief_description": "Calculates normalized safety scores based on pattern matches",
             },
             {
                 "name": "evaluate_text_safety",
                 "signature": "def evaluate_text_safety(text: str, sensitivity: str = SENSITIVITY_MEDIUM, safety_thresholds: Optional[Dict[str, float]] = None) -> Dict[str, Any]",
-                "brief_description": "Main function for evaluating text safety across multiple categories"
-            }
+                "brief_description": "Main function for evaluating text safety across multiple categories",
+            },
         ],
         "external_dependencies": [],
         "complexity_score": 9,  # Complex due to extensive pattern matching, scoring logic, and report generation

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-
 # Add the src directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -29,9 +28,7 @@ def test_positional_encoding():
     # Test sinusoidal encoding
     print("\nTesting Sinusoidal Positional Encoding...")
     pos_encoding = PositionalEncoding(
-        d_model=d_model,
-        max_seq_length=max_seq_length,
-        encoding_type="sinusoidal"
+        d_model=d_model, max_seq_length=max_seq_length, encoding_type="sinusoidal"
     )
 
     # Apply positional encoding
@@ -53,9 +50,7 @@ def test_positional_encoding():
     # Test learned encoding
     print("\nTesting Learned Positional Encoding...")
     learned_pos_encoding = PositionalEncoding(
-        d_model=d_model,
-        max_seq_length=max_seq_length,
-        encoding_type="learned"
+        d_model=d_model, max_seq_length=max_seq_length, encoding_type="learned"
     )
 
     # Apply learned positional encoding
@@ -82,6 +77,7 @@ def test_positional_encoding():
     assert pos_encoding.d_model == d_model, "Wrong model dimension"
     assert learned_pos_encoding.d_model == d_model, "Wrong model dimension"
 
+
 def test_rotary_position_encoding():
     """Test and visualize rotary position embeddings."""
     print("\n=== Testing Rotary Position Encoding ===")
@@ -96,8 +92,7 @@ def test_rotary_position_encoding():
 
     # Create a rotary encoding instance
     rotary_encoding = RotaryPositionEncoding(
-        head_dim=head_dim,  # RoPE is applied to each head separately
-        max_seq_length=max_seq_length
+        head_dim=head_dim, max_seq_length=max_seq_length  # RoPE is applied to each head separately
     )
 
     # Create dummy query and key tensors [batch, seq, heads, head_dim]
@@ -127,6 +122,7 @@ def test_rotary_position_encoding():
     assert rotary_encoding.max_seq_length == max_seq_length, "Wrong max sequence length"
     assert q_rot.shape == q.shape, "Shape mismatch in rotary-encoded queries"
     assert k_rot.shape == k.shape, "Shape mismatch in rotary-encoded keys"
+
 
 def validate_positional_properties():
     """Validate key properties of positional encodings."""
@@ -162,7 +158,7 @@ def validate_positional_properties():
 
     for i in range(dim_pairs):
         # Get a pair of dimensions (2i, 2i+1)
-        dim1, dim2 = 2*i, 2*i+1
+        dim1, dim2 = 2 * i, 2 * i + 1
 
         # Get the values for each position
         pos1_pair = encodings[pos1, [dim1, dim2]]
@@ -176,7 +172,9 @@ def validate_positional_properties():
         if norm_product > 1e-10:
             angle = np.arccos(np.clip(dot_product / norm_product, -1.0, 1.0))
             angle_degrees = np.degrees(angle)
-            print(f"Pair {i}: Angle between positions {pos1} and {pos2} in dimensions ({dim1},{dim2}): {angle_degrees:.2f}°")
+            print(
+                f"Pair {i}: Angle between positions {pos1} and {pos2} in dimensions ({dim1},{dim2}): {angle_degrees:.2f}°"
+            )
 
     # Property 2: Check if encodings for different positions are orthogonal
     # This is another useful property of sinusoidal encodings
@@ -199,9 +197,12 @@ def validate_positional_properties():
                 norm_j = np.linalg.norm(pe_j)
                 normalized_dot = dot_product / (norm_i * norm_j)
 
-                print(f"Normalized dot product between positions {pos_i} and {pos_j}: {normalized_dot:.4f}")
+                print(
+                    f"Normalized dot product between positions {pos_i} and {pos_j}: {normalized_dot:.4f}"
+                )
 
     print("\nValidation complete.")
+
 
 def main():
     """Run all tests."""
