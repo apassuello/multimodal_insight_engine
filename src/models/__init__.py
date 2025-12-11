@@ -22,7 +22,6 @@ from .pretrained import (
 )
 from .transformer import Transformer
 
-
 __all__ = [
     "create_multimodal_model",
     "BaseModel",

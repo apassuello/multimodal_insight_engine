@@ -42,7 +42,6 @@ from .evaluation import Evaluator
 from .metrics_collector import MetricsCollector
 from .training_loop import TrainingLoop
 
-
 logger = logging.getLogger(__name__)
 
 

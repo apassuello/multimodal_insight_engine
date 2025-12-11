@@ -41,7 +41,6 @@ from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss
 from src.training.losses.self_supervised import VICRegLoss
 from src.training.trainers.multimodal import MultimodalTrainer
 
-
 logger = logging.getLogger(__name__)
 
 

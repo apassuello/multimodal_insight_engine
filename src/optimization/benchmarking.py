@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 from matplotlib.lines import Line2D
 
-
 """MODULE: benchmarking.py
 PURPOSE: Provides a framework for measuring and comparing model optimization techniques.
 KEY COMPONENTS:

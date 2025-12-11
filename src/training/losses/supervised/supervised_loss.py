@@ -14,7 +14,6 @@ import torch
 
 from ..base import BaseSupervisedLoss
 
-
 logger = logging.getLogger(__name__)
 
 

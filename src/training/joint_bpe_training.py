@@ -20,7 +20,6 @@ from typing import List
 from src.data.tokenization import BPETokenizer
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 

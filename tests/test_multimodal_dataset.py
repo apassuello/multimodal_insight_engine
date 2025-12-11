@@ -24,7 +24,6 @@ from torch.utils.data import DataLoader
 
 from src.data.multimodal_dataset import MultimodalDataset
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

@@ -8,7 +8,6 @@ from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 

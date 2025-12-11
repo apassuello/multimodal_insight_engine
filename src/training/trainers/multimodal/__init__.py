@@ -20,7 +20,6 @@ from .metrics_collector import MetricsCollector
 from .trainer import ModalityBalancingScheduler, MultimodalTrainer
 from .training_loop import TrainingLoop
 
-
 __all__ = [
     "MultimodalTrainer",
     "ModalityBalancingScheduler",

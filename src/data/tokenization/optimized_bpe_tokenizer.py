@@ -15,7 +15,6 @@ from .base_tokenizer import BaseTokenizer
 from .preprocessing import clean_text
 from .vocabulary import Vocabulary
 
-
 logger = logging.getLogger(__name__)
 
 

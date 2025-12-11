@@ -23,7 +23,6 @@ from .framework import ConstitutionalFramework
 from .model_utils import GenerationConfig, generate_text
 from .principles import get_eval_debug_level, set_eval_debug_level
 
-
 # Module logger (prefixed with _ to avoid shadowing the logger parameter in functions)
 _logger = get_logger(__name__)
 

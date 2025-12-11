@@ -16,7 +16,6 @@ import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 # Module logger
 logger = get_logger(__name__)
 import os
