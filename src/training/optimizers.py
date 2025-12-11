@@ -29,10 +29,10 @@ from torch.optim.lr_scheduler import _LRScheduler
 class AdamW(optim.AdamW):
     """
     AdamW optimizer with improved weight decay handling.
-    
+
     This implementation extends PyTorch's AdamW optimizer with additional features
     like gradient clipping and parameter group management.
-    
+
     Args:
         params: Iterable of parameters to optimize or dicts defining parameter groups
         lr: Learning rate (default: 1e-3)
@@ -66,10 +66,10 @@ class AdamW(optim.AdamW):
     def step(self, closure=None):
         """
         Performs a single optimization step.
-        
+
         Args:
             closure: A closure that reevaluates the model and returns the loss
-            
+
         Returns:
             float: The loss value if closure is provided
         """
@@ -81,10 +81,10 @@ class AdamW(optim.AdamW):
 class OneCycleLR(_LRScheduler):
     """
     One-cycle learning rate scheduler.
-    
+
     Implements the one-cycle policy as described in "Super-Convergence: Very Fast
     Training of Neural Networks Using Large Learning Rates" by Leslie N. Smith.
-    
+
     Args:
         optimizer: Wrapped optimizer
         max_lr: Maximum learning rate
@@ -140,7 +140,7 @@ class OneCycleLR(_LRScheduler):
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
-        
+
         Returns:
             List[float]: List of learning rates
         """
@@ -159,10 +159,10 @@ class OneCycleLR(_LRScheduler):
     def step(self, closure=None):
         """
         Performs a scheduler step.
-        
+
         Args:
             closure: A closure that reevaluates the model and returns the loss
-            
+
         Returns:
             float: The loss value if closure is provided
         """
@@ -175,10 +175,10 @@ class OneCycleLR(_LRScheduler):
 class CosineAnnealingLR(_LRScheduler):
     """
     Cosine annealing learning rate scheduler.
-    
+
     Implements cosine annealing with warm restarts as described in "SGDR: Stochastic
     Gradient Descent with Warm Restarts" by Ilya Loshchilov and Frank Hutter.
-    
+
     Args:
         optimizer: Wrapped optimizer
         T_max: Maximum number of epochs
@@ -201,7 +201,7 @@ class CosineAnnealingLR(_LRScheduler):
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
-        
+
         Returns:
             List[float]: List of learning rates
         """
@@ -223,11 +223,11 @@ class CosineAnnealingLR(_LRScheduler):
 class LinearWarmupLR(_LRScheduler):
     """
     Linear warmup followed by constant learning rate.
-    
+
     This scheduler linearly increases the learning rate from a small value to the
     target learning rate over a specified number of warmup steps, then keeps it
     constant.
-    
+
     Args:
         optimizer: Wrapped optimizer
         warmup_steps: Number of warmup steps
@@ -250,7 +250,7 @@ class LinearWarmupLR(_LRScheduler):
     def get_lr(self) -> List[float]:
         """
         Get the current learning rate for each parameter group.
-        
+
         Returns:
             List[float]: List of learning rates
         """
@@ -268,11 +268,11 @@ class LinearWarmupLR(_LRScheduler):
 class GradientClipper:
     """
     Utility class for gradient clipping.
-    
+
     This class provides a simple interface for applying gradient clipping to model
     parameters. It can be used with any optimizer and supports both global and
     per-parameter clipping.
-    
+
     Args:
         max_norm: Maximum gradient norm
         norm_type: Type of norm to use (default: 2)
@@ -285,7 +285,7 @@ class GradientClipper:
     def clip_grad_norm(self, model: torch.nn.Module):
         """
         Clip gradients of all parameters in the model.
-        
+
         Args:
             model: The model whose gradients should be clipped
         """
@@ -299,10 +299,10 @@ class GradientClipper:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

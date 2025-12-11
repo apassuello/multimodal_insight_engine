@@ -224,7 +224,7 @@ class GradientHandler:
 
         # Get component norms
         component_norms = {}
-        for component, ratio in self.component_ratios.items():
+        for component, _ratio in self.component_ratios.items():
             if component in stats["component_norms"]:
                 component_norms[component] = stats["component_norms"][component]["norm"]
             else:
@@ -263,7 +263,7 @@ class GradientHandler:
             )
 
         # Apply corrections to learning rates in optimizer
-        for i, param_group in enumerate(optimizer.param_groups):
+        for _i, param_group in enumerate(optimizer.param_groups):
             group_name = param_group.get("name", "")
 
             # Apply correction if this group matches a component

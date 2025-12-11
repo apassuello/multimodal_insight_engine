@@ -137,7 +137,6 @@ class PPOTrainer:
 
         # Last GAE advantage
         last_gae = 0
-        last_value = 0
 
         # Compute advantages backwards through time
         for t in reversed(range(seq_len)):
@@ -815,7 +814,7 @@ class PPOTrainer:
         value_losses = []
         kl_divs = []
 
-        for epoch in range(num_epochs_per_batch):
+        for _epoch in range(num_epochs_per_batch):
             # Get current log probabilities WITH gradients for training
             new_logprobs = self._get_logprobs_with_grad(prompts, responses)
 

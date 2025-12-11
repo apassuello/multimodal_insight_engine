@@ -1,8 +1,13 @@
 import os
 from typing import Dict, Optional, Union
 
+from src.utils.logging import get_logger
+
 from .europarl_dataset import EuroparlDataset
 from .opensubtitles_dataset import OpenSubtitlesDataset
+
+
+logger = get_logger(__name__)
 
 
 class CombinedTranslationDataset:
@@ -17,7 +22,7 @@ class CombinedTranslationDataset:
     ):
         """
         Initialize the combined dataset.
-        
+
         Args:
             src_lang: Source language code
             tgt_lang: Target language code
@@ -68,10 +73,10 @@ class CombinedTranslationDataset:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

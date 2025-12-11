@@ -185,7 +185,6 @@ class CoAttentionFusion(nn.Module):
 
         # Compute pooled representations for each modality
         # For MPS compatibility, simplify the pooling approach and ensure device consistency
-        device = current_vision.device
 
         # Simple average pooling for both modalities
         # This is more robust for MPS devices and avoids device inconsistencies

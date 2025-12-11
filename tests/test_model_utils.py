@@ -232,7 +232,6 @@ class TestGenerateText:
 
     def test_removes_prompt_from_output(self):
         """Test that prompt is removed from generated output."""
-        prompt_length = 3
 
         # Mock tokenization with prompt_length tokens
         self.mock_tokenizer.return_value = {

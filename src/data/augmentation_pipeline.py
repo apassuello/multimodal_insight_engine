@@ -41,7 +41,7 @@ class MultimodalAugmentationPipeline:
     ):
         """
         Initialize the multimodal augmentation pipeline.
-        
+
         Args:
             image_augs: Optional custom list of image augmentations
             text_augs: Optional custom list of text augmentations
@@ -162,10 +162,10 @@ class MultimodalAugmentationPipeline:
     def augment_image(self, image: torch.Tensor) -> torch.Tensor:
         """
         Apply image augmentations with probability.
-        
+
         Args:
             image: Input image tensor [C, H, W]
-            
+
         Returns:
             Augmented image tensor [C, H, W]
         """
@@ -216,10 +216,10 @@ class MultimodalAugmentationPipeline:
     def augment_text(self, text_data: Union[str, Dict]) -> Union[str, Dict]:
         """
         Apply text augmentations with probability.
-        
+
         Args:
             text_data: Input text or text data dictionary
-            
+
         Returns:
             Augmented text or text data dictionary
         """
@@ -263,10 +263,10 @@ class MultimodalAugmentationPipeline:
     ) -> Dict[str, Union[torch.Tensor, Dict]]:
         """
         Apply augmentations to a batch of multimodal data.
-        
+
         Args:
             batch: Dictionary with 'image' and 'text' keys
-            
+
         Returns:
             Augmented batch with same structure
         """
@@ -367,7 +367,7 @@ class RandomPosterize(nn.Module):
     def __init__(self, bits: int = 4, p: float = 0.5):
         """
         Initialize the posterize transform.
-        
+
         Args:
             bits: Number of bits to keep for each channel
             p: Probability of applying the transform
@@ -391,7 +391,7 @@ class TextAugmentation:
     def __init__(self, prob: float = 0.5):
         """
         Initialize text augmentation with probability.
-        
+
         Args:
             prob: Probability of applying this augmentation
         """
@@ -400,10 +400,10 @@ class TextAugmentation:
     def __call__(self, text: str) -> str:
         """
         Apply the augmentation to the text.
-        
+
         Args:
             text: Input text to augment
-            
+
         Returns:
             Augmented text
         """
@@ -416,7 +416,7 @@ class DropWords(TextAugmentation):
     def __init__(self, prob: float = 0.5, drop_prob: float = 0.1, max_drops: int = 3):
         """
         Initialize the word dropping transform.
-        
+
         Args:
             prob: Probability of applying this augmentation
             drop_prob: Probability of dropping each word
@@ -457,7 +457,7 @@ class ShuffleWords(TextAugmentation):
     def __init__(self, prob: float = 0.3, window_size: int = 3):
         """
         Initialize the word shuffling transform.
-        
+
         Args:
             prob: Probability of applying this augmentation
             window_size: Size of windows to shuffle within
@@ -495,7 +495,7 @@ class ReplaceWithSynonym(TextAugmentation):
     def __init__(self, prob: float = 0.3, replace_prob: float = 0.2):
         """
         Initialize the synonym replacement transform.
-        
+
         Args:
             prob: Probability of applying this augmentation
             replace_prob: Probability of replacing each word
@@ -568,7 +568,7 @@ class ChangeWordOrder(TextAugmentation):
     def __init__(self, prob: float = 0.2):
         """
         Initialize the word order change transform.
-        
+
         Args:
             prob: Probability of applying this augmentation
         """
@@ -603,7 +603,7 @@ class AddMisspelling(TextAugmentation):
     def __init__(self, prob: float = 0.2, char_prob: float = 0.05):
         """
         Initialize the misspelling transform.
-        
+
         Args:
             prob: Probability of applying this augmentation
             char_prob: Probability of modifying each character
@@ -656,10 +656,10 @@ class AddMisspelling(TextAugmentation):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

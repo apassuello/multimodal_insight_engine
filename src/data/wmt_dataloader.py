@@ -2,6 +2,11 @@ import os
 import random
 from typing import List, Optional, Tuple
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class WMTDataLoader:
     def __init__(self, data_dir: str, source_lang: str, target_lang: str, batch_size: int = 32, max_examples: Optional[int] = None, seed: int = 42, shuffle: bool = True):
@@ -78,10 +83,10 @@ class WMTDataLoader:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

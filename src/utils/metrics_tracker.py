@@ -241,9 +241,7 @@ class MetricsTracker:
             # Increment counter
             self.counter += 1
             logger.info(f"EarlyStopping counter: {self.counter} out of {self.patience}")
-            if self.counter >= self.patience:
-                return True
-            return False
+            return self.counter >= self.patience
 
     def save_metrics(self) -> None:
         """
@@ -303,7 +301,7 @@ class MetricsTracker:
         metric_names = set()
         groups = set()
 
-        for key in self.epoch_metrics.keys():
+        for key in self.epoch_metrics:
             if key == "epoch":
                 continue
 

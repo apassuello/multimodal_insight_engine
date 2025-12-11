@@ -2,11 +2,16 @@ import os
 import random
 from typing import List, Optional, Tuple
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class OpenSubtitlesDataset:
     """
     Dataset class for the OpenSubtitles parallel corpus.
-    
+
     This class handles loading and preprocessing parallel text data from the
     OpenSubtitles corpus for machine translation tasks.
     """
@@ -21,7 +26,7 @@ class OpenSubtitlesDataset:
     ):
         """
         Initialize the OpenSubtitles dataset.
-        
+
         Args:
             data_dir: Directory containing the OpenSubtitles data
             src_lang: Source language code
@@ -43,9 +48,9 @@ class OpenSubtitlesDataset:
     def load_data(self) -> Tuple[List[str], List[str]]:
         """
         Load and preprocess the parallel data.
-        
+
         This function tries multiple possible file structures for OpenSubtitles data.
-        
+
         Returns:
             Tuple containing lists of source and target sentences
         """
@@ -184,10 +189,10 @@ class OpenSubtitlesDataset:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

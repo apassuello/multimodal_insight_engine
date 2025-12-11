@@ -16,7 +16,7 @@ MODULE: learningrate_scheduler.py
 PURPOSE: Implements custom learning rate schedulers for transformer and multimodal training
 KEY COMPONENTS:
 - WarmupCosineScheduler: Scheduler with linear warmup and cosine annealing
-- LinearWarmupScheduler: Scheduler with linear warmup and linear decay 
+- LinearWarmupScheduler: Scheduler with linear warmup and linear decay
 - LayerwiseLRScheduler: Utility for managing different schedulers for different model components
 DEPENDENCIES: torch, torch.optim.lr_scheduler, math, typing, logging
 SPECIAL NOTES: Provides specialized schedulers for staged training with different warmup behaviors
@@ -245,7 +245,7 @@ class LayerwiseLRScheduler:
         """
         Update learning rates for all parameter groups with schedulers.
         """
-        for name, (scheduler, group_idx) in self.schedulers.items():
+        for _name, (scheduler, group_idx) in self.schedulers.items():
             # Get the new learning rate from scheduler
             scheduler.step()
             new_lr = scheduler.get_last_lr()[0]

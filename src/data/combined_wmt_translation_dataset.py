@@ -4,6 +4,11 @@ import os
 from datasets import concatenate_datasets, load_dataset
 from torch.utils.data import Dataset
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class CombinedTranslationDataset(Dataset):
     def __init__(self, data, max_samples=None):

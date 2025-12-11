@@ -32,11 +32,16 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class LanguageModelTrainer:
     """
     Trainer specialized for language modeling tasks.
-    
+
     This trainer handles the causal language modeling objective
     and includes utilities for evaluation and generation.
     """
@@ -56,7 +61,7 @@ class LanguageModelTrainer:
     ):
         """
         Initialize the language model trainer.
-        
+
         Args:
             model: The language model to train
             train_dataloader: DataLoader for training data
@@ -114,7 +119,7 @@ class LanguageModelTrainer:
     def _create_lr_scheduler(self):
         """
         Create a learning rate scheduler with linear warmup and decay.
-        
+
         Returns:
             Learning rate scheduler
         """
@@ -131,7 +136,7 @@ class LanguageModelTrainer:
     def _log_training_step(self, loss, lr, step):
         """
         Log training metrics for a single step.
-        
+
         Args:
             loss: Current training loss value
             lr: Current learning rate
@@ -152,12 +157,12 @@ class LanguageModelTrainer:
     def train(self, num_epochs, save_dir="models/language", model_name="language_model"):
         """
         Train the language model.
-        
+
         Args:
             num_epochs: Number of epochs to train for
             save_dir: Directory to save model checkpoints
             model_name: Base name for saved models
-            
+
         Returns:
             Dictionary with training statistics
         """
@@ -286,7 +291,7 @@ class LanguageModelTrainer:
     def evaluate(self):
         """
         Evaluate the model on the validation set.
-        
+
         Returns:
             Tuple of (average loss, perplexity)
         """
@@ -355,7 +360,7 @@ class LanguageModelTrainer:
     def save_model(self, path):
         """
         Save the model checkpoint to disk.
-        
+
         Args:
             path: Path where the model should be saved
         """
@@ -376,7 +381,7 @@ class LanguageModelTrainer:
     def load_model(self, path):
         """
         Load a model checkpoint from disk.
-        
+
         Args:
             path: Path to the model checkpoint
         """
@@ -395,7 +400,7 @@ class LanguageModelTrainer:
     def plot_training_curves(self, save_path=None):
         """
         Plot training curves for loss, perplexity, and learning rate.
-        
+
         Args:
             save_path: Optional path to save the plot. If None, displays the plot.
         """
@@ -436,10 +441,10 @@ class LanguageModelTrainer:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

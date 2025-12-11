@@ -88,7 +88,7 @@ def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         Dictionary containing batched data from each modality
     """
     result = {}
-    for key in batch[0].keys():
+    for key in batch[0]:
         result[key] = torch.stack([item[key] for item in batch])
     return result
 

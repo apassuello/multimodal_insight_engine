@@ -86,7 +86,7 @@ def test_multimodal_dataset(sample_multimodal_data):
     # Test item retrieval
     item = dataset[0]
     assert isinstance(item, dict)
-    assert all(key in item for key in sample_multimodal_data.keys())
+    assert all(key in item for key in sample_multimodal_data)
     assert all(isinstance(value, torch.Tensor) for value in item.values())
 
     # Test invalid data lengths
@@ -106,7 +106,7 @@ def test_create_dataloader(sample_multimodal_data):
     # Test batch iteration
     batch = next(iter(dataloader))
     assert isinstance(batch, dict)
-    assert all(key in batch for key in sample_multimodal_data.keys())
+    assert all(key in batch for key in sample_multimodal_data)
     assert all(isinstance(value, torch.Tensor) for value in batch.values())
     assert all(value.shape[0] == 32 for value in batch.values())
 

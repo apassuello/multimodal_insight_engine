@@ -57,7 +57,7 @@ class DictionaryDataset(Dataset):
             return sample
 
         # Handle tuple-like returns (convert to dictionary)
-        if isinstance(sample, tuple) or isinstance(sample, list):
+        if isinstance(sample, (tuple, list)):
             # Ensure we have enough keys
             if len(sample) > len(self.keys):
                 # More values than keys, create additional keys
@@ -67,7 +67,7 @@ class DictionaryDataset(Dataset):
                 keys = self.keys[: len(sample)]
 
             # Create dictionary from tuple
-            return {k: v for k, v in zip(keys, sample)}
+            return dict(zip(keys, sample))
 
         # If single item, assume it's the first key
         return {self.keys[0]: sample}

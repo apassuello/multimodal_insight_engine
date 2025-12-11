@@ -291,7 +291,7 @@ def test_linear_warmup_lr_step():
     # Step through warmup phase
     lr_values = []
 
-    for i in range(warmup_steps * 2):  # Step beyond warmup to check plateau
+    for _i in range(warmup_steps * 2):  # Step beyond warmup to check plateau
         # Store lr first
         lr_values.append(optimizer.param_groups[0]["lr"])
         scheduler.step()
@@ -348,7 +348,7 @@ def test_gradient_clipper_clip(simple_model, device, input_data, target_data, lo
 
     # Check that at least one gradient has changed (clipping occurred)
     any_changed = False
-    for i, (param, grad_before) in enumerate(zip(model.parameters(), grads_before)):
+    for _i, (param, grad_before) in enumerate(zip(model.parameters(), grads_before)):
         if param.grad is not None and not torch.allclose(
             param.grad, grad_before, atol=1e-6
         ):
@@ -374,8 +374,8 @@ def test_optimizer_combinations(simple_model, device, input_data, target_data, l
     )
 
     # Training loop
-    for epoch in range(2):
-        for step in range(10):
+    for _epoch in range(2):
+        for _step in range(10):
             # Zero gradients
             optimizer.zero_grad()
 

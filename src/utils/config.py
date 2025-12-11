@@ -22,7 +22,7 @@ class ConfigManager:
     def __init__(self, config_path: Optional[str] = None):
         """
         Initialize the configuration manager.
-        
+
         Args:
             config_path: Optional path to a JSON configuration file
         """
@@ -37,7 +37,7 @@ class ConfigManager:
     def load_from_file(self, config_path: str) -> None:
         """
         Load configuration from a JSON file.
-        
+
         Args:
             config_path: Path to the JSON config file
         """
@@ -50,11 +50,11 @@ class ConfigManager:
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a configuration value.
-        
+
         Args:
             key: Configuration key to retrieve
             default: Default value if key is not found
-            
+
         Returns:
             Configuration value or default
         """
@@ -63,7 +63,7 @@ class ConfigManager:
     def set(self, key: str, value: Any) -> None:
         """
         Set a configuration value.
-        
+
         Args:
             key: Configuration key to set
             value: Value to set
@@ -73,7 +73,7 @@ class ConfigManager:
     def save_to_file(self, config_path: str) -> None:
         """
         Save current configuration to a JSON file.
-        
+
         Args:
             config_path: Path where to save the config
         """
@@ -93,10 +93,10 @@ set_config = config_manager.set
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

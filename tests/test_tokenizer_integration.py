@@ -26,7 +26,7 @@ from src.training.transformer_utils import create_causal_mask, create_padding_ma
 class TranslationDataset(Dataset):
     """
     Dataset for translation tasks with BPE tokenizers.
-    
+
     This dataset handles parallel text data for sequence-to-sequence tasks.
     """
 
@@ -41,7 +41,7 @@ class TranslationDataset(Dataset):
     ):
         """
         Initialize the dataset.
-        
+
         Args:
             source_texts: List of source language texts
             target_texts: List of target language texts
@@ -108,10 +108,10 @@ class TranslationDataset(Dataset):
 def collate_translation_batch(batch):
     """
     Collate function for translation batches.
-    
+
     Args:
         batch: List of dictionaries with "src", "tgt_input", and "tgt_output"
-        
+
     Returns:
         Dictionary with batched tensors
     """
@@ -185,7 +185,7 @@ def create_translation_dataloaders(
 ) -> Tuple[DataLoader, Optional[DataLoader]]:
     """
     Create dataloaders for translation training.
-    
+
     Args:
         source_texts: List of source language texts
         target_texts: List of target language texts
@@ -197,7 +197,7 @@ def create_translation_dataloaders(
         shuffle: Whether to shuffle the training data
         validation_split: Fraction of data to use for validation
         random_seed: Random seed for reproducibility
-        
+
     Returns:
         Tuple of (train_dataloader, val_dataloader)
     """
@@ -276,7 +276,7 @@ def train_translation_model(
 ):
     """
     Train a translation model.
-    
+
     Args:
         train_dataloader: Training data loader
         val_dataloader: Validation data loader
@@ -372,7 +372,7 @@ def translate(
 ):
     """
     Translate text using a trained model.
-    
+
     Args:
         model: Trained translation model
         source_tokenizer: Source language tokenizer
@@ -380,7 +380,7 @@ def translate(
         text: Text to translate
         max_length: Maximum generation length
         device: Device to use
-        
+
     Returns:
         Translated text
     """
@@ -494,7 +494,7 @@ def main():
         epochs=5,
         save_path="models/translation_model.pt",
     )
-    
+
     # Example of translating text
     source_text = "Hello, how are you?"
     translation = translate(
@@ -503,7 +503,7 @@ def main():
         target_tokenizer=de_tokenizer,
         text=source_text,
     )
-    
+
     print(f"Source: {source_text}")
     print(f"Translation: {translation}")
     """

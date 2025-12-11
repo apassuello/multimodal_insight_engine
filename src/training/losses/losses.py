@@ -25,11 +25,11 @@ import torch.nn.functional as F
 class CrossEntropyLoss(nn.Module):
     """
     Cross-entropy loss with label smoothing for classification tasks.
-    
+
     This loss function extends the standard cross-entropy loss with label smoothing,
     which helps prevent overfitting by softening the target distribution. It also
     supports weighted samples and different reduction modes.
-    
+
     Args:
         smoothing (float, optional): Label smoothing factor. Defaults to 0.1.
         reduction (str, optional): Specifies the reduction to apply to the output:
@@ -57,12 +57,12 @@ class CrossEntropyLoss(nn.Module):
     ) -> torch.Tensor:
         """
         Compute the cross-entropy loss with label smoothing.
-        
+
         Args:
             input: Predicted logits of shape (N, C) where C is the number of classes
             target: Target indices of shape (N,) where values are 0 ≤ targets[i] ≤ C-1
             sample_weight: Optional weights for each sample of shape (N,)
-            
+
         Returns:
             torch.Tensor: The computed loss value
         """
@@ -92,10 +92,10 @@ class CrossEntropyLoss(nn.Module):
 class MeanSquaredError(nn.Module):
     """
     Mean squared error loss with additional functionality.
-    
+
     This loss function extends the standard MSE loss with support for weighted
     samples, reduction options, and optional gradient clipping.
-    
+
     Args:
         reduction (str, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
@@ -120,12 +120,12 @@ class MeanSquaredError(nn.Module):
     ) -> torch.Tensor:
         """
         Compute the mean squared error loss.
-        
+
         Args:
             input: Predicted values of shape (N, *) where * means any number of dimensions
             target: Target values of the same shape as input
             sample_weight: Optional weights for each sample of shape (N,)
-            
+
         Returns:
             torch.Tensor: The computed loss value
         """
@@ -152,10 +152,10 @@ class MeanSquaredError(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

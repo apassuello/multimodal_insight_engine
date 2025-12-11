@@ -33,10 +33,10 @@ class ModelAdapter(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass with residual adapter connection.
-        
+
         Args:
             x: Input tensor
-            
+
         Returns:
             Adapted output tensor
         """
@@ -54,10 +54,10 @@ class ModelAdapter(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

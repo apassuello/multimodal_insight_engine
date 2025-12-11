@@ -500,7 +500,7 @@ class TestRLAIFTrainerIntegration:
             reward_model=reward_model
         )
 
-        results = rlaif_trainer.train(
+        rlaif_trainer.train(
             prompts=test_prompts[:2],
             num_steps=2,
             batch_size=2,
@@ -605,7 +605,7 @@ class TestMetricsTracking:
         )
 
         # Run full pipeline
-        results = pipeline.train(
+        pipeline.train(
             training_prompts=test_prompts[:2],
             phase1_epochs=1,
             phase1_num_revisions=1,

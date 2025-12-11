@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class Vocabulary:
     """
     Manages the mapping between tokens and their indices.
-    
+
     This class handles the creation and lookup of token-to-index and
     index-to-token mappings, as well as special tokens.
     """
@@ -27,7 +27,7 @@ class Vocabulary:
     ):
         """
         Initialize the vocabulary.
-        
+
         Args:
             tokens: Optional list of tokens to initially populate the vocabulary
             pad_token: Padding token string
@@ -69,13 +69,13 @@ class Vocabulary:
     def add_token(self, token: str) -> int:
         """
         Add a token to the vocabulary if it doesn't already exist.
-        
+
         Args:
             token: The token to add
-            
+
         Returns:
             The index of the token
-            
+
         Raises:
             TypeError: If token is not a string
             ValueError: If token is empty
@@ -99,13 +99,13 @@ class Vocabulary:
     def token_to_index(self, token: str) -> int:
         """
         Convert a token to its index with validation.
-        
+
         Args:
             token: The token to look up
-            
+
         Returns:
             The index of the token, or the unknown token index if not found
-        
+
         Raises:
             TypeError: If token is not a string
         """
@@ -118,13 +118,13 @@ class Vocabulary:
     def index_to_token(self, idx: int) -> str:
         """
         Convert an index to its token with validation.
-        
+
         Args:
             idx: The index to look up
-            
+
         Returns:
             The token at the given index, or the unknown token if index is out of range
-            
+
         Raises:
             TypeError: If idx is not an integer
         """
@@ -143,13 +143,13 @@ class Vocabulary:
     def tokens_to_indices(self, tokens: List[str]) -> List[int]:
         """
         Convert a list of tokens to their indices with validation.
-        
+
         Args:
             tokens: List of tokens to convert
-            
+
         Returns:
             List of corresponding indices
-            
+
         Raises:
             TypeError: If tokens is not a list or contains non-string elements
         """
@@ -170,13 +170,13 @@ class Vocabulary:
     def indices_to_tokens(self, indices: List[int]) -> List[str]:
         """
         Convert a list of indices to their tokens with validation.
-        
+
         Args:
             indices: List of indices to convert
-            
+
         Returns:
             List of corresponding tokens
-            
+
         Raises:
             TypeError: If indices is not a list or contains non-integer elements
         """
@@ -197,10 +197,10 @@ class Vocabulary:
     def save(self, path: str) -> None:
         """
         Save the vocabulary to a file with validation.
-        
+
         Args:
             path: Path to save the vocabulary
-            
+
         Raises:
             ValueError: If path is empty
             OSError: If unable to create directory or write file
@@ -239,13 +239,13 @@ class Vocabulary:
     def load(cls, path: str) -> "Vocabulary":
         """
         Load a vocabulary from a file with validation.
-        
+
         Args:
             path: Path to load the vocabulary from
-            
+
         Returns:
             Loaded Vocabulary instance
-            
+
         Raises:
             FileNotFoundError: If file doesn't exist
             ValueError: If file format is invalid
@@ -314,17 +314,17 @@ class Vocabulary:
     ) -> "Vocabulary":
         """
         Build a vocabulary from a list of texts with validation.
-        
+
         Args:
             texts: List of texts to build vocabulary from
             tokenizer: Tokenizer function to use
             max_vocab_size: Maximum vocabulary size (None means no limit)
             min_freq: Minimum frequency for a token to be included
             **kwargs: Additional arguments to pass to the Vocabulary constructor
-            
+
         Returns:
             Built Vocabulary instance
-            
+
         Raises:
             TypeError: If texts is not a list of strings or tokenizer is not callable
             ValueError: If min_freq < 1 or max_vocab_size < 1
@@ -384,7 +384,7 @@ class Vocabulary:
     def special_token_indices(self) -> Dict[str, int]:
         """
         Get a dictionary mapping special token names to their indices.
-        
+
         Returns:
             Dictionary of special token indices
         """
@@ -399,10 +399,10 @@ class Vocabulary:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

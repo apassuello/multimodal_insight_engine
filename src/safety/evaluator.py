@@ -12,6 +12,8 @@ import os
 import re
 from typing import Any, Dict, Optional, Tuple
 
+from src.utils.logging import get_logger
+
 from .utils import (
     CATEGORY_BIAS,
     CATEGORY_HARMFUL_INSTRUCTIONS,
@@ -21,6 +23,9 @@ from .utils import (
     SENSITIVITY_MEDIUM,
     SENSITIVITY_MULTIPLIERS,
 )
+
+
+logger = get_logger(__name__)
 
 
 # Optional constitutional AI support
@@ -383,10 +388,10 @@ def import_datetime():
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

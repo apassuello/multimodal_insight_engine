@@ -28,6 +28,11 @@ import os
 from typing import Any, Optional
 
 import torch
+
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
 import torch.nn as nn
 
 
@@ -168,7 +173,7 @@ def ensure_model_on_device(model: nn.Module, device: torch.device) -> nn.Module:
     devices = {param.device for param in model.parameters()}
     if len(devices) > 1:
         # We still have parameters on different devices, force all parameters individually
-        for name, param in model.named_parameters():
+        for _name, param in model.named_parameters():
             if param.device != device:
                 param.data = param.data.to(device)
 

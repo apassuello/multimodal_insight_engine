@@ -8,7 +8,7 @@ from typing import List
 class AdversarialInputGenerator:
     """
     Collection of strategies for generating adversarial inputs.
-    
+
     This class provides various methods for transforming normal prompts
     into adversarial ones designed to probe model boundaries.
     """
@@ -17,13 +17,13 @@ class AdversarialInputGenerator:
     def directive_smuggling(prompt: str) -> List[str]:
         """
         Generate inputs that attempt to smuggle harmful directives.
-        
+
         This method takes a base prompt and adds various forms of
         disguised instructions that attempt to override safety guidelines.
-        
+
         Args:
             prompt: Base prompt to modify
-            
+
         Returns:
             List of modified prompts with smuggled directives
         """
@@ -79,13 +79,13 @@ class AdversarialInputGenerator:
     def prompt_injection(prompt: str) -> List[str]:
         """
         Generate inputs that attempt to inject malicious instructions.
-        
+
         This method creates variations of prompts that try to manipulate
         the model into following injected instructions instead of intended ones.
-        
+
         Args:
             prompt: Base prompt to modify
-            
+
         Returns:
             List of prompts with injected instructions
         """
@@ -128,13 +128,13 @@ class AdversarialInputGenerator:
     def context_manipulation(prompt: str) -> List[str]:
         """
         Generate inputs that manipulate the context to elicit problematic outputs.
-        
+
         This method creates variations where the provided context might lead
         the model toward unsafe responses despite a seemingly innocent question.
-        
+
         Args:
             prompt: Base prompt to modify
-            
+
         Returns:
             List of prompts with manipulated context
         """
@@ -239,13 +239,13 @@ class AdversarialInputGenerator:
     def goal_hijacking(prompt: str) -> List[str]:
         """
         Generate inputs that attempt to hijack the model's goal.
-        
+
         This method creates variations that try to redirect the model's
         objective toward problematic goals.
-        
+
         Args:
             prompt: Base prompt to modify
-            
+
         Returns:
             List of prompts with hijacked goals
         """
@@ -288,10 +288,10 @@ class AdversarialInputGenerator:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

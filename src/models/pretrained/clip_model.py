@@ -35,11 +35,11 @@ class CLIPModelWrapper(PretrainedModelWrapper):
     def forward(self, images: torch.Tensor = None, texts: list = None) -> dict:
         """
         Forward pass through CLIP.
-        
+
         Args:
             images: Optional tensor of shape [batch_size, channels, height, width]
             texts: Optional list of strings
-            
+
         Returns:
             Dictionary with image and/or text embeddings
         """
@@ -69,10 +69,10 @@ class CLIPModelWrapper(PretrainedModelWrapper):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

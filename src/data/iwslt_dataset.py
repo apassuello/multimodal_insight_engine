@@ -180,13 +180,12 @@ class IWSLTDataset:
                     for example in examples:
                         if isinstance(example, dict) and "translation" in example:
                             translation = example["translation"]
-                            if isinstance(translation, dict):
-                                if (
-                                    self.src_lang in translation
-                                    and self.tgt_lang in translation
-                                ):
-                                    src_texts.append(translation[self.src_lang])
-                                    tgt_texts.append(translation[self.tgt_lang])
+                            if isinstance(translation, dict) and (
+                                self.src_lang in translation
+                                and self.tgt_lang in translation
+                            ):
+                                src_texts.append(translation[self.src_lang])
+                                tgt_texts.append(translation[self.tgt_lang])
 
                     if src_texts and tgt_texts:
                         src_file = f"{self.data_dir}/iwslt{requested_year}.{self.src_lang}-{self.tgt_lang}.{self.split}.{self.src_lang}"
@@ -330,18 +329,17 @@ class IWSLTDataset:
             for example in examples:
                 if isinstance(example, dict) and "translation" in example:
                     translation = example["translation"]
-                    if isinstance(translation, dict):
-                        if (
-                            self.src_lang in translation
-                            and self.tgt_lang in translation
-                        ):
-                            if swap_languages:
-                                # Swap the source and target
-                                src_texts.append(translation[self.tgt_lang])
-                                tgt_texts.append(translation[self.src_lang])
-                            else:
-                                src_texts.append(translation[self.src_lang])
-                                tgt_texts.append(translation[self.tgt_lang])
+                    if isinstance(translation, dict) and (
+                        self.src_lang in translation
+                        and self.tgt_lang in translation
+                    ):
+                        if swap_languages:
+                            # Swap the source and target
+                            src_texts.append(translation[self.tgt_lang])
+                            tgt_texts.append(translation[self.src_lang])
+                        else:
+                            src_texts.append(translation[self.src_lang])
+                            tgt_texts.append(translation[self.tgt_lang])
 
             # Save to files - use the actual year in the filename
             if src_texts and tgt_texts:
@@ -584,7 +582,7 @@ class IWSLTDataset:
                 f"Successfully loaded data from years: {', '.join(sorted(years_loaded))}"
             )
             if len(years_loaded) < len(years_attempted):
-                missing_years = set([str(y) for y in years_attempted]) - years_loaded
+                missing_years = {str(y) for y in years_attempted} - years_loaded
                 logger.info(
                     f"Warning: Could not load data for years: {', '.join(sorted(missing_years))}"
                 )

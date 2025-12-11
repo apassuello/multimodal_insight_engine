@@ -267,7 +267,7 @@ class MultistageTrainer:
         logger.info("Starting multistage training")
 
         # Track total epochs across all stages
-        total_epochs = sum(
+        sum(
             stage_info["epochs"] for stage_info in self.strategies.values()
         )
         current_global_epoch = 0
@@ -446,7 +446,7 @@ class MultistageTrainer:
                 strategy.on_epoch_end(epoch)
 
             # Signal epoch end to metrics tracker
-            epoch_summary = metrics_tracker.end_epoch()
+            metrics_tracker.end_epoch()
 
             # Create visualizations if needed
             if epoch % self.extra_config.get("visualize_every", 1) == 0:
@@ -568,7 +568,7 @@ class MultistageTrainer:
                 batch_metrics.append(metrics)
 
         # Calculate average metrics across batches
-        for k in batch_metrics[0].keys():
+        for k in batch_metrics[0]:
             values = [m[k] for m in batch_metrics if k in m]
             if values:
                 if isinstance(values[0], torch.Tensor):

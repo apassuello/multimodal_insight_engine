@@ -399,7 +399,7 @@ class TestDataHandler:
     def test_batch_without_images(self, data_handler, model):
         """Test handling batch without images."""
         batch = {"text_data": torch.randn(4, 20)}
-        outputs = model(text_data=batch["text_data"])
+        model(text_data=batch["text_data"])
 
         model_inputs = data_handler.prepare_model_inputs(batch)
         assert "images" not in model_inputs
@@ -408,7 +408,7 @@ class TestDataHandler:
     def test_batch_without_text(self, data_handler, model):
         """Test handling batch without text."""
         batch = {"images": torch.randn(4, 10)}
-        outputs = model(images=batch["images"])
+        model(images=batch["images"])
 
         model_inputs = data_handler.prepare_model_inputs(batch)
         assert "images" in model_inputs

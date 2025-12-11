@@ -223,7 +223,7 @@ class HuggingFaceTextModelWrapper(nn.Module):
             input_device = src.device
 
         # MPS compatibility mode - check if we're on MPS and handle specially
-        is_mps = input_device.type == "mps" or torch.backends.mps.is_available()
+        input_device.type == "mps" or torch.backends.mps.is_available()
 
         # Get encoder's current device
         encoder_device = next(self.encoder.parameters()).device
@@ -243,11 +243,10 @@ class HuggingFaceTextModelWrapper(nn.Module):
             cpu_mask = src_mask.to("cpu") if src_mask is not None else None
 
             # Format mask if needed
-            if cpu_mask is not None:
+            if cpu_mask is not None and cpu_mask.dim() > 2:
+                cpu_mask = cpu_mask.squeeze(1)
                 if cpu_mask.dim() > 2:
                     cpu_mask = cpu_mask.squeeze(1)
-                    if cpu_mask.dim() > 2:
-                        cpu_mask = cpu_mask.squeeze(1)
 
             # Move encoder to CPU temporarily
             original_device = next(self.encoder.parameters()).device

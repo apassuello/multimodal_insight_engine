@@ -231,7 +231,7 @@ class MultimodalDataset(Dataset):
         elif neg_type == "different_class":
             # Get sample with different class
             other_labels = [
-                label for label in self.class_to_indices.keys() if label != anchor_label
+                label for label in self.class_to_indices if label != anchor_label
             ]
 
             if not other_labels:
@@ -824,8 +824,6 @@ class EnhancedMultimodalDataset(Dataset):
         # Properly implement match IDs to create a semantic connection for contrastive learning
         # We'll make sure we have groups of semantically related items rather than using index-based matching
         self.match_ids = []
-        match_id_counter = 0
-        image_id_to_match_id = {}  # Map image_ids to semantic match_ids
 
         # CRITICAL FIX: Create semantically meaningful match groups
         # Proper semantic grouping is essential for contrastive learning
@@ -1595,9 +1593,8 @@ class EnhancedMultimodalDataset(Dataset):
             src_mask = mask.unsqueeze(0).unsqueeze(0)
         except Exception as e:
             logger.warning(f"Error processing text: {str(e)}")
-            pad_token_idx = 0
             if self.tokenizer and hasattr(self.tokenizer, "special_tokens"):
-                pad_token_idx = self.tokenizer.special_tokens.get("pad_token_idx", 0)
+                self.tokenizer.special_tokens.get("pad_token_idx", 0)
 
             src = torch.zeros(self.max_text_length, dtype=torch.long)
             src_mask = torch.zeros(1, 1, self.max_text_length, dtype=torch.bool)

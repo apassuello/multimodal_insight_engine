@@ -18,7 +18,7 @@ def quantize_model(
 ):
     """
     Quantize a model using the specified approach.
-    
+
     Args:
         model: The model to quantize
         quantization_type: Type of quantization ("dynamic", "static", or "qat")
@@ -26,7 +26,7 @@ def quantize_model(
         bits: Bit width for quantization (8 or 16)
         calibration_loader: DataLoader providing calibration data (for static quantization)
         **kwargs: Additional arguments for the quantizer
-        
+
     Returns:
         Quantized model
     """
@@ -54,13 +54,13 @@ def prune_model(
 ):
     """
     Prune a model using the specified approach.
-    
+
     Args:
         model: The model to prune
         method: Pruning method ("magnitude", "structured", "iterative_magnitude")
         amount: Amount to prune (percentage)
         **kwargs: Additional arguments for the pruner
-        
+
     Returns:
         Pruned model
     """
@@ -80,12 +80,12 @@ def convert_to_mixed_precision(
 ):
     """
     Convert a model to use mixed precision.
-    
+
     Args:
         model: The model to convert
         dtype: Target data type (torch.float16 or torch.bfloat16)
         use_auto_cast: Whether to use automatic mixed precision
-        
+
     Returns:
         Model with mixed precision
     """
@@ -102,28 +102,30 @@ def convert_to_mixed_precision(
 def benchmark_optimizations(
     model,
     input_generator,
-    optimizations=[],
+    optimizations=None,
     **kwargs
 ):
     """
     Benchmark a model with different optimizations.
-    
+
     Args:
         model: The original model to benchmark
         input_generator: Function to generate inputs
         optimizations: List of optimization functions to apply
         **kwargs: Additional arguments for the benchmark
-        
+
     Returns:
         OptimizationBenchmark instance with results
     """
+    if optimizations is None:
+        optimizations = []
     benchmark = OptimizationBenchmark(model, input_generator, **kwargs)
 
     # Benchmark original model
     benchmark.benchmark_original_model()
 
     # Apply and benchmark each optimization
-    for i, (opt_fn, opt_kwargs, name) in enumerate(optimizations):
+    for _i, (opt_fn, opt_kwargs, name) in enumerate(optimizations):
         # Apply optimization
         optimized_model = opt_fn(model, **opt_kwargs)
 

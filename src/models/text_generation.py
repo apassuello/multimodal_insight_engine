@@ -18,7 +18,7 @@ import torch.nn.functional as F
 class TextGenerator:
     """
     Text generation utilities for language models.
-    
+
     This class provides methods for auto-regressive text generation
     using various sampling strategies.
     """
@@ -31,7 +31,7 @@ class TextGenerator:
     ):
         """
         Initialize the text generator.
-        
+
         Args:
             model: Language model for generation
             tokenizer: Tokenizer for encoding/decoding text
@@ -72,7 +72,7 @@ class TextGenerator:
     ) -> Union[List[str], Tuple[List[str], List[torch.Tensor]]]:
         """
         Generate text from a prompt.
-        
+
         Args:
             prompt: Text prompt to start generation
             max_new_tokens: Maximum number of new tokens to generate
@@ -82,7 +82,7 @@ class TextGenerator:
             do_sample: Whether to sample from the distribution (False = greedy)
             num_return_sequences: Number of sequences to generate
             return_attention: Whether to return attention patterns
-            
+
         Returns:
             List of generated texts or
             Tuple of (List of generated texts, List of attention maps)
@@ -248,16 +248,16 @@ class TextGenerator:
     ) -> str:
         """
         Generate text with key-value caching for faster generation.
-        
+
         This is an optimized generation method that caches key-value pairs
         for more efficient inference.
-        
+
         Args:
             prompt: Text prompt to start generation
             max_new_tokens: Maximum number of new tokens to generate
             temperature: Temperature for sampling
             do_sample: Whether to sample from the distribution
-            
+
         Returns:
             Generated text
         """
@@ -357,13 +357,13 @@ class TextGenerator:
     ) -> List[str]:
         """
         Generate text for multiple prompts in batch.
-        
+
         Args:
             prompts: List of text prompts
             max_new_tokens: Maximum number of new tokens to generate
             temperature: Temperature for sampling
             do_sample: Whether to sample from the distribution
-            
+
         Returns:
             List of generated texts
         """
@@ -485,10 +485,10 @@ class TextGenerator:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

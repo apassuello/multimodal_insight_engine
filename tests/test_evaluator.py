@@ -639,7 +639,6 @@ class TestCritiqueIndicatesIssues:
     def test_counts_concern_phrases(self):
         """Test that concern phrases are counted."""
         # More concern phrases = more likely to flag
-        low_concern = "This might have an issue"
         high_concern = "This violates principles, is harmful, dangerous, and inappropriate"
 
         assert critique_indicates_issues(high_concern) is True

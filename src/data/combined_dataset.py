@@ -1,7 +1,12 @@
 from typing import Optional, Tuple
 
+from src.utils.logging import get_logger
+
 from .europarl_dataset import EuroparlDataset
 from .opensubtitles_dataset import OpenSubtitlesDataset
+
+
+logger = get_logger(__name__)
 
 
 class CombinedDataset:

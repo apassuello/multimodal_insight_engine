@@ -203,8 +203,8 @@ class PositionalEncoding(nn.Module):
 class RotaryPositionEncoding(nn.Module):
     """
     Rotary Position Embedding (RoPE) for transformer models.
-    
-    RoPE performs position encoding by rotating word embeddings, which helps 
+
+    RoPE performs position encoding by rotating word embeddings, which helps
     models better handle relative positions and longer sequences.
     Based on the paper "RoFormer: Enhanced Transformer with Rotary Position Embedding"
     """
@@ -212,7 +212,7 @@ class RotaryPositionEncoding(nn.Module):
     def __init__(self, head_dim: int, max_seq_length: int = 5000, base: int = 10000):
         """
         Initialize the rotary position embeddings.
-        
+
         Args:
             head_dim: Dimension of each attention head (must be divisible by 2)
             max_seq_length: Maximum sequence length to support
@@ -254,12 +254,12 @@ class RotaryPositionEncoding(nn.Module):
     def forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple:
         """
         Apply rotary position embeddings to query and key tensors.
-        
+
         Args:
             q: Query tensor of shape [batch_size, seq_length, n_heads, head_dim]
             k: Key tensor of shape [batch_size, seq_length, n_heads, head_dim]
             seq_len: Sequence length (defaults to q's sequence length)
-            
+
         Returns:
             Tuple of (rotated_q, rotated_k) with positional information
         """
@@ -373,10 +373,10 @@ class RotaryPositionEncoding(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

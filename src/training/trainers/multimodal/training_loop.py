@@ -184,7 +184,7 @@ class TrainingLoop:
 
             # Periodic evaluation
             if evaluation_fn and evaluation_steps > 0 and self.global_step % evaluation_steps == 0:
-                val_metrics = evaluation_fn()
+                evaluation_fn()
                 self.model.train()  # Return to training mode
 
             self.global_step += 1

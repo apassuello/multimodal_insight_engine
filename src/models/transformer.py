@@ -260,7 +260,6 @@ class TransformerEncoder(nn.Module):
             x = self.positional_encoding(x)
 
         # Apply each encoder layer
-        attentions = []  # Store attention weights for visualization/interpretability
         for layer in self.layers:
             x = layer(x, mask=mask)
 
@@ -971,7 +970,7 @@ class EncoderDecoderTransformer(BaseModel):
         completed = torch.zeros(batch_size, dtype=torch.bool, device=device)
 
         # Generate tokens auto-regressively
-        for i in range(max_len - 1):
+        for _i in range(max_len - 1):
             # Create appropriate target mask (prevent attending to future tokens)
             tgt_len = tgt.size(1)
             tgt_mask = self.generate_square_subsequent_mask(tgt_len, device)

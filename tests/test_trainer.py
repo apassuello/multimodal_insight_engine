@@ -257,7 +257,7 @@ class TestMultimodalTrainer:
         # Verify history
         assert len(history["train_loss"]) == 3
         # Evaluator returns metrics with 'val_' prefix
-        assert any(key.startswith("val_") for key in history.keys())
+        assert any(key.startswith("val_") for key in history)
         # Check for at least one validation metric with 3 epochs
         val_metrics = [v for k, v in history.items() if k.startswith("val_")]
         assert len(val_metrics) > 0
@@ -322,7 +322,7 @@ class TestMultimodalTrainer:
         )
 
         # Train for 2 epochs
-        history = trainer.train()
+        trainer.train()
 
         # Create a new trainer and load checkpoint
         new_trainer = MultimodalTrainer(

@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 class MultimodalDecoderGeneration(nn.Module):
     """
     Multimodal Decoder Generation model.
-    
+
     This model implements a generative architecture that takes inputs from multiple
     modalities (text and vision) and generates text outputs. It combines:
     1. A vision encoder for processing images
     2. A text encoder for processing text inputs
     3. A cross-modal fusion mechanism
     4. A text decoder for generating outputs
-    
+
     The architecture supports conditioning the decoder on either or both modalities.
     """
 
@@ -39,7 +39,7 @@ class MultimodalDecoderGeneration(nn.Module):
     ):
         """
         Initialize the multimodal decoder generation model.
-        
+
         Args:
             vision_model: Vision encoder model
             text_encoder: Text encoder model
@@ -133,10 +133,10 @@ class MultimodalDecoderGeneration(nn.Module):
     def _get_model_dimension(self, model: nn.Module) -> int:
         """
         Extract the output dimension from a model.
-        
+
         Args:
             model: Neural network model
-            
+
         Returns:
             The dimension of the model's output embeddings
         """
@@ -166,12 +166,12 @@ class MultimodalDecoderGeneration(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Prepare fused representation from modalities for the decoder.
-        
+
         Args:
             vision_features: Features from vision encoder [batch_size, vision_dim] or [batch_size, seq_len, vision_dim]
             encoder_features: Features from text encoder [batch_size, seq_len, encoder_dim]
             attention_mask: Attention mask for the text encoder [batch_size, seq_len]
-            
+
         Returns:
             Tuple of (fused_features, attention_mask)
         """
@@ -287,7 +287,7 @@ class MultimodalDecoderGeneration(nn.Module):
     ) -> Dict[str, Any]:
         """
         Forward pass through the multimodal decoder generation model.
-        
+
         Args:
             images: Optional image inputs [batch_size, channels, height, width]
             encoder_input_ids: Text encoder input IDs [batch_size, seq_len]
@@ -295,7 +295,7 @@ class MultimodalDecoderGeneration(nn.Module):
             decoder_input_ids: Text decoder input IDs [batch_size, seq_len]
             decoder_attention_mask: Text decoder attention mask [batch_size, seq_len]
             labels: Optional labels for computing loss [batch_size, seq_len]
-            
+
         Returns:
             Dictionary with logits, loss (if labels provided), and other outputs
         """
@@ -414,13 +414,13 @@ class MultimodalDecoderGeneration(nn.Module):
     ) -> torch.Tensor:
         """
         Generate text based on visual and/or textual inputs.
-        
+
         Args:
             images: Optional image inputs [batch_size, channels, height, width]
             encoder_input_ids: Text encoder input IDs [batch_size, seq_len]
             encoder_attention_mask: Text encoder attention mask [batch_size, seq_len]
             generation_config: Optional configuration for generation
-            
+
         Returns:
             Generated token IDs [batch_size, seq_len]
         """
@@ -590,7 +590,7 @@ class MultimodalDecoderGeneration(nn.Module):
 class CrossModalFusionTransformer(nn.Module):
     """
     Transformer-based cross-modal fusion module.
-    
+
     This module uses a stack of transformer layers to fuse information
     from vision and text modalities.
     """
@@ -605,7 +605,7 @@ class CrossModalFusionTransformer(nn.Module):
     ):
         """
         Initialize the cross-modal fusion transformer.
-        
+
         Args:
             dim: Feature dimension
             num_layers: Number of transformer layers
@@ -643,12 +643,12 @@ class CrossModalFusionTransformer(nn.Module):
     ) -> torch.Tensor:
         """
         Forward pass through the cross-modal fusion transformer.
-        
+
         Args:
             vision_features: Vision features [batch_size, v_seq_len, dim]
             text_features: Text features [batch_size, t_seq_len, dim]
             text_attention_mask: Attention mask for text [batch_size, t_seq_len]
-            
+
         Returns:
             Fused features [batch_size, v_seq_len + t_seq_len, dim]
         """
@@ -687,7 +687,7 @@ class CrossModalFusionTransformer(nn.Module):
 class CrossModalTransformerLayer(nn.Module):
     """
     A single transformer layer for cross-modal fusion.
-    
+
     This layer includes self-attention, feed-forward network, and residual connections.
     """
 
@@ -700,7 +700,7 @@ class CrossModalTransformerLayer(nn.Module):
     ):
         """
         Initialize a transformer layer.
-        
+
         Args:
             dim: Feature dimension
             num_heads: Number of attention heads
@@ -742,11 +742,11 @@ class CrossModalTransformerLayer(nn.Module):
     ) -> torch.Tensor:
         """
         Forward pass through the transformer layer.
-        
+
         Args:
             x: Input features [batch_size, seq_len, dim]
             attention_mask: Attention mask [batch_size, seq_len]
-            
+
         Returns:
             Transformed features [batch_size, seq_len, dim]
         """
@@ -784,7 +784,7 @@ class CrossModalTransformerLayer(nn.Module):
 class GatedMultimodalFusion(nn.Module):
     """
     Gated fusion module for combining representations from different modalities.
-    
+
     This module uses a gating mechanism to control the information flow between
     modalities, which helps balance their contributions.
     """
@@ -798,7 +798,7 @@ class GatedMultimodalFusion(nn.Module):
     ):
         """
         Initialize the gated fusion module.
-        
+
         Args:
             vision_dim: Dimension of vision features
             text_dim: Dimension of text features
@@ -848,11 +848,11 @@ class GatedMultimodalFusion(nn.Module):
     ) -> torch.Tensor:
         """
         Forward pass through the gated fusion module.
-        
+
         Args:
             vision_features: Vision features [batch_size, vision_dim]
             text_features: Text features [batch_size, text_dim]
-            
+
         Returns:
             Fused features [batch_size, output_dim]
         """
@@ -881,10 +881,10 @@ class GatedMultimodalFusion(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

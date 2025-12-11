@@ -383,7 +383,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
                 else:
                     # Fallback: use forward pass for one token
                     outputs = self.model(**inputs)
-                    logits = outputs.logits if hasattr(outputs, 'logits') else outputs
+                    outputs.logits if hasattr(outputs, 'logits') else outputs
                     output_ids = inputs['input_ids']
 
             self.model.train()
@@ -481,7 +481,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Training loop
             progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch + 1}")
-            for step, batch in enumerate(progress_bar):
+            for _step, batch in enumerate(progress_bar):
                 # Training step
                 metrics = self.train_step(batch, self.global_step)
                 epoch_losses.append(metrics["total_loss"])

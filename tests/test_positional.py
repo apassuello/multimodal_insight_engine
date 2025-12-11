@@ -149,8 +149,8 @@ def validate_positional_properties():
     pos2 = 200
 
     # Calculate PE(pos1) and PE(pos2)
-    pe_pos1 = encodings[pos1, :]
-    pe_pos2 = encodings[pos2, :]
+    encodings[pos1, :]
+    encodings[pos2, :]
 
     # For sinusoidal encodings, we expect a linear relationship
     # Specifically, we can show that in certain cases,

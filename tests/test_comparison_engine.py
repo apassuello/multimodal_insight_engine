@@ -316,7 +316,7 @@ class TestComparisonEngine:
             device = torch.device("cpu")
             gen_config = GenerationConfig()
 
-            result = comparison_engine.compare_models(
+            comparison_engine.compare_models(
                 base_model, base_tokenizer,
                 trained_model, trained_tokenizer,
                 test_suite, device, gen_config,

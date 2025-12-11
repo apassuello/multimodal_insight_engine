@@ -143,14 +143,14 @@ class SafetyFilter:
         for category in evaluation["flagged_categories"]:
             if category == CATEGORY_PERSONAL_INFORMATION:
                 # Redact potential PII
-                for pattern_name, pattern in PII_PATTERNS.items():
+                for _pattern_name, pattern in PII_PATTERNS.items():
                     redacted_text = re.sub(
                         pattern, "[REDACTED PII]", redacted_text, flags=re.IGNORECASE
                     )
 
             elif category == CATEGORY_TOXICITY:
                 # Replace toxic words with asterisks
-                for pattern_name, pattern in TOXICITY_PATTERNS.items():
+                for _pattern_name, pattern in TOXICITY_PATTERNS.items():
                     # Find all matches
                     matches = re.finditer(pattern, redacted_text, re.IGNORECASE)
 
@@ -180,10 +180,10 @@ class SafetyFilter:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

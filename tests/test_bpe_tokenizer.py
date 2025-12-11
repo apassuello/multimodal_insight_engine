@@ -63,14 +63,14 @@ def train_bpe_tokenizers(
 ) -> Tuple[BPETokenizer, BPETokenizer]:
     """
     Train BPE tokenizers for German (source) and English (target).
-    
+
     Args:
         en_texts: List of English texts (target language)
         de_texts: List of German texts (source language)
         vocab_size: Target vocabulary size
         min_frequency: Minimum token frequency
         save_dir: Directory to save tokenizers
-        
+
     Returns:
         Tuple of (german_tokenizer, english_tokenizer)
     """
@@ -124,7 +124,7 @@ def test_tokenizers(
 ) -> None:
     """
     Test the trained tokenizers on example sentences.
-    
+
     Args:
         en_tokenizer: English tokenizer
         de_tokenizer: German tokenizer
@@ -167,7 +167,7 @@ def analyze_tokenization(
 ) -> None:
     """
     Analyze tokenization statistics compared to whitespace tokenization.
-    
+
     Args:
         en_tokenizer: English tokenizer
         en_texts: List of English texts
@@ -220,7 +220,7 @@ def analyze_tokenization(
 def demonstrate_oov_handling(en_tokenizer: BPETokenizer) -> None:
     """
     Demonstrate how BPE handles out-of-vocabulary words.
-    
+
     Args:
         en_tokenizer: English tokenizer
     """
@@ -254,7 +254,7 @@ def prepare_for_transformer(
 ) -> None:
     """
     Demonstrate how to prepare data for transformer training (German to English).
-    
+
     Args:
         de_tokenizer: German tokenizer (source language)
         en_tokenizer: English tokenizer (target language)

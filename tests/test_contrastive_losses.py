@@ -488,7 +488,7 @@ class TestHardNegativeMiningContrastiveLoss:
         self, vision_features, text_features, match_ids, device
     ):
         """Test with different numbers of hard negatives."""
-        for num_negatives in [2, 4, 8]:
+        for _num_negatives in [2, 4, 8]:
             loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
             result = loss_fn(vision_features, text_features, match_ids)
@@ -605,7 +605,7 @@ class TestDecoupledContrastiveLoss:
         self, vision_features, text_features, match_ids, device
     ):
         """Test with different decouple factors."""
-        for factor in [0.0, 0.5, 1.0]:
+        for _factor in [0.0, 0.5, 1.0]:
             loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
             result = loss_fn(vision_features, text_features, match_ids)

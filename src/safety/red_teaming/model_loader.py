@@ -19,7 +19,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 class ModelLoader:
     """
     Utility for loading different types of language models for red teaming.
-    
+
     This class provides utilities to load both locally trained PyTorch models
     and pre-trained models from Hugging Face, and wrap them with a consistent
     interface for use in red teaming exercises.
@@ -35,7 +35,7 @@ class ModelLoader:
     ):
         """
         Initialize the model loader.
-        
+
         Args:
             local_models_dir: Directory where local models are stored
             device: Device to load models on ('cpu', 'cuda', 'mps', or None for auto-detection)
@@ -77,12 +77,12 @@ class ModelLoader:
     ) -> Callable[[str], str]:
         """
         Load a model by name and return a callable function.
-        
+
         Args:
             model_name: Name of the model to load (local path or HF identifier)
             is_local: Force interpretation as local model or HF model
                       (if None, will try to detect automatically)
-            
+
         Returns:
             Function that takes text input and returns model output
         """
@@ -113,10 +113,10 @@ class ModelLoader:
     def _load_local_model(self, model_name: str) -> Callable[[str], str]:
         """
         Load a locally trained model or local Hugging Face model.
-        
+
         Args:
             model_name: Name of the model directory in local_models_dir
-            
+
         Returns:
             Function that takes text input and returns model output
         """
@@ -179,7 +179,8 @@ class ModelLoader:
             tokenizer = BPETokenizer.from_pretrained(str(tokenizer_path))
         else:
             # Create a simple tokenizer function
-            tokenizer = lambda text: text.split()
+            def tokenizer(text):
+                return text.split()
             tokenizer.encode = lambda text: [ord(c) for c in text]
             tokenizer.decode = lambda ids: ''.join(chr(i) for i in ids)
 
@@ -242,10 +243,10 @@ class ModelLoader:
     def _load_huggingface_model(self, model_name: str) -> Callable[[str], str]:
         """
         Load a model from Hugging Face (remote or local).
-        
+
         Args:
             model_name: Hugging Face model identifier or local path
-            
+
         Returns:
             Function that takes text input and returns model output
         """
@@ -313,7 +314,7 @@ class ModelLoader:
                             **inputs,
                             max_length=min(self.max_length, tokenizer.model_max_length),
                             temperature=self.temperature,
-                            do_sample=True if self.temperature > 0 else False,
+                            do_sample=self.temperature > 0,
                             pad_token_id=tokenizer.eos_token_id,
                             num_return_sequences=1,
                             early_stopping=True,
@@ -370,7 +371,7 @@ class ModelLoader:
     def list_available_local_models(self) -> list:
         """
         List all available local models.
-        
+
         Returns:
             List of model names
         """
@@ -383,10 +384,10 @@ class ModelLoader:
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """
         Get information about a model.
-        
+
         Args:
             model_name: Name of the model
-            
+
         Returns:
             Dictionary with model information
         """
@@ -439,9 +440,9 @@ def load_model(
 ) -> Callable[[str], str]:
     """
     Load a model by name and return a callable function.
-    
+
     This is a convenience wrapper around ModelLoader for simpler usage.
-    
+
     Args:
         model_name: Name of the model to load (local path or HF identifier)
         is_local: Force interpretation as local model or HF model
@@ -450,7 +451,7 @@ def load_model(
         max_length: Maximum sequence length for generation
         temperature: Sampling temperature for text generation
         verbose: Whether to print detailed information during loading and inference
-        
+
     Returns:
         Function that takes text input and returns model output
     """

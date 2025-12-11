@@ -247,10 +247,8 @@ def test_dynamic_quantizer_fuse_modules(simple_conv_model, sample_image_data):
     assert quantized_output.shape == reference_output.shape
 
     # Check if fused modules exist
-    fused_modules_found = False
-    for name, module in quantized_model.named_modules():
+    for _name, module in quantized_model.named_modules():
         if "fused" in str(type(module)).lower():
-            fused_modules_found = True
             break
 
     # Not all models will successfully fuse modules, so this check is conditional
@@ -329,7 +327,7 @@ def test_model_size_reduction(simple_model):
         pytest.skip("torch.quantization not available")
 
     # Save original model size (memory consumption)
-    original_size = sum(p.numel() * p.element_size() for p in simple_model.parameters())
+    sum(p.numel() * p.element_size() for p in simple_model.parameters())
 
     try:
         # Create a fresh model with the same architecture for quantization
@@ -341,7 +339,7 @@ def test_model_size_reduction(simple_model):
             quantized_model = quantizer.optimize()
 
             # Estimate quantized size
-            quantized_size = sum(p.numel() * p.element_size() for p in quantized_model.parameters())
+            sum(p.numel() * p.element_size() for p in quantized_model.parameters())
 
             # Get size info from quantizer
             size_info = quantizer.get_size_info()

@@ -29,11 +29,11 @@ SPECIAL NOTES:
 def create_padding_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
     """
     Create a padding mask for attention.
-    
+
     Args:
         seq: Tensor of sequence indices [batch_size, seq_len]
         pad_idx: Padding token index
-        
+
     Returns:
         Boolean mask of shape [batch_size, 1, 1, seq_len]
         where True values are positions to attend to and False are padding
@@ -47,11 +47,11 @@ def create_padding_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
 def create_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
     """
     Create a causal mask to prevent attending to future tokens.
-    
+
     Args:
         seq_len: Sequence length
         device: Device for the tensor
-        
+
     Returns:
         Boolean mask of shape [1, 1, seq_len, seq_len]
         where True values are positions to attend to and False are future positions
@@ -67,11 +67,11 @@ def create_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
 def create_combined_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
     """
     Create a combined mask for causal attention and padding.
-    
+
     Args:
         seq: Tensor of sequence indices [batch_size, seq_len]
         pad_idx: Padding token index
-        
+
     Returns:
         Boolean mask of shape [batch_size, 1, seq_len, seq_len]
         where True values are positions to attend to and False are padding or future positions
@@ -95,15 +95,15 @@ def create_combined_mask(seq: torch.Tensor, pad_idx: int) -> torch.Tensor:
 def subsequent_mask(size: int, device: torch.device) -> torch.Tensor:
     """
     Create a mask for subsequent positions in transformer attention.
-    
+
     This function creates a square mask that prevents attending to future positions
     in the sequence. It's particularly useful for decoder self-attention where
     each position should only attend to itself and previous positions.
-    
+
     Args:
         size: Size of the square mask (sequence length)
         device: Device for the mask tensor
-        
+
     Returns:
         torch.Tensor: Boolean mask of shape [1, size, size] where True values
                      indicate positions to attend to and False values indicate
@@ -117,12 +117,12 @@ def subsequent_mask(size: int, device: torch.device) -> torch.Tensor:
 class LabelSmoothing(nn.Module):
     """
     Label smoothing loss for transformer training.
-    
+
     This implements label smoothing as described in "Rethinking the Inception
     Architecture for Computer Vision" (Szegedy et al., 2016). Label smoothing
     helps prevent overfitting by softening the target distribution, making the
     model less confident in its predictions.
-    
+
     The smoothing factor determines how much probability mass is distributed
     uniformly across all classes, while the remaining mass is assigned to the
     correct class.
@@ -131,7 +131,7 @@ class LabelSmoothing(nn.Module):
     def __init__(self, smoothing: float = 0.1, pad_idx: int = 0, reduction: str = "mean"):
         """
         Initialize the label smoothing loss.
-        
+
         Args:
             smoothing: Smoothing factor (0 = no smoothing, 1 = uniform distribution)
             pad_idx: Index of padding token (to ignore in loss calculation)
@@ -146,16 +146,16 @@ class LabelSmoothing(nn.Module):
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
         Compute the smoothed loss.
-        
+
         This method applies label smoothing to the target distribution and
         computes the KL divergence loss between the predicted and smoothed
         target distributions. Padding tokens are properly handled by masking
         their contribution to the loss.
-        
+
         Args:
             pred: Predicted log probabilities [batch_size, seq_len, vocab_size]
             target: Target indices [batch_size, seq_len]
-            
+
         Returns:
             torch.Tensor: Loss value, shape depends on reduction method:
                         - "mean": Scalar loss averaged over non-padding tokens
@@ -191,10 +191,10 @@ class LabelSmoothing(nn.Module):
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

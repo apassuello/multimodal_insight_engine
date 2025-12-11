@@ -16,6 +16,11 @@ from typing import Any, Dict, List
 import torch
 from torch.utils.data import Dataset
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 # Comparison prompt template from Anthropics Constitutional AI paper
 COMPARISON_TEMPLATE = """Consider the following conversation and two possible assistant responses:
@@ -53,11 +58,11 @@ def generate_comparison(
 ) -> Dict[str, Any]:
     """
     Compare two responses and determine which better follows constitutional principles.
-    
-    This function implements the comparison-based preference generation step of 
+
+    This function implements the comparison-based preference generation step of
     Constitutional AI, where an AI model evaluates pairs of responses according to
     constitutional principles to generate preference labels.
-    
+
     Args:
         prompt: User prompt that generated the responses
         response_a: First response to compare
@@ -66,14 +71,14 @@ def generate_comparison(
         model: Language model for generating comparisons
         tokenizer: Tokenizer for the model
         device: Computation device (cuda/cpu)
-    
+
     Returns:
         Dictionary containing:
             - preferred: 'A' or 'B' indicating which response is better
             - comparison_text: Full AI-generated comparison reasoning
             - response_chosen: The preferred response text
             - response_rejected: The non-preferred response text
-    
+
     Example:
         >>> comparison = generate_comparison(
         ...     prompt="What is photosynthesis?",
@@ -126,17 +131,17 @@ def generate_comparison(
 def extract_preference(comparison_text: str) -> str:
     """
     Extract preference ('A' or 'B') from AI-generated comparison text.
-    
+
     This function uses pattern matching to identify which response the AI model
     preferred based on its comparison reasoning. It handles various phrasings
     like "Response A is better", "I prefer B", "B is more accurate", etc.
-    
+
     Args:
         comparison_text: AI-generated comparison reasoning
-    
+
     Returns:
         'A' or 'B' indicating the preferred response (defaults to 'A' if unclear)
-    
+
     Example:
         >>> extract_preference("Response B is better because it's more detailed")
         'B'
@@ -217,15 +222,15 @@ def generate_preference_pairs(
 ) -> List[Dict[str, Any]]:
     """
     Generate preference pairs for reward model training.
-    
+
     This function implements the complete preference generation pipeline:
     1. For each prompt, generate multiple response candidates
     2. Compare all pairs of responses using constitutional principles
     3. Extract preference labels to create training data
-    
+
     The resulting dataset is used to train a reward model that can score
     responses based on constitutional compliance.
-    
+
     Args:
         prompts: List of prompts to generate preferences for
         model: Language model for generation and comparison
@@ -233,14 +238,14 @@ def generate_preference_pairs(
         framework: ConstitutionalFramework containing principles
         device: Computation device (cuda/cpu)
         responses_per_prompt: Number of response candidates per prompt (default: 2)
-    
+
     Returns:
         List of preference examples, each containing:
             - prompt: Original user prompt
             - response_chosen: Better response according to principles
             - response_rejected: Worse response according to principles
             - comparison_reasoning: AI explanation of why one is better
-    
+
     Example:
         >>> from src.safety.constitutional import setup_default_framework
         >>> framework = setup_default_framework()
@@ -313,15 +318,15 @@ def generate_preference_pairs(
 class PreferenceDataset(Dataset):
     """
     PyTorch Dataset for preference pairs used in reward model training.
-    
+
     This dataset handles tokenization and formatting of preference pairs
     for efficient batch processing during reward model training.
-    
+
     Attributes:
         data: List of preference examples
         tokenizer: Tokenizer for encoding text
         max_length: Maximum sequence length for tokenization
-    
+
     Example:
         >>> dataset = PreferenceDataset(preference_data, tokenizer, max_length=512)
         >>> dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
@@ -339,7 +344,7 @@ class PreferenceDataset(Dataset):
     ):
         """
         Initialize preference dataset.
-        
+
         Args:
             data: List of preference examples from generate_preference_pairs()
             tokenizer: Tokenizer for encoding text
@@ -356,10 +361,10 @@ class PreferenceDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
         Get a single preference pair.
-        
+
         Args:
             idx: Index of the preference pair
-        
+
         Returns:
             Dictionary containing tokenized chosen and rejected responses:
                 - chosen_input_ids: Token IDs for chosen response

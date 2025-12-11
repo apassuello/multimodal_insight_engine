@@ -190,8 +190,8 @@ class BaseContrastiveLoss(
             # InfoNCE: log( exp(pos) / (exp(pos) + sum(exp(neg))) )
             # Equivalently: pos - log(exp(pos) + sum(exp(neg)))
             # Use logsumexp for numerical stability
-            pos_exp = torch.exp(positives)
-            neg_exp = torch.exp(negatives)
+            torch.exp(positives)
+            torch.exp(negatives)
 
             # For each positive, compute loss
             for pos in positives:

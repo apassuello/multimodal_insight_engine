@@ -112,7 +112,7 @@ def supervised_contrastive_loss(
     similarity = torch.matmul(features, features.T) / temperature
 
     # For each anchor, compute loss against positive samples only
-    exp_similarity = torch.exp(similarity)
+    torch.exp(similarity)
 
     # Mask for denominators (all samples except self)
     non_self_mask = 1 - identity_mask
@@ -120,7 +120,7 @@ def supervised_contrastive_loss(
     # For numerical stability, compute log sum exp directly
     # Lower triangle matrix for row-wise / column-wise calculations
     pos_mask = mask * non_self_mask
-    neg_mask = (1 - mask) * non_self_mask
+    (1 - mask) * non_self_mask
 
     # Compute positive term (numerator) and full term (denominator)
     pos_term = torch.sum(similarity * pos_mask, dim=1)
@@ -146,7 +146,7 @@ def supervised_contrastive_loss(
 
 def compute_recall_at_k(
     similarity: torch.Tensor,
-    K: List[int] = [1, 5, 10],
+    K: List[int] = None,
     v2t_targets: Optional[torch.Tensor] = None,
     t2i_targets: Optional[torch.Tensor] = None,
 ) -> Dict[str, float]:
@@ -162,6 +162,8 @@ def compute_recall_at_k(
     Returns:
         Dictionary with recall metrics
     """
+    if K is None:
+        K = [1, 5, 10]
     batch_size = similarity.shape[0]
 
     # Default targets (diagonal matching) if not provided
@@ -516,7 +518,7 @@ class DecoupledContrastiveLoss(nn.Module):
                 continue
 
             # Compute loss for each positive pair
-            pos_logits = similarity[i, pos_indices]
+            similarity[i, pos_indices]
             all_logits = similarity[i]
 
             # For each positive, compute InfoNCE loss
@@ -539,7 +541,7 @@ class DecoupledContrastiveLoss(nn.Module):
                 continue
 
             # Compute loss for each positive pair
-            pos_logits = similarity[pos_indices, i]
+            similarity[pos_indices, i]
             all_logits = similarity[:, i]
 
             # For each positive, compute InfoNCE loss

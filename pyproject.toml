@@ -70,9 +70,22 @@ select = [
 # Rules to ignore
 ignore = [
     "E501",   # Line too long (handled by formatter)
+    "E402",   # Module import not at top (intentional lazy imports for optional dependencies)
+    "E741",   # Ambiguous variable name (l, O, I - common in ML code)
+    "B007",   # Unused loop control variable (common in ML training loops)
     "B008",   # Do not perform function call in argument defaults
+    "B904",   # raise-without-from-inside-except (not always applicable)
+    "B017",   # assert-raises-exception (pytest pattern)
+    "B027",   # empty-method-without-abstract-decorator (intentional abstract patterns)
     "C901",   # Too complex (we have complex ML code)
     "E203",   # Whitespace before ':' (conflicts with Black)
+    "N803",   # Invalid argument name (ML papers use single-letter args: x, y, z)
+    "N806",   # Non-lowercase variable in function (ML constants: T_max, learning_rate)
+    "N812",   # Lowercase imported as non-lowercase (common pattern: import transforms as T)
+    "SIM102", # Use single if instead of nested (subjective preference)
+    "SIM105", # Use contextlib.suppress instead of try-except-pass (not always clearer)
+    "SIM113", # Use enumerate instead of manual counter (sometimes manual is clearer)
+    "SIM117", # Use single with statement (subjective preference)
     "SIM108", # Use ternary operator (not always clearer)
     "UP006",  # Use `list` instead of `List` for type annotations (Python 3.8 compat)
     "UP007",  # Use `X | Y` for type annotations (Python 3.8 compat)
@@ -81,7 +94,7 @@ ignore = [
 # Per-file ignores
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Unused imports, import *
-"tests/*" = ["F401", "F811"]      # Unused imports, redefined fixtures
+"tests/*" = ["F401", "F811", "F841", "N806"]  # Unused imports, redefined fixtures, unused vars, non-lowercase vars
 
 # Import sorting configuration
 [tool.ruff.lint.isort]

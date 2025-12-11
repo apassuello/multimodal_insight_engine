@@ -29,7 +29,7 @@ DEFAULT_LOG_LEVEL = 'INFO'
 class LogManager:
     """
     Central logging manager for the application.
-    
+
     This class provides methods for configuring loggers and obtaining logger instances.
     """
 
@@ -42,11 +42,11 @@ class LogManager:
     def get_logger(self, name: str, level: Optional[Union[str, int]] = None) -> std_logging.Logger:
         """
         Get a logger instance with the specified name.
-        
+
         Args:
             name: Name of the logger
             level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            
+
         Returns:
             Logger instance
         """
@@ -78,7 +78,7 @@ class LogManager:
     def configure_file_logging(self, log_dir: str, name: str = 'application') -> None:
         """
         Configure file logging for the application.
-        
+
         Args:
             log_dir: Directory to store log files
             name: Name of the log file (will be used as prefix)
@@ -107,10 +107,10 @@ configure_file_logging = log_manager.configure_file_logging
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

@@ -4,11 +4,16 @@ import os
 import random
 from typing import List, Optional, Tuple
 
+from src.utils.logging import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class EuroparlDataset:
     """
     Dataset class for the Europarl parallel corpus.
-    
+
     This class handles loading and preprocessing parallel text data from the
     Europarl corpus for machine translation tasks.
     """
@@ -23,7 +28,7 @@ class EuroparlDataset:
     ):
         """
         Initialize the Europarl dataset.
-        
+
         Args:
             data_dir: Directory containing the Europarl data
             src_lang: Source language code
@@ -45,9 +50,9 @@ class EuroparlDataset:
     def load_data(self) -> Tuple[List[str], List[str]]:
         """
         Load and preprocess the parallel data.
-        
+
         This function tries multiple possible file structures for Europarl data.
-        
+
         Returns:
             Tuple containing lists of source and target sentences
         """
@@ -130,10 +135,10 @@ class EuroparlDataset:
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
-    
+
     Args:
         file_path: Path to the source file (defaults to current file)
-        
+
     Returns:
         dict: Structured metadata about the module's purpose and components
     """

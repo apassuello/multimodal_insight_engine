@@ -447,7 +447,7 @@ class TestHardNegativeMining:
         assert len(dataset.class_to_indices) > 0
 
         # Each class should have at least one sample
-        for class_label, indices in dataset.class_to_indices.items():
+        for _class_label, indices in dataset.class_to_indices.items():
             assert len(indices) > 0
 
     def test_hard_negative_same_class(self, fake_image_dataset):
