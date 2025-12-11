@@ -6,6 +6,7 @@ labels for training, leveraging BaseSupervisedLoss to eliminate duplication.
 
 from .supervised_loss import SupervisedContrastiveLoss
 
+
 __all__ = [
     "SupervisedContrastiveLoss",
 ]

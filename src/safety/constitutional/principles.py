@@ -16,6 +16,7 @@ import re
 
 from src.utils.logging import get_logger
 
+
 logger = get_logger(__name__)
 import json
 from typing import Any, Dict, List, Optional
@@ -25,6 +26,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from .framework import ConstitutionalFramework, ConstitutionalPrinciple
 from .model_utils import GenerationConfig, generate_text
+
 
 # =============================================================================
 # DEBUG CONFIGURATION

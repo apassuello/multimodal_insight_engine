@@ -24,6 +24,7 @@ import torch.nn.functional as F
 
 from src.training.losses.contrastive.simclr_loss import SimCLRLoss
 
+
 logger = logging.getLogger(__name__)
 
 

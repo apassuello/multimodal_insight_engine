@@ -10,6 +10,7 @@ from src.utils.logging import get_logger
 
 from .vocabulary import Vocabulary
 
+
 logger = get_logger(__name__)
 
 

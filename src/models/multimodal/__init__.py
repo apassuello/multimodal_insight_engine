@@ -18,6 +18,7 @@ from .multimodal_integration import (
 )
 from .vicreg_multimodal_model import VICRegMultimodalModel
 
+
 __all__ = [
     "CrossModalAttention",
     "GatedCrossModalAttention",

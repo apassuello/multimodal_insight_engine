@@ -13,6 +13,7 @@ from .mixins import (
     TemperatureScalingMixin,
 )
 
+
 __all__ = [
     # Mixins
     "TemperatureScalingMixin",

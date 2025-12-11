@@ -238,6 +238,7 @@ output = "coverage.xml"
 [tool.isort]
 profile = "black"
 line_length = 100
+lines_after_imports = 2  # Match Ruff's lines-after-imports setting
 multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
