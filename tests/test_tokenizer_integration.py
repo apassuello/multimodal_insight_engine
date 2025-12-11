@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -84,10 +83,14 @@ class TranslationDataset(Dataset):
 
         # Truncate if needed
         if self.max_source_length is not None and len(source_ids) > self.max_source_length:
-            source_ids = source_ids[:self.max_source_length-1] + [self.src_eos_idx]  # Keep EOS token
+            source_ids = source_ids[: self.max_source_length - 1] + [
+                self.src_eos_idx
+            ]  # Keep EOS token
 
         if self.max_target_length is not None and len(target_ids) > self.max_target_length:
-            target_ids = target_ids[:self.max_target_length-1] + [self.tgt_eos_idx]  # Keep EOS token
+            target_ids = target_ids[: self.max_target_length - 1] + [
+                self.tgt_eos_idx
+            ]  # Keep EOS token
 
         # Create source and target input/output
         src = torch.tensor(source_ids, dtype=torch.long)
@@ -130,31 +133,68 @@ def collate_translation_batch(batch):
     tgt_pad_idx = 0  # Default padding index
 
     # Pad sequences
-    src_padded = torch.stack([
-        torch.cat([seq, torch.full((src_max_len - seq.size(0),), src_pad_idx, dtype=torch.long)])
-        if seq.size(0) < src_max_len else seq
-        for seq in src_sequences
-    ])
+    src_padded = torch.stack(
+        [
+            (
+                torch.cat(
+                    [seq, torch.full((src_max_len - seq.size(0),), src_pad_idx, dtype=torch.long)]
+                )
+                if seq.size(0) < src_max_len
+                else seq
+            )
+            for seq in src_sequences
+        ]
+    )
 
-    tgt_input_padded = torch.stack([
-        torch.cat([seq, torch.full((tgt_input_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long)])
-        if seq.size(0) < tgt_input_max_len else seq
-        for seq in tgt_input_sequences
-    ])
+    tgt_input_padded = torch.stack(
+        [
+            (
+                torch.cat(
+                    [
+                        seq,
+                        torch.full(
+                            (tgt_input_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long
+                        ),
+                    ]
+                )
+                if seq.size(0) < tgt_input_max_len
+                else seq
+            )
+            for seq in tgt_input_sequences
+        ]
+    )
 
-    tgt_output_padded = torch.stack([
-        torch.cat([seq, torch.full((tgt_output_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long)])
-        if seq.size(0) < tgt_output_max_len else seq
-        for seq in tgt_output_sequences
-    ])
+    tgt_output_padded = torch.stack(
+        [
+            (
+                torch.cat(
+                    [
+                        seq,
+                        torch.full(
+                            (tgt_output_max_len - seq.size(0),), tgt_pad_idx, dtype=torch.long
+                        ),
+                    ]
+                )
+                if seq.size(0) < tgt_output_max_len
+                else seq
+            )
+            for seq in tgt_output_sequences
+        ]
+    )
 
     # Create masks
-    src_padding_mask = (src_padded != src_pad_idx).unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, src_len]
-    tgt_padding_mask = (tgt_input_padded != tgt_pad_idx).unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, tgt_len]
+    src_padding_mask = (
+        (src_padded != src_pad_idx).unsqueeze(1).unsqueeze(2)
+    )  # [batch, 1, 1, src_len]
+    tgt_padding_mask = (
+        (tgt_input_padded != tgt_pad_idx).unsqueeze(1).unsqueeze(2)
+    )  # [batch, 1, 1, tgt_len]
 
     # Create causal mask for target
     device = tgt_input_padded.device
-    tgt_causal_mask = torch.tril(torch.ones((tgt_input_max_len, tgt_input_max_len), device=device)).bool()
+    tgt_causal_mask = torch.tril(
+        torch.ones((tgt_input_max_len, tgt_input_max_len), device=device)
+    ).bool()
     tgt_causal_mask = tgt_causal_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, tgt_len, tgt_len]
 
     # Combine padding and causal mask for target
@@ -329,7 +369,7 @@ def train_translation_model(
 
         # Calculate accuracy
         predictions = outputs.argmax(dim=-1)
-        mask = (targets != pad_idx)
+        mask = targets != pad_idx
         correct = (predictions == targets) & mask
         total = mask.sum().item()
         accuracy = correct.sum().item() / total if total > 0 else 0.0
@@ -388,11 +428,19 @@ def translate(
 
     # Tokenize source text
     source_ids = source_tokenizer.encode(text)
-    source_ids = [source_tokenizer.special_tokens["bos_token_idx"]] + source_ids + [source_tokenizer.special_tokens["eos_token_idx"]]
+    source_ids = (
+        [source_tokenizer.special_tokens["bos_token_idx"]]
+        + source_ids
+        + [source_tokenizer.special_tokens["eos_token_idx"]]
+    )
     source_tensor = torch.tensor([source_ids], dtype=torch.long).to(device)
 
     # Create source mask
-    src_mask = (source_tensor != source_tokenizer.special_tokens["pad_token_idx"]).unsqueeze(1).unsqueeze(2)
+    src_mask = (
+        (source_tensor != source_tokenizer.special_tokens["pad_token_idx"])
+        .unsqueeze(1)
+        .unsqueeze(2)
+    )
 
     # Initialize target with BOS token
     tgt_bos = target_tokenizer.special_tokens["bos_token_idx"]
@@ -402,7 +450,12 @@ def translate(
     for _ in range(max_length):
         # Create target mask (causal)
         tgt_len = target_tensor.size(1)
-        tgt_mask = torch.tril(torch.ones((tgt_len, tgt_len), device=device)).bool().unsqueeze(0).unsqueeze(0)
+        tgt_mask = (
+            torch.tril(torch.ones((tgt_len, tgt_len), device=device))
+            .bool()
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
 
         # Forward pass
         output = model(
@@ -428,7 +481,9 @@ def translate(
 
     # Stop at EOS token if present
     if target_tokenizer.special_tokens["eos_token_idx"] in generated_ids:
-        generated_ids = generated_ids[:generated_ids.index(target_tokenizer.special_tokens["eos_token_idx"])]
+        generated_ids = generated_ids[
+            : generated_ids.index(target_tokenizer.special_tokens["eos_token_idx"])
+        ]
 
     translation = target_tokenizer.decode(generated_ids)
     return translation
@@ -457,7 +512,7 @@ def main():
         tgt_lang="de",
         year="2016",
         split="train",
-        max_examples=5000  # Small subset for demonstration
+        max_examples=5000,  # Small subset for demonstration
     )
 
     # Create dataloaders
@@ -471,7 +526,9 @@ def main():
         max_target_length=128,
     )
 
-    print(f"Created dataloaders with {len(train_dataloader)} training batches and {len(val_dataloader)} validation batches")
+    print(
+        f"Created dataloaders with {len(train_dataloader)} training batches and {len(val_dataloader)} validation batches"
+    )
 
     # Display a batch example
     batch = next(iter(train_dataloader))

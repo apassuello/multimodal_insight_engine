@@ -17,7 +17,6 @@ import torch.nn.functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import copy
 
@@ -51,7 +50,7 @@ class PPOTrainer:
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         value_loss_coef: float = 0.5,
-        max_grad_norm: float = 1.0
+        max_grad_norm: float = 1.0,
     ):
         """
         Initialize PPO trainer.
@@ -90,30 +89,25 @@ class PPOTrainer:
         self.max_grad_norm = max_grad_norm
 
         # Optimizers
-        self.policy_optimizer = torch.optim.AdamW(
-            policy_model.parameters(),
-            lr=learning_rate
+        self.policy_optimizer = torch.optim.AdamW(policy_model.parameters(), lr=learning_rate)
+        self.value_optimizer = (
+            torch.optim.AdamW(value_model.parameters(), lr=learning_rate)
+            if value_model is not None
+            else None
         )
-        self.value_optimizer = torch.optim.AdamW(
-            value_model.parameters(),
-            lr=learning_rate
-        ) if value_model is not None else None
 
         # Training statistics
         self.stats = {
-            'total_steps': 0,
-            'policy_losses': [],
-            'value_losses': [],
-            'kl_divergences': [],
-            'mean_rewards': [],
-            'mean_advantages': []
+            "total_steps": 0,
+            "policy_losses": [],
+            "value_losses": [],
+            "kl_divergences": [],
+            "mean_rewards": [],
+            "mean_advantages": [],
         }
 
     def compute_gae(
-        self,
-        rewards: torch.Tensor,
-        values: torch.Tensor,
-        dones: torch.Tensor
+        self, rewards: torch.Tensor, values: torch.Tensor, dones: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute Generalized Advantage Estimation.
@@ -158,9 +152,7 @@ class PPOTrainer:
         return advantages, returns
 
     def compute_kl_divergence(
-        self,
-        current_logprobs: torch.Tensor,
-        reference_logprobs: torch.Tensor
+        self, current_logprobs: torch.Tensor, reference_logprobs: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute KL divergence between current and reference policy.
@@ -180,10 +172,7 @@ class PPOTrainer:
         return kl_div
 
     def compute_ppo_loss(
-        self,
-        old_logprobs: torch.Tensor,
-        new_logprobs: torch.Tensor,
-        advantages: torch.Tensor
+        self, old_logprobs: torch.Tensor, new_logprobs: torch.Tensor, advantages: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute clipped PPO objective.
@@ -206,11 +195,7 @@ class PPOTrainer:
         surr1 = ratio * advantages
 
         # Clipped objective: L_clip = clip(ratio, 1-ε, 1+ε) * A
-        surr2 = torch.clamp(
-            ratio,
-            1 - self.clip_epsilon,
-            1 + self.clip_epsilon
-        ) * advantages
+        surr2 = torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages
 
         # Take minimum (pessimistic bound)
         # This prevents too-large policy updates
@@ -219,10 +204,7 @@ class PPOTrainer:
         return policy_loss
 
     def generate_responses(
-        self,
-        prompts: List[str],
-        max_length: int = 150,
-        temperature: float = 1.0
+        self, prompts: List[str], max_length: int = 150, temperature: float = 1.0
     ) -> Tuple[List[str], torch.Tensor]:
         """
         Generate responses from current policy and compute log probabilities.
@@ -245,40 +227,27 @@ class PPOTrainer:
         with torch.no_grad():
             for prompt in prompts:
                 # Tokenize prompt
-                inputs = self.tokenizer(
-                    prompt,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True
-                )
+                inputs = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
                 inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                prompt_len = inputs['input_ids'].shape[1]
+                prompt_len = inputs["input_ids"].shape[1]
 
                 # Generate response
                 config = GenerationConfig(
                     max_length=max_length,
                     temperature=temperature,
                     do_sample=True,
-                    pad_token_id=self.tokenizer.pad_token_id
+                    pad_token_id=self.tokenizer.pad_token_id,
                 )
 
                 response = generate_text(
-                    self.policy_model,
-                    self.tokenizer,
-                    prompt,
-                    config,
-                    self.device
+                    self.policy_model, self.tokenizer, prompt, config, self.device
                 )
                 responses.append(response)
 
                 # Compute log probabilities for the generated response
                 full_text = prompt + response
                 full_inputs = self.tokenizer(
-                    full_text,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True,
-                    max_length=512
+                    full_text, return_tensors="pt", padding=True, truncation=True, max_length=512
                 )
                 full_inputs = {k: v.to(self.device) for k, v in full_inputs.items()}
 
@@ -288,17 +257,15 @@ class PPOTrainer:
 
                 # Compute log probabilities for generated tokens
                 # Shift by 1 to align logits with targets
-                shift_logits = logits[:, prompt_len-1:-1, :]
-                shift_labels = full_inputs['input_ids'][:, prompt_len:]
+                shift_logits = logits[:, prompt_len - 1 : -1, :]
+                shift_labels = full_inputs["input_ids"][:, prompt_len:]
 
                 # Compute log softmax
                 log_probs = F.log_softmax(shift_logits, dim=-1)
 
                 # Gather log probs for actual tokens
                 token_log_probs = torch.gather(
-                    log_probs,
-                    dim=-1,
-                    index=shift_labels.unsqueeze(-1)
+                    log_probs, dim=-1, index=shift_labels.unsqueeze(-1)
                 ).squeeze(-1)
 
                 all_logprobs.append(token_log_probs)
@@ -317,11 +284,7 @@ class PPOTrainer:
 
         return responses, log_probs_tensor
 
-    def compute_rewards(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def compute_rewards(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute rewards using the reward model.
 
@@ -340,14 +303,18 @@ class PPOTrainer:
             for prompt, response in zip(prompts, responses):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
-                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
-                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
+                prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+                response_tokens = self.tokenizer(
+                    response, return_tensors="pt", add_special_tokens=False
+                )
 
-                prompt_len = prompt_tokens['input_ids'].shape[1]
-                response_len = response_tokens['input_ids'].shape[1]
+                prompt_len = prompt_tokens["input_ids"].shape[1]
+                response_len = response_tokens["input_ids"].shape[1]
 
                 # Concatenate token IDs
-                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                input_ids = torch.cat(
+                    [prompt_tokens["input_ids"], response_tokens["input_ids"]], dim=1
+                )
                 attention_mask = torch.ones_like(input_ids)
 
                 # Truncate if needed
@@ -361,15 +328,12 @@ class PPOTrainer:
                         response_len = 0
 
                 inputs = {
-                    'input_ids': input_ids.to(self.device),
-                    'attention_mask': attention_mask.to(self.device)
+                    "input_ids": input_ids.to(self.device),
+                    "attention_mask": attention_mask.to(self.device),
                 }
 
                 # Get reward from reward model
-                reward = self.reward_model(
-                    inputs['input_ids'],
-                    inputs['attention_mask']
-                )
+                reward = self.reward_model(inputs["input_ids"], inputs["attention_mask"])
 
                 # Expand reward to response length
                 reward_seq = reward.unsqueeze(1).expand(-1, response_len)
@@ -390,11 +354,7 @@ class PPOTrainer:
 
         return rewards_tensor
 
-    def _compute_values_with_grad(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def _compute_values_with_grad(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute value estimates WITH gradients for training.
 
@@ -410,14 +370,16 @@ class PPOTrainer:
         for prompt, response in zip(prompts, responses):
             # Tokenize prompt and response separately then concatenate
             # This ensures exact boundary alignment
-            prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
-            response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
+            prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+            response_tokens = self.tokenizer(
+                response, return_tensors="pt", add_special_tokens=False
+            )
 
-            prompt_len = prompt_tokens['input_ids'].shape[1]
-            response_len = response_tokens['input_ids'].shape[1]
+            prompt_len = prompt_tokens["input_ids"].shape[1]
+            response_len = response_tokens["input_ids"].shape[1]
 
             # Concatenate token IDs
-            input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+            input_ids = torch.cat([prompt_tokens["input_ids"], response_tokens["input_ids"]], dim=1)
             attention_mask = torch.ones_like(input_ids)
 
             # Truncate if needed
@@ -431,15 +393,12 @@ class PPOTrainer:
                     response_len = 0
 
             inputs = {
-                'input_ids': input_ids.to(self.device),
-                'attention_mask': attention_mask.to(self.device)
+                "input_ids": input_ids.to(self.device),
+                "attention_mask": attention_mask.to(self.device),
             }
 
             # Get value estimate WITH gradients
-            value = self.value_model(
-                inputs['input_ids'],
-                inputs['attention_mask']
-            )
+            value = self.value_model(inputs["input_ids"], inputs["attention_mask"])
 
             # Repeat value to response length (use repeat not expand for gradient flow)
             value_seq = value.unsqueeze(1).repeat(1, response_len)
@@ -461,11 +420,7 @@ class PPOTrainer:
 
         return values_tensor
 
-    def compute_values(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def compute_values(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute value estimates using the value model (without gradients).
 
@@ -488,33 +443,23 @@ class PPOTrainer:
             for prompt, response in zip(prompts, responses):
                 # Tokenize prompt to get prompt length
                 prompt_inputs = self.tokenizer(
-                    prompt,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True
+                    prompt, return_tensors="pt", padding=True, truncation=True
                 )
-                prompt_len = prompt_inputs['input_ids'].shape[1]
+                prompt_len = prompt_inputs["input_ids"].shape[1]
 
                 # Tokenize prompt + response
                 text = prompt + response
                 inputs = self.tokenizer(
-                    text,
-                    return_tensors='pt',
-                    padding=True,
-                    truncation=True,
-                    max_length=512
+                    text, return_tensors="pt", padding=True, truncation=True, max_length=512
                 )
                 inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
                 # Get value estimate (assuming value_model has same interface as reward_model)
                 # Value model should output scalar value for each state
-                value = self.value_model(
-                    inputs['input_ids'],
-                    inputs['attention_mask']
-                )
+                value = self.value_model(inputs["input_ids"], inputs["attention_mask"])
 
                 # Expand value to RESPONSE length only (not full sequence)
-                response_len = inputs['input_ids'].shape[1] - prompt_len
+                response_len = inputs["input_ids"].shape[1] - prompt_len
                 value_seq = value.unsqueeze(1).expand(-1, response_len)
 
                 values_list.append(value_seq)
@@ -533,11 +478,7 @@ class PPOTrainer:
 
         return values_tensor
 
-    def _get_logprobs_with_grad(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def _get_logprobs_with_grad(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute log probabilities WITH gradients for policy training.
 
@@ -558,13 +499,15 @@ class PPOTrainer:
         for prompt, response in zip(prompts, responses):
             # Tokenize prompt and response separately then concatenate
             # This ensures exact boundary alignment
-            prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
-            response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
+            prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+            response_tokens = self.tokenizer(
+                response, return_tensors="pt", add_special_tokens=False
+            )
 
-            prompt_len = prompt_tokens['input_ids'].shape[1]
+            prompt_len = prompt_tokens["input_ids"].shape[1]
 
             # Concatenate token IDs
-            input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+            input_ids = torch.cat([prompt_tokens["input_ids"], response_tokens["input_ids"]], dim=1)
             attention_mask = torch.ones_like(input_ids)
 
             # Truncate if needed
@@ -573,8 +516,8 @@ class PPOTrainer:
                 attention_mask = attention_mask[:, :512]
 
             inputs = {
-                'input_ids': input_ids.to(self.device),
-                'attention_mask': attention_mask.to(self.device)
+                "input_ids": input_ids.to(self.device),
+                "attention_mask": attention_mask.to(self.device),
             }
 
             # Get model outputs WITH gradients (no torch.no_grad())
@@ -582,14 +525,12 @@ class PPOTrainer:
             logits = outputs.logits
 
             # Compute log probabilities for response tokens
-            shift_logits = logits[:, prompt_len-1:-1, :]
-            shift_labels = inputs['input_ids'][:, prompt_len:]
+            shift_logits = logits[:, prompt_len - 1 : -1, :]
+            shift_labels = inputs["input_ids"][:, prompt_len:]
 
             log_probs = F.log_softmax(shift_logits, dim=-1)
             token_log_probs = torch.gather(
-                log_probs,
-                dim=-1,
-                index=shift_labels.unsqueeze(-1)
+                log_probs, dim=-1, index=shift_labels.unsqueeze(-1)
             ).squeeze(-1)
 
             all_logprobs.append(token_log_probs)
@@ -609,11 +550,7 @@ class PPOTrainer:
 
         return log_probs_tensor
 
-    def get_logprobs(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def get_logprobs(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute log probabilities for given responses under current policy.
 
@@ -632,13 +569,17 @@ class PPOTrainer:
             for prompt, response in zip(prompts, responses):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
-                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
-                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
+                prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+                response_tokens = self.tokenizer(
+                    response, return_tensors="pt", add_special_tokens=False
+                )
 
-                prompt_len = prompt_tokens['input_ids'].shape[1]
+                prompt_len = prompt_tokens["input_ids"].shape[1]
 
                 # Concatenate token IDs
-                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                input_ids = torch.cat(
+                    [prompt_tokens["input_ids"], response_tokens["input_ids"]], dim=1
+                )
                 attention_mask = torch.ones_like(input_ids)
 
                 # Truncate if needed
@@ -647,8 +588,8 @@ class PPOTrainer:
                     attention_mask = attention_mask[:, :512]
 
                 inputs = {
-                    'input_ids': input_ids.to(self.device),
-                    'attention_mask': attention_mask.to(self.device)
+                    "input_ids": input_ids.to(self.device),
+                    "attention_mask": attention_mask.to(self.device),
                 }
 
                 # Get model outputs
@@ -657,14 +598,12 @@ class PPOTrainer:
 
                 # Compute log probabilities for response tokens
                 # shift by 1 for autoregressive prediction
-                shift_logits = logits[:, prompt_len-1:-1, :]
-                shift_labels = inputs['input_ids'][:, prompt_len:]
+                shift_logits = logits[:, prompt_len - 1 : -1, :]
+                shift_labels = inputs["input_ids"][:, prompt_len:]
 
                 log_probs = F.log_softmax(shift_logits, dim=-1)
                 token_log_probs = torch.gather(
-                    log_probs,
-                    dim=-1,
-                    index=shift_labels.unsqueeze(-1)
+                    log_probs, dim=-1, index=shift_labels.unsqueeze(-1)
                 ).squeeze(-1)
 
                 all_logprobs.append(token_log_probs)
@@ -683,11 +622,7 @@ class PPOTrainer:
 
         return log_probs_tensor
 
-    def get_reference_logprobs(
-        self,
-        prompts: List[str],
-        responses: List[str]
-    ) -> torch.Tensor:
+    def get_reference_logprobs(self, prompts: List[str], responses: List[str]) -> torch.Tensor:
         """
         Compute log probabilities for given responses under reference policy.
 
@@ -706,13 +641,17 @@ class PPOTrainer:
             for prompt, response in zip(prompts, responses):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
-                prompt_tokens = self.tokenizer(prompt, return_tensors='pt', add_special_tokens=True)
-                response_tokens = self.tokenizer(response, return_tensors='pt', add_special_tokens=False)
+                prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+                response_tokens = self.tokenizer(
+                    response, return_tensors="pt", add_special_tokens=False
+                )
 
-                prompt_len = prompt_tokens['input_ids'].shape[1]
+                prompt_len = prompt_tokens["input_ids"].shape[1]
 
                 # Concatenate token IDs
-                input_ids = torch.cat([prompt_tokens['input_ids'], response_tokens['input_ids']], dim=1)
+                input_ids = torch.cat(
+                    [prompt_tokens["input_ids"], response_tokens["input_ids"]], dim=1
+                )
                 attention_mask = torch.ones_like(input_ids)
 
                 # Truncate if needed
@@ -721,8 +660,8 @@ class PPOTrainer:
                     attention_mask = attention_mask[:, :512]
 
                 inputs = {
-                    'input_ids': input_ids.to(self.device),
-                    'attention_mask': attention_mask.to(self.device)
+                    "input_ids": input_ids.to(self.device),
+                    "attention_mask": attention_mask.to(self.device),
                 }
 
                 # Get reference model outputs
@@ -730,14 +669,12 @@ class PPOTrainer:
                 logits = outputs.logits
 
                 # Compute log probabilities for response tokens
-                shift_logits = logits[:, prompt_len-1:-1, :]
-                shift_labels = inputs['input_ids'][:, prompt_len:]
+                shift_logits = logits[:, prompt_len - 1 : -1, :]
+                shift_labels = inputs["input_ids"][:, prompt_len:]
 
                 log_probs = F.log_softmax(shift_logits, dim=-1)
                 token_log_probs = torch.gather(
-                    log_probs,
-                    dim=-1,
-                    index=shift_labels.unsqueeze(-1)
+                    log_probs, dim=-1, index=shift_labels.unsqueeze(-1)
                 ).squeeze(-1)
 
                 all_logprobs.append(token_log_probs)
@@ -761,7 +698,7 @@ class PPOTrainer:
         prompts: List[str],
         num_epochs_per_batch: int = 4,
         max_length: int = 150,
-        temperature: float = 1.0
+        temperature: float = 1.0,
     ) -> Dict[str, float]:
         """
         Single PPO training step.
@@ -786,9 +723,7 @@ class PPOTrainer:
 
         # Step 1: Generate responses with current policy
         responses, old_logprobs = self.generate_responses(
-            prompts,
-            max_length=max_length,
-            temperature=temperature
+            prompts, max_length=max_length, temperature=temperature
         )
 
         # Step 2: Compute rewards using reward model
@@ -831,10 +766,7 @@ class PPOTrainer:
             # Update policy
             self.policy_optimizer.zero_grad()
             policy_loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                self.policy_model.parameters(),
-                self.max_grad_norm
-            )
+            torch.nn.utils.clip_grad_norm_(self.policy_model.parameters(), self.max_grad_norm)
             self.policy_optimizer.step()
 
             # Compute value function loss (only if we have a value model)
@@ -847,10 +779,7 @@ class PPOTrainer:
                 # Update value function
                 self.value_optimizer.zero_grad()
                 value_loss.backward()
-                torch.nn.utils.clip_grad_norm_(
-                    self.value_model.parameters(),
-                    self.max_grad_norm
-                )
+                torch.nn.utils.clip_grad_norm_(self.value_model.parameters(), self.max_grad_norm)
                 self.value_optimizer.step()
             else:
                 value_loss = torch.tensor(0.0)
@@ -861,19 +790,19 @@ class PPOTrainer:
             kl_divs.append(kl_div.item())
 
         # Aggregate metrics
-        metrics['policy_loss'] = np.mean(policy_losses)
-        metrics['value_loss'] = np.mean(value_losses)
-        metrics['kl_divergence'] = np.mean(kl_divs)
-        metrics['mean_reward'] = rewards.mean().item()
-        metrics['mean_advantage'] = advantages.mean().item()
+        metrics["policy_loss"] = np.mean(policy_losses)
+        metrics["value_loss"] = np.mean(value_losses)
+        metrics["kl_divergence"] = np.mean(kl_divs)
+        metrics["mean_reward"] = rewards.mean().item()
+        metrics["mean_advantage"] = advantages.mean().item()
 
         # Update statistics
-        self.stats['total_steps'] += 1
-        self.stats['policy_losses'].append(metrics['policy_loss'])
-        self.stats['value_losses'].append(metrics['value_loss'])
-        self.stats['kl_divergences'].append(metrics['kl_divergence'])
-        self.stats['mean_rewards'].append(metrics['mean_reward'])
-        self.stats['mean_advantages'].append(metrics['mean_advantage'])
+        self.stats["total_steps"] += 1
+        self.stats["policy_losses"].append(metrics["policy_loss"])
+        self.stats["value_losses"].append(metrics["value_loss"])
+        self.stats["kl_divergences"].append(metrics["kl_divergence"])
+        self.stats["mean_rewards"].append(metrics["mean_reward"])
+        self.stats["mean_advantages"].append(metrics["mean_advantage"])
 
         return metrics
 
@@ -886,7 +815,7 @@ class PPOTrainer:
         max_length: int = 150,
         temperature: float = 1.0,
         checkpoint_dir: Optional[str] = None,
-        checkpoint_freq: int = 10
+        checkpoint_freq: int = 10,
     ) -> Dict[str, Any]:
         """
         Full PPO training loop.
@@ -910,19 +839,17 @@ class PPOTrainer:
         logger.info(f"Total prompts: {len(prompts)}")
 
         training_history = {
-            'policy_losses': [],
-            'value_losses': [],
-            'kl_divergences': [],
-            'step_avg_rewards': [],
-            'mean_rewards': []  # Alias for step_avg_rewards for backwards compatibility
+            "policy_losses": [],
+            "value_losses": [],
+            "kl_divergences": [],
+            "step_avg_rewards": [],
+            "mean_rewards": [],  # Alias for step_avg_rewards for backwards compatibility
         }
 
         for step in tqdm(range(num_steps), desc="PPO Training"):
             # Sample batch of prompts
             batch_indices = np.random.choice(
-                len(prompts),
-                size=min(batch_size, len(prompts)),
-                replace=False
+                len(prompts), size=min(batch_size, len(prompts)), replace=False
             )
             batch_prompts = [prompts[i] for i in batch_indices]
 
@@ -931,15 +858,17 @@ class PPOTrainer:
                 batch_prompts,
                 num_epochs_per_batch=num_epochs_per_batch,
                 max_length=max_length,
-                temperature=temperature
+                temperature=temperature,
             )
 
             # Log metrics
-            training_history['policy_losses'].append(metrics['policy_loss'])
-            training_history['value_losses'].append(metrics['value_loss'])
-            training_history['kl_divergences'].append(metrics['kl_divergence'])
-            training_history['step_avg_rewards'].append(metrics['mean_reward'])
-            training_history['mean_rewards'].append(metrics['mean_reward'])  # Alias for backwards compatibility
+            training_history["policy_losses"].append(metrics["policy_loss"])
+            training_history["value_losses"].append(metrics["value_loss"])
+            training_history["kl_divergences"].append(metrics["kl_divergence"])
+            training_history["step_avg_rewards"].append(metrics["mean_reward"])
+            training_history["mean_rewards"].append(
+                metrics["mean_reward"]
+            )  # Alias for backwards compatibility
 
             # Print progress
             if (step + 1) % 10 == 0:
@@ -954,10 +883,18 @@ class PPOTrainer:
                 self.save_checkpoint(checkpoint_dir, step + 1)
 
         return {
-            'training_history': training_history,
-            'final_stats': self.stats,
-            'final_avg_reward': training_history['step_avg_rewards'][-1] if training_history['step_avg_rewards'] else 0.0,
-            'final_kl_divergence': training_history['kl_divergences'][-1] if training_history['kl_divergences'] else 0.0
+            "training_history": training_history,
+            "final_stats": self.stats,
+            "final_avg_reward": (
+                training_history["step_avg_rewards"][-1]
+                if training_history["step_avg_rewards"]
+                else 0.0
+            ),
+            "final_kl_divergence": (
+                training_history["kl_divergences"][-1]
+                if training_history["kl_divergences"]
+                else 0.0
+            ),
         }
 
     def save_checkpoint(self, checkpoint_dir: str, step: int):
@@ -969,20 +906,21 @@ class PPOTrainer:
             step: Current training step
         """
         import os
+
         os.makedirs(checkpoint_dir, exist_ok=True)
 
         checkpoint_path = os.path.join(checkpoint_dir, f"ppo_checkpoint_step_{step}.pt")
 
         checkpoint = {
-            'step': step,
-            'policy_model_state_dict': self.policy_model.state_dict(),
-            'policy_optimizer_state_dict': self.policy_optimizer.state_dict(),
-            'stats': self.stats
+            "step": step,
+            "policy_model_state_dict": self.policy_model.state_dict(),
+            "policy_optimizer_state_dict": self.policy_optimizer.state_dict(),
+            "stats": self.stats,
         }
 
         if self.value_model is not None:
-            checkpoint['value_model_state_dict'] = self.value_model.state_dict()
-            checkpoint['value_optimizer_state_dict'] = self.value_optimizer.state_dict()
+            checkpoint["value_model_state_dict"] = self.value_model.state_dict()
+            checkpoint["value_optimizer_state_dict"] = self.value_optimizer.state_dict()
 
         torch.save(checkpoint, checkpoint_path)
 
@@ -997,14 +935,14 @@ class PPOTrainer:
         """
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
 
-        self.policy_model.load_state_dict(checkpoint['policy_model_state_dict'])
-        self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer_state_dict'])
+        self.policy_model.load_state_dict(checkpoint["policy_model_state_dict"])
+        self.policy_optimizer.load_state_dict(checkpoint["policy_optimizer_state_dict"])
 
-        if self.value_model is not None and 'value_model_state_dict' in checkpoint:
-            self.value_model.load_state_dict(checkpoint['value_model_state_dict'])
-            self.value_optimizer.load_state_dict(checkpoint['value_optimizer_state_dict'])
+        if self.value_model is not None and "value_model_state_dict" in checkpoint:
+            self.value_model.load_state_dict(checkpoint["value_model_state_dict"])
+            self.value_optimizer.load_state_dict(checkpoint["value_optimizer_state_dict"])
 
-        self.stats = checkpoint['stats']
+        self.stats = checkpoint["stats"]
 
         logger.info(f"Checkpoint loaded from {checkpoint_path}")
         logger.info(f"Resuming from step {checkpoint['step']}")
@@ -1013,8 +951,16 @@ class PPOTrainer:
         """Get training statistics."""
         return {
             **self.stats,
-            'avg_policy_loss': np.mean(self.stats['policy_losses']) if self.stats['policy_losses'] else 0.0,
-            'avg_value_loss': np.mean(self.stats['value_losses']) if self.stats['value_losses'] else 0.0,
-            'avg_kl_divergence': np.mean(self.stats['kl_divergences']) if self.stats['kl_divergences'] else 0.0,
-            'avg_reward': np.mean(self.stats['mean_rewards']) if self.stats['mean_rewards'] else 0.0
+            "avg_policy_loss": (
+                np.mean(self.stats["policy_losses"]) if self.stats["policy_losses"] else 0.0
+            ),
+            "avg_value_loss": (
+                np.mean(self.stats["value_losses"]) if self.stats["value_losses"] else 0.0
+            ),
+            "avg_kl_divergence": (
+                np.mean(self.stats["kl_divergences"]) if self.stats["kl_divergences"] else 0.0
+            ),
+            "avg_reward": (
+                np.mean(self.stats["mean_rewards"]) if self.stats["mean_rewards"] else 0.0
+            ),
         }

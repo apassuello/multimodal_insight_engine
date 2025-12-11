@@ -96,9 +96,7 @@ def test_adamw_step(simple_model, device, input_data, target_data, loss_fn):
         assert not torch.allclose(param, initial_params[i], atol=1e-6)
 
 
-def test_adamw_gradient_clipping(
-    simple_model, device, input_data, target_data, loss_fn
-):
+def test_adamw_gradient_clipping(simple_model, device, input_data, target_data, loss_fn):
     """Test that AdamW clips gradients correctly."""
     model = simple_model.to(device)
 
@@ -118,7 +116,7 @@ def test_adamw_gradient_clipping(
 
     # After clipping, check that the total gradient norm across all parameters
     # is within the expected range
-    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float('inf'))
+    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float("inf"))
 
     # The gradient norm should be reasonably small after clipping
     # Note: Individual parameter norms may vary, but total norm should be controlled
@@ -349,9 +347,7 @@ def test_gradient_clipper_clip(simple_model, device, input_data, target_data, lo
     # Check that at least one gradient has changed (clipping occurred)
     any_changed = False
     for _i, (param, grad_before) in enumerate(zip(model.parameters(), grads_before)):
-        if param.grad is not None and not torch.allclose(
-            param.grad, grad_before, atol=1e-6
-        ):
+        if param.grad is not None and not torch.allclose(param.grad, grad_before, atol=1e-6):
             any_changed = True
             break
 
@@ -369,9 +365,7 @@ def test_optimizer_combinations(simple_model, device, input_data, target_data, l
     optimizer = AdamW(model.parameters(), lr=0.01, clip_grad=0.1)
 
     # Initialize scheduler
-    scheduler = OneCycleLR(
-        optimizer, max_lr=0.1, epochs=5, steps_per_epoch=10, pct_start=0.3
-    )
+    scheduler = OneCycleLR(optimizer, max_lr=0.1, epochs=5, steps_per_epoch=10, pct_start=0.3)
 
     # Training loop
     for _epoch in range(2):

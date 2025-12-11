@@ -5,7 +5,8 @@ KEY COMPONENTS:
 - PatchEmbedding: A module that extracts patches from images and embeds them into a continuous space
 - create_sinusoidal_embeddings: Function to create sinusoidal positional embeddings
 DEPENDENCIES: torch, torch.nn, typing
-SPECIAL NOTES: Supports both learned and sinusoidal positional embeddings and optional class tokens"""
+SPECIAL NOTES: Supports both learned and sinusoidal positional embeddings and optional class tokens
+"""
 
 import os
 
@@ -70,16 +71,12 @@ class PatchEmbedding(nn.Module):
 
         # Positional embedding
         if positional_encoding == "learned":
-            self.position_embedding = nn.Parameter(
-                torch.zeros(1, self.num_tokens, embed_dim)
-            )
+            self.position_embedding = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
         else:
             # For sinusoidal, we'll create a non-learnable positional encoding
             position_ids = torch.arange(self.num_tokens).unsqueeze(0)
             self.register_buffer("position_ids", position_ids)
-            self.position_embedding = create_sinusoidal_embeddings(
-                self.num_tokens, embed_dim
-            )
+            self.position_embedding = create_sinusoidal_embeddings(self.num_tokens, embed_dim)
 
         # Dropout after adding position embeddings
         self.dropout = nn.Dropout(dropout)
@@ -125,9 +122,7 @@ class PatchEmbedding(nn.Module):
         return x
 
 
-def create_sinusoidal_embeddings(
-    num_positions: int, embedding_dim: int
-) -> torch.Tensor:
+def create_sinusoidal_embeddings(num_positions: int, embedding_dim: int) -> torch.Tensor:
     """
     Create sinusoidal positional embeddings.
 
@@ -143,8 +138,7 @@ def create_sinusoidal_embeddings(
 
     # Create dimension indices
     div_term = torch.exp(
-        torch.arange(0, embedding_dim, 2)
-        * (-torch.log(torch.tensor(10000.0)) / embedding_dim)
+        torch.arange(0, embedding_dim, 2) * (-torch.log(torch.tensor(10000.0)) / embedding_dim)
     )
 
     # Create positional embeddings
@@ -176,20 +170,20 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Transforms images into sequences of embedded patches with positional information"
+                        "brief_description": "Transforms images into sequences of embedded patches with positional information",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             }
         ],
         "key_functions": [
             {
                 "name": "create_sinusoidal_embeddings",
                 "signature": "create_sinusoidal_embeddings(num_positions: int, embedding_dim: int) -> torch.Tensor",
-                "brief_description": "Creates fixed sinusoidal positional embeddings using the method from the Transformer paper"
+                "brief_description": "Creates fixed sinusoidal positional embeddings using the method from the Transformer paper",
             }
         ],
         "external_dependencies": ["torch"],
-        "complexity_score": 5  # Moderate complexity for patch extraction and embedding
+        "complexity_score": 5,  # Moderate complexity for patch extraction and embedding
     }

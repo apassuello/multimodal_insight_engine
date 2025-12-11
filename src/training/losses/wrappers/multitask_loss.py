@@ -23,7 +23,6 @@ from typing import Any, Dict, Optional
 import torch
 import torch.nn as nn
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -74,9 +73,7 @@ class MultitaskLoss(nn.Module):
             self.running_losses = dict.fromkeys(self.task_names, 1.0)
             self.momentum = 0.9  # For exponential moving average
 
-    def forward(
-        self, inputs: Dict[str, Any], targets: Dict[str, Any]
-    ) -> Dict[str, torch.Tensor]:
+    def forward(self, inputs: Dict[str, Any], targets: Dict[str, Any]) -> Dict[str, torch.Tensor]:
         """
         Compute multitask loss by combining task-specific losses.
 
@@ -117,9 +114,7 @@ class MultitaskLoss(nn.Module):
 
         return results
 
-    def _update_dynamic_weights(
-        self, individual_losses: Dict[str, torch.Tensor]
-    ) -> None:
+    def _update_dynamic_weights(self, individual_losses: Dict[str, torch.Tensor]) -> None:
         """
         Update task weights dynamically based on current loss values.
 
@@ -132,14 +127,11 @@ class MultitaskLoss(nn.Module):
             if loss_key in individual_losses:
                 current_loss = individual_losses[loss_key].detach().item()
                 self.running_losses[task] = (
-                    self.momentum * self.running_losses[task]
-                    + (1 - self.momentum) * current_loss
+                    self.momentum * self.running_losses[task] + (1 - self.momentum) * current_loss
                 )
 
         # Compute inverse weights (higher loss -> higher weight)
-        total_inverse_loss = sum(
-            1.0 / max(loss, 1e-8) for loss in self.running_losses.values()
-        )
+        total_inverse_loss = sum(1.0 / max(loss, 1e-8) for loss in self.running_losses.values())
 
         # Update weights based on inverse loss magnitude
         for task in self.task_names:

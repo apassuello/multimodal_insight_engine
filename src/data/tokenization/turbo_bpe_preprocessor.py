@@ -10,7 +10,6 @@ from src.utils.logging import get_logger
 
 from .vocabulary import Vocabulary
 
-
 logger = get_logger(__name__)
 
 
@@ -56,6 +55,7 @@ class TurboBPEPreprocessor:
         samples = [dataset.src_data[i] + dataset.tgt_data[i] for i in range(sample_size)]
         sample_text = "".join(samples)
         import hashlib
+
         return hashlib.md5(sample_text.encode()).hexdigest()
 
     def check_cached_preprocessed_data(self, dataset, src_lang="de", tgt_lang="en"):
@@ -70,20 +70,23 @@ class TurboBPEPreprocessor:
             logger.info(f"Found cached preprocessed data: {cache_file_json}")
             try:
                 import json
+
                 with open(cache_file_json) as f:
                     # Load as JSON (SAFE - no code execution risk)
                     data = json.load(f)
                     # Convert back to tuple format
-                    return (data['src_sequences'], data['tgt_sequences'])
+                    return (data["src_sequences"], data["tgt_sequences"])
             except Exception as e:
                 logger.info(f"Error loading JSON cache: {e}")
                 # Fall through to try pickle
 
         # Fallback to pickle for backward compatibility (UNSAFE - migration only)
         if os.path.exists(cache_file_pickle):
-            logger.info(f"JSON cache not found, attempting to load legacy pickle cache: {cache_file_pickle}")
+            logger.info(
+                f"JSON cache not found, attempting to load legacy pickle cache: {cache_file_pickle}"
+            )
             try:
-                with open(cache_file_pickle, 'rb') as f:
+                with open(cache_file_pickle, "rb") as f:
                     data = pickle.load(f)
                 logger.info("Loaded from pickle cache, converting to JSON for future use...")
 
@@ -104,12 +107,10 @@ class TurboBPEPreprocessor:
 
         try:
             import json
+
             # Convert tuple to dict for JSON serialization
-            serializable_data = {
-                'src_sequences': data[0],
-                'tgt_sequences': data[1]
-            }
-            with open(cache_file, 'w') as f:
+            serializable_data = {"src_sequences": data[0], "tgt_sequences": data[1]}
+            with open(cache_file, "w") as f:
                 # Save as JSON (SAFE - no code execution risk)
                 json.dump(serializable_data, f)
             logger.info(f"Saved preprocessed data to cache: {cache_file}")
@@ -182,12 +183,18 @@ class TurboBPEPreprocessor:
         tgt_sequences = []
 
         for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
-            src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
-            tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
+            src_sequences.append(
+                [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
+            )
+            tgt_sequences.append(
+                [special_tokens["tgt_bos"]] + tgt_ids + [special_tokens["tgt_eos"]]
+            )
 
         return chunk_id, src_sequences, tgt_sequences
 
-    def preprocess_with_caching(self, dataset, src_tokenizer, tgt_tokenizer, force_regenerate=False):
+    def preprocess_with_caching(
+        self, dataset, src_tokenizer, tgt_tokenizer, force_regenerate=False
+    ):
         """Preprocess data with aggressive caching and parallel processing."""
         # Check cache first
         if not force_regenerate:
@@ -202,10 +209,10 @@ class TurboBPEPreprocessor:
 
         # Get special token IDs from tokenizer's special_tokens property
         special_tokens = {
-            'src_bos': src_tokenizer.special_tokens["bos_token_idx"],
-            'src_eos': src_tokenizer.special_tokens["eos_token_idx"],
-            'tgt_bos': tgt_tokenizer.special_tokens["bos_token_idx"],
-            'tgt_eos': tgt_tokenizer.special_tokens["eos_token_idx"],
+            "src_bos": src_tokenizer.special_tokens["bos_token_idx"],
+            "src_eos": src_tokenizer.special_tokens["eos_token_idx"],
+            "tgt_bos": tgt_tokenizer.special_tokens["bos_token_idx"],
+            "tgt_eos": tgt_tokenizer.special_tokens["eos_token_idx"],
         }
 
         # Always use single-process approach for MPS
@@ -216,8 +223,9 @@ class TurboBPEPreprocessor:
         tgt_sequences = []
 
         # Use tqdm for progress tracking
-        for i in tqdm(range(0, len(dataset.src_data), self.optimal_batch_size),
-                     desc="Processing batches"):
+        for i in tqdm(
+            range(0, len(dataset.src_data), self.optimal_batch_size), desc="Processing batches"
+        ):
             end_idx = min(i + self.optimal_batch_size, len(dataset.src_data))
 
             # Get batch
@@ -230,14 +238,20 @@ class TurboBPEPreprocessor:
 
             # Add special tokens
             for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
-                src_sequences.append([special_tokens['src_bos']] + src_ids + [special_tokens['src_eos']])
-                tgt_sequences.append([special_tokens['tgt_bos']] + tgt_ids + [special_tokens['tgt_eos']])
+                src_sequences.append(
+                    [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
+                )
+                tgt_sequences.append(
+                    [special_tokens["tgt_bos"]] + tgt_ids + [special_tokens["tgt_eos"]]
+                )
 
         # Calculate processing time
         elapsed_time = time.time() - start_time
         examples_per_sec = len(dataset.src_data) / elapsed_time
 
-        logger.info(f"Preprocessing completed in {elapsed_time:.2f}s ({examples_per_sec:.1f} examples/sec)")
+        logger.info(
+            f"Preprocessing completed in {elapsed_time:.2f}s ({examples_per_sec:.1f} examples/sec)"
+        )
 
         # Cache result for future use
         result = (src_sequences, tgt_sequences)
@@ -249,11 +263,11 @@ class TurboBPEPreprocessor:
     def optimize_tokenizer_for_preprocessing(tokenizer):
         """Apply optimizations to a tokenizer for preprocessing."""
         # 1. Add word cache if it doesn't exist
-        if not hasattr(tokenizer, 'word_token_cache'):
+        if not hasattr(tokenizer, "word_token_cache"):
             tokenizer.word_token_cache = {}
 
         # 2. Ensure _tokenize_word uses simple dictionary lookup when possible
-        if not hasattr(tokenizer, '_tokenize_word_original'):
+        if not hasattr(tokenizer, "_tokenize_word_original"):
             # Save original implementation
             tokenizer._tokenize_word_original = tokenizer._tokenize_word
 
@@ -280,9 +294,11 @@ class TurboBPEPreprocessor:
 
             # Bind the optimized method to the tokenizer instance
             import types
+
             tokenizer._tokenize_word = types.MethodType(_tokenize_word_optimized, tokenizer)
 
         return tokenizer
+
 
 def turbo_preprocess_data(dataset, de_tokenizer, en_tokenizer, force_regenerate=False):
     """
@@ -306,10 +322,8 @@ def turbo_preprocess_data(dataset, de_tokenizer, en_tokenizer, force_regenerate=
 
     # Process the dataset
     return processor.preprocess_with_caching(
-        dataset,
-        de_tokenizer,
-        en_tokenizer,
-        force_regenerate=force_regenerate
+        dataset, de_tokenizer, en_tokenizer, force_regenerate=force_regenerate
     )
 
-__all__ = ['TurboBPEPreprocessor', 'turbo_preprocess_data']
+
+__all__ = ["TurboBPEPreprocessor", "turbo_preprocess_data"]

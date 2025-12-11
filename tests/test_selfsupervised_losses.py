@@ -21,11 +21,9 @@ from src.training.losses import (
     VICRegLoss,
 )
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
-
 
 
 # ============================================================================
@@ -43,11 +41,12 @@ def extract_loss(result):
     - tensor: returns as-is
     """
     if isinstance(result, dict):
-        return result.get('loss', result.get('total_loss', result.get('contrastive_loss')))
+        return result.get("loss", result.get("total_loss", result.get("contrastive_loss")))
     elif isinstance(result, tuple):
         return result[0]
     else:
         return result
+
 
 @pytest.fixture
 def device():
@@ -89,38 +88,40 @@ class TestVICRegLoss:
 
     def test_basic_forward(self, embeddings_a, embeddings_b, device):
         """Test basic forward pass."""
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
 
         # VICReg returns a dictionary
         assert isinstance(result, dict)
-        assert 'loss' in result
-        assert isinstance(result['loss'], torch.Tensor)
-        assert result['loss'].shape == torch.Size([])
-        assert not torch.isnan(result['loss'])
-        assert not torch.isinf(result['loss'])
+        assert "loss" in result
+        assert isinstance(result["loss"], torch.Tensor)
+        assert result["loss"].shape == torch.Size([])
+        assert not torch.isnan(result["loss"])
+        assert not torch.isinf(result["loss"])
 
     def test_loss_components(self, embeddings_a, embeddings_b, device):
         """Test that all three VICReg components are present."""
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
 
         # Check for variance, invariance, and covariance terms
-        assert 'loss' in result
+        assert "loss" in result
         # Some implementations may return individual components
         if isinstance(result, dict) and len(result) > 1:
-            possible_keys = ['sim_loss', 'var_loss', 'cov_loss',
-                           'invariance', 'variance', 'covariance']
+            possible_keys = [
+                "sim_loss",
+                "var_loss",
+                "cov_loss",
+                "invariance",
+                "variance",
+                "covariance",
+            ]
             any(key in result for key in possible_keys)
             # If components are returned, they should be tensors
             for key in result:
-                if key != 'loss':
+                if key != "loss":
                     assert isinstance(result[key], (torch.Tensor, float))
 
     def test_gradient_flow(self, embeddings_a, embeddings_b, device):
@@ -128,12 +129,10 @@ class TestVICRegLoss:
         embeddings_a = embeddings_a.requires_grad_(True)
         embeddings_b = embeddings_b.requires_grad_(True)
 
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
         loss.backward()
 
         # Check gradients exist and are non-zero
@@ -145,20 +144,16 @@ class TestVICRegLoss:
     def test_coefficient_effects(self, embeddings_a, embeddings_b, device):
         """Test that different coefficients affect loss value."""
         # High similarity coefficient
-        loss_fn_high_sim = VICRegLoss(
-            sim_coeff=50.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn_high_sim = VICRegLoss(sim_coeff=50.0, var_coeff=5.0, cov_coeff=1.0)
 
         # Low similarity coefficient
-        loss_fn_low_sim = VICRegLoss(
-            sim_coeff=1.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn_low_sim = VICRegLoss(sim_coeff=1.0, var_coeff=5.0, cov_coeff=1.0)
 
         result_high = loss_fn_high_sim(embeddings_a, embeddings_b)
         result_low = loss_fn_low_sim(embeddings_a, embeddings_b)
 
-        loss_high = result_high['loss'] if isinstance(result_high, dict) else result_high
-        loss_low = result_low['loss'] if isinstance(result_low, dict) else result_low
+        loss_high = result_high["loss"] if isinstance(result_high, dict) else result_high
+        loss_low = result_low["loss"] if isinstance(result_low, dict) else result_low
 
         # Different coefficients should lead to different losses
         assert not torch.allclose(loss_high, loss_low)
@@ -178,28 +173,24 @@ class TestVICRegLoss:
         # Test at different epochs
         loss_fn.update_epoch(0)
         result_epoch0 = loss_fn(embeddings_a, embeddings_b)
-        loss_epoch0 = result_epoch0['loss'] if isinstance(result_epoch0, dict) else result_epoch0
+        loss_epoch0 = result_epoch0["loss"] if isinstance(result_epoch0, dict) else result_epoch0
 
         loss_fn.update_epoch(5)
         result_epoch5 = loss_fn(embeddings_a, embeddings_b)
-        loss_epoch5 = result_epoch5['loss'] if isinstance(result_epoch5, dict) else result_epoch5
+        loss_epoch5 = result_epoch5["loss"] if isinstance(result_epoch5, dict) else result_epoch5
 
         # Both should be valid losses
         assert not torch.isnan(loss_epoch0)
         assert not torch.isnan(loss_epoch5)
 
-    def test_edge_case_identical_embeddings(
-        self, batch_size, embed_dim, device
-    ):
+    def test_edge_case_identical_embeddings(self, batch_size, embed_dim, device):
         """Test with identical embeddings."""
         embeddings = torch.randn(batch_size, embed_dim, device=device)
 
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings, embeddings.clone())
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         # Invariance term should be very low with identical embeddings
         assert not torch.isnan(loss)
@@ -211,12 +202,10 @@ class TestVICRegLoss:
         embeddings_a = torch.randn(2, embed_dim, device=device)
         embeddings_b = torch.randn(2, embed_dim, device=device)
 
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         # Should handle small batches
         assert not torch.isnan(loss)
@@ -228,33 +217,29 @@ class TestVICRegLoss:
         embeddings_large_a = torch.ones(batch_size, embed_dim, device=device) * 100
         embeddings_large_b = torch.ones(batch_size, embed_dim, device=device) * 100
 
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_large_a, embeddings_large_b)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
     def test_batch_size_invariance(self, embed_dim, device):
         """Test behavior with different batch sizes."""
-        loss_fn = VICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         # Small batch
         emb_a_small = torch.randn(4, embed_dim, device=device)
         emb_b_small = torch.randn(4, embed_dim, device=device)
         result_small = loss_fn(emb_a_small, emb_b_small)
-        loss_small = result_small['loss'] if isinstance(result_small, dict) else result_small
+        loss_small = result_small["loss"] if isinstance(result_small, dict) else result_small
 
         # Large batch
         emb_a_large = torch.randn(32, embed_dim, device=device)
         emb_b_large = torch.randn(32, embed_dim, device=device)
         result_large = loss_fn(emb_a_large, emb_b_large)
-        loss_large = result_large['loss'] if isinstance(result_large, dict) else result_large
+        loss_large = result_large["loss"] if isinstance(result_large, dict) else result_large
 
         # Both should be valid
         assert not torch.isnan(loss_small)
@@ -271,12 +256,9 @@ class TestBarlowTwinsLoss:
 
     def test_basic_forward(self, embeddings_a, embeddings_b, device):
         """Test basic forward pass."""
-        loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, use_projection=False
-        )
+        loss_fn = BarlowTwinsLoss(lambda_coeff=0.005, use_projection=False)
 
         result = loss_fn(embeddings_a, embeddings_b)
-
 
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
@@ -299,7 +281,6 @@ class TestBarlowTwinsLoss:
 
         result = loss_fn(embeddings_a, embeddings_b)
 
-
         loss = extract_loss(result)
         assert not torch.isnan(loss)
 
@@ -308,12 +289,9 @@ class TestBarlowTwinsLoss:
         embeddings_a = embeddings_a.requires_grad_(True)
         embeddings_b = embeddings_b.requires_grad_(True)
 
-        loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, use_projection=False
-        )
+        loss_fn = BarlowTwinsLoss(lambda_coeff=0.005, use_projection=False)
 
         result = loss_fn(embeddings_a, embeddings_b)
-
 
         loss = extract_loss(result)
         loss.backward()
@@ -323,22 +301,15 @@ class TestBarlowTwinsLoss:
         assert not torch.all(embeddings_a.grad == 0)
         assert not torch.all(embeddings_b.grad == 0)
 
-    def test_lambda_coefficient_effect(
-        self, embeddings_a, embeddings_b, device
-    ):
+    def test_lambda_coefficient_effect(self, embeddings_a, embeddings_b, device):
         """Test that lambda coefficient affects off-diagonal terms."""
         # High lambda (penalize off-diagonal more)
-        loss_fn_high = BarlowTwinsLoss(
-            lambda_coeff=0.05, use_projection=False
-        )
+        loss_fn_high = BarlowTwinsLoss(lambda_coeff=0.05, use_projection=False)
 
         # Low lambda (penalize off-diagonal less)
-        loss_fn_low = BarlowTwinsLoss(
-            lambda_coeff=0.001, use_projection=False
-        )
+        loss_fn_low = BarlowTwinsLoss(lambda_coeff=0.001, use_projection=False)
 
         result = loss_fn_high(embeddings_a, embeddings_b)
-
 
         loss_high = extract_loss(result)
         result = loss_fn_low(embeddings_a, embeddings_b)
@@ -360,22 +331,16 @@ class TestBarlowTwinsLoss:
 
         result = loss_fn_cross(embeddings_a, embeddings_b)
 
-
         loss_cross = extract_loss(result)
         assert not torch.isnan(loss_cross)
 
-    def test_edge_case_identical_embeddings(
-        self, batch_size, embed_dim, device
-    ):
+    def test_edge_case_identical_embeddings(self, batch_size, embed_dim, device):
         """Test with identical embeddings."""
         embeddings = torch.randn(batch_size, embed_dim, device=device)
 
-        loss_fn = BarlowTwinsLoss(
-            lambda_coeff=0.005, use_projection=False
-        )
+        loss_fn = BarlowTwinsLoss(lambda_coeff=0.005, use_projection=False)
 
         result = loss_fn(embeddings, embeddings.clone())
-
 
         loss = extract_loss(result)
         # With identical embeddings, cross-correlation matrix should be identity
@@ -393,7 +358,6 @@ class TestBarlowTwinsLoss:
         )
 
         result = loss_fn(embeddings_large_a, embeddings_large_b)
-
 
         loss = extract_loss(result)
         assert not torch.isnan(loss)
@@ -417,7 +381,6 @@ class TestBarlowTwinsLoss:
 
         result = loss_fn_norm(embeddings_a, embeddings_b)
 
-
         loss_norm = extract_loss(result)
         result = loss_fn_no_norm(embeddings_a, embeddings_b)
         loss_no_norm = extract_loss(result)
@@ -436,16 +399,14 @@ class TestHybridPretrainVICRegLoss:
 
     def test_basic_forward(self, embeddings_a, embeddings_b, device):
         """Test basic forward pass."""
-        loss_fn = HybridPretrainVICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
 
         # May return dict or tensor
         if isinstance(result, dict):
-            assert 'loss' in result
-            loss = result['loss']
+            assert "loss" in result
+            loss = result["loss"]
         else:
             loss = result
 
@@ -459,12 +420,10 @@ class TestHybridPretrainVICRegLoss:
         embeddings_a = embeddings_a.requires_grad_(True)
         embeddings_b = embeddings_b.requires_grad_(True)
 
-        loss_fn = HybridPretrainVICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
         loss.backward()
 
         assert embeddings_a.grad is not None
@@ -474,29 +433,25 @@ class TestHybridPretrainVICRegLoss:
 
     def test_hybrid_components(self, embeddings_a, embeddings_b, device):
         """Test that hybrid loss combines multiple objectives."""
-        loss_fn = HybridPretrainVICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
 
         # Hybrid loss should combine VICReg with other objectives
         if isinstance(result, dict):
             # Check that loss is valid
-            assert 'loss' in result
-            assert not torch.isnan(result['loss'])
+            assert "loss" in result
+            assert not torch.isnan(result["loss"])
 
     def test_numerical_stability(self, batch_size, embed_dim, device):
         """Test numerical stability."""
         embeddings_a = torch.randn(batch_size, embed_dim, device=device) * 10
         embeddings_b = torch.randn(batch_size, embed_dim, device=device) * 10
 
-        loss_fn = HybridPretrainVICRegLoss(
-            sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0
-        )
+        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
 
         result = loss_fn(embeddings_a, embeddings_b)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
@@ -515,7 +470,7 @@ class TestSelfSupervisedLossIntegration:
         # VICReg
         vicreg = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
         result_vicreg = vicreg(embeddings_a, embeddings_b)
-        loss_vicreg = result_vicreg['loss'] if isinstance(result_vicreg, dict) else result_vicreg
+        loss_vicreg = result_vicreg["loss"] if isinstance(result_vicreg, dict) else result_vicreg
 
         # Barlow Twins
         barlow = BarlowTwinsLoss(lambda_coeff=0.005, use_projection=False)
@@ -548,7 +503,7 @@ class TestSelfSupervisedLossIntegration:
         # Compute loss
         loss_fn = VICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
         result = loss_fn(z1, z2)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         # Backward pass
         optimizer.zero_grad()

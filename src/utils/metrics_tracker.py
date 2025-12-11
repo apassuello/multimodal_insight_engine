@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -118,9 +117,7 @@ class MetricsTracker:
             Dictionary with epoch summary metrics
         """
         # Calculate epoch duration
-        epoch_duration = (
-            time.time() - self.epoch_start_time if self.epoch_start_time else 0
-        )
+        epoch_duration = time.time() - self.epoch_start_time if self.epoch_start_time else 0
 
         # Extract metrics for this epoch
         epoch_summary = {}
@@ -144,9 +141,7 @@ class MetricsTracker:
         # Return epoch summary
         return epoch_summary
 
-    def update_step_metrics(
-        self, metrics: Dict[str, Any], group: str = "train"
-    ) -> None:
+    def update_step_metrics(self, metrics: Dict[str, Any], group: str = "train") -> None:
         """
         Update metrics for the current step.
 
@@ -169,9 +164,7 @@ class MetricsTracker:
                 value = value.item()
             self.step_metrics[key].append(value)
 
-    def update_epoch_metrics(
-        self, metrics: Dict[str, Any], group: str = "train"
-    ) -> None:
+    def update_epoch_metrics(self, metrics: Dict[str, Any], group: str = "train") -> None:
         """
         Update metrics for the current epoch.
 
@@ -484,9 +477,7 @@ class MetricsTracker:
                     f"CRITICAL SNR ISSUE: After {self.current_epoch} epochs, "
                     f"signal-to-noise ratio still very low: {signal_to_noise:.2f}"
                 )
-                logger.error(
-                    "This suggests inability to distinguish positive from negative pairs."
-                )
+                logger.error("This suggests inability to distinguish positive from negative pairs.")
 
     def get_best_metrics(self) -> Dict[str, Any]:
         """
@@ -542,12 +533,9 @@ class MetricsTracker:
                 # Check if training loss has been consistently increasing
                 recent_losses = [x for x in train_losses[-3:] if x is not None]
                 if len(recent_losses) >= 3 and all(
-                    recent_losses[i] > recent_losses[i - 1]
-                    for i in range(1, len(recent_losses))
+                    recent_losses[i] > recent_losses[i - 1] for i in range(1, len(recent_losses))
                 ):
-                    issues.append(
-                        "Training loss has been consistently increasing for 3+ epochs"
-                    )
+                    issues.append("Training loss has been consistently increasing for 3+ epochs")
 
         # Check for validation loss >> training loss (overfitting)
         if "train_loss" in self.epoch_metrics and "val_loss" in self.epoch_metrics:
@@ -574,10 +562,7 @@ class MetricsTracker:
                     issues.append(f"NaN or infinite values detected in {key}")
 
         # Check for validation metrics not improving
-        if (
-            self.monitor in self.epoch_metrics
-            and self.current_epoch > self.best_epoch + 3
-        ):
+        if self.monitor in self.epoch_metrics and self.current_epoch > self.best_epoch + 3:
             epochs_since_best = self.current_epoch - self.best_epoch
             issues.append(
                 f"No improvement in {self.monitor} for {epochs_since_best} epochs "

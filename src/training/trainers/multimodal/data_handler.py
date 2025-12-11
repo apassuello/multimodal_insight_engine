@@ -26,7 +26,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -169,8 +168,7 @@ class DataHandler:
 
         # Check if any tensors need device fix
         needs_device_fix = any(
-            isinstance(v, torch.Tensor) and v.device != self.device
-            for v in text_data.values()
+            isinstance(v, torch.Tensor) and v.device != self.device for v in text_data.values()
         )
 
         if needs_device_fix:
@@ -341,9 +339,9 @@ class DataHandler:
         )
 
         # Check for feature collapse
-        if vision_stats['std'] < 1e-4:
+        if vision_stats["std"] < 1e-4:
             logger.error(f"VISION FEATURE COLLAPSE! std={vision_stats['std']:.8f}")
-        if text_stats['std'] < 1e-4:
+        if text_stats["std"] < 1e-4:
             logger.error(f"TEXT FEATURE COLLAPSE! std={text_stats['std']:.8f}")
 
         # Check dimension collapse
@@ -383,7 +381,9 @@ class DataHandler:
         vision_norm_mean = vision_norms.mean().item()
         text_norm_mean = text_norms.mean().item()
 
-        logger.info(f"After normalization - Vision norm: {vision_norm_mean:.6f}, Text norm: {text_norm_mean:.6f}")
+        logger.info(
+            f"After normalization - Vision norm: {vision_norm_mean:.6f}, Text norm: {text_norm_mean:.6f}"
+        )
 
         norm_threshold = 0.01
         if abs(vision_norm_mean - 1.0) > norm_threshold:

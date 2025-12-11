@@ -42,7 +42,7 @@ class TestGenerationConfig:
             top_p=0.95,
             top_k=100,
             num_return_sequences=3,
-            do_sample=False
+            do_sample=False,
         )
 
         assert config.max_length == 200
@@ -65,8 +65,8 @@ class TestGenerationConfig:
 class TestLoadModel:
     """Test load_model function."""
 
-    @patch('transformers.AutoTokenizer')
-    @patch('transformers.AutoModelForCausalLM')
+    @patch("transformers.AutoTokenizer")
+    @patch("transformers.AutoModelForCausalLM")
     def test_loads_model_and_tokenizer(self, mock_model_class, mock_tokenizer_class):
         """Test that model and tokenizer are loaded."""
         mock_model = Mock()
@@ -92,8 +92,8 @@ class TestLoadModel:
         mock_model_class.from_pretrained.assert_called_once_with("gpt2")
         mock_tokenizer_class.from_pretrained.assert_called_once_with("gpt2")
 
-    @patch('transformers.AutoTokenizer')
-    @patch('transformers.AutoModelForCausalLM')
+    @patch("transformers.AutoTokenizer")
+    @patch("transformers.AutoModelForCausalLM")
     def test_sets_pad_token_if_none(self, mock_model_class, mock_tokenizer_class):
         """Test that pad token is set if not present."""
         mock_model = Mock()
@@ -114,8 +114,8 @@ class TestLoadModel:
 
         assert tokenizer.pad_token == "[EOS]"
 
-    @patch('transformers.AutoTokenizer')
-    @patch('transformers.AutoModelForCausalLM')
+    @patch("transformers.AutoTokenizer")
+    @patch("transformers.AutoModelForCausalLM")
     def test_moves_model_to_device(self, mock_model_class, mock_tokenizer_class):
         """Test that model is moved to specified device."""
         mock_model = Mock()
@@ -136,8 +136,8 @@ class TestLoadModel:
 
         mock_model.to.assert_called_once_with(device)
 
-    @patch('transformers.AutoTokenizer')
-    @patch('transformers.AutoModelForCausalLM')
+    @patch("transformers.AutoTokenizer")
+    @patch("transformers.AutoModelForCausalLM")
     def test_8bit_loading(self, mock_model_class, mock_tokenizer_class):
         """Test 8-bit model loading."""
         mock_model = Mock()
@@ -153,7 +153,7 @@ class TestLoadModel:
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
         device = torch.device("cuda")
-        with patch('torch.cuda.is_available', return_value=True):
+        with patch("torch.cuda.is_available", return_value=True):
             model, tokenizer = load_model(device=device, load_in_8bit=True)
 
             # Should have called with 8-bit parameters
@@ -162,7 +162,7 @@ class TestLoadModel:
 
     def test_import_error_without_transformers(self):
         """Test that ImportError is raised without transformers."""
-        with patch.dict('sys.modules', {'transformers': None}):
+        with patch.dict("sys.modules", {"transformers": None}):
             with pytest.raises(ImportError, match="transformers library required"):
                 load_model()
 
@@ -187,7 +187,7 @@ class TestGenerateText:
         # Mock tokenization
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
 
         # Mock generation
@@ -203,26 +203,17 @@ class TestGenerateText:
 
     def test_uses_custom_generation_config(self):
         """Test generation with custom config."""
-        config = GenerationConfig(
-            max_length=200,
-            temperature=0.5,
-            top_p=0.95
-        )
+        config = GenerationConfig(max_length=200, temperature=0.5, top_p=0.95)
 
         # Setup mocks
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
         self.mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
         self.mock_tokenizer.decode.return_value = "Text"
 
-        generate_text(
-            self.mock_model,
-            self.mock_tokenizer,
-            "Test",
-            generation_config=config
-        )
+        generate_text(self.mock_model, self.mock_tokenizer, "Test", generation_config=config)
 
         # Check that config was used
         call_kwargs = self.mock_model.generate.call_args[1]
@@ -236,7 +227,7 @@ class TestGenerateText:
         # Mock tokenization with prompt_length tokens
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
 
         # Generated output includes prompt + new tokens
@@ -257,17 +248,12 @@ class TestGenerateText:
         # Setup mocks
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
         self.mock_model.generate.return_value = torch.tensor([[1, 2, 3]])
         self.mock_tokenizer.decode.return_value = "Text"
 
-        generate_text(
-            self.mock_model,
-            self.mock_tokenizer,
-            "Test",
-            device=device
-        )
+        generate_text(self.mock_model, self.mock_tokenizer, "Test", device=device)
 
         # Verify inputs were moved to device (check call was made)
         assert self.mock_tokenizer.called
@@ -295,25 +281,19 @@ class TestBatchGenerate:
         # Mock tokenization
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3], [1, 2, 3], [1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
         }
 
         # Mock generation
-        self.mock_model.generate.return_value = torch.tensor([
-            [1, 2, 3, 4, 5],
-            [1, 2, 3, 6, 7],
-            [1, 2, 3, 8, 9]
-        ])
+        self.mock_model.generate.return_value = torch.tensor(
+            [[1, 2, 3, 4, 5], [1, 2, 3, 6, 7], [1, 2, 3, 8, 9]]
+        )
 
         # Mock decoding
         self.mock_tokenizer.decode.side_effect = ["Gen 1", "Gen 2", "Gen 3"]
 
         results = batch_generate(
-            self.mock_model,
-            self.mock_tokenizer,
-            prompts,
-            batch_size=4,
-            show_progress=False
+            self.mock_model, self.mock_tokenizer, prompts, batch_size=4, show_progress=False
         )
 
         assert len(results) == 3
@@ -327,7 +307,7 @@ class TestBatchGenerate:
         def tokenize_side_effect(batch, **kwargs):
             return {
                 "input_ids": torch.tensor([[1, 2]] * len(batch)),
-                "attention_mask": torch.tensor([[1, 1]] * len(batch))
+                "attention_mask": torch.tensor([[1, 1]] * len(batch)),
             }
 
         self.mock_tokenizer.side_effect = tokenize_side_effect
@@ -343,11 +323,7 @@ class TestBatchGenerate:
         self.mock_tokenizer.decode.return_value = "Text"
 
         results = batch_generate(
-            self.mock_model,
-            self.mock_tokenizer,
-            prompts,
-            batch_size=2,
-            show_progress=False
+            self.mock_model, self.mock_tokenizer, prompts, batch_size=2, show_progress=False
         )
 
         # Should make multiple calls due to batch size
@@ -360,7 +336,7 @@ class TestBatchGenerate:
         # Setup mocks
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2]]),
-            "attention_mask": torch.tensor([[1, 1]])
+            "attention_mask": torch.tensor([[1, 1]]),
         }
         self.mock_model.generate.return_value = torch.tensor([[1, 2, 3]])
         self.mock_tokenizer.decode.return_value = "Text"
@@ -370,7 +346,7 @@ class TestBatchGenerate:
             self.mock_tokenizer,
             ["Prompt"],
             generation_config=config,
-            show_progress=False
+            show_progress=False,
         )
 
         # Check config was used
@@ -380,12 +356,7 @@ class TestBatchGenerate:
 
     def test_batch_generate_empty_list(self):
         """Test batch generation with empty prompt list."""
-        results = batch_generate(
-            self.mock_model,
-            self.mock_tokenizer,
-            [],
-            show_progress=False
-        )
+        results = batch_generate(self.mock_model, self.mock_tokenizer, [], show_progress=False)
 
         assert len(results) == 0
 
@@ -394,7 +365,7 @@ class TestBatchGenerate:
         # Setup mocks
         self.mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2]]),
-            "attention_mask": torch.tensor([[1, 1]])
+            "attention_mask": torch.tensor([[1, 1]]),
         }
         self.mock_model.generate.return_value = torch.tensor([[1, 2, 3]])
         self.mock_tokenizer.decode.return_value = "Text"
@@ -402,10 +373,7 @@ class TestBatchGenerate:
         # Just test that it doesn't crash with show_progress=True
         # (tqdm import is conditional and hard to mock)
         results = batch_generate(
-            self.mock_model,
-            self.mock_tokenizer,
-            ["Prompt"],
-            show_progress=True
+            self.mock_model, self.mock_tokenizer, ["Prompt"], show_progress=True
         )
 
         # Verify it still generates correctly
@@ -422,7 +390,7 @@ class TestPrepareModelForTraining:
         mock_param = Mock()
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW'):
+        with patch("torch.optim.AdamW"):
             prepare_model_for_training(mock_model)
 
         mock_model.train.assert_called_once()
@@ -434,7 +402,7 @@ class TestPrepareModelForTraining:
         mock_param.requires_grad = False
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW'):
+        with patch("torch.optim.AdamW"):
             prepare_model_for_training(mock_model)
 
         assert mock_param.requires_grad is True
@@ -445,7 +413,7 @@ class TestPrepareModelForTraining:
         mock_param = Mock()
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW') as mock_adamw:
+        with patch("torch.optim.AdamW") as mock_adamw:
             prepare_model_for_training(mock_model)
 
             mock_adamw.assert_called_once()
@@ -456,7 +424,7 @@ class TestPrepareModelForTraining:
         mock_param = Mock()
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW') as mock_adamw:
+        with patch("torch.optim.AdamW") as mock_adamw:
             prepare_model_for_training(mock_model, learning_rate=1e-4)
 
             call_kwargs = mock_adamw.call_args[1]
@@ -468,7 +436,7 @@ class TestPrepareModelForTraining:
         mock_param = Mock()
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW') as mock_adamw:
+        with patch("torch.optim.AdamW") as mock_adamw:
             prepare_model_for_training(mock_model, weight_decay=0.05)
 
             call_kwargs = mock_adamw.call_args[1]
@@ -480,7 +448,7 @@ class TestPrepareModelForTraining:
         mock_param = Mock()
         mock_model.parameters = Mock(side_effect=lambda: iter([mock_param]))
 
-        with patch('torch.optim.AdamW') as mock_adamw:
+        with patch("torch.optim.AdamW") as mock_adamw:
             mock_adamw.return_value = Mock()  # Return a mock optimizer
             optimizer = prepare_model_for_training(mock_model)
 
@@ -516,10 +484,12 @@ class TestGetModelDevice:
 class TestIntegrationScenarios:
     """Test integration scenarios."""
 
-    @patch('torch.optim.AdamW')
-    @patch('transformers.AutoTokenizer')
-    @patch('transformers.AutoModelForCausalLM')
-    def test_load_and_prepare_for_training(self, mock_model_class, mock_tokenizer_class, mock_adamw):
+    @patch("torch.optim.AdamW")
+    @patch("transformers.AutoTokenizer")
+    @patch("transformers.AutoModelForCausalLM")
+    def test_load_and_prepare_for_training(
+        self, mock_model_class, mock_tokenizer_class, mock_adamw
+    ):
         """Test loading model and preparing for training."""
         mock_model = Mock()
         mock_tokenizer = Mock()
@@ -563,7 +533,7 @@ class TestIntegrationScenarios:
         # Setup mocks
         mock_tokenizer.return_value = {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
         mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
         mock_tokenizer.decode.return_value = "Text"
@@ -572,7 +542,7 @@ class TestIntegrationScenarios:
         configs = [
             GenerationConfig(temperature=0.5),
             GenerationConfig(temperature=1.0),
-            GenerationConfig(temperature=1.5)
+            GenerationConfig(temperature=1.5),
         ]
 
         for config in configs:

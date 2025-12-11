@@ -150,9 +150,7 @@ class CrossModalAttention(nn.Module):
         context = torch.matmul(attention_weights, values)
 
         # Transpose and reshape to [batch_size, query_seq_len, embed_dim]
-        context = (
-            context.transpose(1, 2).contiguous().view(batch_size, query_seq_len, -1)
-        )
+        context = context.transpose(1, 2).contiguous().view(batch_size, query_seq_len, -1)
 
         # Apply output projection and dropout
         output = self.output_proj(context)

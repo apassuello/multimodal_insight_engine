@@ -17,13 +17,16 @@ class ModelForTesting(BaseModel):
     def forward(self, x):
         return self.linear(x)
 
+
 @pytest.fixture
 def test_model():
     return ModelForTesting()
 
+
 @pytest.fixture
 def temp_save_path(tmp_path):
     return str(tmp_path / "test_model.pt")
+
 
 def test_model_initialization(test_model):
     """Test that the model initializes correctly."""
@@ -31,11 +34,13 @@ def test_model_initialization(test_model):
     assert test_model.model_type == "ModelForTesting"
     assert hasattr(test_model, "linear")
 
+
 def test_model_forward(test_model):
     """Test the forward pass of the model."""
     x = torch.randn(5, 10)
     output = test_model(x)
     assert output.shape == (5, 5)
+
 
 def test_model_save_load(test_model, temp_save_path):
     """Test saving and loading model weights."""
@@ -56,6 +61,7 @@ def test_model_save_load(test_model, temp_save_path):
     loaded_output = new_model(x)
     assert torch.allclose(original_output, loaded_output)
 
+
 def test_model_save_with_optimizer(test_model, temp_save_path):
     """Test saving model with optimizer state."""
     optimizer = torch.optim.Adam(test_model.parameters())
@@ -64,19 +70,21 @@ def test_model_save_with_optimizer(test_model, temp_save_path):
     # Load and verify optimizer state
     new_model = ModelForTesting()
     checkpoint = new_model.load(temp_save_path)
-    assert 'optimizer_state_dict' in checkpoint
+    assert "optimizer_state_dict" in checkpoint
+
 
 def test_model_save_with_additional_info(test_model, temp_save_path):
     """Test saving model with additional information."""
-    additional_info = {'epoch': 5, 'loss': 0.5, 'custom_info': 'test'}
+    additional_info = {"epoch": 5, "loss": 0.5, "custom_info": "test"}
     test_model.save(temp_save_path, additional_info=additional_info)
 
     # Load and verify additional info
     new_model = ModelForTesting()
     checkpoint = new_model.load(temp_save_path)
-    assert checkpoint['epoch'] == 5
-    assert checkpoint['loss'] == 0.5
-    assert checkpoint['custom_info'] == 'test'
+    assert checkpoint["epoch"] == 5
+    assert checkpoint["loss"] == 0.5
+    assert checkpoint["custom_info"] == "test"
+
 
 def test_model_parameter_counting(test_model):
     """Test parameter counting functionality."""
@@ -87,6 +95,7 @@ def test_model_parameter_counting(test_model):
     expected_params = 10 * 5 + 5  # weights + bias
     assert num_params == expected_params
 
+
 def test_model_device(test_model):
     """Test device detection functionality."""
     device = test_model.get_device()
@@ -94,8 +103,8 @@ def test_model_device(test_model):
 
     # Test moving model to different device
     if torch.cuda.is_available():
-        test_model.to('cuda')
-        assert test_model.get_device().type == 'cuda'
+        test_model.to("cuda")
+        assert test_model.get_device().type == "cuda"
 
-    test_model.to('cpu')
-    assert test_model.get_device().type == 'cpu'
+    test_model.to("cpu")
+    assert test_model.get_device().type == "cpu"

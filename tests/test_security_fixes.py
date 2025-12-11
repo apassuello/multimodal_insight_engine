@@ -29,24 +29,27 @@ class TestPickleRemoval:
         content = dataset_file.read_text()
 
         # Check pickle imports
-        lines = content.split('\n')
+        lines = content.split("\n")
         pickle_imports = []
 
         for line_num, line in enumerate(lines, 1):
             # Skip comment-only lines
-            if line.strip().startswith('#'):
+            if line.strip().startswith("#"):
                 continue
 
             # Check for pickle imports in code
-            if 'import pickle' in line.lower():
+            if "import pickle" in line.lower():
                 # Allow if comment mentions backward compatibility
-                if 'backward compatibility' in line.lower() or 'migration' in line.lower():
+                if "backward compatibility" in line.lower() or "migration" in line.lower():
                     continue  # This is acceptable
                 else:
                     pickle_imports.append(f"Line {line_num}: {line.strip()}")
 
         if pickle_imports:
-            pytest.fail("Found pickle imports without backward compatibility justification:\n" + "\n".join(pickle_imports))
+            pytest.fail(
+                "Found pickle imports without backward compatibility justification:\n"
+                + "\n".join(pickle_imports)
+            )
 
     def test_no_pickle_usage_in_turbo_bpe(self):
         """Verify that turbo_bpe_preprocessor.py uses pickle ONLY for reading old caches (not writing new ones)."""
@@ -56,15 +59,17 @@ class TestPickleRemoval:
         content = preprocessor_file.read_text()
 
         # CRITICAL: pickle.dump() should NOT exist (no new pickle files)
-        if 'pickle.dump' in content:
-            pytest.fail("Found pickle.dump() in turbo_bpe_preprocessor.py - Should NOT create new pickle files!")
+        if "pickle.dump" in content:
+            pytest.fail(
+                "Found pickle.dump() in turbo_bpe_preprocessor.py - Should NOT create new pickle files!"
+            )
 
         # pickle.load() is allowed for backward compatibility (reading old caches)
         # But we should verify it's only used as fallback after JSON
-        if 'pickle.load' in content:
+        if "pickle.load" in content:
             # Verify JSON is tried first
-            json_load_pos = content.find('json.load')
-            pickle_load_pos = content.find('pickle.load')
+            json_load_pos = content.find("json.load")
+            pickle_load_pos = content.find("pickle.load")
 
             if json_load_pos == -1:
                 pytest.fail("Found pickle.load() but no json.load() - Should try JSON first!")
@@ -80,11 +85,11 @@ class TestPickleRemoval:
             # Test data
             test_data = {
                 "src_sequences": [[1, 2, 3], [4, 5, 6]],
-                "tgt_sequences": [[7, 8, 9], [10, 11, 12]]
+                "tgt_sequences": [[7, 8, 9], [10, 11, 12]],
             }
 
             # Save to JSON
-            with open(cache_file, 'w') as f:
+            with open(cache_file, "w") as f:
                 json.dump(test_data, f)
 
             # Load from JSON
@@ -103,8 +108,8 @@ class TestPickleRemoval:
         content = dataset_file.read_text()
 
         # Check that new cache files use .json extension
-        assert '.json' in content, "Dataset should use .json for caching"
-        assert 'cache_samples_json' in content, "Should have cache_samples_json variable"
+        assert ".json" in content, "Dataset should use .json for caching"
+        assert "cache_samples_json" in content, "Should have cache_samples_json variable"
 
 
 class TestExecRemoval:
@@ -120,7 +125,7 @@ class TestExecRemoval:
         content = metadata_file.read_text()
 
         # Check for exec() calls in actual code (not comments or strings)
-        lines = content.split('\n')
+        lines = content.split("\n")
         in_multiline_string = False
         quote_char = None
         exec_found = []
@@ -139,14 +144,14 @@ class TestExecRemoval:
                 continue
 
             # Remove comments
-            code_part = line.split('#')[0]
+            code_part = line.split("#")[0]
 
             # Check for exec() in actual code
-            if 'exec(' in code_part:
+            if "exec(" in code_part:
                 # Ignore if it's in a string
                 if '"exec(' not in code_part and "'exec(" not in code_part:
                     # Ignore documentation/comments explaining why we DON'T use exec
-                    doc_keywords = ['instead of', 'not use', 'instead', 'SECURITY', 'avoid']
+                    doc_keywords = ["instead of", "not use", "instead", "SECURITY", "avoid"]
                     is_documentation = any(keyword in line for keyword in doc_keywords)
                     if not is_documentation:
                         exec_found.append(f"Line {line_num}: {line.strip()}")
@@ -164,20 +169,18 @@ class TestTorchLoadSafety:
 
         # Search for torch.load calls
         result = subprocess.run(
-            ['grep', '-rn', 'torch.load', 'src/', '--include=*.py'],
-            capture_output=True,
-            text=True
+            ["grep", "-rn", "torch.load", "src/", "--include=*.py"], capture_output=True, text=True
         )
 
         if result.returncode == 0:
             # Found torch.load calls - check they have weights_only
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             unsafe_calls = []
 
             for line in lines:
-                if 'torch.load' in line and 'weights_only' not in line:
+                if "torch.load" in line and "weights_only" not in line:
                     # Allow safe_torch_load function definition
-                    if 'def safe_torch_load' not in line:
+                    if "def safe_torch_load" not in line:
                         unsafe_calls.append(line)
 
             if unsafe_calls:
@@ -199,15 +202,15 @@ class TestSubprocessSafety:
         content = gpu_test_file.read_text()
 
         # Check for shell=True in actual code (not comments or strings)
-        lines = content.split('\n')
+        lines = content.split("\n")
         shell_true_found = []
 
         for line_num, line in enumerate(lines, 1):
             # Remove comments
-            code_part = line.split('#')[0]
+            code_part = line.split("#")[0]
 
             # Check for shell=True in actual code
-            if 'shell=True' in code_part:
+            if "shell=True" in code_part:
                 # Ignore if it's in a string (documentation or examples)
                 if '"shell=True"' not in code_part and "'shell=True'" not in code_part:
                     shell_true_found.append(f"Line {line_num}: {line.strip()}")
@@ -225,20 +228,18 @@ class TestSecurityCodePatterns:
         import subprocess
 
         result = subprocess.run(
-            ['grep', '-rn', 'eval(', 'src/', '--include=*.py'],
-            capture_output=True,
-            text=True
+            ["grep", "-rn", "eval(", "src/", "--include=*.py"], capture_output=True, text=True
         )
 
         if result.returncode == 0:
             # Found eval() calls - filter out safe patterns
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             actual_eval = []
 
             for line in lines:
                 # Skip comments
-                code_part = line.split('#')[0]
-                if 'eval(' not in code_part:
+                code_part = line.split("#")[0]
+                if "eval(" not in code_part:
                     continue
 
                 # Safe patterns to ignore:
@@ -246,11 +247,11 @@ class TestSecurityCodePatterns:
                 # - "eval()" in strings
                 # - def eval() - method definitions
                 safe_patterns = [
-                    r'\.eval\(',           # Method call like model.eval()
-                    r'"[^"]*eval\([^"]*"', # In double-quoted strings
-                    r"'[^']*eval\([^']*'", # In single-quoted strings
-                    r'def\s+eval\(',       # Method definition
-                    r'signature.*eval\(',  # Signature documentation
+                    r"\.eval\(",  # Method call like model.eval()
+                    r'"[^"]*eval\([^"]*"',  # In double-quoted strings
+                    r"'[^']*eval\([^']*'",  # In single-quoted strings
+                    r"def\s+eval\(",  # Method definition
+                    r"signature.*eval\(",  # Signature documentation
                 ]
 
                 is_safe = False
@@ -270,11 +271,11 @@ class TestSecurityCodePatterns:
     def test_file_permissions_safe(self):
         """Ensure that sensitive files don't have overly permissive permissions."""
         # This is a basic check - in production you'd check actual file permissions
-        sensitive_patterns = ['*.key', '*.pem', 'credentials.*', '.env']
+        sensitive_patterns = ["*.key", "*.pem", "credentials.*", ".env"]
 
         found_sensitive = []
         for pattern in sensitive_patterns:
-            for file in Path('.').rglob(pattern):
+            for file in Path(".").rglob(pattern):
                 found_sensitive.append(str(file))
 
         # Just log if found - don't fail (they might be test files)

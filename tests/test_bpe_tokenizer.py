@@ -9,7 +9,6 @@ import pytest
 import torch
 from tqdm import tqdm
 
-
 # Add parent directory to path to import local modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.europarl_dataset import EuroparlDataset
@@ -30,9 +29,10 @@ def en_tokenizer():
         texts=["Hello world", "This is a test", "Machine learning is fun"],
         vocab_size=256,  # Small vocab for testing
         min_frequency=1,
-        show_progress=False
+        show_progress=False,
     )
     return tokenizer
+
 
 @pytest.fixture
 def de_tokenizer():
@@ -42,9 +42,10 @@ def de_tokenizer():
         texts=["Hallo Welt", "Dies ist ein Test", "Maschinelles Lernen macht Spaß"],
         vocab_size=256,  # Small vocab for testing
         min_frequency=1,
-        show_progress=False
+        show_progress=False,
     )
     return tokenizer
+
 
 def set_seed(seed=42):
     """Set random seeds for reproducibility."""
@@ -83,7 +84,7 @@ def train_bpe_tokenizers(
     # Train German tokenizer (source language)
     print("Training German tokenizer (source language)...")
     start_time = time.time()
-    de_tokenizer = BPETokenizer(num_merges=vocab_size-256)
+    de_tokenizer = BPETokenizer(num_merges=vocab_size - 256)
     de_tokenizer.train(
         texts=de_texts,
         vocab_size=vocab_size,
@@ -97,7 +98,7 @@ def train_bpe_tokenizers(
     # Train English tokenizer (target language)
     print("Training English tokenizer (target language)...")
     start_time = time.time()
-    en_tokenizer = BPETokenizer(num_merges=vocab_size-256)
+    en_tokenizer = BPETokenizer(num_merges=vocab_size - 256)
     en_tokenizer.train(
         texts=en_texts,
         vocab_size=vocab_size,
@@ -135,7 +136,7 @@ def test_tokenizers(
             "Hello, how are you?",
             "I am learning machine translation.",
             "Transformers are powerful models for NLP.",
-            "This is an example of English to German translation."
+            "This is an example of English to German translation.",
         ]
 
     print("\n=== Testing Tokenizers ===")
@@ -205,13 +206,13 @@ def analyze_tokenization(
 
     # Plot token count distributions
     plt.figure(figsize=(10, 6))
-    plt.hist(ws_token_counts, alpha=0.5, label='Whitespace', bins=30)
-    plt.hist(bpe_token_counts, alpha=0.5, label='BPE', bins=30)
-    plt.xlabel('Number of Tokens')
-    plt.ylabel('Frequency')
-    plt.title('Token Count Distribution: BPE vs Whitespace')
+    plt.hist(ws_token_counts, alpha=0.5, label="Whitespace", bins=30)
+    plt.hist(bpe_token_counts, alpha=0.5, label="BPE", bins=30)
+    plt.xlabel("Number of Tokens")
+    plt.ylabel("Frequency")
+    plt.title("Token Count Distribution: BPE vs Whitespace")
     plt.legend()
-    plt.savefig('token_distribution.png')
+    plt.savefig("token_distribution.png")
     plt.close()
 
     print("Token distribution histogram saved as 'token_distribution.png'")
@@ -247,8 +248,8 @@ def demonstrate_oov_handling(en_tokenizer: BPETokenizer) -> None:
 def prepare_for_transformer(
     de_tokenizer: BPETokenizer,  # German tokenizer (source)
     en_tokenizer: BPETokenizer,  # English tokenizer (target)
-    de_texts: List[str],         # German texts (source)
-    en_texts: List[str],         # English texts (target)
+    de_texts: List[str],  # German texts (source)
+    en_texts: List[str],  # English texts (target)
     max_length: int = 128,
     batch_size: int = 32,
 ) -> None:
@@ -289,8 +290,8 @@ def prepare_for_transformer(
     print(f"Attention mask shape: {de_batch['attention_mask'].shape}")
 
     # Decode a sample sequence
-    sample_seq = de_batch['input_ids'][0].tolist()
-    sample_mask = de_batch['attention_mask'][0].tolist()
+    sample_seq = de_batch["input_ids"][0].tolist()
+    sample_mask = de_batch["attention_mask"][0].tolist()
 
     # Only include tokens where attention mask is 1 (exclude padding)
     active_tokens = [idx for idx, mask in zip(sample_seq, sample_mask) if mask == 1]
@@ -316,7 +317,7 @@ def main():
         data_dir="data/europarl",  # Adjust this path to match your directory structure
         src_lang="de",
         tgt_lang="en",
-        max_examples=100000  # Adjust as needed
+        max_examples=100000,  # Adjust as needed
     )
 
     # Split data into source and target languages

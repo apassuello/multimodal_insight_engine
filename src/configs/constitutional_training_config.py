@@ -55,12 +55,14 @@ class ConstitutionalTrainingConfig:
     enabled_principles: Optional[List[str]] = None
 
     # Custom principle weights (principle_name: weight)
-    principle_weights: Dict[str, float] = field(default_factory=lambda: {
-        "harm_prevention": 2.0,  # Higher weight for harm prevention
-        "truthfulness": 1.5,
-        "fairness": 1.0,
-        "autonomy_respect": 1.0,
-    })
+    principle_weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "harm_prevention": 2.0,  # Higher weight for harm prevention
+            "truthfulness": 1.5,
+            "fairness": 1.0,
+            "autonomy_respect": 1.0,
+        }
+    )
 
     # ========== Model Configuration ==========
 
@@ -124,12 +126,16 @@ class ConstitutionalTrainingConfig:
         """Validate and process configuration."""
         # Validate constitutional weight
         if not 0.0 <= self.constitutional_weight <= 1.0:
-            raise ValueError(f"constitutional_weight must be between 0 and 1, got {self.constitutional_weight}")
+            raise ValueError(
+                f"constitutional_weight must be between 0 and 1, got {self.constitutional_weight}"
+            )
 
         # Validate safety sensitivity
-        valid_sensitivities = ['low', 'medium', 'high']
+        valid_sensitivities = ["low", "medium", "high"]
         if self.safety_sensitivity not in valid_sensitivities:
-            raise ValueError(f"safety_sensitivity must be one of {valid_sensitivities}, got {self.safety_sensitivity}")
+            raise ValueError(
+                f"safety_sensitivity must be one of {valid_sensitivities}, got {self.safety_sensitivity}"
+            )
 
         # Set default enabled principles if not specified
         if self.enabled_principles is None:
@@ -182,12 +188,13 @@ class ConstitutionalTrainingConfig:
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'ConstitutionalTrainingConfig':
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "ConstitutionalTrainingConfig":
         """Create config from dictionary."""
         return cls(**config_dict)
 
 
 # ========== Predefined Configurations ==========
+
 
 def get_default_config() -> ConstitutionalTrainingConfig:
     """Get default constitutional training configuration."""

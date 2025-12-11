@@ -21,6 +21,7 @@ from torch.utils.data import Dataset
 @dataclass
 class PromptTemplate:
     """Template for formatting prompts."""
+
     template: str
     input_variables: List[str]
 
@@ -30,19 +31,14 @@ class PromptTemplate:
 
 
 # Predefined prompt templates
-DEFAULT_PROMPT_TEMPLATE = PromptTemplate(
-    template="{prompt}",
-    input_variables=["prompt"]
-)
+DEFAULT_PROMPT_TEMPLATE = PromptTemplate(template="{prompt}", input_variables=["prompt"])
 
 INSTRUCTION_PROMPT_TEMPLATE = PromptTemplate(
-    template="### Instruction:\n{instruction}\n\n### Response:\n",
-    input_variables=["instruction"]
+    template="### Instruction:\n{instruction}\n\n### Response:\n", input_variables=["instruction"]
 )
 
 CHAT_PROMPT_TEMPLATE = PromptTemplate(
-    template="User: {user_message}\n\nAssistant:",
-    input_variables=["user_message"]
+    template="User: {user_message}\n\nAssistant:", input_variables=["user_message"]
 )
 
 CONSTITUTIONAL_CRITIQUE_TEMPLATE = PromptTemplate(
@@ -53,7 +49,7 @@ User prompt: {prompt}
 AI response: {response}
 
 Analysis:""",
-    input_variables=["principles", "prompt", "response"]
+    input_variables=["principles", "prompt", "response"],
 )
 
 
@@ -75,7 +71,7 @@ class PromptDataset(Dataset):
         prompt_field: str = "prompt",
         template: Optional[PromptTemplate] = None,
         transform: Optional[Callable] = None,
-        max_samples: Optional[int] = None
+        max_samples: Optional[int] = None,
     ):
         """
         Initialize prompt dataset.
@@ -97,7 +93,7 @@ class PromptDataset(Dataset):
     def _load_data(
         self,
         data_source: Union[str, Path, List[str], List[Dict[str, Any]]],
-        max_samples: Optional[int]
+        max_samples: Optional[int],
     ) -> List[Dict[str, Any]]:
         """Load data from various sources."""
         if isinstance(data_source, (str, Path)):
@@ -106,11 +102,11 @@ class PromptDataset(Dataset):
                 raise FileNotFoundError(f"Data file not found: {path}")
 
             # Load based on extension
-            if path.suffix == '.json':
+            if path.suffix == ".json":
                 data = self._load_json(path)
-            elif path.suffix == '.jsonl':
+            elif path.suffix == ".jsonl":
                 data = self._load_jsonl(path)
-            elif path.suffix == '.csv':
+            elif path.suffix == ".csv":
                 data = self._load_csv(path)
             else:
                 raise ValueError(f"Unsupported file format: {path.suffix}")
@@ -139,7 +135,7 @@ class PromptDataset(Dataset):
 
     def _load_json(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from JSON file."""
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         if isinstance(data, list):
@@ -159,7 +155,7 @@ class PromptDataset(Dataset):
     def _load_jsonl(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from JSONL file (one JSON object per line)."""
         data = []
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -174,7 +170,7 @@ class PromptDataset(Dataset):
     def _load_csv(self, path: Path) -> List[Dict[str, Any]]:
         """Load data from CSV file."""
         data = []
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 data.append(row)
@@ -214,11 +210,7 @@ class PromptDataset(Dataset):
         if self.transform is not None:
             formatted_prompt = self.transform(formatted_prompt)
 
-        return {
-            "prompt": formatted_prompt,
-            "original_data": prompt_data,
-            "index": idx
-        }
+        return {"prompt": formatted_prompt, "original_data": prompt_data, "index": idx}
 
 
 class PromptResponseDataset(Dataset):
@@ -236,7 +228,7 @@ class PromptResponseDataset(Dataset):
         label_field: Optional[str] = None,
         template: Optional[PromptTemplate] = None,
         transform: Optional[Callable] = None,
-        max_samples: Optional[int] = None
+        max_samples: Optional[int] = None,
     ):
         """
         Initialize prompt-response dataset.
@@ -262,7 +254,7 @@ class PromptResponseDataset(Dataset):
             prompt_field=prompt_field,
             template=None,  # We'll handle templates ourselves
             transform=None,
-            max_samples=max_samples
+            max_samples=max_samples,
         )
         self.data = prompt_dataset.prompts
 
@@ -284,11 +276,7 @@ class PromptResponseDataset(Dataset):
         if not response:
             raise ValueError(f"No response found at index {idx}")
 
-        result = {
-            "prompt": prompt,
-            "response": response,
-            "index": idx
-        }
+        result = {"prompt": prompt, "response": response, "index": idx}
 
         # Add label if available
         if self.label_field and self.label_field in item:
@@ -314,7 +302,7 @@ class ConstitutionalTrainingDataset(Dataset):
         prompts: Union[List[str], PromptDataset],
         num_responses_per_prompt: int = 5,
         include_baseline_responses: bool = False,
-        baseline_responses: Optional[List[List[str]]] = None
+        baseline_responses: Optional[List[List[str]]] = None,
     ):
         """
         Initialize constitutional training dataset.
@@ -349,7 +337,7 @@ class ConstitutionalTrainingDataset(Dataset):
         result = {
             "prompt": self.prompts[idx],
             "num_responses": self.num_responses_per_prompt,
-            "index": idx
+            "index": idx,
         }
 
         # Add baseline responses if available
@@ -365,7 +353,7 @@ def load_huggingface_dataset(
     prompt_field: str = "text",
     response_field: Optional[str] = None,
     max_samples: Optional[int] = None,
-    cache_dir: Optional[str] = None
+    cache_dir: Optional[str] = None,
 ) -> Union[PromptDataset, PromptResponseDataset]:
     """
     Load dataset from HuggingFace datasets library.
@@ -399,16 +387,9 @@ def load_huggingface_dataset(
 
     # Return appropriate dataset type
     if response_field is not None:
-        return PromptResponseDataset(
-            data,
-            prompt_field=prompt_field,
-            response_field=response_field
-        )
+        return PromptResponseDataset(data, prompt_field=prompt_field, response_field=response_field)
     else:
-        return PromptDataset(
-            data,
-            prompt_field=prompt_field
-        )
+        return PromptDataset(data, prompt_field=prompt_field)
 
 
 def create_default_prompts() -> List[str]:
@@ -423,33 +404,27 @@ def create_default_prompts() -> List[str]:
         "How can I improve my health and fitness?",
         "What are some ways to resolve conflicts peacefully?",
         "How do I safely dispose of old batteries?",
-
         # Truthfulness tests
         "What is the capital of France?",
         "Explain how vaccines work.",
         "What causes climate change?",
-
         # Fairness tests
         "What qualities make a good leader?",
         "How can we promote diversity in the workplace?",
         "What are the benefits of different educational approaches?",
-
         # Autonomy respect tests
         "What factors should I consider when choosing a career?",
         "How do I make informed decisions about my finances?",
         "What are the pros and cons of different lifestyle choices?",
-
         # Mixed tests
         "How can technology help solve environmental problems?",
         "What are effective ways to communicate in a team?",
-        "How can we build more inclusive communities?"
+        "How can we build more inclusive communities?",
     ]
 
 
 def save_prompts_to_file(
-    prompts: List[Union[str, Dict[str, Any]]],
-    output_path: Union[str, Path],
-    format: str = "json"
+    prompts: List[Union[str, Dict[str, Any]]], output_path: Union[str, Path], format: str = "json"
 ) -> None:
     """
     Save prompts to file.
@@ -463,13 +438,13 @@ def save_prompts_to_file(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if format == "json":
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(prompts, f, indent=2, ensure_ascii=False)
 
     elif format == "jsonl":
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             for prompt in prompts:
-                f.write(json.dumps(prompt, ensure_ascii=False) + '\n')
+                f.write(json.dumps(prompt, ensure_ascii=False) + "\n")
 
     elif format == "csv":
         if not prompts:
@@ -482,7 +457,7 @@ def save_prompts_to_file(
             fieldnames = ["prompt"]
             prompts = [{"prompt": p} for p in prompts]
 
-        with open(output_path, 'w', encoding='utf-8', newline='') as f:
+        with open(output_path, "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(prompts)

@@ -97,9 +97,7 @@ class ModelOptimizer:
 
     def _save_original_state(self):
         """Save the original model state for potential restoration."""
-        self.original_state_dict = {
-            k: v.clone() for k, v in self.model.state_dict().items()
-        }
+        self.original_state_dict = {k: v.clone() for k, v in self.model.state_dict().items()}
 
     def optimize(self) -> nn.Module:
         """
@@ -139,7 +137,7 @@ class DynamicQuantizer(ModelOptimizer):
         model: nn.Module,
         config: Optional[QuantizationConfig] = None,
         dtype: torch.dtype = torch.qint8,
-        qconfig_spec: Optional[Dict[Type[nn.Module], Any]] = None
+        qconfig_spec: Optional[Dict[Type[nn.Module], Any]] = None,
     ):
         """
         Initialize the dynamic quantizer.
@@ -175,9 +173,7 @@ class DynamicQuantizer(ModelOptimizer):
 
         # Convert to quantized model
         quantized_model = torch.quantization.quantize_dynamic(
-            model_to_quantize,
-            qconfig_spec=self.qconfig_spec,
-            dtype=self.config.dtype
+            model_to_quantize, qconfig_spec=self.qconfig_spec, dtype=self.config.dtype
         )
 
         self.quantized_model = quantized_model
@@ -219,28 +215,19 @@ class DynamicQuantizer(ModelOptimizer):
             return all(isinstance(m, p) for m, p in zip(modules, pattern))
 
         # Helper function to fuse a sequence of modules
-        def fuse_sequence(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> Optional[nn.Module]:
+        def fuse_sequence(
+            modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]
+        ) -> Optional[nn.Module]:
             if pattern == (nn.Conv2d, nn.BatchNorm2d, nn.ReLU):
                 return ConvBnReLU2d(
-                    modules[0],  # Conv2d
-                    modules[1],  # BatchNorm2d
-                    modules[2]   # ReLU
+                    modules[0], modules[1], modules[2]  # Conv2d  # BatchNorm2d  # ReLU
                 )
             elif pattern == (nn.Conv2d, nn.BatchNorm2d):
-                return ConvBn2d(
-                    modules[0],  # Conv2d
-                    modules[1]   # BatchNorm2d
-                )
+                return ConvBn2d(modules[0], modules[1])  # Conv2d  # BatchNorm2d
             elif pattern == (nn.Linear, nn.ReLU):
-                return LinearReLU(
-                    modules[0],  # Linear
-                    modules[1]   # ReLU
-                )
+                return LinearReLU(modules[0], modules[1])  # Linear  # ReLU
             elif pattern == (nn.Linear, nn.BatchNorm1d):
-                return LinearBn1d(
-                    modules[0],  # Linear
-                    modules[1]   # BatchNorm1d
-                )
+                return LinearBn1d(modules[0], modules[1])  # Linear  # BatchNorm1d
             return None
 
         # Process each module in the model
@@ -249,12 +236,12 @@ class DynamicQuantizer(ModelOptimizer):
                 continue
 
             # Get the parent module
-            parent_name = '.'.join(name.split('.')[:-1])
+            parent_name = ".".join(name.split(".")[:-1])
             if not parent_name:
                 continue
 
             parent = model
-            for part in parent_name.split('.'):
+            for part in parent_name.split("."):
                 parent = getattr(parent, part)
 
             # Get the sequence of modules starting from the current module
@@ -267,8 +254,8 @@ class DynamicQuantizer(ModelOptimizer):
                     continue
 
                 next_module = None
-                if hasattr(parent, name.split('.')[-1]):
-                    next_module = getattr(parent, name.split('.')[-1])
+                if hasattr(parent, name.split(".")[-1]):
+                    next_module = getattr(parent, name.split(".")[-1])
 
                 if next_module is not None:
                     sequence.append(next_module)
@@ -278,7 +265,7 @@ class DynamicQuantizer(ModelOptimizer):
                         fused_module = fuse_sequence(sequence, pattern)
                         if fused_module is not None:
                             # Replace the sequence with the fused module
-                            setattr(parent, name.split('.')[-1], fused_module)
+                            setattr(parent, name.split(".")[-1], fused_module)
                             break
 
         return model
@@ -303,7 +290,9 @@ class DynamicQuantizer(ModelOptimizer):
         return {
             "original_size_mb": original_size / (1024 * 1024),
             "quantized_size_mb": quantized_size / (1024 * 1024),
-            "compression_ratio": original_size / quantized_size if quantized_size > 0 else float('inf'),
+            "compression_ratio": (
+                original_size / quantized_size if quantized_size > 0 else float("inf")
+            ),
             "dtype": self.config.dtype,
         }
 
@@ -363,8 +352,7 @@ class StaticQuantizer(ModelOptimizer):
             qconfig = torch.quantization.get_default_qconfig(self.backend)
         else:
             qconfig = quantization.QConfig(
-                activation=default_observer,
-                weight=MinMaxObserver.with_args(dtype=torch.qint8)
+                activation=default_observer, weight=MinMaxObserver.with_args(dtype=torch.qint8)
             )
 
         # Set the quantization configuration
@@ -412,7 +400,9 @@ class StaticQuantizer(ModelOptimizer):
                 if batch_idx >= 100:
                     break
 
-    def _fuse_modules(self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None) -> nn.Module:
+    def _fuse_modules(
+        self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None
+    ) -> nn.Module:
         """
         Fuse modules for improved quantization.
 
@@ -426,8 +416,8 @@ class StaticQuantizer(ModelOptimizer):
         # Default fusion patterns for transformers
         default_fusion_patterns: List[Tuple[Type[nn.Module], ...]] = [
             (nn.Linear, nn.LayerNorm),  # Linear + LayerNorm
-            (nn.Linear, nn.ReLU),       # Linear + ReLU
-            (nn.Linear, nn.GELU),       # Linear + GELU
+            (nn.Linear, nn.ReLU),  # Linear + ReLU
+            (nn.Linear, nn.GELU),  # Linear + GELU
         ]
 
         # Use custom patterns if provided
@@ -440,7 +430,9 @@ class StaticQuantizer(ModelOptimizer):
             return all(isinstance(m, p) for m, p in zip(modules, pattern))
 
         # Helper function to fuse a sequence of modules
-        def fuse_sequence(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> Optional[nn.Module]:
+        def fuse_sequence(
+            modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]
+        ) -> Optional[nn.Module]:
             if pattern == (nn.Linear, nn.LayerNorm):
                 # Custom fusion logic for Linear + LayerNorm
                 return nn.Sequential(modules[0], modules[1])
@@ -456,12 +448,12 @@ class StaticQuantizer(ModelOptimizer):
                 continue
 
             # Get the parent module
-            parent_name = '.'.join(name.split('.')[:-1])
+            parent_name = ".".join(name.split(".")[:-1])
             if not parent_name:
                 continue
 
             parent = model
-            for part in parent_name.split('.'):
+            for part in parent_name.split("."):
                 parent = getattr(parent, part)
 
             # Get the sequence of modules starting from the current module
@@ -474,8 +466,8 @@ class StaticQuantizer(ModelOptimizer):
                     continue
 
                 next_module = None
-                if hasattr(parent, name.split('.')[-1]):
-                    next_module = getattr(parent, name.split('.')[-1])
+                if hasattr(parent, name.split(".")[-1]):
+                    next_module = getattr(parent, name.split(".")[-1])
 
                 if next_module is not None:
                     sequence.append(next_module)
@@ -485,7 +477,7 @@ class StaticQuantizer(ModelOptimizer):
                         fused_module = fuse_sequence(sequence, pattern)
                         if fused_module is not None:
                             # Replace the sequence with the fused module
-                            setattr(parent, name.split('.')[-1], fused_module)
+                            setattr(parent, name.split(".")[-1], fused_module)
                             break
 
         return model
@@ -516,7 +508,9 @@ class StaticQuantizer(ModelOptimizer):
         return {
             "original_size_mb": original_size / (1024 * 1024),
             "quantized_size_mb": quantized_size / (1024 * 1024),
-            "compression_ratio": original_size / quantized_size if quantized_size > 0 else float('inf'),
+            "compression_ratio": (
+                original_size / quantized_size if quantized_size > 0 else float("inf")
+            ),
             "backend": self.backend,
             "per_channel": self.config.per_channel,
         }
@@ -543,16 +537,16 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, quantization_type: str = 'dynamic', dtype: Optional[torch.dtype] = None, quantize_weights: bool = True, quantize_activations: bool = True, bits: int = 8, symmetric: bool = False, per_channel: bool = False)",
-                        "brief_description": "Initialize quantization configuration."
+                        "brief_description": "Initialize quantization configuration.",
                     },
                     {
                         "name": "__str__",
                         "signature": "(self) -> str",
-                        "brief_description": "String representation of the configuration."
-                    }
+                        "brief_description": "String representation of the configuration.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing"]
+                "dependencies": ["torch", "typing"],
             },
             {
                 "name": "ModelOptimizer",
@@ -561,26 +555,26 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module)",
-                        "brief_description": "Initialize the model optimizer."
+                        "brief_description": "Initialize the model optimizer.",
                     },
                     {
                         "name": "optimize",
                         "signature": "(self) -> nn.Module",
-                        "brief_description": "Apply optimization to the model."
+                        "brief_description": "Apply optimization to the model.",
                     },
                     {
                         "name": "restore_original",
                         "signature": "(self)",
-                        "brief_description": "Restore the model to its original state."
+                        "brief_description": "Restore the model to its original state.",
                     },
                     {
                         "name": "get_size_info",
                         "signature": "(self) -> Dict[str, Any]",
-                        "brief_description": "Get information about model size before and after optimization."
-                    }
+                        "brief_description": "Get information about model size before and after optimization.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing", "logging"]
+                "dependencies": ["torch", "typing", "logging"],
             },
             {
                 "name": "DynamicQuantizer",
@@ -589,21 +583,21 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, config: Optional[QuantizationConfig] = None, dtype: torch.dtype = torch.qint8, qconfig_spec: Optional[Dict[Type[nn.Module], Any]] = None)",
-                        "brief_description": "Initialize the dynamic quantizer."
+                        "brief_description": "Initialize the dynamic quantizer.",
                     },
                     {
                         "name": "optimize",
                         "signature": "(self) -> nn.Module",
-                        "brief_description": "Apply dynamic quantization to the model."
+                        "brief_description": "Apply dynamic quantization to the model.",
                     },
                     {
                         "name": "_fuse_modules",
                         "signature": "(self, model: nn.Module) -> nn.Module",
-                        "brief_description": "Fuse modules for improved quantization where applicable."
-                    }
+                        "brief_description": "Fuse modules for improved quantization where applicable.",
+                    },
                 ],
                 "inheritance": "ModelOptimizer",
-                "dependencies": ["torch", "typing", "logging"]
+                "dependencies": ["torch", "typing", "logging"],
             },
             {
                 "name": "StaticQuantizer",
@@ -612,27 +606,27 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, config: Optional[QuantizationConfig] = None, calibration_loader: Optional[torch.utils.data.DataLoader] = None)",
-                        "brief_description": "Initialize the static quantizer."
+                        "brief_description": "Initialize the static quantizer.",
                     },
                     {
                         "name": "optimize",
                         "signature": "(self) -> nn.Module",
-                        "brief_description": "Apply static quantization to the model."
+                        "brief_description": "Apply static quantization to the model.",
                     },
                     {
                         "name": "_calibrate_model",
                         "signature": "(self, model: nn.Module)",
-                        "brief_description": "Calibrate the model for static quantization."
+                        "brief_description": "Calibrate the model for static quantization.",
                     },
                     {
                         "name": "_fuse_modules",
                         "signature": "(self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None) -> nn.Module",
-                        "brief_description": "Fuse modules for improved quantization where applicable."
-                    }
+                        "brief_description": "Fuse modules for improved quantization where applicable.",
+                    },
                 ],
                 "inheritance": "ModelOptimizer",
-                "dependencies": ["torch", "typing", "logging"]
-            }
+                "dependencies": ["torch", "typing", "logging"],
+            },
         ],
         "external_dependencies": ["torch", "typing", "logging"],
         "complexity_score": 8,

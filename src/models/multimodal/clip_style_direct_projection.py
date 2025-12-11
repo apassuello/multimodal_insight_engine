@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
+
 
 class CLIPStyleDirectProjection(nn.Module):
     """
@@ -74,7 +74,7 @@ class CLIPStyleDirectProjection(nn.Module):
                 output_dim=projection_dim,
                 num_heads=num_projection_heads,
                 dropout=dropout,
-                use_layernorm=use_layernorm
+                use_layernorm=use_layernorm,
             )
         else:
             # Standard two-layer projection with optional layer norm
@@ -84,11 +84,9 @@ class CLIPStyleDirectProjection(nn.Module):
             if use_layernorm:
                 vision_layers.append(nn.LayerNorm(self.vision_dim))
 
-            vision_layers.extend([
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(self.vision_dim, projection_dim)
-            ])
+            vision_layers.extend(
+                [nn.GELU(), nn.Dropout(dropout), nn.Linear(self.vision_dim, projection_dim)]
+            )
 
             self.vision_proj = nn.Sequential(*vision_layers)
 
@@ -100,7 +98,7 @@ class CLIPStyleDirectProjection(nn.Module):
                 output_dim=projection_dim,
                 num_heads=num_projection_heads,
                 dropout=dropout,
-                use_layernorm=use_layernorm
+                use_layernorm=use_layernorm,
             )
         else:
             # Standard two-layer projection with optional layer norm
@@ -110,11 +108,9 @@ class CLIPStyleDirectProjection(nn.Module):
             if use_layernorm:
                 text_layers.append(nn.LayerNorm(self.text_dim))
 
-            text_layers.extend([
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(self.text_dim, projection_dim)
-            ])
+            text_layers.extend(
+                [nn.GELU(), nn.Dropout(dropout), nn.Linear(self.text_dim, projection_dim)]
+            )
 
             self.text_proj = nn.Sequential(*text_layers)
 
@@ -163,7 +159,9 @@ class CLIPStyleDirectProjection(nn.Module):
             return model.config.d_model
 
         # If no dimension found, use a common default but log a warning
-        logger.warning(f"Could not determine dimension for model {type(model).__name__}, using default of 768")
+        logger.warning(
+            f"Could not determine dimension for model {type(model).__name__}, using default of 768"
+        )
         return 768
 
     def extract_text_features(
@@ -265,14 +263,16 @@ class CLIPStyleDirectProjection(nn.Module):
 
             # Global average pooling for features with spatial dimensions
             if vision_features.dim() > 2:
-                vision_features = F.adaptive_avg_pool2d(vision_features, (1, 1)).squeeze(-1).squeeze(-1)
+                vision_features = (
+                    F.adaptive_avg_pool2d(vision_features, (1, 1)).squeeze(-1).squeeze(-1)
+                )
 
         return vision_features
 
     def forward(
         self,
         images: Optional[torch.Tensor] = None,
-        text_data: Optional[Union[Dict[str, torch.Tensor], torch.Tensor]] = None
+        text_data: Optional[Union[Dict[str, torch.Tensor], torch.Tensor]] = None,
     ) -> Dict[str, Any]:
         """
         Forward pass for the CLIP-style model.
@@ -303,11 +303,15 @@ class CLIPStyleDirectProjection(nn.Module):
                 with torch.no_grad():
                     vision_var = torch.var(vision_proj, dim=1).mean()
                     momentum = 0.9  # Exponential moving average
-                    self.running_vision_var = momentum * self.running_vision_var + (1 - momentum) * vision_var
+                    self.running_vision_var = (
+                        momentum * self.running_vision_var + (1 - momentum) * vision_var
+                    )
 
                     # Log occasionally
                     if self.iter_count % 100 == 0:
-                        logger.debug(f"Vision feature variance: {vision_var.item():.4f}, running: {self.running_vision_var.item():.4f}")
+                        logger.debug(
+                            f"Vision feature variance: {vision_var.item():.4f}, running: {self.running_vision_var.item():.4f}"
+                        )
 
             outputs["vision_features"] = vision_proj
 
@@ -328,11 +332,15 @@ class CLIPStyleDirectProjection(nn.Module):
                 with torch.no_grad():
                     text_var = torch.var(text_proj, dim=1).mean()
                     momentum = 0.9  # Exponential moving average
-                    self.running_text_var = momentum * self.running_text_var + (1 - momentum) * text_var
+                    self.running_text_var = (
+                        momentum * self.running_text_var + (1 - momentum) * text_var
+                    )
 
                     # Log occasionally
                     if self.iter_count % 100 == 0:
-                        logger.debug(f"Text feature variance: {text_var.item():.4f}, running: {self.running_text_var.item():.4f}")
+                        logger.debug(
+                            f"Text feature variance: {text_var.item():.4f}, running: {self.running_text_var.item():.4f}"
+                        )
 
             outputs["text_features"] = text_proj
 
@@ -370,7 +378,7 @@ class MultiHeadProjection(nn.Module):
         output_dim: int,
         num_heads: int = 4,
         dropout: float = 0.1,
-        use_layernorm: bool = True
+        use_layernorm: bool = True,
     ):
         """
         Initialize multi-head projection.
@@ -386,7 +394,9 @@ class MultiHeadProjection(nn.Module):
         self.num_heads = num_heads
 
         # Head dimension must divide output_dim evenly
-        assert output_dim % num_heads == 0, f"Output dimension ({output_dim}) must be divisible by num_heads ({num_heads})"
+        assert (
+            output_dim % num_heads == 0
+        ), f"Output dimension ({output_dim}) must be divisible by num_heads ({num_heads})"
         self.head_dim = output_dim // num_heads
 
         # Create a projection for each head
@@ -398,11 +408,9 @@ class MultiHeadProjection(nn.Module):
             if use_layernorm:
                 head_layers.append(nn.LayerNorm(input_dim))
 
-            head_layers.extend([
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(input_dim, self.head_dim)
-            ])
+            head_layers.extend(
+                [nn.GELU(), nn.Dropout(dropout), nn.Linear(input_dim, self.head_dim)]
+            )
 
             self.heads.append(nn.Sequential(*head_layers))
 
@@ -446,26 +454,26 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, vision_model: nn.Module, text_model: nn.Module, projection_dim: int = 512, dropout: float = 0.1, use_multi_head: bool = False, num_projection_heads: int = 4, use_layernorm: bool = True, prompt_pooling: str = 'mean', initial_temperature: float = 0.07, feature_dropout: float = 0.0)",
-                        "brief_description": "Initialize CLIP-style model with projection options"
+                        "brief_description": "Initialize CLIP-style model with projection options",
                     },
                     {
                         "name": "extract_text_features",
                         "signature": "extract_text_features(self, text_data: Union[Dict[str, torch.Tensor], torch.Tensor]) -> torch.Tensor",
-                        "brief_description": "Extract features from text model with pooling"
+                        "brief_description": "Extract features from text model with pooling",
                     },
                     {
                         "name": "extract_vision_features",
                         "signature": "extract_vision_features(self, images: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Extract features from vision model with pooling"
+                        "brief_description": "Extract features from vision model with pooling",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, images: Optional[torch.Tensor] = None, text_data: Optional[Union[Dict[str, torch.Tensor], torch.Tensor]] = None) -> Dict[str, Any]",
-                        "brief_description": "Process images and text, compute similarity"
-                    }
+                        "brief_description": "Process images and text, compute similarity",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "numpy"]
+                "dependencies": ["torch", "torch.nn", "numpy"],
             },
             {
                 "name": "MultiHeadProjection",
@@ -474,13 +482,13 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Project features through multiple heads and concatenate"
+                        "brief_description": "Project features through multiple heads and concatenate",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
-            }
+                "dependencies": ["torch", "torch.nn"],
+            },
         ],
         "external_dependencies": ["torch", "numpy", "logging"],
-        "complexity_score": 7  # Higher complexity due to many options and handling different model types
+        "complexity_score": 7,  # Higher complexity due to many options and handling different model types
     }

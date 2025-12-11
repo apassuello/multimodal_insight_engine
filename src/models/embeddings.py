@@ -4,13 +4,13 @@ import os
 import torch
 import torch.nn as nn
 
-
 """MODULE: embeddings.py
 PURPOSE: Implements token embedding layers for transformer models with proper initialization and scaling
 KEY COMPONENTS:
 - TokenEmbedding: Neural network layer that converts token indices to dense vector representations
 DEPENDENCIES: torch, torch.nn, math, typing
 SPECIAL NOTES: Implements the embedding scaling factor of sqrt(d_model) as per the original transformer paper"""
+
 
 class TokenEmbedding(nn.Module):
     """
@@ -56,6 +56,7 @@ class TokenEmbedding(nn.Module):
         # Scale embeddings
         return embeddings * math.sqrt(self.d_model)
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -77,16 +78,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, vocab_size: int, d_model: int)",
-                        "brief_description": "Initialize the embedding layer with Xavier uniform initialization"
+                        "brief_description": "Initialize the embedding layer with Xavier uniform initialization",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Convert token indices to scaled embeddings"
-                    }
+                        "brief_description": "Convert token indices to scaled embeddings",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "math"]
+                "dependencies": ["torch", "torch.nn", "math"],
             }
         ],
         "external_dependencies": ["torch"],

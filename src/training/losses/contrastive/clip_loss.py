@@ -12,7 +12,6 @@ import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +36,7 @@ class CLIPLoss(BaseContrastiveLoss):
         hard_negative_weight: float = 0.5,
         reduction: str = "mean",
         cache_labels: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize CLIP loss.
@@ -56,7 +55,7 @@ class CLIPLoss(BaseContrastiveLoss):
             use_hard_negatives=use_hard_negatives,
             hard_negative_weight=hard_negative_weight,
             reduction=reduction,
-            **kwargs
+            **kwargs,
         )
         self.label_smoothing = label_smoothing
         self.cache_labels = cache_labels
@@ -68,7 +67,7 @@ class CLIPLoss(BaseContrastiveLoss):
         text_features: torch.Tensor,
         match_ids: Optional[List[str]] = None,
         similarity_matrix: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute CLIP loss between vision and text features.
@@ -98,56 +97,34 @@ class CLIPLoss(BaseContrastiveLoss):
         # Compute similarity matrix (uses BaseContrastiveLoss method)
         if similarity_matrix is None:
             similarity_matrix = self.compute_similarity(
-                vision_features,
-                text_features,
-                normalize=True
+                vision_features, text_features, normalize=True
             )
 
         # Create targets based on match_ids
         v2t_targets, t2v_targets = self._create_targets(
-            batch_size,
-            match_ids,
-            vision_features.device
+            batch_size, match_ids, vision_features.device
         )
 
         # Compute bidirectional losses
-        v2t_loss = self._compute_directional_loss(
-            similarity_matrix,
-            v2t_targets,
-            batch_size
-        )
+        v2t_loss = self._compute_directional_loss(similarity_matrix, v2t_targets, batch_size)
 
-        t2v_loss = self._compute_directional_loss(
-            similarity_matrix.T,
-            t2v_targets,
-            batch_size
-        )
+        t2v_loss = self._compute_directional_loss(similarity_matrix.T, t2v_targets, batch_size)
 
         # Average bidirectional losses
         loss = (v2t_loss + t2v_loss) / 2.0
 
         # Compute metrics
         metrics = self._compute_metrics(
-            similarity_matrix,
-            v2t_targets,
-            t2v_targets,
-            vision_features,
-            text_features
+            similarity_matrix, v2t_targets, t2v_targets, vision_features, text_features
         )
 
         # Return loss and metrics
-        result = {
-            "loss": loss,
-            **metrics
-        }
+        result = {"loss": loss, **metrics}
 
         return result
 
     def _create_targets(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> tuple:
         """
         Create target indices for vision→text and text→vision.
@@ -162,9 +139,7 @@ class CLIPLoss(BaseContrastiveLoss):
         """
         if match_ids is None:
             # Diagonal matching (position-based)
-            logger.warning(
-                "No match_ids provided - using position-based matching"
-            )
+            logger.warning("No match_ids provided - using position-based matching")
             targets = torch.arange(batch_size, device=device)
             return targets, targets
 
@@ -172,11 +147,7 @@ class CLIPLoss(BaseContrastiveLoss):
         string_match_ids = [str(mid) for mid in match_ids]
 
         # Create match matrix
-        match_matrix = torch.zeros(
-            (batch_size, batch_size),
-            dtype=torch.bool,
-            device=device
-        )
+        match_matrix = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=device)
 
         for i in range(batch_size):
             for j in range(batch_size):
@@ -185,9 +156,7 @@ class CLIPLoss(BaseContrastiveLoss):
         # Log diagnostics
         unique_matches = len(set(string_match_ids))
         if unique_matches == batch_size:
-            logger.warning(
-                f"All match_ids unique ({batch_size}) - no semantic grouping"
-            )
+            logger.warning(f"All match_ids unique ({batch_size}) - no semantic grouping")
         elif unique_matches == 1:
             logger.warning("All match_ids identical - all pairs match")
 
@@ -215,10 +184,7 @@ class CLIPLoss(BaseContrastiveLoss):
         return v2t_targets, t2v_targets
 
     def _compute_directional_loss(
-        self,
-        logits: torch.Tensor,
-        targets: torch.Tensor,
-        batch_size: int
+        self, logits: torch.Tensor, targets: torch.Tensor, batch_size: int
     ) -> torch.Tensor:
         """
         Compute cross-entropy loss for one direction.
@@ -234,10 +200,7 @@ class CLIPLoss(BaseContrastiveLoss):
         if self.label_smoothing > 0:
             # Create smooth labels
             smooth_targets = self._create_smooth_labels(
-                batch_size,
-                targets,
-                self.label_smoothing,
-                logits.device
+                batch_size, targets, self.label_smoothing, logits.device
             )
 
             # Cross-entropy with smooth labels
@@ -256,11 +219,7 @@ class CLIPLoss(BaseContrastiveLoss):
         return loss
 
     def _create_smooth_labels(
-        self,
-        batch_size: int,
-        targets: torch.Tensor,
-        smoothing: float,
-        device: torch.device
+        self, batch_size: int, targets: torch.Tensor, smoothing: float, device: torch.device
     ) -> torch.Tensor:
         """
         Create label-smoothed targets.
@@ -297,7 +256,7 @@ class CLIPLoss(BaseContrastiveLoss):
         v2t_targets: torch.Tensor,
         t2v_targets: torch.Tensor,
         vision_features: torch.Tensor,
-        text_features: torch.Tensor
+        text_features: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         """
         Compute accuracy and retrieval metrics.
@@ -345,7 +304,7 @@ class CLIPLoss(BaseContrastiveLoss):
                 "v2t_accuracy": v2t_accuracy,
                 "t2v_accuracy": t2v_accuracy,
                 "accuracy": accuracy,
-                **{f"recalls.{k}": v for k, v in recalls.items()}
+                **{f"recalls.{k}": v for k, v in recalls.items()},
             }
 
             return metrics

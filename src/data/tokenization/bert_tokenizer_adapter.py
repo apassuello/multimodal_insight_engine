@@ -20,7 +20,6 @@ from transformers import BertTokenizer
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -30,9 +29,7 @@ class BertTokenizerAdapter:
     multimodal dataset interface.
     """
 
-    def __init__(
-        self, pretrained_model_name: str = "bert-base-uncased", max_length: int = 77
-    ):
+    def __init__(self, pretrained_model_name: str = "bert-base-uncased", max_length: int = 77):
         """
         Initialize the adapter.
 

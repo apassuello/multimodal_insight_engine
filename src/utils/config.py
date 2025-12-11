@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional
 
 from src.utils.logging import get_logger
 
-
 # Initialize module logger
 logger = get_logger(__name__)
 
@@ -78,10 +77,11 @@ class ConfigManager:
             config_path: Path where to save the config
         """
         try:
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             logger.info(f"Error saving config to {config_path}: {e}")
+
 
 # Create a default instance
 config_manager = ConfigManager()
@@ -89,6 +89,7 @@ config_manager = ConfigManager()
 # Export primary functions
 get_config = config_manager.get
 set_config = config_manager.set
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -111,40 +112,40 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "load_from_file",
                         "signature": "load_from_file(self, config_path: str) -> None",
-                        "brief_description": "Load configuration from a JSON file"
+                        "brief_description": "Load configuration from a JSON file",
                     },
                     {
                         "name": "get",
                         "signature": "get(self, key: str, default: Any = None) -> Any",
-                        "brief_description": "Get a configuration value with optional default"
+                        "brief_description": "Get a configuration value with optional default",
                     },
                     {
                         "name": "set",
                         "signature": "set(self, key: str, value: Any) -> None",
-                        "brief_description": "Set a configuration value"
+                        "brief_description": "Set a configuration value",
                     },
                     {
                         "name": "save_to_file",
                         "signature": "save_to_file(self, config_path: str) -> None",
-                        "brief_description": "Save current configuration to a JSON file"
-                    }
+                        "brief_description": "Save current configuration to a JSON file",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["os", "json"]
+                "dependencies": ["os", "json"],
             }
         ],
         "key_functions": [
             {
                 "name": "get_config",
                 "signature": "get_config(key: str, default: Any = None) -> Any",
-                "brief_description": "Convenience function to get a config value from the default manager"
+                "brief_description": "Convenience function to get a config value from the default manager",
             },
             {
                 "name": "set_config",
                 "signature": "set_config(key: str, value: Any) -> None",
-                "brief_description": "Convenience function to set a config value in the default manager"
-            }
+                "brief_description": "Convenience function to set a config value in the default manager",
+            },
         ],
         "external_dependencies": ["json"],
-        "complexity_score": 3  # Moderate complexity for a configuration manager
+        "complexity_score": 3,  # Moderate complexity for a configuration manager
     }

@@ -20,13 +20,14 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
-def plot_training_history(history: Dict[str, List[float]],
-                         figsize: Tuple[int, int] = (12, 8),
-                         save_path: Optional[str] = None) -> None:
+def plot_training_history(
+    history: Dict[str, List[float]],
+    figsize: Tuple[int, int] = (12, 8),
+    save_path: Optional[str] = None,
+) -> None:
     """
     Plot training metrics history.
 
@@ -41,8 +42,8 @@ def plot_training_history(history: Dict[str, List[float]],
 
     for i, (metric, values) in enumerate(history.items()):
         axes[i].plot(values)
-        axes[i].set_title(f'{metric} history')
-        axes[i].set_xlabel('Epoch')
+        axes[i].set_title(f"{metric} history")
+        axes[i].set_xlabel("Epoch")
         axes[i].set_ylabel(metric.capitalize())
         axes[i].grid(True)
 
@@ -53,12 +54,15 @@ def plot_training_history(history: Dict[str, List[float]],
 
     plt.show()
 
-def plot_attention_weights(attention_weights: torch.Tensor,
-                          tokens: List[str] = None,
-                          layer: int = 0,
-                          head: int = 0,
-                          figsize: Tuple[int, int] = (10, 10),
-                          save_path: Optional[str] = None) -> None:
+
+def plot_attention_weights(
+    attention_weights: torch.Tensor,
+    tokens: List[str] = None,
+    layer: int = 0,
+    head: int = 0,
+    figsize: Tuple[int, int] = (10, 10),
+    save_path: Optional[str] = None,
+) -> None:
     """
     Visualize attention weights from a transformer model.
 
@@ -74,15 +78,17 @@ def plot_attention_weights(attention_weights: torch.Tensor,
     weights = attention_weights[layer, head].cpu().detach().numpy()
 
     plt.figure(figsize=figsize)
-    sns.heatmap(weights,
-                    annot=False,
-                    cmap='viridis',
-                    xticklabels=tokens if tokens else [],
-                    yticklabels=tokens if tokens else [])
+    sns.heatmap(
+        weights,
+        annot=False,
+        cmap="viridis",
+        xticklabels=tokens if tokens else [],
+        yticklabels=tokens if tokens else [],
+    )
 
-    plt.title(f'Attention Weights (Layer {layer}, Head {head})')
-    plt.xlabel('Target Tokens')
-    plt.ylabel('Source Tokens')
+    plt.title(f"Attention Weights (Layer {layer}, Head {head})")
+    plt.xlabel("Target Tokens")
+    plt.ylabel("Source Tokens")
 
     if tokens:
         plt.xticks(rotation=90)
@@ -93,11 +99,14 @@ def plot_attention_weights(attention_weights: torch.Tensor,
 
     plt.show()
 
-def plot_embeddings_tsne(embeddings: torch.Tensor,
-                        labels: Optional[List[Any]] = None,
-                        random_state: int = 42,
-                        figsize: Tuple[int, int] = (10, 10),
-                        save_path: Optional[str] = None) -> None:
+
+def plot_embeddings_tsne(
+    embeddings: torch.Tensor,
+    labels: Optional[List[Any]] = None,
+    random_state: int = 42,
+    figsize: Tuple[int, int] = (10, 10),
+    save_path: Optional[str] = None,
+) -> None:
     """
     Visualize embeddings using t-SNE dimensionality reduction.
 
@@ -113,7 +122,7 @@ def plot_embeddings_tsne(embeddings: torch.Tensor,
         embeddings = embeddings.cpu().detach().numpy()
 
     # Apply t-SNE
-    tsne = TSNE(n_components=2, random_state=random_state, perplexity=min(30, len(embeddings)-1))
+    tsne = TSNE(n_components=2, random_state=random_state, perplexity=min(30, len(embeddings) - 1))
     reduced_embeddings = tsne.fit_transform(embeddings)
 
     plt.figure(figsize=figsize)
@@ -125,25 +134,28 @@ def plot_embeddings_tsne(embeddings: torch.Tensor,
 
         for i, label in enumerate(unique_labels):
             indices = [j for j, l in enumerate(labels) if l == label]
-            plt.scatter(reduced_embeddings[indices, 0],
-                       reduced_embeddings[indices, 1],
-                       color=colors[i],
-                       label=label,
-                       alpha=0.7)
+            plt.scatter(
+                reduced_embeddings[indices, 0],
+                reduced_embeddings[indices, 1],
+                color=colors[i],
+                label=label,
+                alpha=0.7,
+            )
         plt.legend()
     else:
         # If no labels, just plot the points
         plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], alpha=0.7)
 
-    plt.title('t-SNE Visualization of Embeddings')
-    plt.xlabel('Dimension 1')
-    plt.ylabel('Dimension 2')
+    plt.title("t-SNE Visualization of Embeddings")
+    plt.xlabel("Dimension 1")
+    plt.ylabel("Dimension 2")
     plt.grid(True)
 
     if save_path:
         plt.savefig(save_path)
 
     plt.show()
+
 
 def count_parameters(model: nn.Module) -> int:
     """
@@ -159,9 +171,7 @@ def count_parameters(model: nn.Module) -> int:
 
 
 def visualize_similarity_matrix(
-    similarity_matrix: torch.Tensor,
-    captions: List[str],
-    save_path: Optional[str] = None
+    similarity_matrix: torch.Tensor, captions: List[str], save_path: Optional[str] = None
 ) -> None:
     """
     Visualize the similarity matrix between images and texts.
@@ -183,9 +193,7 @@ def visualize_similarity_matrix(
 
     # Add labels (limit to 20 for readability)
     max_captions = min(20, len(captions))
-    short_captions = [
-        c[:20] + "..." if len(c) > 20 else c for c in captions[:max_captions]
-    ]
+    short_captions = [c[:20] + "..." if len(c) > 20 else c for c in captions[:max_captions]]
 
     plt.xticks(
         range(max_captions),
@@ -215,7 +223,7 @@ def visualize_attention_maps(
     images: torch.Tensor,
     captions: List[str],
     save_dir: Optional[str] = None,
-    model: Optional[nn.Module] = None
+    model: Optional[nn.Module] = None,
 ) -> None:
     """
     Visualize attention maps between images and texts.
@@ -267,9 +275,7 @@ def visualize_attention_maps(
                 plt.subplots_adjust(top=0.9)
 
                 if save_dir:
-                    plt.savefig(
-                        os.path.join(save_dir, f"{attn_name}_example{b}.png"), dpi=200
-                    )
+                    plt.savefig(os.path.join(save_dir, f"{attn_name}_example{b}.png"), dpi=200)
                 else:
                     plt.show()
 
@@ -277,11 +283,7 @@ def visualize_attention_maps(
 
 
 def visualize_test_samples(
-    model: nn.Module,
-    test_dataset: Any,
-    device: torch.device,
-    save_path: str,
-    num_samples: int = 10
+    model: nn.Module, test_dataset: Any, device: torch.device, save_path: str, num_samples: int = 10
 ) -> float:
     """
     Visualize specific test samples with their matched captions.
@@ -310,6 +312,7 @@ def visualize_test_samples(
 
     # Create DataLoader for the visualization samples
     from torch.utils.data import DataLoader
+
     vis_loader = DataLoader(test_dataset, batch_size=num_samples, shuffle=False)
 
     # Create DataLoader for all captions
@@ -341,9 +344,7 @@ def visualize_test_samples(
             raise ValueError("Text data not found in batch")
 
         # Get raw text captions for visualization samples
-        vis_captions = vis_batch.get(
-            "raw_text", [f"Caption {i}" for i in range(num_samples)]
-        )
+        vis_captions = vis_batch.get("raw_text", [f"Caption {i}" for i in range(num_samples)])
 
         # Process all text in the dataset to get embeddings
         logger.info("Computing text embeddings for all captions in the dataset...")
@@ -418,9 +419,7 @@ def visualize_test_samples(
                 all_text_embeddings = all_text_embeddings.cpu()
 
         # Compute similarity matrix between visualization images and ALL text captions
-        similarity_matrix = torch.matmul(
-            vision_features, all_text_embeddings.to(device).T
-        )
+        similarity_matrix = torch.matmul(vision_features, all_text_embeddings.to(device).T)
 
     # Get the most similar caption for each image
     most_similar_idxs = similarity_matrix.argmax(dim=1)
@@ -498,7 +497,7 @@ def visualize_test_samples(
             wrap=True,
             fontsize=10,
             color=color,
-            bbox={'boxstyle': "round", 'facecolor': "white", 'alpha': 0.8},
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
         axes[i, 1].axis("off")
 
@@ -578,39 +577,39 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "plot_training_history",
                 "signature": "plot_training_history(history: Dict[str, List[float]], figsize: Tuple[int, int] = (12, 8), save_path: Optional[str] = None) -> None",
-                "brief_description": "Plot training metrics history over epochs"
+                "brief_description": "Plot training metrics history over epochs",
             },
             {
                 "name": "plot_attention_weights",
                 "signature": "plot_attention_weights(attention_weights: torch.Tensor, tokens: List[str] = None, layer: int = 0, head: int = 0, figsize: Tuple[int, int] = (10, 10), save_path: Optional[str] = None) -> None",
-                "brief_description": "Visualize attention weights from transformer models"
+                "brief_description": "Visualize attention weights from transformer models",
             },
             {
                 "name": "plot_embeddings_tsne",
                 "signature": "plot_embeddings_tsne(embeddings: torch.Tensor, labels: Optional[List[Any]] = None, random_state: int = 42, figsize: Tuple[int, int] = (10, 10), save_path: Optional[str] = None) -> None",
-                "brief_description": "Visualize embeddings using t-SNE dimensionality reduction"
+                "brief_description": "Visualize embeddings using t-SNE dimensionality reduction",
             },
             {
                 "name": "visualize_similarity_matrix",
                 "signature": "visualize_similarity_matrix(similarity_matrix: torch.Tensor, captions: List[str], save_path: Optional[str] = None) -> None",
-                "brief_description": "Visualize the similarity matrix between images and texts"
+                "brief_description": "Visualize the similarity matrix between images and texts",
             },
             {
                 "name": "visualize_attention_maps",
                 "signature": "visualize_attention_maps(attention_maps: Dict[str, torch.Tensor], images: torch.Tensor, captions: List[str], save_dir: Optional[str] = None, model: Optional[nn.Module] = None) -> None",
-                "brief_description": "Visualize attention maps between images and texts"
+                "brief_description": "Visualize attention maps between images and texts",
             },
             {
                 "name": "visualize_test_samples",
                 "signature": "visualize_test_samples(model: nn.Module, test_dataset: Any, device: torch.device, save_path: str, num_samples: int = 10) -> float",
-                "brief_description": "Visualize test samples with their matched captions"
+                "brief_description": "Visualize test samples with their matched captions",
             },
             {
                 "name": "count_parameters",
                 "signature": "count_parameters(model: nn.Module) -> int",
-                "brief_description": "Count trainable parameters in a model"
-            }
+                "brief_description": "Count trainable parameters in a model",
+            },
         ],
         "external_dependencies": ["matplotlib", "seaborn", "torch", "sklearn", "numpy", "tqdm"],
-        "complexity_score": 7  # Increased complexity for multimodal visualization
+        "complexity_score": 7,  # Increased complexity for multimodal visualization
     }

@@ -15,13 +15,10 @@ class TestConstitutionalPrinciple:
 
     def setup_method(self):
         """Setup test fixtures."""
+
         # Simple evaluation function that always flags
         def eval_always_flag(text: str) -> Dict[str, Any]:
-            return {
-                "flagged": True,
-                "reason": "Test flagging",
-                "score": 0.8
-            }
+            return {"flagged": True, "reason": "Test flagging", "score": 0.8}
 
         # Evaluation function that flags if "bad" in text
         def eval_contains_bad(text: str) -> Dict[str, Any]:
@@ -29,16 +26,12 @@ class TestConstitutionalPrinciple:
             return {
                 "flagged": flagged,
                 "reason": "Contains 'bad'" if flagged else "Clean",
-                "score": 1.0 if flagged else 0.0
+                "score": 1.0 if flagged else 0.0,
             }
 
         # Evaluation function that never flags
         def eval_never_flag(text: str) -> Dict[str, Any]:
-            return {
-                "flagged": False,
-                "reason": "Always passes",
-                "score": 0.0
-            }
+            return {"flagged": False, "reason": "Always passes", "score": 0.0}
 
         self.eval_always_flag = eval_always_flag
         self.eval_contains_bad = eval_contains_bad
@@ -51,7 +44,7 @@ class TestConstitutionalPrinciple:
             description="Test description",
             evaluation_fn=self.eval_always_flag,
             weight=0.5,
-            enabled=True
+            enabled=True,
         )
 
         assert principle.name == "test_principle"
@@ -63,9 +56,7 @@ class TestConstitutionalPrinciple:
     def test_principle_default_values(self):
         """Test principle initialization with default values."""
         principle = ConstitutionalPrinciple(
-            name="test",
-            description="desc",
-            evaluation_fn=self.eval_always_flag
+            name="test", description="desc", evaluation_fn=self.eval_always_flag
         )
 
         assert principle.weight == 1.0
@@ -74,10 +65,7 @@ class TestConstitutionalPrinciple:
     def test_principle_evaluate_enabled(self):
         """Test evaluation when principle is enabled."""
         principle = ConstitutionalPrinciple(
-            name="test",
-            description="desc",
-            evaluation_fn=self.eval_contains_bad,
-            weight=0.7
+            name="test", description="desc", evaluation_fn=self.eval_contains_bad, weight=0.7
         )
 
         result = principle.evaluate("This is bad text")
@@ -95,7 +83,7 @@ class TestConstitutionalPrinciple:
             description="desc",
             evaluation_fn=self.eval_always_flag,
             weight=0.7,
-            enabled=False
+            enabled=False,
         )
 
         result = principle.evaluate("Any text")
@@ -109,9 +97,7 @@ class TestConstitutionalPrinciple:
     def test_principle_evaluate_clean_text(self):
         """Test evaluation with clean text."""
         principle = ConstitutionalPrinciple(
-            name="test",
-            description="desc",
-            evaluation_fn=self.eval_contains_bad
+            name="test", description="desc", evaluation_fn=self.eval_contains_bad
         )
 
         result = principle.evaluate("This is good text")
@@ -127,7 +113,7 @@ class TestConstitutionalPrinciple:
             description="desc",
             evaluation_fn=self.eval_always_flag,
             weight=0.5,
-            enabled=True
+            enabled=True,
         )
 
         repr_str = repr(principle)
@@ -138,10 +124,7 @@ class TestConstitutionalPrinciple:
     def test_principle_repr_disabled(self):
         """Test string representation when disabled."""
         principle = ConstitutionalPrinciple(
-            name="test",
-            description="desc",
-            evaluation_fn=self.eval_always_flag,
-            enabled=False
+            name="test", description="desc", evaluation_fn=self.eval_always_flag, enabled=False
         )
 
         repr_str = repr(principle)
@@ -149,6 +132,7 @@ class TestConstitutionalPrinciple:
 
     def test_principle_with_complex_evaluation(self):
         """Test principle with complex evaluation function."""
+
         def complex_eval(text: str) -> Dict[str, Any]:
             word_count = len(text.split())
             flagged = word_count > 10
@@ -156,13 +140,11 @@ class TestConstitutionalPrinciple:
                 "flagged": flagged,
                 "reason": f"Word count: {word_count}",
                 "word_count": word_count,
-                "details": {"threshold": 10}
+                "details": {"threshold": 10},
             }
 
         principle = ConstitutionalPrinciple(
-            name="length_check",
-            description="Check text length",
-            evaluation_fn=complex_eval
+            name="length_check", description="Check text length", evaluation_fn=complex_eval
         )
 
         result = principle.evaluate("Short text")
@@ -180,7 +162,7 @@ class TestConstitutionalPrinciple:
                 name=f"test_{weight}",
                 description="desc",
                 evaluation_fn=self.eval_always_flag,
-                weight=weight
+                weight=weight,
             )
 
             result = principle.evaluate("test")
@@ -189,9 +171,7 @@ class TestConstitutionalPrinciple:
     def test_principle_empty_text(self):
         """Test principle evaluation with empty text."""
         principle = ConstitutionalPrinciple(
-            name="test",
-            description="desc",
-            evaluation_fn=self.eval_contains_bad
+            name="test", description="desc", evaluation_fn=self.eval_contains_bad
         )
 
         result = principle.evaluate("")
@@ -204,13 +184,14 @@ class TestConstitutionalFramework:
 
     def setup_method(self):
         """Setup test fixtures."""
+
         # Create sample evaluation functions
         def eval_harm(text: str) -> Dict[str, Any]:
             harmful_words = ["kill", "hurt", "destroy"]
             flagged = any(word in text.lower() for word in harmful_words)
             return {
                 "flagged": flagged,
-                "reason": "Contains harmful content" if flagged else "No harm detected"
+                "reason": "Contains harmful content" if flagged else "No harm detected",
             }
 
         def eval_truthfulness(text: str) -> Dict[str, Any]:
@@ -218,16 +199,13 @@ class TestConstitutionalFramework:
             flagged = any(word in text.lower() for word in lie_indicators)
             return {
                 "flagged": flagged,
-                "reason": "Contains absolute claims" if flagged else "Truthful"
+                "reason": "Contains absolute claims" if flagged else "Truthful",
             }
 
         def eval_fairness(text: str) -> Dict[str, Any]:
             bias_words = ["all", "every", "none"]
             flagged = any(word in text.lower() for word in bias_words)
-            return {
-                "flagged": flagged,
-                "reason": "Contains generalization" if flagged else "Fair"
-            }
+            return {"flagged": flagged, "reason": "Contains generalization" if flagged else "Fair"}
 
         self.eval_harm = eval_harm
         self.eval_truthfulness = eval_truthfulness
@@ -238,21 +216,21 @@ class TestConstitutionalFramework:
             name="harm_prevention",
             description="Prevents harmful content",
             evaluation_fn=eval_harm,
-            weight=1.0
+            weight=1.0,
         )
 
         self.truth_principle = ConstitutionalPrinciple(
             name="truthfulness",
             description="Ensures truthful responses",
             evaluation_fn=eval_truthfulness,
-            weight=0.8
+            weight=0.8,
         )
 
         self.fairness_principle = ConstitutionalPrinciple(
             name="fairness",
             description="Ensures fair treatment",
             evaluation_fn=eval_fairness,
-            weight=0.6
+            weight=0.6,
         )
 
     def test_framework_initialization(self):
@@ -460,12 +438,7 @@ class TestConstitutionalFramework:
         framework.add_principle(self.harm_principle)
         framework.add_principle(self.truth_principle)
 
-        texts = [
-            "Safe text",
-            "This will hurt",
-            "Definitely safe",
-            "All people are the same"
-        ]
+        texts = ["Safe text", "This will hurt", "Definitely safe", "All people are the same"]
 
         results = framework.batch_evaluate(texts)
 
@@ -533,8 +506,8 @@ class TestConstitutionalFramework:
         assert stats["principle_violation_counts"]["harm_prevention"] == 2
         assert stats["principle_violation_counts"]["truthfulness"] == 1
         assert stats["principle_violation_counts"]["fairness"] == 1
-        assert stats["principle_violation_rates"]["harm_prevention"] == 2/3
-        assert stats["principle_violation_rates"]["truthfulness"] == 1/3
+        assert stats["principle_violation_rates"]["harm_prevention"] == 2 / 3
+        assert stats["principle_violation_rates"]["truthfulness"] == 1 / 3
 
     def test_clear_history(self):
         """Test clearing evaluation history."""
@@ -614,6 +587,7 @@ class TestEdgeCases:
 
     def test_evaluation_with_all_disabled_principles(self):
         """Test evaluation when all principles are disabled."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": True, "reason": "Test"}
 
@@ -628,14 +602,11 @@ class TestEdgeCases:
 
     def test_principle_with_exception_in_evaluation(self):
         """Test handling of exceptions in evaluation function."""
+
         def eval_raises_exception(text: str) -> Dict[str, Any]:
             raise ValueError("Evaluation error")
 
-        principle = ConstitutionalPrinciple(
-            "error_principle",
-            "desc",
-            eval_raises_exception
-        )
+        principle = ConstitutionalPrinciple("error_principle", "desc", eval_raises_exception)
 
         framework = ConstitutionalFramework()
         framework.add_principle(principle)
@@ -646,6 +617,7 @@ class TestEdgeCases:
 
     def test_very_long_text_evaluation(self):
         """Test evaluation with very long text."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": len(text) > 1000, "reason": "Length check"}
 
@@ -661,6 +633,7 @@ class TestEdgeCases:
 
     def test_empty_text_evaluation(self):
         """Test evaluation with empty text."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": len(text) == 0, "reason": "Empty"}
 
@@ -675,6 +648,7 @@ class TestEdgeCases:
 
     def test_unicode_text_evaluation(self):
         """Test evaluation with unicode text."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": "🚫" in text, "reason": "Emoji check"}
 
@@ -688,6 +662,7 @@ class TestEdgeCases:
 
     def test_principle_weight_zero(self):
         """Test principle with zero weight."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": True, "reason": "Always flags"}
 
@@ -702,6 +677,7 @@ class TestEdgeCases:
 
     def test_principle_negative_weight(self):
         """Test principle with negative weight."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": True, "reason": "Always flags"}
 
@@ -716,6 +692,7 @@ class TestEdgeCases:
 
     def test_very_high_weight(self):
         """Test principle with very high weight."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": True, "reason": "Always flags"}
 
@@ -729,6 +706,7 @@ class TestEdgeCases:
 
     def test_multiple_evaluations_same_text(self):
         """Test evaluating the same text multiple times."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": "bad" in text, "reason": "Check"}
 
@@ -746,6 +724,7 @@ class TestEdgeCases:
 
     def test_batch_evaluate_with_mixed_results(self):
         """Test batch evaluation with mix of clean and flagged texts."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": "bad" in text.lower(), "reason": "Check"}
 
@@ -761,6 +740,7 @@ class TestEdgeCases:
 
     def test_evaluation_result_contains_all_expected_keys(self):
         """Test that evaluation result contains all expected keys."""
+
         def eval_fn(text: str) -> Dict[str, Any]:
             return {"flagged": False, "reason": "Test"}
 
@@ -776,7 +756,7 @@ class TestEdgeCases:
             "flagged_principles",
             "weighted_score",
             "num_principles_evaluated",
-            "text_length"
+            "text_length",
         ]
 
         for key in required_keys:

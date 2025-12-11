@@ -51,15 +51,10 @@ class AdamW(optim.AdamW):
         eps: float = 1e-8,
         weight_decay: float = 0,
         amsgrad: bool = False,
-        clip_grad: Optional[float] = None
+        clip_grad: Optional[float] = None,
     ):
         super().__init__(
-            params,
-            lr=lr,
-            betas=betas,
-            eps=eps,
-            weight_decay=weight_decay,
-            amsgrad=amsgrad
+            params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, amsgrad=amsgrad
         )
         self.clip_grad = clip_grad
 
@@ -74,7 +69,7 @@ class AdamW(optim.AdamW):
             float: The loss value if closure is provided
         """
         if self.clip_grad is not None:
-            torch.nn.utils.clip_grad_norm_(self.param_groups[0]['params'], self.clip_grad)
+            torch.nn.utils.clip_grad_norm_(self.param_groups[0]["params"], self.clip_grad)
         return super().step(closure)
 
 
@@ -105,7 +100,7 @@ class OneCycleLR(_LRScheduler):
         pct_start: float = 0.3,
         div_factor: float = 25.0,
         final_div_factor: float = 1e4,
-        anneal_strategy: str = 'cos'
+        anneal_strategy: str = "cos",
     ):
         self.optimizer = optimizer
         self.max_lr = max_lr
@@ -135,7 +130,7 @@ class OneCycleLR(_LRScheduler):
     def _init_lr(self):
         """Initialize learning rates for all parameter groups."""
         for group in self.optimizer.param_groups:
-            group['lr'] = self.base_lr
+            group["lr"] = self.base_lr
 
     def get_lr(self) -> List[float]:
         """
@@ -149,9 +144,13 @@ class OneCycleLR(_LRScheduler):
             lr = self.base_lr + (self.max_lr - self.base_lr) * (self.step_count / self.warmup_steps)
         else:
             # Annealing phase
-            progress = (self.step_count - self.warmup_steps) / (self.total_steps - self.warmup_steps)
-            if self.anneal_strategy == 'cos':
-                lr = self.final_lr + 0.5 * (self.max_lr - self.final_lr) * (1 + math.cos(math.pi * progress))
+            progress = (self.step_count - self.warmup_steps) / (
+                self.total_steps - self.warmup_steps
+            )
+            if self.anneal_strategy == "cos":
+                lr = self.final_lr + 0.5 * (self.max_lr - self.final_lr) * (
+                    1 + math.cos(math.pi * progress)
+                )
             else:  # linear
                 lr = self.max_lr + (self.final_lr - self.max_lr) * progress
         return [lr] * len(self.optimizer.param_groups)
@@ -168,7 +167,7 @@ class OneCycleLR(_LRScheduler):
         """
         self.step_count += 1
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
-            param_group['lr'] = lr
+            param_group["lr"] = lr
         return self.optimizer.step(closure) if closure is not None else None
 
 
@@ -186,13 +185,7 @@ class CosineAnnealingLR(_LRScheduler):
         warmup_steps: Number of warmup steps
     """
 
-    def __init__(
-        self,
-        optimizer,
-        T_max: int,
-        eta_min: float = 0,
-        warmup_steps: int = 0
-    ):
+    def __init__(self, optimizer, T_max: int, eta_min: float = 0, warmup_steps: int = 0):
         self.T_max = T_max
         self.eta_min = eta_min
         self.warmup_steps = warmup_steps
@@ -236,11 +229,7 @@ class LinearWarmupLR(_LRScheduler):
     """
 
     def __init__(
-        self,
-        optimizer,
-        warmup_steps: int,
-        start_lr: float = 0,
-        target_lr: Optional[float] = None
+        self, optimizer, warmup_steps: int, start_lr: float = 0, target_lr: Optional[float] = None
     ):
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr
@@ -290,9 +279,7 @@ class GradientClipper:
             model: The model whose gradients should be clipped
         """
         torch.nn.utils.clip_grad_norm_(
-            model.parameters(),
-            max_norm=self.max_norm,
-            norm_type=self.norm_type
+            model.parameters(), max_norm=self.max_norm, norm_type=self.norm_type
         )
 
 
@@ -317,11 +304,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "step",
                         "signature": "step(self, closure=None)",
-                        "brief_description": "Performs a single optimization step with optional gradient clipping"
+                        "brief_description": "Performs a single optimization step with optional gradient clipping",
                     }
                 ],
                 "inheritance": "optim.AdamW",
-                "dependencies": ["torch", "torch.optim"]
+                "dependencies": ["torch", "torch.optim"],
             },
             {
                 "name": "OneCycleLR",
@@ -330,16 +317,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "get_lr",
                         "signature": "get_lr(self) -> List[float]",
-                        "brief_description": "Computes learning rates based on the one-cycle policy"
+                        "brief_description": "Computes learning rates based on the one-cycle policy",
                     },
                     {
                         "name": "step",
                         "signature": "step(self, closure=None)",
-                        "brief_description": "Performs a scheduler step and updates learning rates"
-                    }
+                        "brief_description": "Performs a scheduler step and updates learning rates",
+                    },
                 ],
                 "inheritance": "_LRScheduler",
-                "dependencies": ["torch", "torch.optim.lr_scheduler"]
+                "dependencies": ["torch", "torch.optim.lr_scheduler"],
             },
             {
                 "name": "CosineAnnealingLR",
@@ -348,12 +335,12 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "get_lr",
                         "signature": "get_lr(self) -> List[float]",
-                        "brief_description": "Computes learning rates based on cosine annealing"
+                        "brief_description": "Computes learning rates based on cosine annealing",
                     }
                 ],
                 "inheritance": "_LRScheduler",
-                "dependencies": ["torch", "torch.optim.lr_scheduler"]
-            }
+                "dependencies": ["torch", "torch.optim.lr_scheduler"],
+            },
         ],
         "external_dependencies": ["torch"],
         "complexity_score": 8,  # High complexity due to multiple optimizer and scheduler implementations

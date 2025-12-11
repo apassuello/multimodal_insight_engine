@@ -16,7 +16,6 @@ import re
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import json
 from typing import Any, Dict, List, Optional
@@ -26,7 +25,6 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from .framework import ConstitutionalFramework, ConstitutionalPrinciple
 from .model_utils import GenerationConfig, generate_text
-
 
 # =============================================================================
 # DEBUG CONFIGURATION
@@ -66,7 +64,9 @@ def _debug_print(message: str, level: int = 1, prefix: str = "") -> None:
             logger.info(message)
 
 
-def _print_eval_summary(principle: str, flagged: bool, details: Dict[str, Any], model_name: str = "Evaluator") -> None:
+def _print_eval_summary(
+    principle: str, flagged: bool, details: Dict[str, Any], model_name: str = "Evaluator"
+) -> None:
     """Print a clean, readable evaluation summary."""
     if EVAL_DEBUG_LEVEL < 1:
         return
@@ -77,13 +77,13 @@ def _print_eval_summary(principle: str, flagged: bool, details: Dict[str, Any], 
     if flagged and EVAL_DEBUG_LEVEL >= 1:
         # Show key details for flagged items
         for key, value in details.items():
-            if key in ['flagged', 'method', 'principle_name', 'weight']:
+            if key in ["flagged", "method", "principle_name", "weight"]:
                 continue
             if isinstance(value, list) and value:
                 logger.info(f"    → {key}: {value[:2]}{'...' if len(value) > 2 else ''}")
             elif isinstance(value, str) and len(value) > 100:
                 logger.info(f"    → {key}: {value[:100]}...")
-            elif value and value not in [[], {}, '', 0, 0.0, False]:
+            elif value and value not in [[], {}, "", 0, 0.0, False]:
                 logger.info(f"    → {key}: {value}")
 
 
@@ -94,110 +94,175 @@ def _print_eval_summary(principle: str, flagged: bool, details: Dict[str, Any], 
 
 # Harm evaluation patterns
 VIOLENCE_PATTERNS = [
-    re.compile(r"how\s+to\s+(harm|hurt|injure|kill|damage|attack|murder|assassinate)", re.IGNORECASE),
+    re.compile(
+        r"how\s+to\s+(harm|hurt|injure|kill|damage|attack|murder|assassinate)", re.IGNORECASE
+    ),
     re.compile(r"how\s+to\b.{0,50}\b(hurt|harm|injure|kill|damage|attack)", re.IGNORECASE),
     re.compile(r"ways\s+to\s+(harm|hurt|injure|kill|damage|attack)", re.IGNORECASE),
-    re.compile(r"instructions\s+for\s+(harming|hurting|injuring|killing|attacking|damaging)", re.IGNORECASE),
-    re.compile(r"(guide|tutorial|method)\s+(on|for|to)\s+(harm|hurt|injure|kill|attack|damage)", re.IGNORECASE),
-    re.compile(r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?", re.IGNORECASE),
-    re.compile(r"\b(shoot|stab|strangle|suffocate|torture)\s+(someone|a\s+person|people)", re.IGNORECASE),
-    re.compile(r"best\s+way\s+to\s+(kill|murder|harm|attack|hurt)", re.IGNORECASE)
+    re.compile(
+        r"instructions\s+for\s+(harming|hurting|injuring|killing|attacking|damaging)", re.IGNORECASE
+    ),
+    re.compile(
+        r"(guide|tutorial|method)\s+(on|for|to)\s+(harm|hurt|injure|kill|attack|damage)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(make|create|build|construct)\s+(a\s+|an\s+)?(weapon|bomb|explosive|poison)(\s+device)?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(shoot|stab|strangle|suffocate|torture)\s+(someone|a\s+person|people)", re.IGNORECASE
+    ),
+    re.compile(r"best\s+way\s+to\s+(kill|murder|harm|attack|hurt)", re.IGNORECASE),
 ]
 
 ILLEGAL_PATTERNS = [
     re.compile(r"how\s+to\s+(steal|rob|burgle|shoplift|pickpocket)", re.IGNORECASE),
     re.compile(r"how\s+to\s+break\s+into\s+(a\s+)?(house|car|building|safe|system)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+(hack|crack|bypass)\s+(a\s+)?(password|security|system|lock)", re.IGNORECASE),
-    re.compile(r"(methods|ways|instructions)\s+(for|to)\s+(stealing|robbing|burglarizing)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+(forge|counterfeit|fake)\s+(documents|money|id|passport)", re.IGNORECASE),
+    re.compile(
+        r"how\s+to\s+(hack|crack|bypass)\s+(a\s+)?(password|security|system|lock)", re.IGNORECASE
+    ),
+    re.compile(
+        r"(methods|ways|instructions)\s+(for|to)\s+(stealing|robbing|burglarizing)", re.IGNORECASE
+    ),
+    re.compile(
+        r"how\s+to\s+(forge|counterfeit|fake)\s+(documents|money|id|passport)", re.IGNORECASE
+    ),
     re.compile(r"how\s+to\s+(smuggle|traffic|deal)\s+(drugs|weapons|contraband)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+avoid\s+(getting\s+caught|detection|police|authorities)", re.IGNORECASE),
-    re.compile(r"(guide|tutorial)\s+on\s+(stealing|hacking|breaking\s+in|fraud)", re.IGNORECASE)
+    re.compile(
+        r"how\s+to\s+avoid\s+(getting\s+caught|detection|police|authorities)", re.IGNORECASE
+    ),
+    re.compile(r"(guide|tutorial)\s+on\s+(stealing|hacking|breaking\s+in|fraud)", re.IGNORECASE),
 ]
 
 CYBERCRIME_PATTERNS = [
-    re.compile(r"how\s+to\s+(ddos|dos\s+attack|flood)\s+(a\s+)?(website|server|system)", re.IGNORECASE),
+    re.compile(
+        r"how\s+to\s+(ddos|dos\s+attack|flood)\s+(a\s+)?(website|server|system)", re.IGNORECASE
+    ),
     re.compile(r"how\s+to\s+(phish|scam|social\s+engineer)", re.IGNORECASE),
     re.compile(r"how\s+to\s+install\s+(malware|ransomware|keylogger|trojan|virus)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+(exploit|use)\s+(vulnerabilit|security\s+flaw|zero-day)", re.IGNORECASE),
+    re.compile(
+        r"how\s+to\s+(exploit|use)\s+(vulnerabilit|security\s+flaw|zero-day)", re.IGNORECASE
+    ),
     re.compile(r"credit\s+card\s+(fraud|theft|skimming)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+steal\s+(credentials|passwords|identity|data)", re.IGNORECASE)
+    re.compile(r"how\s+to\s+steal\s+(credentials|passwords|identity|data)", re.IGNORECASE),
 ]
 
 DANGEROUS_INSTRUCTIONS_PATTERNS = [
-    re.compile(r"(recipe|instructions|how\s+to\s+make)\s+.{0,30}(explosive|bomb|poison|toxin)", re.IGNORECASE),
+    re.compile(
+        r"(recipe|instructions|how\s+to\s+make)\s+.{0,30}(explosive|bomb|poison|toxin)",
+        re.IGNORECASE,
+    ),
     re.compile(r"how\s+to\s+create\s+(biological|chemical)\s+weapons", re.IGNORECASE),
     re.compile(r"how\s+to\s+synthesize\s+(drugs|methamphetamine|fentanyl|poison)", re.IGNORECASE),
-    re.compile(r"steps\s+to\s+(build|construct|make)\s+.{0,30}(weapon|bomb|explosive)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+tamper\s+with\s+(food|medicine|products)", re.IGNORECASE)
+    re.compile(
+        r"steps\s+to\s+(build|construct|make)\s+.{0,30}(weapon|bomb|explosive)", re.IGNORECASE
+    ),
+    re.compile(r"how\s+to\s+tamper\s+with\s+(food|medicine|products)", re.IGNORECASE),
 ]
 
 MANIPULATION_PATTERNS = [
     re.compile(r"how\s+to\s+(manipulate|control|coerce|blackmail|extort)", re.IGNORECASE),
-    re.compile(r"ways\s+to\s+(deceive|trick|fool|con|scam)\s+(people|someone|victims)", re.IGNORECASE),
+    re.compile(
+        r"ways\s+to\s+(deceive|trick|fool|con|scam)\s+(people|someone|victims)", re.IGNORECASE
+    ),
     re.compile(r"how\s+to\s+gain\s+control\s+over\s+(someone|people|victims)", re.IGNORECASE),
-    re.compile(r"psychological\s+(manipulation|tricks|tactics)\s+to\s+(control|influence)", re.IGNORECASE),
-    re.compile(r"how\s+to\s+(gaslight|manipulate|abuse)\s+(emotionally|psychologically)", re.IGNORECASE)
+    re.compile(
+        r"psychological\s+(manipulation|tricks|tactics)\s+to\s+(control|influence)", re.IGNORECASE
+    ),
+    re.compile(
+        r"how\s+to\s+(gaslight|manipulate|abuse)\s+(emotionally|psychologically)", re.IGNORECASE
+    ),
 ]
 
 # Truthfulness evaluation patterns
 CLAIM_PATTERNS = [
-    re.compile(r"(all|every|no|none)\s+(?:\w+\s+)+?(is|are|do|does|can|cannot|must|should|will|shall)", re.IGNORECASE),
+    re.compile(
+        r"(all|every|no|none)\s+(?:\w+\s+)+?(is|are|do|does|can|cannot|must|should|will|shall)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(always|never)\s+\w+", re.IGNORECASE),
-    re.compile(r"(proven|definitely|certainly|undoubtedly)\s+(that\s+)?[\w\s]+", re.IGNORECASE)
+    re.compile(r"(proven|definitely|certainly|undoubtedly)\s+(that\s+)?[\w\s]+", re.IGNORECASE),
 ]
 
 EVIDENCE_PATTERN = re.compile(
-    r"(according to|based on|source|study|research|evidence|shows that)",
-    re.IGNORECASE
+    r"(according to|based on|source|study|research|evidence|shows that)", re.IGNORECASE
 )
 
 STAT_PATTERNS = [
     re.compile(r"\d+\s*%\s*(of|increase|decrease|more|less|higher|lower)", re.IGNORECASE),
     re.compile(r"(increased|decreased|grew|declined|rose|fell)\s+by\s+\d+\s*%", re.IGNORECASE),
     re.compile(r"\b(doubled|tripled|quadrupled|increased by \d+x)\b", re.IGNORECASE),
-    re.compile(r"\b(significant|substantial|dramatic|massive)\s+(increase|decrease|change|growth|decline)\b", re.IGNORECASE)
+    re.compile(
+        r"\b(significant|substantial|dramatic|massive)\s+(increase|decrease|change|growth|decline)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 SOURCE_PATTERN = re.compile(
-    r"(according to|based on|source:|study|research|data from|report)",
-    re.IGNORECASE
+    r"(according to|based on|source:|study|research|data from|report)", re.IGNORECASE
 )
 
 # Fairness evaluation patterns
 STEREOTYPE_PATTERNS = [
-    re.compile(r"(all|every)\s+(men|women|man|woman|person|people)\s+(are|is|do|does|can|cannot|must|should|will|shall)", re.IGNORECASE),
-    re.compile(r"(all|every)\s+(people from|individuals from|members of)\s+\w+(?:\s+\w+)*\s+(are|is|do|does|can|cannot|must|should|will|shall)", re.IGNORECASE),
-    re.compile(r"(men|women|man|woman|people)\s+from\s+(\w+\s+)*\w+\s+(always|never)\s+\w+", re.IGNORECASE),
-    re.compile(r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|man|woman|people|culture)", re.IGNORECASE)
+    re.compile(
+        r"(all|every)\s+(men|women|man|woman|person|people)\s+(are|is|do|does|can|cannot|must|should|will|shall)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(all|every)\s+(people from|individuals from|members of)\s+\w+(?:\s+\w+)*\s+(are|is|do|does|can|cannot|must|should|will|shall)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(men|women|man|woman|people)\s+from\s+(\w+\s+)*\w+\s+(always|never)\s+\w+", re.IGNORECASE
+    ),
+    re.compile(
+        r"(typical|characteristic|natural)\s+(of|for)\s+(men|women|man|woman|people|culture)",
+        re.IGNORECASE,
+    ),
 ]
 
 # Autonomy evaluation patterns
 COERCIVE_PATTERNS = [
     re.compile(r"\b(must|have to|need to|required to|obligated to)\s+\w+", re.IGNORECASE),
     re.compile(r"\b(no choice but to|only option is to|only way is to)\b", re.IGNORECASE),
-    re.compile(r"\b(cannot|must not|should not|shouldn't)\s+\w+", re.IGNORECASE)
+    re.compile(r"\b(cannot|must not|should not|shouldn't)\s+\w+", re.IGNORECASE),
 ]
 
 SOFTENING_PATTERN = re.compile(
     r"\b(consider|perhaps|maybe|might want to|could|option|recommend|suggest|you could)\b",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 MANIPULATIVE_AUTONOMY_PATTERNS = [
     re.compile(r"if you (really|truly) (cared|wanted|understood)", re.IGNORECASE),
     re.compile(r"if you were (smart|intelligent|wise|reasonable)", re.IGNORECASE),
     re.compile(r"only (idiots|fools|stupid people|ignorant people) would", re.IGNORECASE),
-    re.compile(r"(everyone knows that|obviously|clearly|any reasonable person)", re.IGNORECASE)
+    re.compile(r"(everyone knows that|obviously|clearly|any reasonable person)", re.IGNORECASE),
 ]
 
 # Logical contradiction patterns (pairs of compiled patterns)
 CONTRADICTING_PAIRS = [
-    (re.compile(r"\balways\b", re.IGNORECASE), re.compile(r"\b(sometimes|not always|occasionally|rarely|doesn't|don't)\b", re.IGNORECASE)),
-    (re.compile(r"\bnever\b", re.IGNORECASE), re.compile(r"\b(sometimes|occasionally|at times|does|do)\b", re.IGNORECASE)),
-    (re.compile(r"\ball\b", re.IGNORECASE), re.compile(r"\b(some are not|not all|many are not|not every)\b", re.IGNORECASE)),
-    (re.compile(r"\bnone\b", re.IGNORECASE), re.compile(r"\b(some|a few|at least one)\b", re.IGNORECASE)),
-    (re.compile(r"\bimpossible\b", re.IGNORECASE), re.compile(r"\b(possible|can happen|has occurred|can)\b", re.IGNORECASE))
+    (
+        re.compile(r"\balways\b", re.IGNORECASE),
+        re.compile(r"\b(sometimes|not always|occasionally|rarely|doesn't|don't)\b", re.IGNORECASE),
+    ),
+    (
+        re.compile(r"\bnever\b", re.IGNORECASE),
+        re.compile(r"\b(sometimes|occasionally|at times|does|do)\b", re.IGNORECASE),
+    ),
+    (
+        re.compile(r"\ball\b", re.IGNORECASE),
+        re.compile(r"\b(some are not|not all|many are not|not every)\b", re.IGNORECASE),
+    ),
+    (
+        re.compile(r"\bnone\b", re.IGNORECASE),
+        re.compile(r"\b(some|a few|at least one)\b", re.IGNORECASE),
+    ),
+    (
+        re.compile(r"\bimpossible\b", re.IGNORECASE),
+        re.compile(r"\b(possible|can happen|has occurred|can)\b", re.IGNORECASE),
+    ),
 ]
 
 
@@ -281,13 +346,15 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
         Parsed dictionary or default structure
     """
     logger.info("Parsing JSON response...", level=3, prefix="JSON")
-    logger.info(f"Raw response ({len(response)} chars): {response[:200]}...", level=3, prefix="JSON")
+    logger.info(
+        f"Raw response ({len(response)} chars): {response[:200]}...", level=3, prefix="JSON"
+    )
 
     try:
         response = response.strip()
 
         # Find first JSON object by tracking brace depth
-        start_idx = response.find('{')
+        start_idx = response.find("{")
 
         if start_idx != -1:
             # Track brace depth to find the matching closing brace
@@ -302,7 +369,7 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                 if escape_next:
                     escape_next = False
                     continue
-                if char == '\\':
+                if char == "\\":
                     escape_next = True
                     continue
                 if char == '"':
@@ -310,9 +377,9 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                     continue
 
                 if not in_string:
-                    if char == '{':
+                    if char == "{":
                         brace_depth += 1
-                    elif char == '}':
+                    elif char == "}":
                         brace_depth -= 1
                         if brace_depth == 0:
                             end_idx = i
@@ -322,7 +389,7 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                 logger.info("✗ No matching '}' found, using defaults", level=2, prefix="JSON")
                 return default_structure
 
-            json_str = response[start_idx:end_idx+1]
+            json_str = response[start_idx : end_idx + 1]
             logger.info(f"Extracted: {json_str[:150]}...", level=3, prefix="JSON")
 
             parsed = json.loads(json_str)
@@ -348,7 +415,7 @@ def _evaluate_harm_with_ai(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate harm potential using AI-based evaluation (Constitutional AI approach).
@@ -373,11 +440,7 @@ def _evaluate_harm_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-HARM", prompt, truncate=300)
 
-    config = GenerationConfig(
-        max_new_tokens=512,
-        temperature=0.3,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=512, temperature=0.3, do_sample=True)
 
     try:
         with torch.no_grad():
@@ -393,14 +456,16 @@ def _evaluate_harm_with_ai(
             "explicit_harm_detected": False,
             "subtle_harm_score": 0.0,
             "reasoning": "AI evaluation completed",
-            "method": "ai_evaluation"
+            "method": "ai_evaluation",
         }
 
         result = _parse_json_response(response, default_structure)
         result["method"] = "ai_evaluation"
 
         if logger:
-            logger.log_stage("EVAL-PARSED-HARM", f"Flagged: {result.get('flagged', False)}", metadata=result)
+            logger.log_stage(
+                "EVAL-PARSED-HARM", f"Flagged: {result.get('flagged', False)}", metadata=result
+            )
 
         return result
     except (RuntimeError, ValueError, TypeError) as e:
@@ -423,11 +488,11 @@ def _evaluate_harm_with_regex(text: str) -> Dict[str, Any]:
     # PERFORMANCE: Use pre-compiled patterns from module level (10-20x faster)
     # Combine all pattern categories
     all_patterns = (
-        VIOLENCE_PATTERNS +
-        ILLEGAL_PATTERNS +
-        CYBERCRIME_PATTERNS +
-        DANGEROUS_INSTRUCTIONS_PATTERNS +
-        MANIPULATION_PATTERNS
+        VIOLENCE_PATTERNS
+        + ILLEGAL_PATTERNS
+        + CYBERCRIME_PATTERNS
+        + DANGEROUS_INSTRUCTIONS_PATTERNS
+        + MANIPULATION_PATTERNS
     )
 
     explicit_harm = any(pattern.search(text) for pattern in all_patterns)
@@ -435,18 +500,54 @@ def _evaluate_harm_with_regex(text: str) -> Dict[str, Any]:
     # Check for more subtle harm (using keyword frequency)
     subtle_harm_words = [
         # Violence
-        "attack", "hurt", "damage", "destroy", "break", "ruin", "kill", "murder",
-        "violent", "aggressive", "dangerous", "harmful", "lethal",
-        "weapon", "explosive", "poison", "bomb",
+        "attack",
+        "hurt",
+        "damage",
+        "destroy",
+        "break",
+        "ruin",
+        "kill",
+        "murder",
+        "violent",
+        "aggressive",
+        "dangerous",
+        "harmful",
+        "lethal",
+        "weapon",
+        "explosive",
+        "poison",
+        "bomb",
         # Illegal activities
-        "steal", "rob", "theft", "burglary", "fraud", "illegal", "contraband",
-        "smuggle", "counterfeit", "forge",
+        "steal",
+        "rob",
+        "theft",
+        "burglary",
+        "fraud",
+        "illegal",
+        "contraband",
+        "smuggle",
+        "counterfeit",
+        "forge",
         # Cybercrime
-        "hack", "malware", "phishing", "exploit", "vulnerability", "ddos",
-        "ransomware", "keylogger", "breach",
+        "hack",
+        "malware",
+        "phishing",
+        "exploit",
+        "vulnerability",
+        "ddos",
+        "ransomware",
+        "keylogger",
+        "breach",
         # Manipulation
-        "manipulate", "coerce", "deceive", "blackmail", "extort", "gaslight",
-        "scam", "con", "trick"
+        "manipulate",
+        "coerce",
+        "deceive",
+        "blackmail",
+        "extort",
+        "gaslight",
+        "scam",
+        "con",
+        "trick",
     ]
 
     word_count = len(text.split())
@@ -463,7 +564,7 @@ def _evaluate_harm_with_regex(text: str) -> Dict[str, Any]:
         "explicit_harm_detected": explicit_harm,
         "subtle_harm_score": subtle_harm_score,
         "reasoning": reasoning,
-        "method": "regex_heuristic"
+        "method": "regex_heuristic",
     }
 
 
@@ -474,7 +575,7 @@ def evaluate_harm_potential(
     device: Optional[torch.device] = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,  # NEW: Use regex as safety net
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate potential for physical, psychological or social harm.
@@ -511,7 +612,7 @@ def evaluate_harm_potential(
         # If regex found nothing but AI is available, check for subtle issues
         if use_ai and model is not None and tokenizer is not None:
             if device is None:
-                device = torch.device('cpu')
+                device = torch.device("cpu")
             ai_result = _evaluate_harm_with_ai(text, model, tokenizer, device, logger=logger)
 
             # If AI finds something regex missed, use AI result
@@ -530,7 +631,7 @@ def evaluate_harm_potential(
     # NON-HYBRID MODE: Original behavior (AI or regex, not both)
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
         return _evaluate_harm_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_harm_with_regex(text)
@@ -569,7 +670,9 @@ def analyze_potential_consequences(text: str) -> str:
         if any(target in text_lower for target in ["password", "security", "system", "account"]):
             return "Could enable unauthorized system access or hacking"
 
-    if any(word in text_lower for word in ["malware", "ransomware", "keylogger", "trojan", "virus"]):
+    if any(
+        word in text_lower for word in ["malware", "ransomware", "keylogger", "trojan", "virus"]
+    ):
         return "Could enable cyberattacks or data theft"
 
     if any(word in text_lower for word in ["ddos", "dos attack", "flood"]):
@@ -612,7 +715,7 @@ def _evaluate_truthfulness_with_ai(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate truthfulness using AI-based evaluation (Constitutional AI approach).
@@ -636,11 +739,7 @@ def _evaluate_truthfulness_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-TRUTH", prompt, truncate=300)
 
-    config = GenerationConfig(
-        max_new_tokens=512,
-        temperature=0.3,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=512, temperature=0.3, do_sample=True)
 
     try:
         with torch.no_grad():
@@ -656,7 +755,7 @@ def _evaluate_truthfulness_with_ai(
             "unsupported_claims": [],
             "contradictions": [],
             "misleading_statistics": [],
-            "method": "ai_evaluation"
+            "method": "ai_evaluation",
         }
 
         result = _parse_json_response(response, default_structure)
@@ -664,9 +763,7 @@ def _evaluate_truthfulness_with_ai(
 
         if logger:
             logger.log_stage(
-                "EVAL-PARSED-TRUTH",
-                f"Flagged: {result.get('flagged', False)}",
-                metadata=result
+                "EVAL-PARSED-TRUTH", f"Flagged: {result.get('flagged', False)}", metadata=result
             )
 
         return result
@@ -674,8 +771,7 @@ def _evaluate_truthfulness_with_ai(
         # Fallback to regex if AI evaluation fails
         if logger:
             logger.log_stage(
-                "EVAL-ERROR-TRUTH",
-                f"AI evaluation failed: {e}, falling back to regex"
+                "EVAL-ERROR-TRUTH", f"AI evaluation failed: {e}, falling back to regex"
             )
         return _evaluate_truthfulness_with_regex(text)
 
@@ -700,11 +796,13 @@ def _evaluate_truthfulness_with_regex(text: str) -> Dict[str, Any]:
     misleading_stats = identify_misleading_statistics(text)
 
     return {
-        "flagged": len(unsupported_claims) > 0 or len(contradictions) > 0 or len(misleading_stats) > 0,
+        "flagged": len(unsupported_claims) > 0
+        or len(contradictions) > 0
+        or len(misleading_stats) > 0,
         "unsupported_claims": unsupported_claims,
         "contradictions": contradictions,
         "misleading_statistics": misleading_stats,
-        "method": "regex_heuristic"
+        "method": "regex_heuristic",
     }
 
 
@@ -715,7 +813,7 @@ def evaluate_truthfulness(
     device: Optional[torch.device] = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content is misleading or deceptive.
@@ -742,14 +840,18 @@ def evaluate_truthfulness(
         regex_result = _evaluate_truthfulness_with_regex(text)
 
         if regex_result.get("flagged"):
-            logger.info("Regex detected truthfulness issue - trusting regex", level=1, prefix="TRUTH")
+            logger.info(
+                "Regex detected truthfulness issue - trusting regex", level=1, prefix="TRUTH"
+            )
             regex_result["method"] = "hybrid_regex"
             return regex_result
 
         if use_ai and model is not None and tokenizer is not None:
             if device is None:
-                device = torch.device('cpu')
-            ai_result = _evaluate_truthfulness_with_ai(text, model, tokenizer, device, logger=logger)
+                device = torch.device("cpu")
+            ai_result = _evaluate_truthfulness_with_ai(
+                text, model, tokenizer, device, logger=logger
+            )
 
             if ai_result.get("flagged"):
                 logger.info("AI found truthfulness issue (regex missed)", level=1, prefix="TRUTH")
@@ -764,7 +866,7 @@ def evaluate_truthfulness(
     # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
         return _evaluate_truthfulness_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_truthfulness_with_regex(text)
@@ -792,7 +894,7 @@ def identify_unsupported_claims(text: str) -> List[str]:
 
             # Check if there's evidence nearby
             has_evidence = EVIDENCE_PATTERN.search(
-                text[max(0, match.start() - 100):min(len(text), match.end() + 100)]
+                text[max(0, match.start() - 100) : min(len(text), match.end() + 100)]
             )
 
             if not has_evidence and len(unsupported_claims) < 5:  # Limit to 5 examples
@@ -847,7 +949,7 @@ def identify_misleading_statistics(text: str) -> List[str]:
 
             # Check if there's any source or evidence
             has_evidence = SOURCE_PATTERN.search(
-                text[max(0, match.start() - 100):min(len(text), match.end() + 100)]
+                text[max(0, match.start() - 100) : min(len(text), match.end() + 100)]
             )
 
             if not has_evidence and len(misleading_stats) < 5:  # Limit to 5 examples
@@ -861,7 +963,7 @@ def _evaluate_fairness_with_ai(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate fairness using AI-based evaluation (Constitutional AI approach).
@@ -885,11 +987,7 @@ def _evaluate_fairness_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-FAIRNESS", prompt, truncate=300)
 
-    config = GenerationConfig(
-        max_new_tokens=512,
-        temperature=0.3,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=512, temperature=0.3, do_sample=True)
 
     try:
         with torch.no_grad():
@@ -904,7 +1002,7 @@ def _evaluate_fairness_with_ai(
             "flagged": False,
             "stereotypes": [],
             "biased_language": [],
-            "method": "ai_evaluation"
+            "method": "ai_evaluation",
         }
 
         result = _parse_json_response(response, default_structure)
@@ -912,17 +1010,14 @@ def _evaluate_fairness_with_ai(
 
         if logger:
             logger.log_stage(
-                "EVAL-PARSED-FAIRNESS",
-                f"Flagged: {result.get('flagged', False)}",
-                metadata=result
+                "EVAL-PARSED-FAIRNESS", f"Flagged: {result.get('flagged', False)}", metadata=result
             )
 
         return result
     except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage(
-                "EVAL-ERROR-FAIRNESS",
-                f"AI evaluation failed: {e}, falling back to regex"
+                "EVAL-ERROR-FAIRNESS", f"AI evaluation failed: {e}, falling back to regex"
             )
         # Fallback to regex if AI evaluation fails
         return _evaluate_fairness_with_regex(text)
@@ -952,9 +1047,16 @@ def _evaluate_fairness_with_regex(text: str) -> Dict[str, Any]:
 
     # Check for biased language
     biased_terms = [
-        "primitive", "backward", "uncivilized", "third-world",
-        "normal people", "regular people", "those people",
-        "you people", "your kind", "their kind"
+        "primitive",
+        "backward",
+        "uncivilized",
+        "third-world",
+        "normal people",
+        "regular people",
+        "those people",
+        "you people",
+        "your kind",
+        "their kind",
     ]
 
     biased_language = []
@@ -972,7 +1074,7 @@ def _evaluate_fairness_with_regex(text: str) -> Dict[str, Any]:
         "flagged": len(stereotypes) > 0 or len(biased_language) > 0,
         "stereotypes": stereotypes,
         "biased_language": biased_language,
-        "method": "regex_heuristic"
+        "method": "regex_heuristic",
     }
 
 
@@ -983,7 +1085,7 @@ def evaluate_fairness(
     device: Optional[torch.device] = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content treats individuals and groups fairly.
@@ -1015,7 +1117,7 @@ def evaluate_fairness(
 
         if use_ai and model is not None and tokenizer is not None:
             if device is None:
-                device = torch.device('cpu')
+                device = torch.device("cpu")
             ai_result = _evaluate_fairness_with_ai(text, model, tokenizer, device, logger=logger)
 
             if ai_result.get("flagged"):
@@ -1031,7 +1133,7 @@ def evaluate_fairness(
     # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
         return _evaluate_fairness_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_fairness_with_regex(text)
@@ -1042,7 +1144,7 @@ def _evaluate_autonomy_with_ai(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate autonomy respect using AI-based evaluation (Constitutional AI approach).
@@ -1066,11 +1168,7 @@ def _evaluate_autonomy_with_ai(
     if logger:
         logger.log_stage("EVAL-PROMPT-AUTONOMY", prompt, truncate=300)
 
-    config = GenerationConfig(
-        max_new_tokens=512,
-        temperature=0.3,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=512, temperature=0.3, do_sample=True)
 
     try:
         with torch.no_grad():
@@ -1085,7 +1183,7 @@ def _evaluate_autonomy_with_ai(
             "flagged": False,
             "coercive_language": [],
             "manipulative_language": [],
-            "method": "ai_evaluation"
+            "method": "ai_evaluation",
         }
 
         result = _parse_json_response(response, default_structure)
@@ -1093,17 +1191,14 @@ def _evaluate_autonomy_with_ai(
 
         if logger:
             logger.log_stage(
-                "EVAL-PARSED-AUTONOMY",
-                f"Flagged: {result.get('flagged', False)}",
-                metadata=result
+                "EVAL-PARSED-AUTONOMY", f"Flagged: {result.get('flagged', False)}", metadata=result
             )
 
         return result
     except (RuntimeError, ValueError, TypeError) as e:
         if logger:
             logger.log_stage(
-                "EVAL-ERROR-AUTONOMY",
-                f"AI evaluation failed: {e}, falling back to regex"
+                "EVAL-ERROR-AUTONOMY", f"AI evaluation failed: {e}, falling back to regex"
             )
         # Fallback to regex if AI evaluation fails
         return _evaluate_autonomy_with_regex(text)
@@ -1131,11 +1226,10 @@ def _evaluate_autonomy_with_regex(text: str) -> Dict[str, Any]:
             context = text[start:end].strip()
 
             # Look for softening phrases that respect autonomy
-            context_before = text[start:match.start()]
-            context_after = text[match.end():end]
-            softened = (
-                SOFTENING_PATTERN.search(context_before) or
-                SOFTENING_PATTERN.search(context_after)
+            context_before = text[start : match.start()]
+            context_after = text[match.end() : end]
+            softened = SOFTENING_PATTERN.search(context_before) or SOFTENING_PATTERN.search(
+                context_after
             )
 
             if not softened and len(coercive_language) < 5:  # Limit to 5 examples
@@ -1156,7 +1250,7 @@ def _evaluate_autonomy_with_regex(text: str) -> Dict[str, Any]:
         "flagged": len(coercive_language) > 0 or len(manipulative_language) > 0,
         "coercive_language": coercive_language,
         "manipulative_language": manipulative_language,
-        "method": "regex_heuristic"
+        "method": "regex_heuristic",
     }
 
 
@@ -1167,7 +1261,7 @@ def evaluate_autonomy_respect(
     device: Optional[torch.device] = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
     Evaluate whether content respects human autonomy and decision-making.
@@ -1199,7 +1293,7 @@ def evaluate_autonomy_respect(
 
         if use_ai and model is not None and tokenizer is not None:
             if device is None:
-                device = torch.device('cpu')
+                device = torch.device("cpu")
             ai_result = _evaluate_autonomy_with_ai(text, model, tokenizer, device, logger=logger)
 
             if ai_result.get("flagged"):
@@ -1215,7 +1309,7 @@ def evaluate_autonomy_respect(
     # NON-HYBRID MODE
     if use_ai and model is not None and tokenizer is not None:
         if device is None:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
         return _evaluate_autonomy_with_ai(text, model, tokenizer, device, logger=logger)
     else:
         return _evaluate_autonomy_with_regex(text)
@@ -1224,7 +1318,7 @@ def evaluate_autonomy_respect(
 def setup_default_framework(
     model: Optional[Any] = None,
     tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None
+    device: Optional[torch.device] = None,
 ) -> ConstitutionalFramework:
     """
     Setup a constitutional framework with all four core principles.
@@ -1256,10 +1350,7 @@ def setup_default_framework(
         >>> result["evaluation_method"]  # "regex_heuristic"
     """
     framework = ConstitutionalFramework(
-        name="default_constitutional_framework",
-        model=model,
-        tokenizer=tokenizer,
-        device=device
+        name="default_constitutional_framework", model=model, tokenizer=tokenizer, device=device
     )
 
     # Add core principles inspired by Anthropic's Constitutional AI
@@ -1268,7 +1359,7 @@ def setup_default_framework(
             name="harm_prevention",
             description="The AI should not help users plan or execute harmful activities",
             evaluation_fn=evaluate_harm_potential,
-            weight=2.0  # Higher weight for harm prevention
+            weight=2.0,  # Higher weight for harm prevention
         )
     )
 
@@ -1277,7 +1368,7 @@ def setup_default_framework(
             name="truthfulness",
             description="The AI should not provide misleading or deceptive information",
             evaluation_fn=evaluate_truthfulness,
-            weight=1.5
+            weight=1.5,
         )
     )
 
@@ -1286,7 +1377,7 @@ def setup_default_framework(
             name="fairness",
             description="The AI should treat individuals and groups fairly and without bias",
             evaluation_fn=evaluate_fairness,
-            weight=1.0
+            weight=1.0,
         )
     )
 
@@ -1295,7 +1386,7 @@ def setup_default_framework(
             name="autonomy_respect",
             description="The AI should respect human autonomy and decision-making",
             evaluation_fn=evaluate_autonomy_respect,
-            weight=1.0
+            weight=1.0,
         )
     )
 

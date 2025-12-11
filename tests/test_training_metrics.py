@@ -42,12 +42,14 @@ class TestAccuracy:
         metric = Accuracy()
 
         # 2 out of 4 correct
-        pred = torch.tensor([
-            [0.9, 0.1],  # predicts 0, target 0 ✓
-            [0.1, 0.9],  # predicts 1, target 1 ✓
-            [0.9, 0.1],  # predicts 0, target 1 ✗
-            [0.1, 0.9],  # predicts 1, target 0 ✗
-        ])
+        pred = torch.tensor(
+            [
+                [0.9, 0.1],  # predicts 0, target 0 ✓
+                [0.1, 0.9],  # predicts 1, target 1 ✓
+                [0.9, 0.1],  # predicts 0, target 1 ✗
+                [0.1, 0.9],  # predicts 1, target 0 ✗
+            ]
+        )
         target = torch.tensor([0, 1, 1, 0])
 
         metric.update(pred, target)

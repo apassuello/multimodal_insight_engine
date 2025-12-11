@@ -30,7 +30,8 @@ def normalize_unicode(text: str) -> str:
         Normalized text
     """
     # Normalize to NFKC form (compatibility decomposition followed by canonical composition)
-    return unicodedata.normalize('NFKC', text)
+    return unicodedata.normalize("NFKC", text)
+
 
 def clean_text(
     text: str,
@@ -62,7 +63,7 @@ def clean_text(
     # Strip HTML
     if strip_html:
         text = html.unescape(text)  # Convert HTML entities
-        text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
+        text = re.sub(r"<[^>]+>", "", text)  # Remove HTML tags
 
     # Convert to lowercase
     if lower:
@@ -70,9 +71,8 @@ def clean_text(
 
     # Remove accents
     if remove_accents:
-        text = ''.join(
-            c for c in unicodedata.normalize('NFD', text)
-            if not unicodedata.combining(c)
+        text = "".join(
+            c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)
         )
 
     # Handle contractions
@@ -87,9 +87,10 @@ def clean_text(
         text = re.sub(r"'d", " would", text)
 
     # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"\s+", " ", text).strip()
 
     return text
+
 
 def segment_on_punc(text: str) -> str:
     """
@@ -103,8 +104,8 @@ def segment_on_punc(text: str) -> str:
     """
     # Add spaces around punctuation
     # This helps in later tokenization by splitting on whitespace
-    text = re.sub(r'([.,!?;:])', r' \1 ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"([.,!?;:])", r" \1 ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
@@ -126,19 +127,19 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "normalize_unicode",
                 "signature": "normalize_unicode(text: str) -> str",
-                "brief_description": "Normalize Unicode characters in text using NFKC form"
+                "brief_description": "Normalize Unicode characters in text using NFKC form",
             },
             {
                 "name": "clean_text",
                 "signature": "clean_text(text: str, lower: bool = True, remove_accents: bool = False, strip_html: bool = True, handle_contractions: bool = True) -> str",
-                "brief_description": "Clean and normalize text with configurable options for case, accents, HTML, and contractions"
+                "brief_description": "Clean and normalize text with configurable options for case, accents, HTML, and contractions",
             },
             {
                 "name": "segment_on_punc",
                 "signature": "segment_on_punc(text: str) -> str",
-                "brief_description": "Add spaces around punctuation to help with tokenization"
-            }
+                "brief_description": "Add spaces around punctuation to help with tokenization",
+            },
         ],
         "external_dependencies": ["re", "unicodedata", "html"],
-        "complexity_score": 3  # Moderate complexity for text processing
+        "complexity_score": 3,  # Moderate complexity for text processing
     }

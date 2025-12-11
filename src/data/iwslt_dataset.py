@@ -22,7 +22,6 @@ import requests
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -113,13 +112,9 @@ class IWSLTDataset:
                     )
                     return src_file, tgt_file
                 else:
-                    logger.info(
-                        f"IWSLT files for year {year} exist but are empty. Recreating..."
-                    )
+                    logger.info(f"IWSLT files for year {year} exist but are empty. Recreating...")
             except Exception as e:
-                logger.info(
-                    f"Error reading existing files for year {year}: {e}. Recreating..."
-                )
+                logger.info(f"Error reading existing files for year {year}: {e}. Recreating...")
 
         # Attempt to download from official sources
         try:
@@ -181,8 +176,7 @@ class IWSLTDataset:
                         if isinstance(example, dict) and "translation" in example:
                             translation = example["translation"]
                             if isinstance(translation, dict) and (
-                                self.src_lang in translation
-                                and self.tgt_lang in translation
+                                self.src_lang in translation and self.tgt_lang in translation
                             ):
                                 src_texts.append(translation[self.src_lang])
                                 tgt_texts.append(translation[self.tgt_lang])
@@ -217,21 +211,15 @@ class IWSLTDataset:
 
             # Try with the standard format first
             try:
-                dataset = load_dataset(
-                    f"iwslt{requested_year}", dataset_config, split=self.split
-                )
+                dataset = load_dataset(f"iwslt{requested_year}", dataset_config, split=self.split)
             except (ValueError, FileNotFoundError, ImportError):
                 # Try with the fixed name format "iwslt2017"
                 try:
-                    dataset = load_dataset(
-                        "iwslt2017", dataset_config, split=self.split
-                    )
+                    dataset = load_dataset("iwslt2017", dataset_config, split=self.split)
                     actual_year = "2017"  # Actually using 2017 dataset
                 except (ValueError, FileNotFoundError):
                     # If that fails, try the reverse configuration
-                    dataset_config = (
-                        f"iwslt{requested_year}-{self.tgt_lang}-{self.src_lang}"
-                    )
+                    dataset_config = f"iwslt{requested_year}-{self.tgt_lang}-{self.src_lang}"
                     try:
                         dataset = load_dataset(
                             f"iwslt{requested_year}", dataset_config, split=self.split
@@ -240,9 +228,7 @@ class IWSLTDataset:
                         swap_languages = True
                     except (ValueError, FileNotFoundError):
                         try:
-                            dataset = load_dataset(
-                                "iwslt2017", dataset_config, split=self.split
-                            )
+                            dataset = load_dataset("iwslt2017", dataset_config, split=self.split)
                             swap_languages = True
                             actual_year = "2017"  # Actually using 2017 dataset
                         except (ValueError, FileNotFoundError):
@@ -253,10 +239,14 @@ class IWSLTDataset:
                                 )
                             except (ValueError, FileNotFoundError):
                                 try:
-                                    available_configs = get_dataset_config_names(
-                                        "iwslt2017"
-                                    )
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
+                                    available_configs = get_dataset_config_names("iwslt2017")
+                                except (
+                                    ValueError,
+                                    FileNotFoundError,
+                                    OSError,
+                                    ConnectionError,
+                                    RuntimeError,
+                                ):
                                     available_configs = []
 
                             matching_configs = [
@@ -279,7 +269,13 @@ class IWSLTDataset:
                                         dataset_config,
                                         split=self.split,
                                     )
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
+                                except (
+                                    ValueError,
+                                    FileNotFoundError,
+                                    OSError,
+                                    ConnectionError,
+                                    RuntimeError,
+                                ):
                                     dataset = load_dataset(
                                         "iwslt2017", dataset_config, split=self.split
                                     )
@@ -287,34 +283,32 @@ class IWSLTDataset:
                             else:
                                 # Try one more fallback using iwslt dataset
                                 try:
-                                    available_configs = get_dataset_config_names(
-                                        "iwslt"
-                                    )
+                                    available_configs = get_dataset_config_names("iwslt")
                                     matching_configs = [
                                         c
                                         for c in available_configs
-                                        if (
-                                            f"{self.src_lang}" in c
-                                            and f"{self.tgt_lang}" in c
-                                        )
+                                        if (f"{self.src_lang}" in c and f"{self.tgt_lang}" in c)
                                     ]
 
                                     if matching_configs:
                                         dataset_config = matching_configs[0]
                                         swap_languages = (
                                             f"{self.tgt_lang}" in dataset_config
-                                            and f"{self.tgt_lang}"
-                                            in dataset_config.split("-")[0]
+                                            and f"{self.tgt_lang}" in dataset_config.split("-")[0]
                                         )
                                         dataset = load_dataset(
                                             "iwslt", dataset_config, split=self.split
                                         )
-                                        actual_year = (
-                                            "iwslt"  # Using generic IWSLT dataset
-                                        )
+                                        actual_year = "iwslt"  # Using generic IWSLT dataset
                                     else:
                                         return False
-                                except (ValueError, FileNotFoundError, OSError, ConnectionError, RuntimeError):
+                                except (
+                                    ValueError,
+                                    FileNotFoundError,
+                                    OSError,
+                                    ConnectionError,
+                                    RuntimeError,
+                                ):
                                     return False
             else:
                 swap_languages = False
@@ -330,8 +324,7 @@ class IWSLTDataset:
                 if isinstance(example, dict) and "translation" in example:
                     translation = example["translation"]
                     if isinstance(translation, dict) and (
-                        self.src_lang in translation
-                        and self.tgt_lang in translation
+                        self.src_lang in translation and self.tgt_lang in translation
                     ):
                         if swap_languages:
                             # Swap the source and target
@@ -386,12 +379,9 @@ class IWSLTDataset:
             f"Downloading IWSLT {year} {self.src_lang}-{self.tgt_lang} {self.split} data from official source..."
         )
 
-
         # This is a simplified example - the actual URL structure would need to be adjusted
         # based on the specific IWSLT release
-        base_url = (
-            f"https://wit3.fbk.eu/archive/{year}/texts/{self.src_lang}/{self.tgt_lang}"
-        )
+        base_url = f"https://wit3.fbk.eu/archive/{year}/texts/{self.src_lang}/{self.tgt_lang}"
         tarball_url = f"{base_url}/{self.src_lang}-{self.tgt_lang}.tgz"
 
         try:
@@ -500,11 +490,7 @@ class IWSLTDataset:
             all_tgt_data.extend(tgt_data)
 
         # If we need more examples and combine_years is enabled, try other years
-        if (
-            self.combine_years
-            and self.max_examples
-            and len(all_src_data) < self.max_examples
-        ):
+        if self.combine_years and self.max_examples and len(all_src_data) < self.max_examples:
             remaining = self.max_examples - len(all_src_data)
             logger.info(
                 f"Loaded {len(all_src_data)} examples from year {self.year}, need {remaining} more."
@@ -578,17 +564,13 @@ class IWSLTDataset:
             )
 
         if years_loaded:
-            logger.info(
-                f"Successfully loaded data from years: {', '.join(sorted(years_loaded))}"
-            )
+            logger.info(f"Successfully loaded data from years: {', '.join(sorted(years_loaded))}")
             if len(years_loaded) < len(years_attempted):
                 missing_years = {str(y) for y in years_attempted} - years_loaded
                 logger.info(
                     f"Warning: Could not load data for years: {', '.join(sorted(missing_years))}"
                 )
-                logger.info(
-                    "Note: Only IWSLT 2017 may be available through HuggingFace datasets."
-                )
+                logger.info("Note: Only IWSLT 2017 may be available through HuggingFace datasets.")
 
         # Limit dataset size if specified
         if self.max_examples is not None and len(all_src_data) > self.max_examples:

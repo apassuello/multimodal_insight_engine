@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -81,9 +80,7 @@ def train_model(
 
         for batch in tqdm(train_dataloader, desc="Training"):
             # Move batch to device
-            batch = {
-                k: v.to(device) if torch.is_tensor(v) else v for k, v in batch.items()
-            }
+            batch = {k: v.to(device) if torch.is_tensor(v) else v for k, v in batch.items()}
 
             # Forward pass
             if hasattr(model, "training_step"):
@@ -131,10 +128,7 @@ def train_model(
             with torch.no_grad():
                 for batch in tqdm(val_dataloader, desc="Validation"):
                     # Move batch to device
-                    batch = {
-                        k: v.to(device) if torch.is_tensor(v) else v
-                        for k, v in batch.items()
-                    }
+                    batch = {k: v.to(device) if torch.is_tensor(v) else v for k, v in batch.items()}
 
                     # Forward pass
                     if hasattr(model, "validation_step"):
@@ -154,9 +148,7 @@ def train_model(
 
             # Calculate average validation metrics
             avg_val_loss = sum(val_losses) / len(val_losses)
-            avg_val_accuracy = (
-                sum(val_accuracies) / len(val_accuracies) if val_accuracies else 0
-            )
+            avg_val_accuracy = sum(val_accuracies) / len(val_accuracies) if val_accuracies else 0
             history["val_loss"].append(avg_val_loss)
             history["val_accuracy"].append(avg_val_accuracy)
 
@@ -192,6 +184,7 @@ def train_model(
 
     return history
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -209,9 +202,9 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "train_model",
                 "signature": "train_model(model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: Optional[torch.utils.data.DataLoader] = None, epochs: int = 10, learning_rate: float = 0.001, optimizer: Optional[torch.optim.Optimizer] = None, scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None, early_stopping_patience: Optional[int] = None, device: Optional[Union[str, torch.device]] = None, callbacks: List[Callable] = None) -> Dict[str, List[float]]",
-                "brief_description": "A comprehensive training loop that handles both standard models and those with custom training/validation steps"
+                "brief_description": "A comprehensive training loop that handles both standard models and those with custom training/validation steps",
             }
         ],
         "external_dependencies": ["torch", "tqdm", "time"],
-        "complexity_score": 6  # Moderate complexity due to flexible handling of different model types and training scenarios
+        "complexity_score": 6,  # Moderate complexity due to flexible handling of different model types and training scenarios
     }

@@ -17,7 +17,6 @@ import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +38,7 @@ class MoCoLoss(BaseContrastiveLoss):
         temperature: float = 0.07,
         adaptive_temperature: bool = True,
         max_temperature_factor: float = 1.3,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize MoCo loss with memory queue.
@@ -51,11 +50,7 @@ class MoCoLoss(BaseContrastiveLoss):
             adaptive_temperature: Whether to adjust temperature based on queue fill
             max_temperature_factor: Maximum temperature multiplier when queue is empty
         """
-        super().__init__(
-            temperature=temperature,
-            normalize_features=True,
-            **kwargs
-        )
+        super().__init__(temperature=temperature, normalize_features=True, **kwargs)
 
         self.queue_size = queue_size
         self.dim = dim
@@ -71,11 +66,7 @@ class MoCoLoss(BaseContrastiveLoss):
 
         self.initialized = False
 
-    def initialize_queue(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor
-    ):
+    def initialize_queue(self, vision_features: torch.Tensor, text_features: torch.Tensor):
         """
         Initialize or pre-fill the queue with provided features.
 
@@ -110,7 +101,7 @@ class MoCoLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         match_ids: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute MoCo loss using memory queue.
@@ -132,7 +123,9 @@ class MoCoLoss(BaseContrastiveLoss):
         if not self.initialized or self.vision_queue is None:
             self._init_queues(feature_dim, device)
         elif self.vision_queue.shape[0] != feature_dim:
-            logger.info(f"Feature dim changed from {self.vision_queue.shape[0]} to {feature_dim}, reinitializing")
+            logger.info(
+                f"Feature dim changed from {self.vision_queue.shape[0]} to {feature_dim}, reinitializing"
+            )
             self._init_queues(feature_dim, device)
         elif self.vision_queue.device != device:
             self._move_to_device(device)
@@ -165,9 +158,7 @@ class MoCoLoss(BaseContrastiveLoss):
         t2q_sim = t2q_sim * queue_weight
 
         # Compute InfoNCE loss with queue
-        v2t_loss = self._compute_direction_loss(
-            batch_sim, v2q_sim, match_matrix, direction="v2t"
-        )
+        v2t_loss = self._compute_direction_loss(batch_sim, v2q_sim, match_matrix, direction="v2t")
         t2v_loss = self._compute_direction_loss(
             batch_sim.T, t2q_sim, match_matrix.T, direction="t2v"
         )
@@ -197,15 +188,11 @@ class MoCoLoss(BaseContrastiveLoss):
         """Initialize memory queues with random normalized features."""
         self.register_buffer(
             "vision_queue",
-            F.normalize(
-                torch.randn(feature_dim, self.queue_size, device=device), dim=0
-            ).detach()
+            F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach(),
         )
         self.register_buffer(
             "text_queue",
-            F.normalize(
-                torch.randn(feature_dim, self.queue_size, device=device), dim=0
-            ).detach()
+            F.normalize(torch.randn(feature_dim, self.queue_size, device=device), dim=0).detach(),
         )
         self.queue_ptr = self.queue_ptr.to(device)
         self.queue_fill_level = self.queue_fill_level.to(device)
@@ -220,10 +207,7 @@ class MoCoLoss(BaseContrastiveLoss):
         self.queue_fill_level = self.queue_fill_level.to(device)
 
     def _create_match_matrix(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating which pairs should match."""
         if match_ids is None:
@@ -257,7 +241,7 @@ class MoCoLoss(BaseContrastiveLoss):
         batch_sim: torch.Tensor,
         queue_sim: torch.Tensor,
         match_matrix: torch.Tensor,
-        direction: str
+        direction: str,
     ) -> torch.Tensor:
         """Compute InfoNCE loss for one direction (v2t or t2v)."""
         batch_size = batch_sim.shape[0]
@@ -286,11 +270,7 @@ class MoCoLoss(BaseContrastiveLoss):
         return total_loss
 
     @torch.no_grad()
-    def _update_queue(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor
-    ):
+    def _update_queue(self, vision_features: torch.Tensor, text_features: torch.Tensor):
         """Update memory queue with new features (circular buffer)."""
         if not self.initialized:
             return
@@ -309,8 +289,8 @@ class MoCoLoss(BaseContrastiveLoss):
 
         # Update with wrap-around handling
         if ptr + batch_size <= self.queue_size:
-            new_vision_queue[:, ptr:ptr + batch_size] = vision_feat.T
-            new_text_queue[:, ptr:ptr + batch_size] = text_feat.T
+            new_vision_queue[:, ptr : ptr + batch_size] = vision_feat.T
+            new_text_queue[:, ptr : ptr + batch_size] = text_feat.T
         else:
             # Wrap around
             remaining = self.queue_size - ptr
@@ -333,6 +313,5 @@ class MoCoLoss(BaseContrastiveLoss):
         current_fill = int(self.queue_fill_level.item())
         new_fill = min(current_fill + batch_size, self.queue_size)
         self.register_buffer(
-            "queue_fill_level",
-            torch.tensor([new_fill], dtype=torch.long, device=device)
+            "queue_fill_level", torch.tensor([new_fill], dtype=torch.long, device=device)
         )

@@ -85,9 +85,7 @@ class ModelPruner:
         """
         self.model = model
         self.config = config or PruningConfig()
-        self.original_state_dict = {
-            k: v.clone() for k, v in model.state_dict().items()
-        }
+        self.original_state_dict = {k: v.clone() for k, v in model.state_dict().items()}
 
         # Track pruning statistics
         self.pruning_history = []
@@ -168,7 +166,7 @@ class ModelPruner:
                 name="weight",
                 amount=self.config.amount,
                 n=2,  # L2 norm
-                dim=self.config.dim  # 0 for rows (output features), 1 for columns (input features)
+                dim=self.config.dim,  # 0 for rows (output features), 1 for columns (input features)
             )
 
         # Store pruning statistics
@@ -260,6 +258,7 @@ class ModelPruner:
             "history": self.pruning_history,
         }
 
+
 def extract_file_metadata(file_path: str = __file__):
     """
     Extract structured metadata about this module.
@@ -281,16 +280,16 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, method: str = 'magnitude', amount: Union[float, int] = 0.2, dim: Optional[int] = None, n_iterations: int = 1, pruning_dims: Optional[List[str]] = None, sparsity_distribution: str = 'uniform', reinitialize: bool = False)",
-                        "brief_description": "Initialize pruning configuration."
+                        "brief_description": "Initialize pruning configuration.",
                     },
                     {
                         "name": "__str__",
                         "signature": "(self) -> str",
-                        "brief_description": "String representation of the configuration."
-                    }
+                        "brief_description": "String representation of the configuration.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing"]
+                "dependencies": ["torch", "typing"],
             },
             {
                 "name": "ModelPruner",
@@ -299,27 +298,27 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, config: Optional[PruningConfig] = None)",
-                        "brief_description": "Initialize the model pruner."
+                        "brief_description": "Initialize the model pruner.",
                     },
                     {
                         "name": "prune_model",
                         "signature": "(self) -> nn.Module",
-                        "brief_description": "Apply pruning to the model."
+                        "brief_description": "Apply pruning to the model.",
                     },
                     {
                         "name": "restore_model",
                         "signature": "(self)",
-                        "brief_description": "Restore the model to its original unpruned state."
+                        "brief_description": "Restore the model to its original unpruned state.",
                     },
                     {
                         "name": "get_pruning_info",
                         "signature": "(self) -> Dict[str, Any]",
-                        "brief_description": "Get information about pruning results."
-                    }
+                        "brief_description": "Get information about pruning results.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing", "logging"]
-            }
+                "dependencies": ["torch", "typing", "logging"],
+            },
         ],
         "external_dependencies": ["torch", "typing", "logging"],
         "complexity_score": 7,

@@ -30,7 +30,6 @@ from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 from collections import defaultdict
 
@@ -146,9 +145,7 @@ class MultimodalDataset(Dataset):
         elif isinstance(full_metadata, list):
             # Metadata is a list of samples - filter by split if available
             if any("split" in sample for sample in full_metadata):
-                samples = [
-                    sample for sample in full_metadata if sample.get("split") == split
-                ]
+                samples = [sample for sample in full_metadata if sample.get("split") == split]
             else:
                 # No split information - use all samples
                 samples = full_metadata
@@ -230,9 +227,7 @@ class MultimodalDataset(Dataset):
 
         elif neg_type == "different_class":
             # Get sample with different class
-            other_labels = [
-                label for label in self.class_to_indices if label != anchor_label
-            ]
+            other_labels = [label for label in self.class_to_indices if label != anchor_label]
 
             if not other_labels:
                 # No other classes - use random sample
@@ -302,9 +297,9 @@ class MultimodalDataset(Dataset):
                     if len(token_ids) > self.max_text_length:
                         token_ids = token_ids[: self.max_text_length]
                     else:
-                        padding = [
-                            self.text_tokenizer.special_tokens["pad_token_idx"]
-                        ] * (self.max_text_length - len(token_ids))
+                        padding = [self.text_tokenizer.special_tokens["pad_token_idx"]] * (
+                            self.max_text_length - len(token_ids)
+                        )
                         token_ids = token_ids + padding
 
                     # Create text tensor
@@ -312,8 +307,7 @@ class MultimodalDataset(Dataset):
 
                     # Create text mask (1 for real tokens, 0 for padding)
                     text_mask = (
-                        text_tensor
-                        != self.text_tokenizer.special_tokens["pad_token_idx"]
+                        text_tensor != self.text_tokenizer.special_tokens["pad_token_idx"]
                     ).float()
                 else:
                     # Tokenize without length limit
@@ -445,9 +439,7 @@ class Flickr30kDataset(MultimodalDataset):
                     # Load the full dataset
                     dataset_dict = load_dataset(
                         "nlphuji/flickr30k",
-                        cache_dir=os.path.join(
-                            os.path.dirname(data_root), "nlphuji___flickr30k"
-                        ),
+                        cache_dir=os.path.join(os.path.dirname(data_root), "nlphuji___flickr30k"),
                     )
 
                     # Convert to list format for easier handling
@@ -517,7 +509,7 @@ class Flickr30kDataset(MultimodalDataset):
         Returns:
             bool: True if successfully loaded from cache, False otherwise
         """
-        cache_samples_json = self.cache_samples.replace('.pkl', '.json')
+        cache_samples_json = self.cache_samples.replace(".pkl", ".json")
 
         # Try JSON first (secure)
         if os.path.exists(self.cache_metadata) and os.path.exists(cache_samples_json):
@@ -540,7 +532,7 @@ class Flickr30kDataset(MultimodalDataset):
         if os.path.exists(self.cache_metadata) and os.path.exists(self.cache_samples):
             try:
                 logger.info("JSON cache not found, attempting to load legacy pickle cache...")
-                with open(self.cache_samples, 'rb') as f:
+                with open(self.cache_samples, "rb") as f:
                     self.samples = pickle.load(f)
 
                 if not self.samples:
@@ -566,7 +558,7 @@ class Flickr30kDataset(MultimodalDataset):
 
         try:
             # Save samples to JSON file (SAFE - no code execution risk)
-            cache_samples_json = self.cache_samples.replace('.pkl', '.json')
+            cache_samples_json = self.cache_samples.replace(".pkl", ".json")
             with open(cache_samples_json, "w") as f:
                 json.dump(self.samples, f, indent=2)
 
@@ -686,12 +678,12 @@ class Flickr30kDataset(MultimodalDataset):
                     "image_path": image_path,
                     "captions": item["captions"],
                     "image_id": item["image_id"],
-                    "idx": item["idx"]
+                    "idx": item["idx"],
                 }
                 serializable_dataset.append(serializable_item)
 
             # Save dataset metadata to JSON file (SAFE)
-            cache_samples_json = cache_samples.replace('.pkl', '.json')
+            cache_samples_json = cache_samples.replace(".pkl", ".json")
             with open(cache_samples_json, "w") as f:
                 json.dump(serializable_dataset, f, indent=2)
 
@@ -714,7 +706,6 @@ class Flickr30kDataset(MultimodalDataset):
 import logging
 
 from datasets import load_dataset
-
 
 logger = logging.getLogger(__name__)
 
@@ -834,9 +825,7 @@ class EnhancedMultimodalDataset(Dataset):
 
         # First, print diagnostics about the dataset structure
         has_image_id = len([item for item in self.dataset if "image_id" in item])
-        logger.info(
-            f"Dataset has {len(self.dataset)} items, {has_image_id} with image_id"
-        )
+        logger.info(f"Dataset has {len(self.dataset)} items, {has_image_id} with image_id")
 
         if len(self.dataset) > 0:
             sample_item = self.dataset[0]
@@ -855,9 +844,7 @@ class EnhancedMultimodalDataset(Dataset):
         # This assumes consecutive images in the dataset might have some relationship
         # For training, this provides variation while maintaining some coherence
         group_size = 5  # Each group will have this many items
-        num_groups = (
-            len(self.dataset) + group_size - 1
-        ) // group_size  # Ceiling division
+        num_groups = (len(self.dataset) + group_size - 1) // group_size  # Ceiling division
 
         logger.info(
             f"Creating {num_groups} artificial semantic groups with ~{group_size} items each"
@@ -869,9 +856,7 @@ class EnhancedMultimodalDataset(Dataset):
             from sklearn.cluster import KMeans
             from tqdm import tqdm
 
-            logger.info(
-                "Creating embedding-based semantic groups using pretrained features..."
-            )
+            logger.info("Creating embedding-based semantic groups using pretrained features...")
 
             # Import a pretrained model for feature extraction
             try:
@@ -895,9 +880,7 @@ class EnhancedMultimodalDataset(Dataset):
                         transforms.Resize(256),
                         transforms.CenterCrop(224),
                         transforms.ToTensor(),
-                        transforms.Normalize(
-                            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                        ),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ]
                 )
 
@@ -919,14 +902,10 @@ class EnhancedMultimodalDataset(Dataset):
                                 img_tensor = item["image"].unsqueeze(0).to(device)
                             else:
                                 # It's likely a PIL image
-                                img_tensor = (
-                                    preprocess(item["image"]).unsqueeze(0).to(device)
-                                )
+                                img_tensor = preprocess(item["image"]).unsqueeze(0).to(device)
 
                             # Extract features
-                            feature = (
-                                pretrained_model(img_tensor).squeeze().cpu().numpy()
-                            )
+                            feature = pretrained_model(img_tensor).squeeze().cpu().numpy()
                             features.append(feature)
                         except Exception as e:
                             # On error, add zero features
@@ -943,16 +922,12 @@ class EnhancedMultimodalDataset(Dataset):
                     and self.max_samples_per_group is not None
                 ):
                     target_group_size = self.max_samples_per_group
-                    logger.info(
-                        f"Using max_samples_per_group={target_group_size} for clustering"
-                    )
+                    logger.info(f"Using max_samples_per_group={target_group_size} for clustering")
                 else:
                     target_group_size = 5  # Default target group size
 
                 # Calculate optimal number of clusters to achieve target group size
-                n_clusters = max(
-                    10, len(self.dataset) // target_group_size
-                )  # At least 10 clusters
+                n_clusters = max(10, len(self.dataset) // target_group_size)  # At least 10 clusters
                 n_clusters = min(
                     n_clusters, len(self.dataset) // 2
                 )  # But no more than half the dataset size
@@ -979,9 +954,7 @@ class EnhancedMultimodalDataset(Dataset):
                             )
                             # Randomly sample indices
                             np.random.shuffle(indices)
-                            cluster_groups[cluster_id] = indices[
-                                : self.max_samples_per_group
-                            ]
+                            cluster_groups[cluster_id] = indices[: self.max_samples_per_group]
 
                 # Assign match_ids based on clusters
                 # Make sure all items in dataset are updated
@@ -994,13 +967,9 @@ class EnhancedMultimodalDataset(Dataset):
                 for cluster_id, indices in cluster_groups.items():
                     for idx in indices:
                         if isinstance(self.dataset[idx], dict):
-                            self.dataset[idx][
-                                "match_id"
-                            ] = f"semantic_group_{cluster_id}"
+                            self.dataset[idx]["match_id"] = f"semantic_group_{cluster_id}"
 
-                logger.info(
-                    f"Successfully created {n_clusters} embedding-based semantic groups"
-                )
+                logger.info(f"Successfully created {n_clusters} embedding-based semantic groups")
 
             except ImportError as e:
                 logger.warning(
@@ -1040,18 +1009,14 @@ class EnhancedMultimodalDataset(Dataset):
                     if isinstance(item, dict):
                         item["match_id"] = fallback_id
                     self.match_ids.append(fallback_id)
-                    logger.warning(
-                        f"Item {i} missing match_id, using fallback: {fallback_id}"
-                    )
+                    logger.warning(f"Item {i} missing match_id, using fallback: {fallback_id}")
             except Exception as e:
                 # Create a unique fallback ID
                 fallback_id = f"error_id_{i}"
                 if isinstance(item, dict):
                     item["match_id"] = fallback_id
                 self.match_ids.append(fallback_id)
-                logger.warning(
-                    f"Error with item {i}: {e}, using fallback: {fallback_id}"
-                )
+                logger.warning(f"Error with item {i}: {e}, using fallback: {fallback_id}")
 
         # Diagnostics: check how many unique match_ids we created
         unique_match_ids = len(set(self.match_ids))
@@ -1068,9 +1033,7 @@ class EnhancedMultimodalDataset(Dataset):
         # Apply min_samples_per_group and max_samples_per_group filtering to log accurate stats
         if hasattr(self, "min_samples_per_group") and self.min_samples_per_group > 1:
             # Remove groups that are too small
-            id_counts = {
-                k: v for k, v in id_counts.items() if v >= self.min_samples_per_group
-            }
+            id_counts = {k: v for k, v in id_counts.items() if v >= self.min_samples_per_group}
             logger.info(
                 f"After applying min_samples_per_group={self.min_samples_per_group}: {len(id_counts)} valid groups remain"
             )
@@ -1122,7 +1085,7 @@ class EnhancedMultimodalDataset(Dataset):
         cache_samples = os.path.join(cache_dir, "samples.pkl")
 
         # Try to load from cache first
-        cache_samples_json = cache_samples.replace('.pkl', '.json')
+        cache_samples_json = cache_samples.replace(".pkl", ".json")
 
         # Try JSON first (secure)
         if os.path.exists(cache_metadata) and os.path.exists(cache_samples_json):
@@ -1137,12 +1100,13 @@ class EnhancedMultimodalDataset(Dataset):
                     # If image_path exists, load the PIL Image
                     if "image_path" in item and os.path.exists(item["image_path"]):
                         from PIL import Image as PILImage
+
                         pil_image = PILImage.open(item["image_path"]).convert("RGB")
                         reconstructed_item = {
                             "image": pil_image,
                             "captions": item["captions"],
                             "image_id": item["image_id"],
-                            "idx": item["idx"]
+                            "idx": item["idx"],
                         }
                         self.dataset.append(reconstructed_item)
                     else:
@@ -1164,7 +1128,7 @@ class EnhancedMultimodalDataset(Dataset):
         if os.path.exists(cache_metadata) and os.path.exists(cache_samples):
             try:
                 logger.info("JSON cache not found, attempting to load legacy pickle cache...")
-                with open(cache_samples, 'rb') as f:
+                with open(cache_samples, "rb") as f:
                     self.dataset = pickle.load(f)
 
                 if self.dataset:
@@ -1183,7 +1147,7 @@ class EnhancedMultimodalDataset(Dataset):
                         serializable_dataset = []
                         for idx, item in enumerate(self.dataset):
                             # Handle PIL Image objects
-                            if "image" in item and hasattr(item["image"], 'save'):
+                            if "image" in item and hasattr(item["image"], "save"):
                                 # It's a PIL Image - save to file
                                 image_path = os.path.join(image_dir, f"image_{idx}.png")
                                 item["image"].save(image_path)
@@ -1192,7 +1156,7 @@ class EnhancedMultimodalDataset(Dataset):
                                     "image_path": image_path,
                                     "captions": item.get("captions", []),
                                     "image_id": item.get("image_id", str(idx)),
-                                    "idx": item.get("idx", idx)
+                                    "idx": item.get("idx", idx),
                                 }
                                 serializable_dataset.append(serializable_item)
                             else:
@@ -1245,9 +1209,7 @@ class EnhancedMultimodalDataset(Dataset):
                         {
                             "image": item["image"],
                             "captions": (
-                                [item["caption"]]
-                                if "caption" in item
-                                else item.get("captions", [])
+                                [item["caption"]] if "caption" in item else item.get("captions", [])
                             ),
                             "image_id": str(i),
                             "idx": i,  # Keep track of original index
@@ -1279,7 +1241,7 @@ class EnhancedMultimodalDataset(Dataset):
                 serializable_dataset = []
                 for idx, item in enumerate(self.dataset):
                     # Handle PIL Image objects
-                    if "image" in item and hasattr(item["image"], 'save'):
+                    if "image" in item and hasattr(item["image"], "save"):
                         # It's a PIL Image - save to file
                         image_path = os.path.join(image_dir, f"image_{idx}.png")
                         item["image"].save(image_path)
@@ -1288,7 +1250,7 @@ class EnhancedMultimodalDataset(Dataset):
                             "image_path": image_path,
                             "captions": item.get("captions", []),
                             "image_id": item.get("image_id", str(idx)),
-                            "idx": item.get("idx", idx)
+                            "idx": item.get("idx", idx),
                         }
                         serializable_dataset.append(serializable_item)
                     else:
@@ -1296,7 +1258,7 @@ class EnhancedMultimodalDataset(Dataset):
                         serializable_dataset.append(item)
 
                 # Save dataset to JSON file (SAFE - no code execution risk)
-                cache_samples_json = cache_samples.replace('.pkl', '.json')
+                cache_samples_json = cache_samples.replace(".pkl", ".json")
                 with open(cache_samples_json, "w") as f:
                     json.dump(serializable_dataset, f, indent=2)
 
@@ -1310,9 +1272,7 @@ class EnhancedMultimodalDataset(Dataset):
                 with open(cache_metadata, "w") as f:
                     json.dump(metadata, f, indent=2)
 
-                logger.info(
-                    f"Saved {len(self.dataset)} samples to cache at {cache_dir}"
-                )
+                logger.info(f"Saved {len(self.dataset)} samples to cache at {cache_dir}")
             except Exception as e:
                 logger.warning(f"Error saving to cache: {str(e)}")
 
@@ -1422,12 +1382,12 @@ class EnhancedMultimodalDataset(Dataset):
                     "image_path": image_path,
                     "captions": item["captions"],
                     "image_id": item["image_id"],
-                    "idx": item["idx"]
+                    "idx": item["idx"],
                 }
                 serializable_dataset.append(serializable_item)
 
             # Save dataset metadata to JSON file (SAFE)
-            cache_samples_json = cache_samples.replace('.pkl', '.json')
+            cache_samples_json = cache_samples.replace(".pkl", ".json")
             with open(cache_samples_json, "w") as f:
                 json.dump(serializable_dataset, f, indent=2)
 
@@ -1470,9 +1430,7 @@ class EnhancedMultimodalDataset(Dataset):
         for i in range(sample_size):
             item = self.dataset[i]
             if "captions" in item and isinstance(item["captions"], list):
-                caption_counts.append(
-                    min(len(item["captions"]), self.captions_per_image)
-                )
+                caption_counts.append(min(len(item["captions"]), self.captions_per_image))
             else:
                 caption_counts.append(1)
 
@@ -1519,11 +1477,7 @@ class EnhancedMultimodalDataset(Dataset):
             image = Image.new("RGB", (224, 224), (0, 0, 0))
 
         # Caption selection based on captions_per_image parameter
-        if (
-            "captions" in item
-            and isinstance(item["captions"], list)
-            and item["captions"]
-        ):
+        if "captions" in item and isinstance(item["captions"], list) and item["captions"]:
             # Get image_id for deterministic selection
             image_id = item.get("image_id", str(idx))
 
@@ -1542,9 +1496,7 @@ class EnhancedMultimodalDataset(Dataset):
                 effective_idx = idx % num_captions
 
                 # For deterministic selection, hash the image_id with the effective_idx
-                caption_idx = abs(hash(f"{image_id}_{effective_idx}")) % len(
-                    available_captions
-                )
+                caption_idx = abs(hash(f"{image_id}_{effective_idx}")) % len(available_captions)
                 caption = available_captions[caption_idx]
 
                 # Store the original caption index for tracking
@@ -1604,11 +1556,7 @@ class EnhancedMultimodalDataset(Dataset):
         match_id = item.get("match_id")
 
         # As a fallback, use the stored match_ids if available
-        if (
-            match_id is None
-            and hasattr(self, "match_ids")
-            and idx < len(self.match_ids)
-        ):
+        if match_id is None and hasattr(self, "match_ids") and idx < len(self.match_ids):
             match_id = self.match_ids[idx]
 
         # Last resort - create a unique ID for this item (should never happen)

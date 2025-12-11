@@ -16,7 +16,6 @@ import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 # Module logger
 logger = get_logger(__name__)
 import os
@@ -66,7 +65,7 @@ class ConstitutionalPipeline:
         ppo_epsilon: float = 0.2,
         ppo_value_coef: float = 0.5,
         ppo_entropy_coef: float = 0.01,
-        kl_penalty_coef: float = 0.02
+        kl_penalty_coef: float = 0.02,
     ):
         """
         Initialize the Constitutional AI pipeline.
@@ -99,7 +98,8 @@ class ConstitutionalPipeline:
 
         # Constitutional framework
         self.constitutional_framework = (
-            constitutional_framework if constitutional_framework is not None
+            constitutional_framework
+            if constitutional_framework is not None
             else setup_default_framework()
         )
 
@@ -126,10 +126,7 @@ class ConstitutionalPipeline:
         # Training state
         self.phase1_complete = False
         self.phase2_complete = False
-        self.training_history = {
-            "phase1": {},
-            "phase2": {}
-        }
+        self.training_history = {"phase1": {}, "phase2": {}}
 
         # Statistics
         self.stats = {
@@ -137,7 +134,7 @@ class ConstitutionalPipeline:
             "phase1_revisions_generated": 0,
             "phase2_preference_pairs": 0,
             "phase2_ppo_steps": 0,
-            "total_training_time": 0.0
+            "total_training_time": 0.0,
         }
 
     def train(
@@ -154,7 +151,7 @@ class ConstitutionalPipeline:
         phase2_ppo_epochs_per_batch: int = 4,
         validation_prompts: Optional[List[str]] = None,
         save_dir: Optional[str] = None,
-        resume_from_phase1: bool = False
+        resume_from_phase1: bool = False,
     ) -> Dict[str, Any]:
         """
         Train the model using the complete Constitutional AI pipeline.
@@ -200,7 +197,7 @@ class ConstitutionalPipeline:
                 num_epochs=phase1_epochs,
                 num_revisions=phase1_num_revisions,
                 batch_size=phase1_batch_size,
-                validation_prompts=validation_prompts
+                validation_prompts=validation_prompts,
             )
 
             self.training_history["phase1"] = phase1_results
@@ -236,7 +233,7 @@ class ConstitutionalPipeline:
             ppo_steps=phase2_ppo_steps,
             ppo_batch_size=phase2_ppo_batch_size,
             ppo_epochs_per_batch=phase2_ppo_epochs_per_batch,
-            validation_prompts=validation_prompts
+            validation_prompts=validation_prompts,
         )
 
         self.training_history["phase2"] = phase2_results
@@ -255,8 +252,7 @@ class ConstitutionalPipeline:
             logger.info("=" * 80)
 
             final_eval = self.evaluate_constitutional_compliance(
-                validation_prompts,
-                self.base_model
+                validation_prompts, self.base_model
             )
 
             logger.info(f"Final Constitutional Compliance Score: {final_eval['avg_score']:.4f}")
@@ -267,7 +263,7 @@ class ConstitutionalPipeline:
             "phase1_complete": self.phase1_complete,
             "phase2_complete": self.phase2_complete,
             "training_history": self.training_history,
-            "statistics": self.stats
+            "statistics": self.stats,
         }
 
         if validation_prompts is not None:
@@ -285,7 +281,7 @@ class ConstitutionalPipeline:
         num_epochs: int,
         num_revisions: int,
         batch_size: int,
-        validation_prompts: Optional[List[str]] = None
+        validation_prompts: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Run Phase 1: Critique-Revision-Supervised Learning.
@@ -310,7 +306,7 @@ class ConstitutionalPipeline:
             tokenizer=self.tokenizer,
             framework=self.constitutional_framework,
             device=self.device,
-            num_revisions=num_revisions
+            num_revisions=num_revisions,
         )
 
         self.stats["phase1_samples_processed"] = len(training_data)
@@ -329,7 +325,7 @@ class ConstitutionalPipeline:
             num_epochs=num_epochs,
             batch_size=batch_size,
             learning_rate=self.phase1_learning_rate,
-            device=self.device
+            device=self.device,
         )
 
         # Validation
@@ -337,8 +333,7 @@ class ConstitutionalPipeline:
         if validation_prompts is not None:
             logger.info("\nStep 3: Validating Phase 1 model...")
             validation_results = self.evaluate_constitutional_compliance(
-                validation_prompts,
-                self.base_model
+                validation_prompts, self.base_model
             )
             logger.info(f"Validation Score: {validation_results['avg_score']:.4f}")
             logger.info(f"Violation Rate: {validation_results['violation_rate']:.2%}")
@@ -349,7 +344,7 @@ class ConstitutionalPipeline:
         return {
             "training_data_size": len(training_data),
             "sft_results": sft_results,
-            "validation_results": validation_results
+            "validation_results": validation_results,
         }
 
     def _run_phase2(
@@ -361,7 +356,7 @@ class ConstitutionalPipeline:
         ppo_steps: int,
         ppo_batch_size: int,
         ppo_epochs_per_batch: int,
-        validation_prompts: Optional[List[str]] = None
+        validation_prompts: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Run Phase 2: RLAIF with Preference Learning and PPO.
@@ -389,7 +384,7 @@ class ConstitutionalPipeline:
             tokenizer=self.tokenizer,
             framework=self.constitutional_framework,
             device=self.device,
-            responses_per_prompt=responses_per_prompt
+            responses_per_prompt=responses_per_prompt,
         )
 
         self.stats["phase2_preference_pairs"] = len(preference_data)
@@ -399,11 +394,17 @@ class ConstitutionalPipeline:
         logger.info("\nStep 2: Training reward model...")
 
         # Get model hidden size
-        if hasattr(self.base_model, 'config'):
+        if hasattr(self.base_model, "config"):
             # GPT-2 uses 'n_embd', most others use 'hidden_size'
-            if hasattr(self.base_model.config, 'n_embd') and self.base_model.config.n_embd is not None:
+            if (
+                hasattr(self.base_model.config, "n_embd")
+                and self.base_model.config.n_embd is not None
+            ):
                 hidden_size = self.base_model.config.n_embd  # GPT-2 style
-            elif hasattr(self.base_model.config, 'hidden_size') and self.base_model.config.hidden_size is not None:
+            elif (
+                hasattr(self.base_model.config, "hidden_size")
+                and self.base_model.config.hidden_size is not None
+            ):
                 hidden_size = self.base_model.config.hidden_size  # Modern models
             else:
                 hidden_size = 768  # Fallback
@@ -420,12 +421,11 @@ class ConstitutionalPipeline:
             tokenizer=self.tokenizer,
             learning_rate=self.reward_model_learning_rate,
             device=self.device,
-            batch_size=ppo_batch_size
+            batch_size=ppo_batch_size,
         )
 
         reward_results = reward_trainer.train(
-            training_data=preference_data,
-            num_epochs=reward_model_epochs
+            training_data=preference_data, num_epochs=reward_model_epochs
         )
 
         logger.info("Reward model training complete")
@@ -444,7 +444,7 @@ class ConstitutionalPipeline:
             learning_rate=self.phase2_learning_rate,
             clip_epsilon=self.ppo_epsilon,
             value_loss_coef=self.ppo_value_coef,
-            kl_penalty=self.kl_penalty_coef
+            kl_penalty=self.kl_penalty_coef,
         )
 
         ppo_results = ppo_trainer.train(
@@ -453,7 +453,7 @@ class ConstitutionalPipeline:
             batch_size=ppo_batch_size,
             num_epochs_per_batch=ppo_epochs_per_batch,
             max_length=150,
-            temperature=self.temperature
+            temperature=self.temperature,
         )
 
         self.stats["phase2_ppo_steps"] = ppo_steps
@@ -467,8 +467,7 @@ class ConstitutionalPipeline:
         if validation_prompts is not None:
             logger.info("\nStep 4: Validating Phase 2 model...")
             validation_results = self.evaluate_constitutional_compliance(
-                validation_prompts,
-                self.base_model
+                validation_prompts, self.base_model
             )
             logger.info(f"Validation Score: {validation_results['avg_score']:.4f}")
             logger.info(f"Violation Rate: {validation_results['violation_rate']:.2%}")
@@ -477,13 +476,11 @@ class ConstitutionalPipeline:
             "preference_pairs": len(preference_data),
             "reward_model_results": reward_results,
             "ppo_results": ppo_results,
-            "validation_results": validation_results
+            "validation_results": validation_results,
         }
 
     def evaluate_constitutional_compliance(
-        self,
-        test_prompts: List[str],
-        model: Optional[nn.Module] = None
+        self, test_prompts: List[str], model: Optional[nn.Module] = None
     ) -> Dict[str, Any]:
         """
         Evaluate model's constitutional compliance on test prompts.
@@ -504,9 +501,7 @@ class ConstitutionalPipeline:
         from .model_utils import GenerationConfig, generate_text
 
         evaluator = ConstitutionalSafetyEvaluator(
-            framework=self.constitutional_framework,
-            critique_model=model,
-            use_self_critique=True
+            framework=self.constitutional_framework, critique_model=model, use_self_critique=True
         )
 
         scores = []
@@ -518,18 +513,10 @@ class ConstitutionalPipeline:
             for prompt in tqdm(test_prompts, desc="Evaluation"):
                 # Generate response
                 config = GenerationConfig(
-                    max_length=150,
-                    temperature=self.temperature,
-                    do_sample=True
+                    max_length=150, temperature=self.temperature, do_sample=True
                 )
 
-                response = generate_text(
-                    model,
-                    self.tokenizer,
-                    prompt,
-                    config,
-                    device=self.device
-                )
+                response = generate_text(model, self.tokenizer, prompt, config, device=self.device)
 
                 # Evaluate
                 evaluation = evaluator.evaluate(response)
@@ -547,7 +534,7 @@ class ConstitutionalPipeline:
             "violation_rate": float(sum(violations) / len(violations)) if violations else 0.0,
             "num_violations": sum(violations),
             "total_evaluated": len(test_prompts),
-            "scores": scores
+            "scores": scores,
         }
 
     def _save_phase1_checkpoint(self, path: str) -> None:
@@ -556,7 +543,7 @@ class ConstitutionalPipeline:
             "model_state_dict": self.base_model.state_dict(),
             "phase1_complete": self.phase1_complete,
             "training_history": self.training_history,
-            "stats": self.stats
+            "stats": self.stats,
         }
         torch.save(checkpoint, path)
 
@@ -572,12 +559,14 @@ class ConstitutionalPipeline:
         """Save Phase 2 checkpoint."""
         checkpoint = {
             "model_state_dict": self.base_model.state_dict(),
-            "reward_model_state_dict": self.reward_model.state_dict() if self.reward_model else None,
+            "reward_model_state_dict": (
+                self.reward_model.state_dict() if self.reward_model else None
+            ),
             "value_model_state_dict": self.value_model.state_dict() if self.value_model else None,
             "phase1_complete": self.phase1_complete,
             "phase2_complete": self.phase2_complete,
             "training_history": self.training_history,
-            "stats": self.stats
+            "stats": self.stats,
         }
         torch.save(checkpoint, path)
 
@@ -603,5 +592,5 @@ class ConstitutionalPipeline:
             "pipeline_stats": self.stats,
             "phase1_complete": self.phase1_complete,
             "phase2_complete": self.phase2_complete,
-            "training_history": self.training_history
+            "training_history": self.training_history,
         }

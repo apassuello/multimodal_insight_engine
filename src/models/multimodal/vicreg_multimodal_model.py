@@ -21,18 +21,15 @@ import torch
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import torch.nn.functional as F
 
 from src.utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -73,39 +70,25 @@ class VICRegMultimodalModel(nn.Module):
 
         # Always create proper projection networks, even when dimensions match
         # This ensures we have trainable parameters in stage 1
-        logger.info(
-            f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}"
-        )
+        logger.info(f"Creating vision projection with dimensions: {vision_dim} -> {projection_dim}")
         self.vision_proj = nn.Sequential(
             nn.Linear(vision_dim, vision_dim),  # First linear layer maintains dimension
-            nn.BatchNorm1d(
-                vision_dim, affine=True
-            ),  # Affine=True for trainable parameters
+            nn.BatchNorm1d(vision_dim, affine=True),  # Affine=True for trainable parameters
             nn.ReLU(),
             nn.Linear(
                 vision_dim, projection_dim
             ),  # Second linear adapts to projection_dim if needed
-            nn.BatchNorm1d(
-                projection_dim, affine=False
-            ),  # Affine=False for VICReg (fixed)
+            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
         )
 
         # Always create proper text projection too, even when dimensions match
-        logger.info(
-            f"Creating text projection with dimensions: {text_dim} -> {projection_dim}"
-        )
+        logger.info(f"Creating text projection with dimensions: {text_dim} -> {projection_dim}")
         self.text_proj = nn.Sequential(
             nn.Linear(text_dim, text_dim),  # First linear layer maintains dimension
-            nn.BatchNorm1d(
-                text_dim, affine=True
-            ),  # Affine=True for trainable parameters
+            nn.BatchNorm1d(text_dim, affine=True),  # Affine=True for trainable parameters
             nn.GELU(),  # Different activation
-            nn.Linear(
-                text_dim, projection_dim
-            ),  # Second linear adapts to projection_dim if needed
-            nn.BatchNorm1d(
-                projection_dim, affine=False
-            ),  # Affine=False for VICReg (fixed)
+            nn.Linear(text_dim, projection_dim),  # Second linear adapts to projection_dim if needed
+            nn.BatchNorm1d(projection_dim, affine=False),  # Affine=False for VICReg (fixed)
         )
 
         # For explicit variance regularization
@@ -164,9 +147,7 @@ class VICRegMultimodalModel(nn.Module):
             return model.hidden_dim
         elif hasattr(model, "config") and hasattr(model.config, "hidden_size"):
             return model.config.hidden_size
-        elif hasattr(model, "pretrained_model") and hasattr(
-            model.pretrained_model, "config"
-        ):
+        elif hasattr(model, "pretrained_model") and hasattr(model.pretrained_model, "config"):
             # HuggingFace wrappers often have this structure
             return model.pretrained_model.config.hidden_size
         else:
@@ -188,9 +169,7 @@ class VICRegMultimodalModel(nn.Module):
             torch.Tensor: Extracted features
         """
         # Use the same print counter from the forward method to reduce logging
-        should_print = hasattr(self, "_print_counter") and (
-            self._print_counter % 20 == 0
-        )
+        should_print = hasattr(self, "_print_counter") and (self._print_counter % 20 == 0)
 
         # Print debug info about the input (less frequently)
         if should_print:
@@ -212,9 +191,7 @@ class VICRegMultimodalModel(nn.Module):
                     logger.info("Converting raw text to features using fallback")
                 # In a real implementation, we would tokenize the text here
                 # For now, this is handled in the error recovery in the forward method
-                raise ValueError(
-                    "No input_ids in text data dictionary - need tokenization"
-                )
+                raise ValueError("No input_ids in text data dictionary - need tokenization")
 
         # Different models have different forward signatures and return formats
         try:
@@ -252,15 +229,11 @@ class VICRegMultimodalModel(nn.Module):
         except Exception as e:
             logger.info(f"Error in feature extraction: {str(e)}")
             # Try to provide more diagnostic information
-            if isinstance(x, dict) and not any(
-                k in x for k in ["input_ids", "inputs_embeds"]
-            ):
+            if isinstance(x, dict) and not any(k in x for k in ["input_ids", "inputs_embeds"]):
                 logger.info("Input dictionary is missing expected HuggingFace model inputs.")
                 keys_str = ", ".join(x.keys())
                 logger.info(f"Available keys: {keys_str}")
-                raise ValueError(
-                    f"Missing required keys for HuggingFace model. Found: {keys_str}"
-                )
+                raise ValueError(f"Missing required keys for HuggingFace model. Found: {keys_str}")
             raise
 
     def _init_parameters(self):
@@ -310,9 +283,7 @@ class VICRegMultimodalModel(nn.Module):
         if should_print and text_data is not None and isinstance(text_data, dict):
             logger.info(f"Input text_data keys: {text_data.keys()}")
             if "input_ids" in text_data:
-                logger.info(
-                    f"Input text_data['input_ids'] shape: {text_data['input_ids'].shape}"
-                )
+                logger.info(f"Input text_data['input_ids'] shape: {text_data['input_ids'].shape}")
 
         # Process vision
         if images is not None:
@@ -401,9 +372,7 @@ class VICRegMultimodalModel(nn.Module):
 
                 # Use zeros instead of random features to avoid introducing noise
                 text_features = torch.zeros(batch_size, text_dim, device=model_device)
-                logger.info(
-                    "Using zero features for error recovery (more stable than random)"
-                )
+                logger.info("Using zero features for error recovery (more stable than random)")
             text_proj = self.text_proj(text_features)
 
             # Different variance encouragement for text

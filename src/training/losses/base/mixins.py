@@ -20,11 +20,7 @@ class TemperatureScalingMixin:
     """
 
     def __init__(
-        self,
-        *args,
-        temperature: float = 0.07,
-        learnable_temperature: bool = False,
-        **kwargs
+        self, *args, temperature: float = 0.07, learnable_temperature: bool = False, **kwargs
     ):
         """
         Initialize temperature scaling.
@@ -38,7 +34,7 @@ class TemperatureScalingMixin:
             self.temperature = nn.Parameter(torch.tensor(temperature))
             self._is_learnable_temp = True
         else:
-            self.register_buffer('_temperature', torch.tensor(temperature))
+            self.register_buffer("_temperature", torch.tensor(temperature))
             self._is_learnable_temp = False
 
     @property
@@ -70,12 +66,7 @@ class NormalizationMixin:
         super().__init__(*args, **kwargs)
         self.normalize_features = normalize_features
 
-    def normalize(
-        self,
-        features: torch.Tensor,
-        dim: int = -1,
-        eps: float = 1e-8
-    ) -> torch.Tensor:
+    def normalize(self, features: torch.Tensor, dim: int = -1, eps: float = 1e-8) -> torch.Tensor:
         """
         L2-normalize features along specified dimension.
 
@@ -107,7 +98,7 @@ class ProjectionMixin:
         projection_dim: int = 256,
         projection_hidden_dim: Optional[int] = None,
         num_projection_layers: int = 2,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize projection head.
@@ -132,7 +123,7 @@ class ProjectionMixin:
                 self.projection = nn.Sequential(
                     nn.Linear(input_dim, projection_hidden_dim),
                     nn.ReLU(),
-                    nn.Linear(projection_hidden_dim, projection_dim)
+                    nn.Linear(projection_hidden_dim, projection_dim),
                 )
             elif num_projection_layers == 3:
                 self.projection = nn.Sequential(
@@ -142,10 +133,12 @@ class ProjectionMixin:
                     nn.Linear(projection_hidden_dim, projection_hidden_dim),
                     nn.BatchNorm1d(projection_hidden_dim),
                     nn.ReLU(),
-                    nn.Linear(projection_hidden_dim, projection_dim)
+                    nn.Linear(projection_hidden_dim, projection_dim),
                 )
             else:
-                raise ValueError(f"num_projection_layers must be 2 or 3, got {num_projection_layers}")
+                raise ValueError(
+                    f"num_projection_layers must be 2 or 3, got {num_projection_layers}"
+                )
         else:
             self.projection = nn.Identity()
 
@@ -175,7 +168,7 @@ class HardNegativeMiningMixin:
         use_hard_negatives: bool = False,
         hard_negative_weight: float = 1.0,
         hard_negative_percentile: float = 0.5,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize hard negative mining.
@@ -191,9 +184,7 @@ class HardNegativeMiningMixin:
         self.hard_negative_percentile = hard_negative_percentile
 
     def mine_hard_negatives(
-        self,
-        similarities: torch.Tensor,
-        positive_mask: torch.Tensor
+        self, similarities: torch.Tensor, positive_mask: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Identify hard negative examples based on similarity scores.
@@ -213,7 +204,7 @@ class HardNegativeMiningMixin:
 
         # Get negative similarities
         negative_mask = ~positive_mask
-        negative_similarities = similarities.masked_fill(~negative_mask, float('-inf'))
+        negative_similarities = similarities.masked_fill(~negative_mask, float("-inf"))
 
         # Find threshold for hard negatives (high similarity = hard)
         valid_negatives = negative_similarities[negative_mask]
@@ -221,10 +212,7 @@ class HardNegativeMiningMixin:
             weights = torch.ones_like(similarities)
             return negative_mask, weights
 
-        threshold = torch.quantile(
-            valid_negatives,
-            self.hard_negative_percentile
-        )
+        threshold = torch.quantile(valid_negatives, self.hard_negative_percentile)
 
         # Create weight matrix: higher weight for hard negatives
         hard_negative_mask = (similarities > threshold) & negative_mask

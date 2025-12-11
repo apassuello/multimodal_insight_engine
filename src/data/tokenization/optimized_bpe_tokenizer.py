@@ -15,7 +15,6 @@ from .base_tokenizer import BaseTokenizer
 from .preprocessing import clean_text
 from .vocabulary import Vocabulary
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -325,9 +324,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
 
         # Check for common issues
         if len(text) > 1_000_000:
-            logger.warning(
-                f"Very long input text ({len(text)} chars) may cause performance issues"
-            )
+            logger.warning(f"Very long input text ({len(text)} chars) may cause performance issues")
 
         return text
 
@@ -361,12 +358,8 @@ class OptimizedBPETokenizer(BaseTokenizer):
                 indices = [idx for idx, _ in single_char_merges]
                 pair_values = [[ord(p[0]), ord(p[1])] for _, p in single_char_merges]
 
-                self.single_char_merge_indices = torch.tensor(
-                    indices, device=self.device
-                )
-                self.single_char_merge_pairs = torch.tensor(
-                    pair_values, device=self.device
-                )
+                self.single_char_merge_indices = torch.tensor(indices, device=self.device)
+                self.single_char_merge_pairs = torch.tensor(pair_values, device=self.device)
             else:
                 self.single_char_merge_indices = torch.empty(
                     0, dtype=torch.long, device=self.device
@@ -798,9 +791,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
         if isinstance(self.word_token_cache, LRUCache):
             # We need to recreate the cache with the new capacity
             old_cache = dict(self.word_token_cache.cache)
-            self.word_token_cache = LRUCache(
-                capacity=value, ttl=self.cache_config["ttl"]
-            )
+            self.word_token_cache = LRUCache(capacity=value, ttl=self.cache_config["ttl"])
             # Restore old values (up to capacity)
             for k, v in old_cache.items():
                 self.word_token_cache.put(k, v)
@@ -1098,14 +1089,10 @@ def preprocess_data_with_optimized_bpe(
             dataset, de_tokenizer, en_tokenizer, batch_size, num_workers
         )
     else:
-        return _preprocess_without_multiprocessing(
-            dataset, de_tokenizer, en_tokenizer, batch_size
-        )
+        return _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size)
 
 
-def _preprocess_without_multiprocessing(
-    dataset, de_tokenizer, en_tokenizer, batch_size
-):
+def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size):
     """Process without multiprocessing (better for GPU utilization)."""
     src_sequences = []
     tgt_sequences = []
@@ -1141,9 +1128,7 @@ def _preprocess_without_multiprocessing(
     return src_sequences, tgt_sequences
 
 
-def _preprocess_with_multiprocessing(
-    dataset, de_tokenizer, en_tokenizer, batch_size, num_workers
-):
+def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_size, num_workers):
     """Process with multiprocessing (better for CPU-bound tasks)."""
     from multiprocessing import Pool
 

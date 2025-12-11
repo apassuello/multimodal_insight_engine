@@ -10,13 +10,13 @@ import torch
 import torch.nn as nn
 from matplotlib.lines import Line2D
 
-
 """MODULE: benchmarking.py
 PURPOSE: Provides a framework for measuring and comparing model optimization techniques.
 KEY COMPONENTS:
 - OptimizationBenchmark: Framework for measuring and comparing model optimization techniques.
 DEPENDENCIES: torch, typing, json, os, numpy, matplotlib
 SPECIAL NOTES: Supports benchmarking for quantization, pruning, and mixed precision methods."""
+
 
 class OptimizationBenchmark:
     """
@@ -243,7 +243,9 @@ class OptimizationBenchmark:
                 "speedups": speedups,
                 "memory_reductions": memory_reductions,
                 "avg_speedup": np.mean(list(speedups.values())),
-                "avg_memory_reduction": np.mean(list(memory_reductions.values())) if memory_reductions else None,
+                "avg_memory_reduction": (
+                    np.mean(list(memory_reductions.values())) if memory_reductions else None
+                ),
             }
 
         # Save comparison plots
@@ -269,25 +271,24 @@ class OptimizationBenchmark:
 
         for name, metrics in comparison["optimizations"].items():
             speedups = [metrics["speedups"].get(bs, 1.0) for bs in x]
-            line, = plt.plot(x, speedups, marker='o', linestyle='-', linewidth=2)
+            (line,) = plt.plot(x, speedups, marker="o", linestyle="-", linewidth=2)
             lines.append(line)
             labels.append(name)
 
-        plt.axhline(y=1.0, color='r', linestyle='--', label='Baseline')
+        plt.axhline(y=1.0, color="r", linestyle="--", label="Baseline")
 
-        plt.xlabel('Batch Size')
-        plt.ylabel('Speedup (x)')
-        plt.title('Optimization Speedup by Batch Size')
-        plt.legend(lines + [Line2D([0], [0], color='r', linestyle='--')],
-                 labels + ['Baseline'])
+        plt.xlabel("Batch Size")
+        plt.ylabel("Speedup (x)")
+        plt.title("Optimization Speedup by Batch Size")
+        plt.legend(lines + [Line2D([0], [0], color="r", linestyle="--")], labels + ["Baseline"])
         plt.grid(True)
 
         # Set x-axis to logarithmic scale if wide range of batch sizes
         if max(x) / min(x) > 10:
-            plt.xscale('log', base=2)
+            plt.xscale("log", base=2)
 
         # Save the plot
-        plt.savefig(os.path.join(self.save_dir, 'optimization_speedup.png'))
+        plt.savefig(os.path.join(self.save_dir, "optimization_speedup.png"))
 
         # Create memory reduction plot if data is available
         memory_data = False
@@ -307,25 +308,24 @@ class OptimizationBenchmark:
                     continue
 
                 reductions = [metrics["memory_reductions"].get(bs, 1.0) for bs in x]
-                line, = plt.plot(x, reductions, marker='o', linestyle='-', linewidth=2)
+                (line,) = plt.plot(x, reductions, marker="o", linestyle="-", linewidth=2)
                 lines.append(line)
                 labels.append(name)
 
-            plt.axhline(y=1.0, color='r', linestyle='--', label='Baseline')
+            plt.axhline(y=1.0, color="r", linestyle="--", label="Baseline")
 
-            plt.xlabel('Batch Size')
-            plt.ylabel('Memory Reduction (x)')
-            plt.title('Optimization Memory Reduction by Batch Size')
-            plt.legend(lines + [Line2D([0], [0], color='r', linestyle='--')],
-                     labels + ['Baseline'])
+            plt.xlabel("Batch Size")
+            plt.ylabel("Memory Reduction (x)")
+            plt.title("Optimization Memory Reduction by Batch Size")
+            plt.legend(lines + [Line2D([0], [0], color="r", linestyle="--")], labels + ["Baseline"])
             plt.grid(True)
 
             # Set x-axis to logarithmic scale if wide range of batch sizes
             if max(x) / min(x) > 10:
-                plt.xscale('log', base=2)
+                plt.xscale("log", base=2)
 
             # Save the plot
-            plt.savefig(os.path.join(self.save_dir, 'optimization_memory.png'))
+            plt.savefig(os.path.join(self.save_dir, "optimization_memory.png"))
 
     def save_results(self, filename: str = "optimization_benchmark.json"):
         """
@@ -335,7 +335,7 @@ class OptimizationBenchmark:
             filename: Name of the file to save results to
         """
         # Save results as JSON
-        with open(os.path.join(self.save_dir, filename), 'w') as f:
+        with open(os.path.join(self.save_dir, filename), "w") as f:
             json.dump(self.results, f, indent=2)
 
     def generate_report(self) -> str:
@@ -377,7 +377,11 @@ class OptimizationBenchmark:
                 best_for.append("Minimal impact")
 
             # Format row
-            memory_reduction_str = f"{metrics['avg_memory_reduction']:.2f}x" if metrics['avg_memory_reduction'] is not None else 'N/A'
+            memory_reduction_str = (
+                f"{metrics['avg_memory_reduction']:.2f}x"
+                if metrics["avg_memory_reduction"] is not None
+                else "N/A"
+            )
             report.append(
                 f"| {name} | {metrics['avg_speedup']:.2f}x | {memory_reduction_str} | "
                 f"{', '.join(best_for)} |\n"
@@ -395,7 +399,9 @@ class OptimizationBenchmark:
 
             # Add data rows
             for batch_size, metrics in results["batch_sizes"].items():
-                memory_str = f"{metrics['memory_mb']:.1f}" if metrics['memory_mb'] is not None else "N/A"
+                memory_str = (
+                    f"{metrics['memory_mb']:.1f}" if metrics["memory_mb"] is not None else "N/A"
+                )
                 report.append(
                     f"| {batch_size} | {metrics['avg_time']*1000:.2f} ± {metrics['std_time']*1000:.2f} | "
                     f"{metrics['iterations_per_second']:.1f} | {memory_str} |\n"
@@ -411,7 +417,7 @@ class OptimizationBenchmark:
 
         # Save report
         report_text = "".join(report)
-        with open(os.path.join(self.save_dir, "optimization_report.md"), 'w') as f:
+        with open(os.path.join(self.save_dir, "optimization_report.md"), "w") as f:
             f.write(report_text)
 
         return report_text
@@ -438,7 +444,9 @@ class OptimizationBenchmark:
                 best_overall = name
 
         if best_overall:
-            recommendations.append(f"- **Best overall optimization**: {best_overall} with {best_speedup:.2f}x average speedup\n")
+            recommendations.append(
+                f"- **Best overall optimization**: {best_overall} with {best_speedup:.2f}x average speedup\n"
+            )
 
         # Find best for different scenarios
         best_for_small_batch = None
@@ -462,10 +470,14 @@ class OptimizationBenchmark:
                 best_for_large_batch = name
 
         if best_for_small_batch:
-            recommendations.append(f"- **Best for small batches**: {best_for_small_batch} with {best_small_speedup:.2f}x speedup at batch size {min_batch}\n")
+            recommendations.append(
+                f"- **Best for small batches**: {best_for_small_batch} with {best_small_speedup:.2f}x speedup at batch size {min_batch}\n"
+            )
 
         if best_for_large_batch:
-            recommendations.append(f"- **Best for large batches**: {best_for_large_batch} with {best_large_speedup:.2f}x speedup at batch size {max_batch}\n")
+            recommendations.append(
+                f"- **Best for large batches**: {best_for_large_batch} with {best_large_speedup:.2f}x speedup at batch size {max_batch}\n"
+            )
 
         # Check for memory-constrained scenarios
         best_memory_reduction = None
@@ -477,7 +489,9 @@ class OptimizationBenchmark:
                 best_memory_reduction = name
 
         if best_memory_reduction:
-            recommendations.append(f"- **Best for memory-constrained devices**: {best_memory_reduction} with {best_reduction:.2f}x memory reduction\n")
+            recommendations.append(
+                f"- **Best for memory-constrained devices**: {best_memory_reduction} with {best_reduction:.2f}x memory reduction\n"
+            )
 
         # Add general recommendations
         recommendations.append("\n### Implementation Recommendations\n")
@@ -493,11 +507,17 @@ class OptimizationBenchmark:
                 static_better = True
 
         if dynamic_better and static_better:
-            recommendations.append("- Consider using **static quantization** for server deployment and **dynamic quantization** for mobile/edge devices.\n")
+            recommendations.append(
+                "- Consider using **static quantization** for server deployment and **dynamic quantization** for mobile/edge devices.\n"
+            )
         elif dynamic_better:
-            recommendations.append("- **Dynamic quantization** shows good results and is easier to implement than static quantization.\n")
+            recommendations.append(
+                "- **Dynamic quantization** shows good results and is easier to implement than static quantization.\n"
+            )
         elif static_better:
-            recommendations.append("- **Static quantization** provides the best performance but requires calibration data.\n")
+            recommendations.append(
+                "- **Static quantization** provides the best performance but requires calibration data.\n"
+            )
 
         # Pruning recommendations
         pruning_effective = False
@@ -507,7 +527,9 @@ class OptimizationBenchmark:
                 break
 
         if pruning_effective:
-            recommendations.append("- **Weight pruning** is effective for this model. Consider incorporating it into your training pipeline with fine-tuning.\n")
+            recommendations.append(
+                "- **Weight pruning** is effective for this model. Consider incorporating it into your training pipeline with fine-tuning.\n"
+            )
         else:
             found_pruning = False
             for name in comparison["optimizations"]:
@@ -516,7 +538,9 @@ class OptimizationBenchmark:
                     break
 
             if found_pruning:
-                recommendations.append("- **Weight pruning** did not significantly improve performance. Consider focusing on other optimization techniques.\n")
+                recommendations.append(
+                    "- **Weight pruning** did not significantly improve performance. Consider focusing on other optimization techniques.\n"
+                )
 
         # Mixed precision recommendations
         fp16_effective = False
@@ -527,14 +551,19 @@ class OptimizationBenchmark:
                     break
 
         if fp16_effective:
-            recommendations.append("- **Mixed precision (FP16)** provides good speedup with minimal accuracy impact. Highly recommended for your hardware.\n")
+            recommendations.append(
+                "- **Mixed precision (FP16)** provides good speedup with minimal accuracy impact. Highly recommended for your hardware.\n"
+            )
 
         # Apple Silicon specific
         device = next(self.model.parameters()).device
         if device.type == "mps":
-            recommendations.append("- For **Apple Silicon**, make sure to enable MPS acceleration and use FP16 precision for optimal performance.\n")
+            recommendations.append(
+                "- For **Apple Silicon**, make sure to enable MPS acceleration and use FP16 precision for optimal performance.\n"
+            )
 
         return recommendations
+
 
 def extract_file_metadata(file_path: str = __file__):
     """
@@ -557,36 +586,36 @@ def extract_file_metadata(file_path: str = __file__):
                     {
                         "name": "__init__",
                         "signature": "(self, model: nn.Module, input_generator: Callable[[int], Union[torch.Tensor, Dict[str, torch.Tensor]]], batch_sizes: List[int] = [1, 4, 16, 32], precision: float = 0.001, save_dir: str = 'benchmark_results')",
-                        "brief_description": "Initialize the optimization benchmark."
+                        "brief_description": "Initialize the optimization benchmark.",
                     },
                     {
                         "name": "benchmark_original_model",
                         "signature": "(self) -> Dict[str, Any]",
-                        "brief_description": "Benchmark the original unoptimized model."
+                        "brief_description": "Benchmark the original unoptimized model.",
                     },
                     {
                         "name": "benchmark_optimized_model",
                         "signature": "(self, model: nn.Module, name: str) -> Dict[str, Any]",
-                        "brief_description": "Benchmark an optimized model."
+                        "brief_description": "Benchmark an optimized model.",
                     },
                     {
                         "name": "compare_optimizations",
                         "signature": "(self, save_plot: bool = True) -> Dict[str, Any]",
-                        "brief_description": "Compare all benchmarked optimizations."
+                        "brief_description": "Compare all benchmarked optimizations.",
                     },
                     {
                         "name": "save_results",
                         "signature": "(self, filename: str = 'optimization_benchmark.json')",
-                        "brief_description": "Save benchmark results to a file."
+                        "brief_description": "Save benchmark results to a file.",
                     },
                     {
                         "name": "generate_report",
                         "signature": "(self) -> str",
-                        "brief_description": "Generate a report of the benchmark results."
-                    }
+                        "brief_description": "Generate a report of the benchmark results.",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["torch", "typing", "json", "os", "numpy", "matplotlib"]
+                "dependencies": ["torch", "typing", "json", "os", "numpy", "matplotlib"],
             }
         ],
         "external_dependencies": ["torch", "typing", "json", "os", "numpy", "matplotlib"],

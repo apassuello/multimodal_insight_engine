@@ -25,7 +25,7 @@ class ConstitutionalSafetyFilter:
         self,
         constitutional_framework: Optional[ConstitutionalFramework] = None,
         base_safety_evaluator: Optional[Any] = None,
-        strict_mode: bool = False
+        strict_mode: bool = False,
     ):
         """
         Initialize the constitutional safety filter.
@@ -36,7 +36,8 @@ class ConstitutionalSafetyFilter:
             strict_mode: If True, apply more aggressive filtering
         """
         self.constitutional_framework = (
-            constitutional_framework if constitutional_framework is not None
+            constitutional_framework
+            if constitutional_framework is not None
             else setup_default_framework()
         )
         self.base_safety_evaluator = base_safety_evaluator
@@ -47,14 +48,11 @@ class ConstitutionalSafetyFilter:
             "inputs_validated": 0,
             "inputs_blocked": 0,
             "outputs_filtered": 0,
-            "constitutional_filters_applied": 0
+            "constitutional_filters_applied": 0,
         }
 
     def validate_input(
-        self,
-        input_text: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        override: bool = False
+        self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Validate input text using constitutional principles.
@@ -74,18 +72,14 @@ class ConstitutionalSafetyFilter:
 
         # Allow override if explicitly requested
         if override:
-            return True, {
-                "is_safe": True,
-                "overridden": True,
-                "reason": "Safety check overridden"
-            }
+            return True, {"is_safe": True, "overridden": True, "reason": "Safety check overridden"}
 
         # First, perform base safety validation if available
         is_safe = True
         validation_info = {
             "is_safe": True,
             "constitutional_evaluation": None,
-            "flagged_principles": []
+            "flagged_principles": [],
         }
 
         if self.base_safety_evaluator is not None:
@@ -104,13 +98,15 @@ class ConstitutionalSafetyFilter:
             is_safe = False
             self.stats["inputs_blocked"] += 1
 
-            validation_info.update({
-                "is_safe": False,
-                "constitutional_evaluation": constitutional_evaluation,
-                "flagged_principles": constitutional_evaluation["flagged_principles"],
-                "reason": "Failed constitutional principles",
-                "weighted_score": constitutional_evaluation["weighted_score"]
-            })
+            validation_info.update(
+                {
+                    "is_safe": False,
+                    "constitutional_evaluation": constitutional_evaluation,
+                    "flagged_principles": constitutional_evaluation["flagged_principles"],
+                    "reason": "Failed constitutional principles",
+                    "weighted_score": constitutional_evaluation["weighted_score"],
+                }
+            )
 
         return is_safe, validation_info
 
@@ -118,7 +114,7 @@ class ConstitutionalSafetyFilter:
         self,
         output_text: str,
         metadata: Optional[Dict[str, Any]] = None,
-        apply_transformations: bool = True
+        apply_transformations: bool = True,
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Filter output text using constitutional principles.
@@ -139,7 +135,7 @@ class ConstitutionalSafetyFilter:
         filtering_info = {
             "was_filtered": False,
             "constitutional_evaluation": None,
-            "transformations_applied": []
+            "transformations_applied": [],
         }
 
         # First apply base safety filtering if available
@@ -175,10 +171,7 @@ class ConstitutionalSafetyFilter:
         return filtered_text, filtering_info
 
     def _apply_constitutional_filtering(
-        self,
-        text: str,
-        evaluation: Dict[str, Any],
-        filtering_info: Dict[str, Any]
+        self, text: str, evaluation: Dict[str, Any], filtering_info: Dict[str, Any]
     ) -> str:
         """
         Apply constitutional principles to filter text.
@@ -222,14 +215,22 @@ class ConstitutionalSafetyFilter:
         if evaluation.get("explicit_harm_detected", False):
             # Replace explicit harmful instructions with refusal
             harmful_patterns = [
-                (r"how to\b.{0,50}\b(harm|hurt|injure|kill|damage|attack)[\w\s]*",
-                 "I cannot provide instructions that could cause harm. "),
-                (r"ways to (harm|hurt|injure|kill|damage|attack)[\w\s]*",
-                 "I cannot provide methods that could cause harm. "),
-                (r"instructions for (harming|hurting|injuring|killing|attacking|damaging)[\w\s]*",
-                 "I cannot provide harmful instructions. "),
-                (r"(make|create|build|construct)\s+(?:a\s+|an\s+)?(weapon|bomb|explosive|poison)[\w\s]*",
-                 "I cannot provide instructions for creating dangerous items. ")
+                (
+                    r"how to\b.{0,50}\b(harm|hurt|injure|kill|damage|attack)[\w\s]*",
+                    "I cannot provide instructions that could cause harm. ",
+                ),
+                (
+                    r"ways to (harm|hurt|injure|kill|damage|attack)[\w\s]*",
+                    "I cannot provide methods that could cause harm. ",
+                ),
+                (
+                    r"instructions for (harming|hurting|injuring|killing|attacking|damaging)[\w\s]*",
+                    "I cannot provide harmful instructions. ",
+                ),
+                (
+                    r"(make|create|build|construct)\s+(?:a\s+|an\s+)?(weapon|bomb|explosive|poison)[\w\s]*",
+                    "I cannot provide instructions for creating dangerous items. ",
+                ),
             ]
 
             for pattern, replacement in harmful_patterns:
@@ -323,10 +324,7 @@ class ConstitutionalSafetyFilter:
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get filtering statistics."""
-        return {
-            **self.stats,
-            "framework_stats": self.constitutional_framework.get_statistics()
-        }
+        return {**self.stats, "framework_stats": self.constitutional_framework.get_statistics()}
 
     def reset_statistics(self) -> None:
         """Reset filtering statistics."""
@@ -334,6 +332,6 @@ class ConstitutionalSafetyFilter:
             "inputs_validated": 0,
             "inputs_blocked": 0,
             "outputs_filtered": 0,
-            "constitutional_filters_applied": 0
+            "constitutional_filters_applied": 0,
         }
         self.constitutional_framework.clear_history()

@@ -40,11 +40,7 @@ class RedTeamingFramework:
         # Track red teaming results
         self.results = []
 
-    def register_attack_strategy(
-        self,
-        name: str,
-        strategy_fn: Callable[[str], List[str]]
-    ) -> None:
+    def register_attack_strategy(self, name: str, strategy_fn: Callable[[str], List[str]]) -> None:
         """
         Register an attack strategy function.
 
@@ -55,10 +51,7 @@ class RedTeamingFramework:
         self.attack_strategies[name] = strategy_fn
 
     def generate_adversarial_inputs(
-        self,
-        base_prompts: List[str],
-        strategy_name: Optional[str] = None,
-        num_variations: int = 5
+        self, base_prompts: List[str], strategy_name: Optional[str] = None, num_variations: int = 5
     ) -> Dict[str, List[str]]:
         """
         Generate adversarial inputs using registered strategies.
@@ -104,7 +97,7 @@ class RedTeamingFramework:
         model_fn: Callable[[str], str],
         adversarial_inputs: Dict[str, List[str]],
         evaluation_fn: Callable[[str, str], Dict[str, Any]],
-        model_name: str = "unnamed_model"
+        model_name: str = "unnamed_model",
     ) -> Dict[str, Any]:
         """
         Evaluate model robustness against adversarial inputs.
@@ -126,7 +119,7 @@ class RedTeamingFramework:
             "total_inputs": 0,
             "total_failures": 0,
             "strategies": {},
-            "detailed_results": []
+            "detailed_results": [],
         }
 
         # Process each strategy
@@ -158,7 +151,7 @@ class RedTeamingFramework:
                     "strategy": strategy_name,
                     "input": input_text,
                     "output": output,
-                    "evaluation": eval_result
+                    "evaluation": eval_result,
                 }
                 evaluation_results["detailed_results"].append(detailed_result)
 
@@ -175,18 +168,14 @@ class RedTeamingFramework:
         # Calculate overall failure rate
         if evaluation_results["total_inputs"] > 0:
             evaluation_results["failure_rate"] = (
-                evaluation_results["total_failures"] /
-                evaluation_results["total_inputs"]
+                evaluation_results["total_failures"] / evaluation_results["total_inputs"]
             )
         else:
             evaluation_results["failure_rate"] = 0.0
 
         # Log results if enabled
         if self.log_results:
-            result_file = os.path.join(
-                self.output_dir,
-                f"red_team_{model_name}_{timestamp}.json"
-            )
+            result_file = os.path.join(self.output_dir, f"red_team_{model_name}_{timestamp}.json")
             with open(result_file, "w") as f:
                 json.dump(evaluation_results, f, indent=2)
 
@@ -196,9 +185,7 @@ class RedTeamingFramework:
         return evaluation_results
 
     def generate_report(
-        self,
-        results: Optional[Dict[str, Any]] = None,
-        include_details: bool = False
+        self, results: Optional[Dict[str, Any]] = None, include_details: bool = False
     ) -> str:
         """
         Generate a human-readable report from evaluation results.
@@ -255,6 +242,7 @@ class RedTeamingFramework:
 
         return report
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -275,34 +263,34 @@ def extract_file_metadata(file_path=__file__):
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, output_dir: str = \"red_team_results\", log_results: bool = True)",
-                        "brief_description": "Initialize the red teaming framework with output configuration"
+                        "signature": '__init__(self, output_dir: str = "red_team_results", log_results: bool = True)',
+                        "brief_description": "Initialize the red teaming framework with output configuration",
                     },
                     {
                         "name": "register_attack_strategy",
                         "signature": "register_attack_strategy(self, name: str, strategy_fn: Callable[[str], List[str]]) -> None",
-                        "brief_description": "Register an attack strategy function for generating adversarial inputs"
+                        "brief_description": "Register an attack strategy function for generating adversarial inputs",
                     },
                     {
                         "name": "generate_adversarial_inputs",
                         "signature": "generate_adversarial_inputs(self, base_prompts: List[str], strategy_name: Optional[str] = None, num_variations: int = 5) -> Dict[str, List[str]]",
-                        "brief_description": "Generate adversarial inputs using registered strategies"
+                        "brief_description": "Generate adversarial inputs using registered strategies",
                     },
                     {
                         "name": "evaluate_model_robustness",
-                        "signature": "evaluate_model_robustness(self, model_fn: Callable[[str], str], adversarial_inputs: Dict[str, List[str]], evaluation_fn: Callable[[str, str], Dict[str, Any]], model_name: str = \"unnamed_model\") -> Dict[str, Any]",
-                        "brief_description": "Evaluate model robustness against adversarial inputs"
+                        "signature": 'evaluate_model_robustness(self, model_fn: Callable[[str], str], adversarial_inputs: Dict[str, List[str]], evaluation_fn: Callable[[str, str], Dict[str, Any]], model_name: str = "unnamed_model") -> Dict[str, Any]',
+                        "brief_description": "Evaluate model robustness against adversarial inputs",
                     },
                     {
                         "name": "generate_report",
                         "signature": "generate_report(self, results: Optional[Dict[str, Any]] = None, include_details: bool = False) -> str",
-                        "brief_description": "Generate a human-readable report from evaluation results"
-                    }
+                        "brief_description": "Generate a human-readable report from evaluation results",
+                    },
                 ],
                 "inheritance": "",
-                "dependencies": ["os", "json", "datetime", "typing"]
+                "dependencies": ["os", "json", "datetime", "typing"],
             }
         ],
         "external_dependencies": ["json", "datetime"],
-        "complexity_score": 7  # High complexity due to the comprehensive framework
+        "complexity_score": 7,  # High complexity due to the comprehensive framework
     }

@@ -6,7 +6,6 @@ import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -16,6 +15,7 @@ KEY COMPONENTS:
 - BaseModel: Abstract base class providing common model functionality like saving/loading, parameter counting, and device management
 DEPENDENCIES: torch, torch.nn, os, typing
 SPECIAL NOTES: All model classes in the project should inherit from this base class to ensure consistent behavior"""
+
 
 class BaseModel(nn.Module):
     """
@@ -43,9 +43,14 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError("Subclasses must implement forward method")
 
-    def save(self, path: str, optimizer: Optional[torch.optim.Optimizer] = None,
-             epoch: Optional[int] = None, loss: Optional[float] = None,
-             additional_info: Optional[Dict[str, Any]] = None):
+    def save(
+        self,
+        path: str,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        epoch: Optional[int] = None,
+        loss: Optional[float] = None,
+        additional_info: Optional[Dict[str, Any]] = None,
+    ):
         """
         Save model weights and training state to a file.
 
@@ -61,17 +66,17 @@ class BaseModel(nn.Module):
 
         # Prepare the state dictionary
         state_dict = {
-            'model_type': self.model_type,
-            'model_state_dict': self.state_dict(),
+            "model_type": self.model_type,
+            "model_state_dict": self.state_dict(),
         }
 
         # Add optional information
         if optimizer is not None:
-            state_dict['optimizer_state_dict'] = optimizer.state_dict()
+            state_dict["optimizer_state_dict"] = optimizer.state_dict()
         if epoch is not None:
-            state_dict['epoch'] = epoch
+            state_dict["epoch"] = epoch
         if loss is not None:
-            state_dict['loss'] = loss
+            state_dict["loss"] = loss
         if additional_info is not None:
             state_dict.update(additional_info)
 
@@ -94,17 +99,17 @@ class BaseModel(nn.Module):
         checkpoint = torch.load(path, map_location=map_location, weights_only=True)
 
         # Check if the model type matches
-        saved_model_type = checkpoint.get('model_type')
+        saved_model_type = checkpoint.get("model_type")
         if saved_model_type != self.model_type:
             logger.info(f"Warning: Loading weights from {saved_model_type} into {self.model_type}")
 
         # Load the model weights
-        self.load_state_dict(checkpoint['model_state_dict'])
+        self.load_state_dict(checkpoint["model_state_dict"])
         logger.info(f"Model loaded from {path}")
 
         # Remove model-related keys and return the rest
-        checkpoint.pop('model_type', None)
-        checkpoint.pop('model_state_dict', None)
+        checkpoint.pop("model_type", None)
+        checkpoint.pop("model_state_dict", None)
         return checkpoint
 
     def count_parameters(self):
@@ -124,6 +129,7 @@ class BaseModel(nn.Module):
             torch.device: Device of the first parameter
         """
         return next(self.parameters()).device
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -146,21 +152,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x)",
-                        "brief_description": "Abstract forward pass method that must be implemented by subclasses"
+                        "brief_description": "Abstract forward pass method that must be implemented by subclasses",
                     },
                     {
                         "name": "save",
                         "signature": "save(self, path: str, optimizer: Optional[torch.optim.Optimizer] = None, epoch: Optional[int] = None, loss: Optional[float] = None, additional_info: Optional[Dict[str, Any]] = None)",
-                        "brief_description": "Save model weights and training state to a file"
+                        "brief_description": "Save model weights and training state to a file",
                     },
                     {
                         "name": "load",
                         "signature": "load(self, path: str, map_location: Optional[str] = None)",
-                        "brief_description": "Load model weights from a file"
-                    }
+                        "brief_description": "Load model weights from a file",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "os", "typing"]
+                "dependencies": ["torch", "torch.nn", "os", "typing"],
             }
         ],
         "external_dependencies": ["torch"],

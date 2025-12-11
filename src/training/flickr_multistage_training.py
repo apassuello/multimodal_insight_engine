@@ -41,7 +41,6 @@ from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss
 from src.training.losses.self_supervised import VICRegLoss
 from src.training.trainers.multimodal import MultimodalTrainer
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -427,8 +426,7 @@ class FlickrMultistageTrainer:
         # Custom cosine scheduler with 2 cycles and restarts
         scheduler = CosineAnnealingWarmRestarts(
             optimizer,
-            T_0=len(self.train_dataloader)
-            * (self.stage3_epochs // 2),  # Restart halfway
+            T_0=len(self.train_dataloader) * (self.stage3_epochs // 2),  # Restart halfway
             T_mult=1,
             eta_min=base_lr * 0.001,  # Minimum learning rate
         )

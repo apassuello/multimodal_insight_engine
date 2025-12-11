@@ -25,7 +25,6 @@ from src.training.losses import (
     MultiModalMixedContrastiveLoss,
 )
 
-
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -41,7 +40,7 @@ def extract_loss(result):
     - tensor: returns as-is
     """
     if isinstance(result, dict):
-        return result.get('loss', result.get('total_loss', result.get('contrastive_loss')))
+        return result.get("loss", result.get("total_loss", result.get("contrastive_loss")))
     elif isinstance(result, tuple):
         return result[0]
     else:
@@ -97,13 +96,9 @@ def match_ids(batch_size):
 class TestContrastiveLoss:
     """Test suite for ContrastiveLoss (InfoNCE)."""
 
-    def test_basic_forward_without_projection(
-        self, vision_features, text_features, device
-    ):
+    def test_basic_forward_without_projection(self, vision_features, text_features, device):
         """Test basic forward pass without projection heads."""
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         # Compute loss
         result = loss_fn(vision_features, text_features)
@@ -116,9 +111,7 @@ class TestContrastiveLoss:
         assert not torch.isinf(loss)
         assert loss.item() >= 0  # Loss should be non-negative
 
-    def test_basic_forward_with_projection(
-        self, batch_size, embed_dim, device
-    ):
+    def test_basic_forward_with_projection(self, batch_size, embed_dim, device):
         """Test basic forward pass with projection heads."""
         vision_features = torch.randn(batch_size, embed_dim, device=device)
         text_features = torch.randn(batch_size, embed_dim, device=device)
@@ -146,9 +139,7 @@ class TestContrastiveLoss:
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         # Compute loss and backpropagate
         result = loss_fn(vision_features, text_features)
@@ -161,19 +152,12 @@ class TestContrastiveLoss:
         assert not torch.all(vision_features.grad == 0)
         assert not torch.all(text_features.grad == 0)
 
-    def test_temperature_sensitivity(
-        self, vision_features, text_features, device
-    ):
+    def test_temperature_sensitivity(self, vision_features, text_features, device):
         """Test that temperature parameter affects loss value."""
-        loss_fn_low = ContrastiveLoss(
-            temperature=0.01, use_projection=False, loss_type="infonce"
-        )
-        loss_fn_high = ContrastiveLoss(
-            temperature=1.0, use_projection=False, loss_type="infonce"
-        )
+        loss_fn_low = ContrastiveLoss(temperature=0.01, use_projection=False, loss_type="infonce")
+        loss_fn_high = ContrastiveLoss(temperature=1.0, use_projection=False, loss_type="infonce")
 
         result = loss_fn_low(vision_features, text_features)
-
 
         loss_low = extract_loss(result)
         result = loss_fn_high(vision_features, text_features)
@@ -220,7 +204,7 @@ class TestContrastiveLoss:
             )
             result = loss_fn_none(vision_features, text_features)
 
-            loss_none = extract_loss(result)        # Should return per-sample losses
+            loss_none = extract_loss(result)  # Should return per-sample losses
             assert loss_none.ndim >= 1
         except (RuntimeError, TypeError):
             # reduction="none" might not be fully implemented
@@ -251,9 +235,7 @@ class TestContrastiveLoss:
         vision_features = torch.randn(1, embed_dim, device=device)
         text_features = torch.randn(1, embed_dim, device=device)
 
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         # Should handle single sample gracefully
         result = loss_fn(vision_features, text_features)
@@ -266,9 +248,7 @@ class TestContrastiveLoss:
         # Create identical features
         features = torch.randn(batch_size, embed_dim, device=device)
 
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         # Loss should be low (perfect alignment)
         result = loss_fn(features, features.clone())
@@ -278,20 +258,15 @@ class TestContrastiveLoss:
         # With identical features, loss should be relatively low
         assert loss.item() < 10.0
 
-    def test_numerical_stability_extreme_values(
-        self, batch_size, embed_dim, device
-    ):
+    def test_numerical_stability_extreme_values(self, batch_size, embed_dim, device):
         """Test numerical stability with extreme input values."""
         # Very large values
         vision_large = torch.ones(batch_size, embed_dim, device=device) * 100
         text_large = torch.ones(batch_size, embed_dim, device=device) * 100
 
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         result = loss_fn(vision_large, text_large)
-
 
         loss = extract_loss(result)
         assert not torch.isnan(loss)
@@ -299,9 +274,7 @@ class TestContrastiveLoss:
 
     def test_batch_size_invariance(self, embed_dim, device):
         """Test that loss scales appropriately with batch size."""
-        loss_fn = ContrastiveLoss(
-            temperature=0.07, use_projection=False, loss_type="infonce"
-        )
+        loss_fn = ContrastiveLoss(temperature=0.07, use_projection=False, loss_type="infonce")
 
         # Small batch
         vision_small = torch.randn(4, embed_dim, device=device)
@@ -330,12 +303,9 @@ class TestMultiModalMixedContrastiveLoss:
 
     def test_basic_forward(self, vision_features, text_features, device):
         """Test basic forward pass."""
-        loss_fn = MultiModalMixedContrastiveLoss(
-            temperature=0.07, use_projection=False
-        )
+        loss_fn = MultiModalMixedContrastiveLoss(temperature=0.07, use_projection=False)
 
         result = loss_fn(vision_features, text_features)
-
 
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
@@ -357,7 +327,6 @@ class TestMultiModalMixedContrastiveLoss:
 
         result = loss_fn(vision_features, text_features)
 
-
         loss = extract_loss(result)
         assert not torch.isnan(loss)
 
@@ -366,12 +335,9 @@ class TestMultiModalMixedContrastiveLoss:
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = MultiModalMixedContrastiveLoss(
-            temperature=0.07, use_projection=False
-        )
+        loss_fn = MultiModalMixedContrastiveLoss(temperature=0.07, use_projection=False)
 
         result = loss_fn(vision_features, text_features)
-
 
         loss = extract_loss(result)
         loss.backward()
@@ -395,7 +361,6 @@ class TestMultiModalMixedContrastiveLoss:
 
         result = loss_fn(vision_features, text_features)
 
-
         loss = extract_loss(result)
         assert not torch.isnan(loss)
 
@@ -410,11 +375,11 @@ class TestMemoryQueueContrastiveLoss:
 
     def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
-        loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=128, dim=vision_features.shape[1]
+        loss_fn = MemoryQueueContrastiveLoss(
+            temperature=0.07, queue_size=128, dim=vision_features.shape[1]
         )
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
@@ -422,12 +387,9 @@ class TestMemoryQueueContrastiveLoss:
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
-    def test_memory_queue_updates(
-        self, batch_size, embed_dim, match_ids, device
-    ):
+    def test_memory_queue_updates(self, batch_size, embed_dim, match_ids, device):
         """Test that memory queue gets updated across batches."""
-        loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=256, dim=embed_dim
-        )
+        loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=256, dim=embed_dim)
 
         # First batch
         vision1 = torch.randn(batch_size, embed_dim, device=device)
@@ -450,11 +412,11 @@ class TestMemoryQueueContrastiveLoss:
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = MemoryQueueContrastiveLoss(temperature=0.07, queue_size=128, dim=vision_features.shape[1]
+        loss_fn = MemoryQueueContrastiveLoss(
+            temperature=0.07, queue_size=128, dim=vision_features.shape[1]
         )
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         loss.backward()
@@ -477,22 +439,18 @@ class TestHardNegativeMiningContrastiveLoss:
 
         result = loss_fn(vision_features, text_features, match_ids)
 
-
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
-    def test_different_num_hard_negatives(
-        self, vision_features, text_features, match_ids, device
-    ):
+    def test_different_num_hard_negatives(self, vision_features, text_features, match_ids, device):
         """Test with different numbers of hard negatives."""
         for _num_negatives in [2, 4, 8]:
             loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
             result = loss_fn(vision_features, text_features, match_ids)
-
 
             loss = extract_loss(result)
         assert not torch.isnan(loss)
@@ -505,7 +463,6 @@ class TestHardNegativeMiningContrastiveLoss:
         loss_fn = HardNegativeMiningContrastiveLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         loss.backward()
@@ -524,11 +481,9 @@ class TestDynamicTemperatureContrastiveLoss:
 
     def test_basic_forward(self, vision_features, text_features, match_ids, device):
         """Test basic forward pass."""
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
-        )
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07)
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
@@ -536,17 +491,12 @@ class TestDynamicTemperatureContrastiveLoss:
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
-    def test_learnable_temperature(
-        self, vision_features, text_features, match_ids, device
-    ):
+    def test_learnable_temperature(self, vision_features, text_features, match_ids, device):
         """Test that temperature is learnable."""
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
-        )
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07)
 
         # Get initial temperature
-        initial_temp = loss_fn.temperature.item() if hasattr(
-            loss_fn, 'temperature'
-        ) else None
+        initial_temp = loss_fn.temperature.item() if hasattr(loss_fn, "temperature") else None
 
         if initial_temp is not None:
             # Compute loss and backprop
@@ -557,9 +507,7 @@ class TestDynamicTemperatureContrastiveLoss:
             loss.backward()
 
             # Temperature should have gradient if learnable
-            if hasattr(loss_fn, 'temperature') and hasattr(
-                loss_fn.temperature, 'grad'
-            ):
+            if hasattr(loss_fn, "temperature") and hasattr(loss_fn.temperature, "grad"):
                 assert loss_fn.temperature.grad is not None
 
     def test_gradient_flow(self, vision_features, text_features, match_ids, device):
@@ -567,11 +515,9 @@ class TestDynamicTemperatureContrastiveLoss:
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07
-        )
+        loss_fn = DynamicTemperatureContrastiveLoss(base_temperature=0.07)
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         loss.backward()
@@ -594,22 +540,18 @@ class TestDecoupledContrastiveLoss:
 
         result = loss_fn(vision_features, text_features, match_ids)
 
-
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
-    def test_different_decouple_factors(
-        self, vision_features, text_features, match_ids, device
-    ):
+    def test_different_decouple_factors(self, vision_features, text_features, match_ids, device):
         """Test with different decouple factors."""
         for _factor in [0.0, 0.5, 1.0]:
             loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
             result = loss_fn(vision_features, text_features, match_ids)
-
 
             loss = extract_loss(result)
         assert not torch.isnan(loss)
@@ -622,7 +564,6 @@ class TestDecoupledContrastiveLoss:
         loss_fn = DecoupledContrastiveLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features, match_ids)
-
 
         loss = extract_loss(result)
         loss.backward()

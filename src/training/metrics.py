@@ -41,7 +41,7 @@ class Accuracy:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
     """
 
-    def __init__(self, top_k: int = 1, reduction: str = 'mean'):
+    def __init__(self, top_k: int = 1, reduction: str = "mean"):
         self.top_k = top_k
         self.reduction = reduction
         self.reset()
@@ -92,7 +92,7 @@ class Perplexity:
             'none' | 'mean' | 'sum'. Defaults to 'mean'.
     """
 
-    def __init__(self, reduction: str = 'mean'):
+    def __init__(self, reduction: str = "mean"):
         self.reduction = reduction
         self.reset()
 
@@ -120,7 +120,7 @@ class Perplexity:
             float: The computed perplexity value
         """
         if self.total_tokens == 0:
-            return float('inf')
+            return float("inf")
         return np.exp(self.total_loss / self.total_tokens)
 
 
@@ -137,7 +137,7 @@ class F1Score:
             Defaults to 'macro'.
     """
 
-    def __init__(self, num_classes: int, average: str = 'macro'):
+    def __init__(self, num_classes: int, average: str = "macro"):
         self.num_classes = num_classes
         self.average = average
         self.reset()
@@ -168,12 +168,12 @@ class F1Score:
         Returns:
             float: The computed F1 score
         """
-        if self.average == 'macro':
+        if self.average == "macro":
             precision = self.tp / (self.tp + self.fp + 1e-10)
             recall = self.tp / (self.tp + self.fn + 1e-10)
             f1 = 2 * (precision * recall) / (precision + recall + 1e-10)
             return f1.mean().item()
-        elif self.average == 'micro':
+        elif self.average == "micro":
             total_tp = self.tp.sum()
             total_fp = self.fp.sum()
             total_fn = self.fn.sum()
@@ -290,16 +290,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "update",
                         "signature": "update(self, pred: torch.Tensor, target: torch.Tensor)",
-                        "brief_description": "Updates the accuracy metric with new predictions and targets"
+                        "brief_description": "Updates the accuracy metric with new predictions and targets",
                     },
                     {
                         "name": "compute",
                         "signature": "compute(self) -> float",
-                        "brief_description": "Computes the current accuracy value"
-                    }
+                        "brief_description": "Computes the current accuracy value",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch"]
+                "dependencies": ["torch"],
             },
             {
                 "name": "Perplexity",
@@ -308,16 +308,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "update",
                         "signature": "update(self, loss: torch.Tensor, num_tokens: int)",
-                        "brief_description": "Updates the perplexity metric with new loss values"
+                        "brief_description": "Updates the perplexity metric with new loss values",
                     },
                     {
                         "name": "compute",
                         "signature": "compute(self) -> float",
-                        "brief_description": "Computes the current perplexity value"
-                    }
+                        "brief_description": "Computes the current perplexity value",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "numpy"]
+                "dependencies": ["torch", "numpy"],
             },
             {
                 "name": "F1Score",
@@ -326,16 +326,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "update",
                         "signature": "update(self, pred: torch.Tensor, target: torch.Tensor)",
-                        "brief_description": "Updates the F1 score metric with new predictions"
+                        "brief_description": "Updates the F1 score metric with new predictions",
                     },
                     {
                         "name": "compute",
                         "signature": "compute(self) -> float",
-                        "brief_description": "Computes the current F1 score"
-                    }
+                        "brief_description": "Computes the current F1 score",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch"]
+                "dependencies": ["torch"],
             },
             {
                 "name": "BLEUScore",
@@ -344,17 +344,17 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "update",
                         "signature": "update(self, hypothesis: str, reference: str)",
-                        "brief_description": "Updates the BLEU score metric with new translations"
+                        "brief_description": "Updates the BLEU score metric with new translations",
                     },
                     {
                         "name": "compute",
                         "signature": "compute(self) -> float",
-                        "brief_description": "Computes the current BLEU score"
-                    }
+                        "brief_description": "Computes the current BLEU score",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["nltk"]
-            }
+                "dependencies": ["nltk"],
+            },
         ],
         "external_dependencies": ["torch", "numpy", "nltk"],
         "complexity_score": 7,  # Medium-high complexity due to multiple metric implementations and their interactions

@@ -8,7 +8,6 @@ from src.utils.logging import get_logger
 
 from .base_wrapper import PretrainedModelWrapper
 
-
 logger = get_logger(__name__)
 
 
@@ -50,6 +49,7 @@ class VisionTransformerWrapper(PretrainedModelWrapper):
         outputs = self.pretrained_model(pixel_values=pixel_values)
         return outputs.last_hidden_state
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -70,24 +70,24 @@ def extract_file_metadata(file_path=__file__):
                 "key_methods": [
                     {
                         "name": "__init__",
-                        "signature": "__init__(self, model_name: str = \"google/vit-base-patch16-224\")",
-                        "brief_description": "Initialize with specific ViT model"
+                        "signature": '__init__(self, model_name: str = "google/vit-base-patch16-224")',
+                        "brief_description": "Initialize with specific ViT model",
                     },
                     {
                         "name": "load_model",
                         "signature": "load_model(self, model_name: str) -> None",
-                        "brief_description": "Load a pretrained Vision Transformer model"
+                        "brief_description": "Load a pretrained Vision Transformer model",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, pixel_values: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Process images through the Vision Transformer"
-                    }
+                        "brief_description": "Process images through the Vision Transformer",
+                    },
                 ],
                 "inheritance": "PretrainedModelWrapper",
-                "dependencies": ["torch", "transformers"]
+                "dependencies": ["torch", "transformers"],
             }
         ],
         "external_dependencies": ["torch", "transformers"],
-        "complexity_score": 3  # Low complexity
+        "complexity_score": 3,  # Low complexity
     }

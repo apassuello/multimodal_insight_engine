@@ -22,7 +22,6 @@ from src.utils.learningrate_scheduler import (
     WarmupCosineScheduler,
 )
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -54,7 +53,7 @@ class TrainerFactory:
         test_dataloader: Optional[torch.utils.data.DataLoader] = None,
         config: Optional[Dict[str, Any]] = None,
         device: Optional[torch.device] = None,
-        **kwargs
+        **kwargs,
     ) -> Union[MultimodalTrainer, MultistageTrainer]:
         """
         Create a trainer based on configuration.
@@ -290,17 +289,13 @@ class TrainerFactory:
         # Configure stage 1: Single Modality
         stage1_config = stage_configs.get("stage1", {})
         stage1_epochs = stage1_config.get("epochs", num_epochs // 3)
-        stage1_strategy = SingleModalityStrategy(
-            model=model, device=device, **stage1_config
-        )
+        stage1_strategy = SingleModalityStrategy(model=model, device=device, **stage1_config)
         strategies["stage1"] = {"strategy": stage1_strategy, "epochs": stage1_epochs}
 
         # Configure stage 2: Cross-Modal Fusion
         stage2_config = stage_configs.get("stage2", {})
         stage2_epochs = stage2_config.get("epochs", num_epochs // 3)
-        stage2_strategy = CrossModalStrategy(
-            model=model, device=device, **stage2_config
-        )
+        stage2_strategy = CrossModalStrategy(model=model, device=device, **stage2_config)
         strategies["stage2"] = {"strategy": stage2_strategy, "epochs": stage2_epochs}
 
         # Configure stage 3: End-to-End Fine-tuning
@@ -319,15 +314,13 @@ class TrainerFactory:
             checkpoint_dir=checkpoint_dir,
             log_dir=log_dir,
             device=device,
-            **config
+            **config,
         )
 
         return trainer
 
     @staticmethod
-    def _create_parameter_groups(
-        model: nn.Module, config: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _create_parameter_groups(model: nn.Module, config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Create parameter groups with different learning rates.
 
@@ -361,9 +354,7 @@ class TrainerFactory:
             # Text base model: very low learning rate
             {
                 "params": [
-                    p
-                    for n, p in model.named_parameters()
-                    if "text_model" in n and p.requires_grad
+                    p for n, p in model.named_parameters() if "text_model" in n and p.requires_grad
                 ],
                 "lr": base_lr * config.get("text_model_lr_factor", 0.01),
                 "name": "text_model",
@@ -373,8 +364,7 @@ class TrainerFactory:
                 "params": [
                     p
                     for n, p in model.named_parameters()
-                    if any(x in n for x in ["fusion", "cross_attention"])
-                    and p.requires_grad
+                    if any(x in n for x in ["fusion", "cross_attention"]) and p.requires_grad
                 ],
                 "lr": base_lr * config.get("fusion_lr_factor", 0.1),
                 "name": "fusion_components",
@@ -384,8 +374,7 @@ class TrainerFactory:
                 "params": [
                     p
                     for n, p in model.named_parameters()
-                    if any(x in n for x in ["projection", "adapter"])
-                    and p.requires_grad
+                    if any(x in n for x in ["projection", "adapter"]) and p.requires_grad
                 ],
                 "lr": base_lr,
                 "name": "projection_layers",

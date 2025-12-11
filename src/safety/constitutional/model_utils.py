@@ -15,13 +15,13 @@ import torch
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
 @dataclass
 class GenerationConfig:
     """Configuration for text generation."""
+
     max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
     max_length: Optional[int] = None  # Deprecated, kept for compatibility
     temperature: float = 1.0
@@ -35,9 +35,7 @@ class GenerationConfig:
 
 
 def load_model(
-    model_name: str = "gpt2",
-    device: Optional[torch.device] = None,
-    load_in_8bit: bool = False
+    model_name: str = "gpt2", device: Optional[torch.device] = None, load_in_8bit: bool = False
 ):
     """
     Load a pretrained language model and tokenizer.
@@ -53,9 +51,7 @@ def load_model(
     try:
         from transformers import AutoModelForCausalLM, AutoTokenizer
     except ImportError:
-        raise ImportError(
-            "transformers library required. Install with: pip install transformers"
-        )
+        raise ImportError("transformers library required. Install with: pip install transformers")
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,7 +88,7 @@ def generate_text(
     tokenizer,
     prompt: str,
     generation_config: Optional[GenerationConfig] = None,
-    device: Optional[torch.device] = None
+    device: Optional[torch.device] = None,
 ) -> str:
     """
     Generate text from a prompt using the model.
@@ -172,7 +168,7 @@ def batch_generate(
     generation_config: Optional[GenerationConfig] = None,
     batch_size: int = 4,
     device: Optional[torch.device] = None,
-    show_progress: bool = True
+    show_progress: bool = True,
 ) -> List[str]:
     """
     Generate text for multiple prompts in batches.
@@ -202,20 +198,17 @@ def batch_generate(
     if show_progress:
         try:
             from tqdm import tqdm
+
             iterator = tqdm(iterator, desc="Generating")
         except ImportError:
             pass
 
     for i in iterator:
-        batch_prompts = prompts[i:i + batch_size]
+        batch_prompts = prompts[i : i + batch_size]
 
         # Tokenize batch
         inputs = tokenizer(
-            batch_prompts,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512
+            batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512
         )
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
@@ -268,11 +261,7 @@ def batch_generate(
     return results
 
 
-def prepare_model_for_training(
-    model,
-    learning_rate: float = 5e-5,
-    weight_decay: float = 0.01
-):
+def prepare_model_for_training(model, learning_rate: float = 5e-5, weight_decay: float = 0.01):
     """
     Prepare model for training with appropriate optimizer.
 
@@ -290,11 +279,7 @@ def prepare_model_for_training(
         param.requires_grad = True
 
     # Create optimizer
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=learning_rate,
-        weight_decay=weight_decay
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     return optimizer
 

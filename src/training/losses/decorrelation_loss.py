@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -134,9 +133,7 @@ class DecorrelationLoss(nn.Module):
         self,
         vision_features: Optional[torch.Tensor] = None,
         text_features: Optional[torch.Tensor] = None,
-        features: Optional[
-            torch.Tensor
-        ] = None,  # Generic features (if only one modality)
+        features: Optional[torch.Tensor] = None,  # Generic features (if only one modality)
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -202,9 +199,7 @@ class DecorrelationLoss(nn.Module):
                     vision_mean_var = vision_var.mean().item()
 
                     # Check for low-variance dimensions (potential feature collapse)
-                    vision_low_var_dims = (
-                        (vision_var < self.min_variance_threshold).sum().item()
-                    )
+                    vision_low_var_dims = (vision_var < self.min_variance_threshold).sum().item()
                     vision_low_var_pct = vision_low_var_dims / vision_dim
 
                     # Store statistics
@@ -253,9 +248,7 @@ class DecorrelationLoss(nn.Module):
                     text_mean_var = text_var.mean().item()
 
                     # Check for low-variance dimensions
-                    text_low_var_dims = (
-                        (text_var < self.min_variance_threshold).sum().item()
-                    )
+                    text_low_var_dims = (text_var < self.min_variance_threshold).sum().item()
                     text_low_var_pct = text_low_var_dims / text_dim
 
                     # Store statistics
@@ -304,9 +297,7 @@ class DecorrelationLoss(nn.Module):
                     feature_mean_var = feature_var.mean().item()
 
                     # Check for low-variance dimensions
-                    feature_low_var_dims = (
-                        (feature_var < self.min_variance_threshold).sum().item()
-                    )
+                    feature_low_var_dims = (feature_var < self.min_variance_threshold).sum().item()
                     feature_low_var_pct = feature_low_var_dims / feature_dim
 
                     # Store statistics

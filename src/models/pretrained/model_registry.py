@@ -9,19 +9,18 @@ from .clip_model import CLIPModelWrapper
 # Import your model wrappers
 from .vision_transformer import VisionTransformerWrapper
 
-
 # Add more model imports as you expand
+
 
 class ModelRegistry:
     """Registry pattern for accessing and instantiating models."""
 
     _models = {
         # Homemade models
-        'transformer': None,  # Your current implementation
-
+        "transformer": None,  # Your current implementation
         # Pretrained model wrappers
-        'vit': VisionTransformerWrapper,
-        'clip': CLIPModelWrapper,
+        "vit": VisionTransformerWrapper,
+        "clip": CLIPModelWrapper,
         # Add more models as you implement them
     }
 
@@ -54,6 +53,7 @@ class ModelRegistry:
         """
         cls._models[model_type] = model_class
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -75,18 +75,18 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "get_model",
                         "signature": "get_model(cls, model_type: str, **kwargs) -> nn.Module",
-                        "brief_description": "Instantiate a model by type name with optional configuration"
+                        "brief_description": "Instantiate a model by type name with optional configuration",
                     },
                     {
                         "name": "register_model",
                         "signature": "register_model(cls, model_type: str, model_class: Type[nn.Module]) -> None",
-                        "brief_description": "Register a new model type in the registry"
-                    }
+                        "brief_description": "Register a new model type in the registry",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch.nn", ".vision_transformer", ".clip_model"]
+                "dependencies": ["torch.nn", ".vision_transformer", ".clip_model"],
             }
         ],
         "external_dependencies": ["torch"],
-        "complexity_score": 3  # Moderate complexity for a registry pattern
+        "complexity_score": 3,  # Moderate complexity for a registry pattern
     }

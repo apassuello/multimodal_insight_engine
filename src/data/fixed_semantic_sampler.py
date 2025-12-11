@@ -14,7 +14,6 @@ from typing import Dict, Iterator, List, Optional
 import torch
 from torch.utils.data import Dataset, Sampler
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +37,7 @@ class FixedSemanticBatchSampler(Sampler):
         max_samples_per_group: Optional[int] = None,
         shuffle: bool = True,
         drop_last: bool = True,
-        verbose: bool = False
+        verbose: bool = False,
     ):
         """
         Initialize the semantic batch sampler.
@@ -71,12 +70,16 @@ class FixedSemanticBatchSampler(Sampler):
 
         if self.verbose:
             logger.info(f"Found {len(self.grouped_indices)} total semantic groups")
-            logger.info(f"Found {len(self.valid_groups)} valid groups with at least {self.min_samples_per_group} samples")
+            logger.info(
+                f"Found {len(self.valid_groups)} valid groups with at least {self.min_samples_per_group} samples"
+            )
 
             # Show distribution of group sizes
             group_sizes = [len(indices) for indices in self.valid_groups.values()]
             if group_sizes:
-                logger.info(f"Group sizes - Min: {min(group_sizes)}, Max: {max(group_sizes)}, Avg: {sum(group_sizes)/len(group_sizes):.1f}")
+                logger.info(
+                    f"Group sizes - Min: {min(group_sizes)}, Max: {max(group_sizes)}, Avg: {sum(group_sizes)/len(group_sizes):.1f}"
+                )
 
         # Build batches
         self.batches = self._build_batches()
@@ -176,7 +179,8 @@ class FixedSemanticBatchSampler(Sampler):
 
             # Get groups that still have enough samples
             valid_group_ids = [
-                gid for gid, indices in available_groups.items()
+                gid
+                for gid, indices in available_groups.items()
                 if len(indices) >= self.min_samples_per_group
             ]
 
@@ -207,9 +211,7 @@ class FixedSemanticBatchSampler(Sampler):
                 # 2. How many samples are available in the group
                 # 3. The maximum samples per group parameter
                 samples_to_take = min(
-                    batch_size_left,
-                    len(available_groups[group_id]),
-                    self.max_samples_per_group
+                    batch_size_left, len(available_groups[group_id]), self.max_samples_per_group
                 )
 
                 # Make sure we're not taking too few samples
@@ -248,8 +250,7 @@ class FixedSemanticBatchSampler(Sampler):
 
             # Remove empty groups
             available_groups = {
-                gid: indices for gid, indices in available_groups.items()
-                if indices
+                gid: indices for gid, indices in available_groups.items() if indices
             }
 
         return batches
@@ -273,7 +274,7 @@ def create_semantic_dataloader(
     min_samples_per_group: int = 5,
     shuffle: bool = True,
     num_workers: int = 0,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> torch.utils.data.DataLoader:
     """
     Create a DataLoader with semantic batch sampling.
@@ -296,15 +297,12 @@ def create_semantic_dataloader(
         min_samples_per_group=min_samples_per_group,
         shuffle=shuffle,
         drop_last=True,
-        verbose=verbose
+        verbose=verbose,
     )
 
     # Create DataLoader with the batch sampler
     dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_sampler=batch_sampler,
-        num_workers=num_workers,
-        pin_memory=True
+        dataset, batch_sampler=batch_sampler, num_workers=num_workers, pin_memory=True
     )
 
     return dataloader

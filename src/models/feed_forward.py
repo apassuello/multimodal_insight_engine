@@ -5,7 +5,8 @@ KEY COMPONENTS:
 - FeedForwardClassifier: Specialized classifier with training utilities
 - MultiLayerPerceptron: Traditional MLP implementation with modern features
 DEPENDENCIES: torch, torch.nn, torch.nn.functional, typing, .base_model, .layers
-SPECIAL NOTES: Provides flexible architectures with options for layer normalization, residual connections, and dropout"""
+SPECIAL NOTES: Provides flexible architectures with options for layer normalization, residual connections, and dropout
+"""
 
 import os
 from typing import Dict, List, Literal
@@ -28,7 +29,7 @@ class FeedForwardNN(BaseModel):
         input_size: int,
         hidden_sizes: List[int],
         output_size: int,
-        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
+        activation: Literal["relu", "gelu", "tanh", "sigmoid"] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -107,7 +108,7 @@ class FeedForwardClassifier(FeedForwardNN):
         input_size: int,
         hidden_sizes: List[int],
         num_classes: int,
-        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
+        activation: Literal["relu", "gelu", "tanh", "sigmoid"] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -201,9 +202,7 @@ class FeedForwardClassifier(FeedForwardNN):
 
         return {"loss": loss, "accuracy": accuracy, "predictions": predictions}
 
-    def validation_step(
-        self, batch: Dict[str, torch.Tensor]
-    ) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
         Perform a single validation step.
 
@@ -240,7 +239,7 @@ class MultiLayerPerceptron(nn.Module):
         input_dim: int,
         hidden_dims: List[int],
         output_dim: int,
-        activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = "relu",
+        activation: Literal["relu", "gelu", "tanh", "sigmoid"] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,
         use_residual: bool = False,
@@ -273,8 +272,7 @@ class MultiLayerPerceptron(nn.Module):
                         activation=activation,
                         dropout=dropout,
                         use_layer_norm=use_layer_norm,
-                        use_residual=use_residual
-                        and layer_dims[i] == layer_dims[i + 1],
+                        use_residual=use_residual and layer_dims[i] == layer_dims[i + 1],
                     )
                 )
             # For the last layer, no dropout or layer norm
@@ -329,16 +327,16 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, input_size: int, hidden_sizes: List[int], output_size: int, activation: Literal['relu', 'gelu', 'tanh', 'sigmoid'] = 'relu', dropout: float = 0.0, use_layer_norm: bool = False, use_residual: bool = False)",
-                        "brief_description": "Initializes a configurable feed-forward neural network with given architecture"
+                        "brief_description": "Initializes a configurable feed-forward neural network with given architecture",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Performs forward pass through the network layers"
-                    }
+                        "brief_description": "Performs forward pass through the network layers",
+                    },
                 ],
                 "inheritance": "BaseModel",
-                "dependencies": ["torch", "torch.nn", ".base_model", ".layers"]
+                "dependencies": ["torch", "torch.nn", ".base_model", ".layers"],
             },
             {
                 "name": "FeedForwardClassifier",
@@ -347,21 +345,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "predict",
                         "signature": "predict(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Makes class predictions by selecting highest probability class"
+                        "brief_description": "Makes class predictions by selecting highest probability class",
                     },
                     {
                         "name": "predict_proba",
                         "signature": "predict_proba(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Returns class probabilities using softmax on logits"
+                        "brief_description": "Returns class probabilities using softmax on logits",
                     },
                     {
                         "name": "training_step",
                         "signature": "training_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]",
-                        "brief_description": "Performs a single training step with loss calculation and metrics"
-                    }
+                        "brief_description": "Performs a single training step with loss calculation and metrics",
+                    },
                 ],
                 "inheritance": "FeedForwardNN",
-                "dependencies": ["torch", "torch.nn.functional"]
+                "dependencies": ["torch", "torch.nn.functional"],
             },
             {
                 "name": "MultiLayerPerceptron",
@@ -370,13 +368,13 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Passes input through all network layers with optional skip connections"
+                        "brief_description": "Passes input through all network layers with optional skip connections",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
-            }
+                "dependencies": ["torch", "torch.nn"],
+            },
         ],
         "external_dependencies": ["torch"],
-        "complexity_score": 6  # Moderate complexity due to configuration options and training utilities
+        "complexity_score": 6,  # Moderate complexity due to configuration options and training utilities
     }

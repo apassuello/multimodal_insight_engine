@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
 
 """MODULE: feature_consistency_loss.py
@@ -131,9 +130,9 @@ class FeatureConsistencyLoss(nn.Module):
             distance = torch.norm(current_features - reference_features, p=1, dim=1)
         elif self.distance_fn == "smooth_l1":
             # Smooth L1 (Huber loss)
-            distance = F.smooth_l1_loss(
-                current_features, reference_features, reduction="none"
-            ).sum(dim=1)
+            distance = F.smooth_l1_loss(current_features, reference_features, reduction="none").sum(
+                dim=1
+            )
         else:
             raise ValueError(f"Unsupported distance function: {self.distance_fn}")
 
@@ -205,9 +204,7 @@ class FeatureConsistencyLoss(nn.Module):
                         vision_inputs_device = vision_inputs
 
                     # Compute reference features
-                    reference_vision_features = self.reference_vision_model(
-                        vision_inputs_device
-                    )
+                    reference_vision_features = self.reference_vision_model(vision_inputs_device)
 
                     # Move back to original device if needed
                     if model_device != device:
@@ -224,9 +221,7 @@ class FeatureConsistencyLoss(nn.Module):
                 if vision_inputs is not None:
                     with torch.set_grad_enabled(not self.detach_reference):
                         # Get model device
-                        model_device = next(
-                            self.reference_vision_model.parameters()
-                        ).device
+                        model_device = next(self.reference_vision_model.parameters()).device
 
                         # Ensure inputs are on the same device as the model
                         if vision_inputs.device != model_device:
@@ -241,9 +236,7 @@ class FeatureConsistencyLoss(nn.Module):
 
                         # Move back to original device if needed
                         if model_device != device:
-                            reference_vision_features = reference_vision_features.to(
-                                device
-                            )
+                            reference_vision_features = reference_vision_features.to(device)
                 else:
                     logger.warning(
                         "Vision inputs not provided, cannot compute reference vision features"
@@ -251,10 +244,7 @@ class FeatureConsistencyLoss(nn.Module):
                     compute_vision = False
 
                 # Verify feature dimensions match
-                if (
-                    compute_vision
-                    and vision_features.shape != reference_vision_features.shape
-                ):
+                if compute_vision and vision_features.shape != reference_vision_features.shape:
                     logger.warning(
                         f"Vision feature shape mismatch: current={vision_features.shape}, "
                         f"reference={reference_vision_features.shape}"
@@ -263,9 +253,7 @@ class FeatureConsistencyLoss(nn.Module):
 
                 # Compute vision consistency loss if everything is ready
                 if compute_vision:
-                    vision_loss = self._compute_distance(
-                        vision_features, reference_vision_features
-                    )
+                    vision_loss = self._compute_distance(vision_features, reference_vision_features)
 
         # Compute reference text features if needed (similar process as vision)
         if compute_text:
@@ -292,9 +280,7 @@ class FeatureConsistencyLoss(nn.Module):
                             text_inputs_device = text_inputs
 
                     # Compute reference features
-                    reference_text_features = self.reference_text_model(
-                        text_inputs_device
-                    )
+                    reference_text_features = self.reference_text_model(text_inputs_device)
 
                     # Move back to original device if needed
                     if model_device != device:
@@ -311,9 +297,7 @@ class FeatureConsistencyLoss(nn.Module):
                 if text_inputs is not None:
                     with torch.set_grad_enabled(not self.detach_reference):
                         # Get model device
-                        model_device = next(
-                            self.reference_text_model.parameters()
-                        ).device
+                        model_device = next(self.reference_text_model.parameters()).device
 
                         # Ensure inputs are on the same device as the model
                         if isinstance(text_inputs, dict):
@@ -332,9 +316,7 @@ class FeatureConsistencyLoss(nn.Module):
                                 text_inputs_device = text_inputs
 
                         # Compute reference features
-                        reference_text_features = self.reference_text_model(
-                            text_inputs_device
-                        )
+                        reference_text_features = self.reference_text_model(text_inputs_device)
 
                         # Move back to original device if needed
                         if model_device != device:
@@ -346,10 +328,7 @@ class FeatureConsistencyLoss(nn.Module):
                     compute_text = False
 
                 # Verify feature dimensions match
-                if (
-                    compute_text
-                    and text_features.shape != reference_text_features.shape
-                ):
+                if compute_text and text_features.shape != reference_text_features.shape:
                     logger.warning(
                         f"Text feature shape mismatch: current={text_features.shape}, "
                         f"reference={reference_text_features.shape}"
@@ -358,9 +337,7 @@ class FeatureConsistencyLoss(nn.Module):
 
                 # Compute text consistency loss if everything is ready
                 if compute_text:
-                    text_loss = self._compute_distance(
-                        text_features, reference_text_features
-                    )
+                    text_loss = self._compute_distance(text_features, reference_text_features)
 
         # Combine losses with weights
         total_loss = 0.0

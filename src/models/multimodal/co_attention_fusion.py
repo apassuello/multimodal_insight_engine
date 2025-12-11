@@ -138,9 +138,7 @@ class CoAttentionFusion(nn.Module):
 
         # Add fusion token to vision features
         fusion_tokens = self.fusion_token.expand(batch_size, -1, -1)
-        vision_features_with_fusion = torch.cat(
-            [fusion_tokens, vision_features_proj], dim=1
-        )
+        vision_features_with_fusion = torch.cat([fusion_tokens, vision_features_proj], dim=1)
 
         # Update vision mask to account for fusion token
         if vision_mask is not None:
@@ -170,12 +168,8 @@ class CoAttentionFusion(nn.Module):
             current_text = layer_outputs["text_features"]
 
             # Store attention maps
-            attention_maps[f"layer_{i}_vision_to_text"] = layer_outputs[
-                "vision_to_text_attn"
-            ]
-            attention_maps[f"layer_{i}_text_to_vision"] = layer_outputs[
-                "text_to_vision_attn"
-            ]
+            attention_maps[f"layer_{i}_vision_to_text"] = layer_outputs["vision_to_text_attn"]
+            attention_maps[f"layer_{i}_text_to_vision"] = layer_outputs["text_to_vision_attn"]
 
         # Extract fusion token output
         fusion_token_output = current_vision[:, 0]

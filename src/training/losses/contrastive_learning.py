@@ -24,7 +24,6 @@ import torch.nn.functional as F
 
 from src.training.losses.contrastive.simclr_loss import SimCLRLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -182,18 +181,14 @@ def compute_recall_at_k(
 
         # Image-to-text retrieval (using provided targets)
         top_k_v2t = torch.topk(similarity, k_adjusted, dim=1)[1]
-        matches_v2t = torch.zeros(
-            batch_size, dtype=torch.bool, device=similarity.device
-        )
+        matches_v2t = torch.zeros(batch_size, dtype=torch.bool, device=similarity.device)
         for i in range(batch_size):
             matches_v2t[i] = (top_k_v2t[i] == v2t_targets[i]).any()
         recall_v2t = matches_v2t.float().mean().item()
 
         # Text-to-image retrieval (using provided targets)
         top_k_t2i = torch.topk(similarity.t(), k_adjusted, dim=1)[1]
-        matches_t2i = torch.zeros(
-            batch_size, dtype=torch.bool, device=similarity.device
-        )
+        matches_t2i = torch.zeros(batch_size, dtype=torch.bool, device=similarity.device)
         for j in range(batch_size):
             matches_t2i[j] = (top_k_t2i[j] == t2i_targets[j]).any()
         recall_t2i = matches_t2i.float().mean().item()
@@ -255,9 +250,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
             temperature=temperature,
             use_projection=False,
             input_dim=dim,  # Pass the correct dimension
-            projection_dim=min(
-                512, dim // 2
-            ),  # Smaller projection size for better generalization
+            projection_dim=min(512, dim // 2),  # Smaller projection size for better generalization
         )
 
         # Classification loss
@@ -320,9 +313,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
                     )
                     contrastive_loss = (
                         1 - self.hard_negative_weight
-                    ) * contrastive_loss + self.hard_negative_weight * hard_results[
-                        "loss"
-                    ]
+                    ) * contrastive_loss + self.hard_negative_weight * hard_results["loss"]
                     results.update({f"hard_{k}": v for k, v in hard_results.items()})
 
             weighted_contrastive_loss = self.contrastive_weight * contrastive_loss
@@ -333,11 +324,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
             results["weighted_contrastive_loss"] = weighted_contrastive_loss.item()
 
         # Classification loss
-        if (
-            self.classification_weight > 0
-            and class_logits is not None
-            and class_labels is not None
-        ):
+        if self.classification_weight > 0 and class_logits is not None and class_labels is not None:
             cls_loss = self.classification_loss(class_logits, class_labels)
             weighted_cls_loss = self.classification_weight * cls_loss
             total_loss += weighted_cls_loss
@@ -405,9 +392,7 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         pos_labels = torch.arange(batch_size, device=vision_features.device)
 
         # Positive pairs similarity
-        pos_similarity = (
-            torch.matmul(vision_features, text_features.T) / self.temperature
-        )
+        pos_similarity = torch.matmul(vision_features, text_features.T) / self.temperature
 
         # Hard negative similarities
         v2t_hard_sim = torch.matmul(vision_features, hard_text_neg.T) / self.temperature
@@ -494,9 +479,7 @@ class DecoupledContrastiveLoss(nn.Module):
         text_features = F.normalize(text_features, p=2, dim=1)
 
         # Create match matrix based on match_ids
-        match_matrix = torch.zeros(
-            (batch_size, batch_size), dtype=torch.bool, device=device
-        )
+        match_matrix = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=device)
         for i in range(batch_size):
             for j in range(batch_size):
                 match_matrix[i, j] = match_ids[i] == match_ids[j]
@@ -616,9 +599,7 @@ class DecoupledContrastiveLoss(nn.Module):
 
         # Combine losses
         cross_modal_loss = (v2t_loss + t2v_loss) / 2
-        instance_loss = (
-            self.lambda_v * vision_inst_loss + self.lambda_t * text_inst_loss
-        )
+        instance_loss = self.lambda_v * vision_inst_loss + self.lambda_t * text_inst_loss
 
         total_loss = cross_modal_loss + instance_loss
 

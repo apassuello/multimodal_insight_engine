@@ -55,9 +55,7 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         default=True,  # Default to using pretrained when available
         help="Use pretrained weights for vision model",
     )
-    parser.add_argument(
-        "--data_dir", type=str, default="data", help="Directory containing dataset"
-    )
+    parser.add_argument("--data_dir", type=str, default="data", help="Directory containing dataset")
     parser.add_argument(
         "--use_synthetic",
         action="store_true",
@@ -263,7 +261,7 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
     parser.add_argument(
         "--var_weight",
         type=float,
-        default=5.0,   # Decreased from 25.0
+        default=5.0,  # Decreased from 25.0
         help="Weight for VICReg variance term",
     )
     parser.add_argument(
@@ -322,28 +320,18 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
     )
 
     # Training arguments
-    parser.add_argument(
-        "--batch_size", type=int, default=16, help="Batch size for training"
-    )
-    parser.add_argument(
-        "--num_epochs", type=int, default=20, help="Number of training epochs"
-    )
-    parser.add_argument(
-        "--learning_rate", type=float, default=1e-5, help="Learning rate"
-    )
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
+    parser.add_argument("--num_epochs", type=int, default=20, help="Number of training epochs")
+    parser.add_argument("--learning_rate", type=float, default=1e-5, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
-    parser.add_argument(
-        "--warmup_steps", type=int, default=1000, help="Number of warmup steps"
-    )
+    parser.add_argument("--warmup_steps", type=int, default=1000, help="Number of warmup steps")
     parser.add_argument(
         "--temperature",
         type=float,
         default=0.07,
         help="Temperature for contrastive loss",
     )
-    parser.add_argument(
-        "--use_mixed_loss", action="store_true", help="Use mixed contrastive loss"
-    )
+    parser.add_argument("--use_mixed_loss", action="store_true", help="Use mixed contrastive loss")
     parser.add_argument(
         "--contrastive_weight",
         type=float,
@@ -393,9 +381,7 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
         default="checkpoints",
         help="Directory to save checkpoints",
     )
-    parser.add_argument(
-        "--log_dir", type=str, default="logs", help="Directory to save logs"
-    )
+    parser.add_argument("--log_dir", type=str, default="logs", help="Directory to save logs")
     parser.add_argument(
         "--visualize_attention",
         action="store_true",
@@ -403,9 +389,7 @@ def get_multimodal_training_args() -> argparse.ArgumentParser:
     )
 
     # System arguments
-    parser.add_argument(
-        "--device", type=str, default="mps", help="Device to use (cuda, mps, cpu)"
-    )
+    parser.add_argument("--device", type=str, default="mps", help="Device to use (cuda, mps, cpu)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 
     return parser

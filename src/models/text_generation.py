@@ -42,9 +42,11 @@ class TextGenerator:
 
         # Set device
         if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else
-                                     "mps" if torch.backends.mps.is_available() else
-                                     "cpu")
+            self.device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.backends.mps.is_available() else "cpu"
+            )
         else:
             self.device = device
 
@@ -95,13 +97,15 @@ class TextGenerator:
             input_ids = [self.bos_idx] + input_ids
 
         # Create tensor and move to device
-        input_ids = torch.tensor([input_ids] * num_return_sequences, dtype=torch.long).to(self.device)
+        input_ids = torch.tensor([input_ids] * num_return_sequences, dtype=torch.long).to(
+            self.device
+        )
 
         # Track attention patterns if requested
         attention_maps: List[torch.Tensor] = []
 
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
 
         # Generate auto-regressively
         for _ in range(max_new_tokens):
@@ -111,7 +115,7 @@ class TextGenerator:
             # Forward pass
             with torch.no_grad():
                 # Set model attributes for attention tracking if needed
-                if return_attention and hasattr(self.model, 'output_attentions'):
+                if return_attention and hasattr(self.model, "output_attentions"):
                     self.model.output_attentions = True
 
                 # Get outputs - handle different model interfaces
@@ -119,7 +123,7 @@ class TextGenerator:
                     # For encoder-decoder models like EncoderDecoderTransformer
                     # Use src for encoding and tgt for decoding
                     src = input_ids
-                    tgt = input_ids[:, -1:] # Last token for next prediction
+                    tgt = input_ids[:, -1:]  # Last token for next prediction
                     src_mask = attention_mask
 
                     # First encode the source
@@ -132,20 +136,23 @@ class TextGenerator:
                     logits = outputs
                 else:
                     # For standard models that accept input_ids and attention_mask
-                    outputs = self.model(
-                        input_ids=input_ids,
-                        attention_mask=attention_mask
-                    )
+                    outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
 
                     # Get logits
                     logits = outputs.logits if hasattr(outputs, "logits") else outputs
 
                 # Store attention maps if requested
-                if return_attention and hasattr(outputs, 'attentions') and outputs.attentions is not None:
+                if (
+                    return_attention
+                    and hasattr(outputs, "attentions")
+                    and outputs.attentions is not None
+                ):
                     attention_maps.extend(outputs.attentions)
 
                 # Focus on the last token prediction
-                next_token_logits = logits[:, -1, :] if not is_encoder_decoder else logits.squeeze(1)
+                next_token_logits = (
+                    logits[:, -1, :] if not is_encoder_decoder else logits.squeeze(1)
+                )
 
                 # Adjust prediction with temperature
                 if temperature != 1.0:
@@ -155,26 +162,37 @@ class TextGenerator:
                 if do_sample:
                     # Apply top-k filtering
                     if top_k is not None:
-                        indices_to_remove = torch.topk(next_token_logits, top_k)[0][:, -1].unsqueeze(-1) <= next_token_logits
-                        next_token_logits = next_token_logits.masked_fill(indices_to_remove, -float('Inf'))
+                        indices_to_remove = (
+                            torch.topk(next_token_logits, top_k)[0][:, -1].unsqueeze(-1)
+                            <= next_token_logits
+                        )
+                        next_token_logits = next_token_logits.masked_fill(
+                            indices_to_remove, -float("Inf")
+                        )
 
                     # Apply top-p (nucleus) filtering
                     if top_p is not None:
-                        sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
+                        sorted_logits, sorted_indices = torch.sort(
+                            next_token_logits, descending=True
+                        )
                         cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
 
                         # Remove tokens with cumulative probability above the threshold
                         sorted_indices_to_remove = cumulative_probs > top_p
 
                         # Shift indices to remove the first token (keep at least one token)
-                        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
+                            ..., :-1
+                        ].clone()
                         sorted_indices_to_remove[..., 0] = 0
 
                         # Scatter sorted indices to original indexing
                         indices_to_remove = sorted_indices_to_remove.scatter(
                             1, sorted_indices, sorted_indices_to_remove
                         )
-                        next_token_logits = next_token_logits.masked_fill(indices_to_remove, -float('Inf'))
+                        next_token_logits = next_token_logits.masked_fill(
+                            indices_to_remove, -float("Inf")
+                        )
 
                     # Sample from the filtered distribution
                     if is_encoder_decoder:
@@ -183,7 +201,7 @@ class TextGenerator:
                         next_token_logits = torch.where(
                             torch.isfinite(next_token_logits),
                             next_token_logits,
-                            torch.zeros_like(next_token_logits)
+                            torch.zeros_like(next_token_logits),
                         )
                         # Add small epsilon to avoid zeros
                         next_token_logits = next_token_logits + 1e-8
@@ -224,7 +242,7 @@ class TextGenerator:
 
             # Find the end token if present
             if self.eos_idx in generated_ids:
-                generated_ids = generated_ids[:generated_ids.index(self.eos_idx)]
+                generated_ids = generated_ids[: generated_ids.index(self.eos_idx)]
 
             # Decode to text
             generated_text = self.tokenizer.decode(generated_ids)
@@ -263,7 +281,7 @@ class TextGenerator:
         """
         # Note: KV caching is not implemented for encoder-decoder models
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
         if is_encoder_decoder:
             # For encoder-decoder models, fall back to regular generation
             result = self.generate(
@@ -271,7 +289,7 @@ class TextGenerator:
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 do_sample=do_sample,
-                num_return_sequences=1
+                num_return_sequences=1,
             )
             # Make sure we return a string
             if isinstance(result, list):
@@ -310,10 +328,12 @@ class TextGenerator:
                     outputs = self.model(input_ids=input_ids[:, -1:], past_key_values=past)
 
                 # Update past for next iteration
-                past = outputs.past_key_values if hasattr(outputs, 'past_key_values') else None
+                past = outputs.past_key_values if hasattr(outputs, "past_key_values") else None
 
                 # Get logits for next token prediction
-                next_token_logits = outputs.logits[:, -1, :] if hasattr(outputs, "logits") else outputs[:, -1, :]
+                next_token_logits = (
+                    outputs.logits[:, -1, :] if hasattr(outputs, "logits") else outputs[:, -1, :]
+                )
 
                 # Apply temperature
                 if temperature != 1.0:
@@ -341,7 +361,7 @@ class TextGenerator:
 
         # Find the end token if present
         if self.eos_idx in generated_ids:
-            generated_ids = generated_ids[:generated_ids.index(self.eos_idx) + 1]
+            generated_ids = generated_ids[: generated_ids.index(self.eos_idx) + 1]
 
         # Decode to text
         generated_text = self.tokenizer.decode(generated_ids)
@@ -369,7 +389,7 @@ class TextGenerator:
         """
         # For encoder-decoder models, it's more stable to just run generation sequentially
         # Check if we're working with EncoderDecoderTransformer
-        is_encoder_decoder = hasattr(self.model, 'encoder') and hasattr(self.model, 'decoder')
+        is_encoder_decoder = hasattr(self.model, "encoder") and hasattr(self.model, "decoder")
         if is_encoder_decoder:
             results = []
             for prompt in prompts:
@@ -378,7 +398,7 @@ class TextGenerator:
                     prompt=prompt,
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
-                    do_sample=do_sample
+                    do_sample=do_sample,
                 )
                 # Handle both string and list return types
                 if isinstance(generated, list):
@@ -420,10 +440,7 @@ class TextGenerator:
             # Forward pass
             with torch.no_grad():
                 # Get outputs for standard models
-                outputs = self.model(
-                    input_ids=generated,
-                    attention_mask=attention_mask
-                )
+                outputs = self.model(input_ids=generated, attention_mask=attention_mask)
 
                 # Get logits
                 logits = outputs.logits if hasattr(outputs, "logits") else outputs
@@ -446,10 +463,7 @@ class TextGenerator:
             generated = torch.cat([generated, next_token], dim=1)
 
             # Update attention mask for next iteration
-            attention_mask = torch.cat([
-                attention_mask,
-                torch.ones_like(next_token)
-            ], dim=1)
+            attention_mask = torch.cat([attention_mask, torch.ones_like(next_token)], dim=1)
 
         # Decode the generated sequences
         generated_texts = []
@@ -466,7 +480,7 @@ class TextGenerator:
 
             # Find the end token if present
             if self.eos_idx in generated_ids:
-                generated_ids = generated_ids[:generated_ids.index(self.eos_idx)]
+                generated_ids = generated_ids[: generated_ids.index(self.eos_idx)]
 
             # Remove padding
             while generated_ids and generated_ids[-1] == self.pad_idx:
@@ -481,6 +495,7 @@ class TextGenerator:
             generated_texts.append(full_text)
 
         return generated_texts
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -503,21 +518,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "generate",
                         "signature": "generate(self, prompt: str, max_new_tokens: int = 50, temperature: float = 1.0, top_k: Optional[int] = None, top_p: Optional[float] = None, do_sample: bool = True, num_return_sequences: int = 1, return_attention: bool = False) -> Union[List[str], Tuple[List[str], List[torch.Tensor]]]",
-                        "brief_description": "Generate text from a prompt using various sampling strategies"
+                        "brief_description": "Generate text from a prompt using various sampling strategies",
                     },
                     {
                         "name": "_generate_with_kv_cache",
                         "signature": "_generate_with_kv_cache(self, prompt: str, max_new_tokens: int = 50, temperature: float = 1.0, do_sample: bool = True) -> str",
-                        "brief_description": "Generate text with key-value caching for faster inference"
+                        "brief_description": "Generate text with key-value caching for faster inference",
                     },
                     {
                         "name": "batch_generate",
                         "signature": "batch_generate(self, prompts: List[str], max_new_tokens: int = 50, temperature: float = 1.0, do_sample: bool = True) -> List[str]",
-                        "brief_description": "Generate text for multiple prompts in parallel"
-                    }
+                        "brief_description": "Generate text for multiple prompts in parallel",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "torch.nn.functional", "numpy"]
+                "dependencies": ["torch", "torch.nn.functional", "numpy"],
             }
         ],
         "external_dependencies": ["torch", "numpy"],

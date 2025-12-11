@@ -16,12 +16,9 @@ from src.optimization.quantization import (
 @pytest.fixture
 def simple_model():
     """Create a simple model for testing quantization."""
-    model = nn.Sequential(
-        nn.Linear(10, 20),
-        nn.ReLU(),
-        nn.Linear(20, 5)
-    )
+    model = nn.Sequential(nn.Linear(10, 20), nn.ReLU(), nn.Linear(20, 5))
     return model
+
 
 @pytest.fixture
 def simple_conv_model():
@@ -35,23 +32,27 @@ def simple_conv_model():
         nn.ReLU(),
         nn.AdaptiveAvgPool2d(1),
         nn.Flatten(),
-        nn.Linear(8, 5)
+        nn.Linear(8, 5),
     )
     return model
+
 
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
     return torch.randn(8, 10)
 
+
 @pytest.fixture
 def sample_image_data():
     """Create sample image data for testing."""
     return torch.randn(8, 3, 32, 32)
 
+
 @pytest.fixture
 def sample_loader(sample_data):
     """Create a data loader for testing."""
+
     class SimpleDataset(torch.utils.data.Dataset):
         def __init__(self, data, length=5):
             self.data = data
@@ -66,9 +67,11 @@ def sample_loader(sample_data):
     dataset = SimpleDataset(sample_data)
     return torch.utils.data.DataLoader(dataset, batch_size=2)
 
+
 @pytest.fixture
 def sample_image_loader(sample_image_data):
     """Create an image data loader for testing."""
+
     class SimpleImageDataset(torch.utils.data.Dataset):
         def __init__(self, data, length=5):
             self.data = data
@@ -83,6 +86,7 @@ def sample_image_loader(sample_image_data):
     dataset = SimpleImageDataset(sample_image_data)
     return torch.utils.data.DataLoader(dataset, batch_size=2)
 
+
 def test_quantization_config_initialization():
     """Test QuantizationConfig initialization."""
     config = QuantizationConfig(
@@ -92,7 +96,7 @@ def test_quantization_config_initialization():
         quantize_activations=False,
         bits=8,
         symmetric=True,
-        per_channel=True
+        per_channel=True,
     )
 
     assert config.quantization_type == "dynamic"
@@ -102,6 +106,7 @@ def test_quantization_config_initialization():
     assert config.bits == 8
     assert config.symmetric is True
     assert config.per_channel is True
+
 
 def test_quantization_config_dtype_inference():
     """Test that QuantizationConfig correctly infers the dtype based on bits."""
@@ -117,6 +122,7 @@ def test_quantization_config_dtype_inference():
     config_override = QuantizationConfig(bits=8, dtype=torch.float16)
     assert config_override.dtype == torch.float16
 
+
 def test_quantization_config_string_representation():
     """Test string representation of QuantizationConfig."""
     config = QuantizationConfig(quantization_type="static", bits=8)
@@ -126,8 +132,10 @@ def test_quantization_config_string_representation():
     assert "type=static" in str_repr
     assert "bits=8" in str_repr
 
+
 def test_model_optimizer_abstract_methods():
     """Test that ModelOptimizer requires implementation of abstract methods."""
+
     class ConcreteOptimizer(ModelOptimizer):
         def optimize(self):
             return self.model
@@ -149,6 +157,7 @@ def test_model_optimizer_abstract_methods():
 
     with pytest.raises(NotImplementedError):
         ModelOptimizer(model).get_size_info()
+
 
 def test_model_optimizer_save_restore(simple_model):
     """Test that ModelOptimizer can save and restore the original model state."""
@@ -173,6 +182,7 @@ def test_model_optimizer_save_restore(simple_model):
     # Verify parameters restored
     for name, param in simple_model.named_parameters():
         assert torch.allclose(param, original_params[name])
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_dynamic_quantizer_optimize_linear(simple_model):
@@ -206,14 +216,12 @@ def test_dynamic_quantizer_optimize_linear(simple_model):
     # The quantized model should be smaller than the original model
     assert size_info["quantized_size"] < size_info["original_size"]
 
+
 def test_dynamic_quantizer_custom_config(simple_model):
     """Test DynamicQuantizer with custom configuration."""
     # Create custom configuration
     config = QuantizationConfig(
-        quantization_type="dynamic",
-        bits=8,
-        quantize_weights=True,
-        quantize_activations=False
+        quantization_type="dynamic", bits=8, quantize_weights=True, quantize_activations=False
     )
 
     # Create quantizer with custom config
@@ -224,6 +232,7 @@ def test_dynamic_quantizer_custom_config(simple_model):
     assert quantizer.config.bits == 8
     assert quantizer.config.quantize_weights is True
     assert quantizer.config.quantize_activations is False
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_dynamic_quantizer_fuse_modules(simple_conv_model, sample_image_data):
@@ -254,6 +263,7 @@ def test_dynamic_quantizer_fuse_modules(simple_conv_model, sample_image_data):
     # Not all models will successfully fuse modules, so this check is conditional
     # on the specific model architecture. Could be commented out if causing problems.
     # assert fused_modules_found, "No fused modules found in the quantized model"
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_static_quantizer_optimize(simple_model, sample_loader):
@@ -293,6 +303,7 @@ def test_static_quantizer_optimize(simple_model, sample_loader):
         # Some static quantization operations might not be supported on all platforms
         pytest.skip(f"Static quantization failed: {str(e)}")
 
+
 def test_static_quantizer_custom_config(simple_model, sample_loader):
     """Test StaticQuantizer with custom configuration."""
     # Create custom configuration
@@ -301,15 +312,11 @@ def test_static_quantizer_custom_config(simple_model, sample_loader):
         bits=8,
         quantize_weights=True,
         quantize_activations=True,
-        symmetric=True
+        symmetric=True,
     )
 
     # Create quantizer with custom config
-    quantizer = StaticQuantizer(
-        simple_model,
-        config=config,
-        calibration_loader=sample_loader
-    )
+    quantizer = StaticQuantizer(simple_model, config=config, calibration_loader=sample_loader)
 
     # Verify the config is used
     assert quantizer.config.quantization_type == "static"
@@ -317,6 +324,7 @@ def test_static_quantizer_custom_config(simple_model, sample_loader):
     assert quantizer.config.quantize_weights is True
     assert quantizer.config.quantize_activations is True
     assert quantizer.config.symmetric is True
+
 
 def test_model_size_reduction(simple_model):
     """Test that quantization reduces model size."""
@@ -352,6 +360,7 @@ def test_model_size_reduction(simple_model):
 
     except Exception as e:
         pytest.skip(f"Unexpected error during quantization: {str(e)}")
+
 
 def test_quantization_functional_equivalence(simple_model):
     """Test that quantized model is functionally equivalent to the original model."""

@@ -20,7 +20,6 @@ from PIL import Image
 
 from src.data.augmentation_pipeline import MultimodalAugmentationPipeline
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -29,7 +28,7 @@ from src.data.augmentation_pipeline import MultimodalAugmentationPipeline
 @pytest.fixture
 def sample_image():
     """Create a sample PIL image for testing."""
-    return Image.new('RGB', (224, 224), color=(100, 150, 200))
+    return Image.new("RGB", (224, 224), color=(100, 150, 200))
 
 
 @pytest.fixture
@@ -41,19 +40,13 @@ def sample_text():
 @pytest.fixture
 def batch_images():
     """Create a batch of sample images."""
-    return [
-        Image.new('RGB', (224, 224), color=(i*30, i*30, i*30))
-        for i in range(5)
-    ]
+    return [Image.new("RGB", (224, 224), color=(i * 30, i * 30, i * 30)) for i in range(5)]
 
 
 @pytest.fixture
 def batch_texts():
     """Create a batch of sample texts."""
-    return [
-        f"This is caption number {i} for testing"
-        for i in range(5)
-    ]
+    return [f"This is caption number {i} for testing" for i in range(5)]
 
 
 # ============================================================================
@@ -76,10 +69,7 @@ class TestAugmentationPipelineInitialization:
     def test_initialization_with_custom_params(self):
         """Test initialization with custom parameters."""
         pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=0.7,
-            text_aug_prob=0.5,
-            image_size=256,
-            severity="heavy"
+            image_aug_prob=0.7, text_aug_prob=0.5, image_size=256, severity="heavy"
         )
 
         assert pipeline.image_aug_prob == 0.7
@@ -110,9 +100,7 @@ class TestImageAugmentation:
 
     def test_image_augmentation_basic(self, sample_image):
         """Test basic image augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0  # Always apply
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0)  # Always apply
 
         # Apply augmentation
         try:
@@ -120,7 +108,7 @@ class TestImageAugmentation:
             if isinstance(augmented, tuple):
                 aug_image, aug_text = augmented
             else:
-                aug_image = augmented.get('image', augmented.get('pixel_values'))
+                aug_image = augmented.get("image", augmented.get("pixel_values"))
 
             # Image should be augmented
             assert isinstance(aug_image, (torch.Tensor, Image.Image))
@@ -131,10 +119,7 @@ class TestImageAugmentation:
     def test_image_size_consistency(self, sample_image):
         """Test that augmented images have correct size."""
         for size in [224, 256, 384]:
-            pipeline = MultimodalAugmentationPipeline(
-                image_size=size,
-                image_aug_prob=1.0
-            )
+            pipeline = MultimodalAugmentationPipeline(image_size=size, image_aug_prob=1.0)
 
             try:
                 pipeline(sample_image, "test")
@@ -145,10 +130,7 @@ class TestImageAugmentation:
 
     def test_image_augmentation_determinism(self, sample_image):
         """Test that augmentation is deterministic with same seed."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0,
-            random_resized_crop=True
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, random_resized_crop=True)
 
         # Set seed and augment
         random.seed(42)
@@ -175,14 +157,10 @@ class TestImageAugmentation:
     def test_image_augmentation_probability(self, sample_image):
         """Test that augmentation probability is respected."""
         # With 0 probability, no augmentation should occur
-        pipeline_no_aug = MultimodalAugmentationPipeline(
-            image_aug_prob=0.0
-        )
+        pipeline_no_aug = MultimodalAugmentationPipeline(image_aug_prob=0.0)
 
         # With 1.0 probability, augmentation should occur
-        pipeline_always_aug = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0
-        )
+        pipeline_always_aug = MultimodalAugmentationPipeline(image_aug_prob=1.0)
 
         try:
             result_no_aug = pipeline_no_aug(sample_image.copy(), "test")
@@ -196,10 +174,7 @@ class TestImageAugmentation:
 
     def test_color_jitter_application(self, sample_image):
         """Test color jitter augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0,
-            color_jitter_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, color_jitter_prob=1.0)
 
         try:
             result = pipeline(sample_image, "test")
@@ -209,10 +184,7 @@ class TestImageAugmentation:
 
     def test_random_erasing(self, sample_image):
         """Test random erasing augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0,
-            random_erasing_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, random_erasing_prob=1.0)
 
         try:
             result = pipeline(sample_image, "test")
@@ -231,36 +203,30 @@ class TestTextAugmentation:
 
     def test_text_augmentation_basic(self, sample_text):
         """Test basic text augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            text_aug_prob=1.0  # Always apply
-        )
+        pipeline = MultimodalAugmentationPipeline(text_aug_prob=1.0)  # Always apply
 
         try:
-            result = pipeline(Image.new('RGB', (224, 224)), sample_text)
+            result = pipeline(Image.new("RGB", (224, 224)), sample_text)
             if isinstance(result, tuple):
                 _, aug_text = result
                 assert isinstance(aug_text, str)
             else:
                 # Check that text is in result
-                assert 'text' in result or 'caption' in result
+                assert "text" in result or "caption" in result
         except Exception:
             pytest.skip("Pipeline interface different")
 
     def test_text_augmentation_probability(self, sample_text):
         """Test that text augmentation probability is respected."""
         # With 0 probability
-        pipeline_no_aug = MultimodalAugmentationPipeline(
-            text_aug_prob=0.0
-        )
+        pipeline_no_aug = MultimodalAugmentationPipeline(text_aug_prob=0.0)
 
         # With 1.0 probability
-        pipeline_always_aug = MultimodalAugmentationPipeline(
-            text_aug_prob=1.0
-        )
+        pipeline_always_aug = MultimodalAugmentationPipeline(text_aug_prob=1.0)
 
         try:
-            result_no_aug = pipeline_no_aug(Image.new('RGB', (224, 224)), sample_text)
-            result_always_aug = pipeline_always_aug(Image.new('RGB', (224, 224)), sample_text)
+            result_no_aug = pipeline_no_aug(Image.new("RGB", (224, 224)), sample_text)
+            result_always_aug = pipeline_always_aug(Image.new("RGB", (224, 224)), sample_text)
 
             assert result_no_aug is not None
             assert result_always_aug is not None
@@ -269,12 +235,10 @@ class TestTextAugmentation:
 
     def test_text_preserves_meaning(self, sample_text):
         """Test that text augmentation preserves semantic meaning."""
-        pipeline = MultimodalAugmentationPipeline(
-            text_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(text_aug_prob=1.0)
 
         try:
-            result = pipeline(Image.new('RGB', (224, 224)), sample_text)
+            result = pipeline(Image.new("RGB", (224, 224)), sample_text)
             # Just verify it runs
             assert result is not None
         except Exception:
@@ -292,9 +256,7 @@ class TestConsistencyModes:
     def test_matched_consistency_mode(self, sample_image, sample_text):
         """Test matched consistency mode."""
         pipeline = MultimodalAugmentationPipeline(
-            consistency_mode="matched",
-            image_aug_prob=1.0,
-            text_aug_prob=1.0
+            consistency_mode="matched", image_aug_prob=1.0, text_aug_prob=1.0
         )
 
         try:
@@ -306,9 +268,7 @@ class TestConsistencyModes:
     def test_independent_consistency_mode(self, sample_image, sample_text):
         """Test independent consistency mode."""
         pipeline = MultimodalAugmentationPipeline(
-            consistency_mode="independent",
-            image_aug_prob=1.0,
-            text_aug_prob=1.0
+            consistency_mode="independent", image_aug_prob=1.0, text_aug_prob=1.0
         )
 
         try:
@@ -320,9 +280,7 @@ class TestConsistencyModes:
     def test_paired_consistency_mode(self, sample_image, sample_text):
         """Test paired consistency mode."""
         pipeline = MultimodalAugmentationPipeline(
-            consistency_mode="paired",
-            image_aug_prob=1.0,
-            text_aug_prob=1.0
+            consistency_mode="paired", image_aug_prob=1.0, text_aug_prob=1.0
         )
 
         try:
@@ -342,9 +300,7 @@ class TestBatchProcessing:
 
     def test_batch_image_augmentation(self, batch_images):
         """Test augmenting a batch of images."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0)
 
         augmented_images = []
         for img in batch_images:
@@ -359,12 +315,10 @@ class TestBatchProcessing:
 
     def test_batch_text_augmentation(self, batch_texts):
         """Test augmenting a batch of texts."""
-        pipeline = MultimodalAugmentationPipeline(
-            text_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(text_aug_prob=1.0)
 
         augmented_texts = []
-        dummy_img = Image.new('RGB', (224, 224))
+        dummy_img = Image.new("RGB", (224, 224))
 
         for text in batch_texts:
             try:
@@ -389,7 +343,7 @@ class TestEdgeCases:
         pipeline = MultimodalAugmentationPipeline()
 
         try:
-            result = pipeline(Image.new('RGB', (224, 224)), "")
+            result = pipeline(Image.new("RGB", (224, 224)), "")
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -401,7 +355,7 @@ class TestEdgeCases:
         long_text = "word " * 1000
 
         try:
-            result = pipeline(Image.new('RGB', (224, 224)), long_text)
+            result = pipeline(Image.new("RGB", (224, 224)), long_text)
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -413,7 +367,7 @@ class TestEdgeCases:
         unicode_text = "Hello 世界 🌍 Привет مرحبا"
 
         try:
-            result = pipeline(Image.new('RGB', (224, 224)), unicode_text)
+            result = pipeline(Image.new("RGB", (224, 224)), unicode_text)
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -422,7 +376,7 @@ class TestEdgeCases:
         """Test handling of very small images."""
         pipeline = MultimodalAugmentationPipeline(image_size=224)
 
-        small_img = Image.new('RGB', (32, 32))
+        small_img = Image.new("RGB", (32, 32))
 
         try:
             result = pipeline(small_img, "test")
@@ -434,7 +388,7 @@ class TestEdgeCases:
         """Test handling of very large images."""
         pipeline = MultimodalAugmentationPipeline(image_size=224)
 
-        large_img = Image.new('RGB', (2048, 2048))
+        large_img = Image.new("RGB", (2048, 2048))
 
         try:
             result = pipeline(large_img, "test")
@@ -446,7 +400,7 @@ class TestEdgeCases:
         """Test handling of grayscale images."""
         pipeline = MultimodalAugmentationPipeline()
 
-        gray_img = Image.new('L', (224, 224))
+        gray_img = Image.new("L", (224, 224))
 
         try:
             result = pipeline(gray_img, "test")
@@ -465,10 +419,7 @@ class TestDebugMode:
 
     def test_debug_mode_enabled(self, sample_image, sample_text):
         """Test pipeline with debug mode enabled."""
-        pipeline = MultimodalAugmentationPipeline(
-            debug_mode=True,
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(debug_mode=True, image_aug_prob=1.0)
 
         try:
             result = pipeline(sample_image, sample_text)
@@ -478,10 +429,7 @@ class TestDebugMode:
 
     def test_debug_mode_disabled(self, sample_image, sample_text):
         """Test pipeline with debug mode disabled."""
-        pipeline = MultimodalAugmentationPipeline(
-            debug_mode=False,
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(debug_mode=False, image_aug_prob=1.0)
 
         try:
             result = pipeline(sample_image, sample_text)
@@ -500,10 +448,7 @@ class TestSeverityLevels:
 
     def test_light_severity(self, sample_image, sample_text):
         """Test light severity augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            severity="light",
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(severity="light", image_aug_prob=1.0)
 
         try:
             result = pipeline(sample_image, sample_text)
@@ -513,10 +458,7 @@ class TestSeverityLevels:
 
     def test_medium_severity(self, sample_image, sample_text):
         """Test medium severity augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            severity="medium",
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(severity="medium", image_aug_prob=1.0)
 
         try:
             result = pipeline(sample_image, sample_text)
@@ -526,10 +468,7 @@ class TestSeverityLevels:
 
     def test_heavy_severity(self, sample_image, sample_text):
         """Test heavy severity augmentation."""
-        pipeline = MultimodalAugmentationPipeline(
-            severity="heavy",
-            image_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(severity="heavy", image_aug_prob=1.0)
 
         try:
             result = pipeline(sample_image, sample_text)
@@ -563,10 +502,7 @@ class TestAugmentationIntegration:
 
     def test_pipeline_in_dataset_context(self, sample_image, sample_text):
         """Test using pipeline as would be done in a dataset."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=0.8,
-            text_aug_prob=0.5
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=0.8, text_aug_prob=0.5)
 
         # Simulate dataset __getitem__
         try:
@@ -578,10 +514,7 @@ class TestAugmentationIntegration:
 
     def test_pipeline_reproducibility(self, sample_image, sample_text):
         """Test that pipeline is reproducible with seed."""
-        pipeline = MultimodalAugmentationPipeline(
-            image_aug_prob=1.0,
-            text_aug_prob=1.0
-        )
+        pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, text_aug_prob=1.0)
 
         # Set seeds
         def set_seeds():

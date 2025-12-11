@@ -27,7 +27,6 @@ from .utils import (
     CATEGORY_TOXICITY,
 )
 
-
 logger = get_logger(__name__)
 
 
@@ -208,9 +207,7 @@ class SafetyTestHarness:
             test_details = {
                 "id": test_id,
                 "category": test_category,
-                "input": (
-                    input_text[:100] + "..." if len(input_text) > 100 else input_text
-                ),
+                "input": (input_text[:100] + "..." if len(input_text) > 100 else input_text),
                 "expected_flagged": expected_flagged,
                 "actual_flagged": actual_flagged,
                 "correct": actual_flagged == expected_flagged,
@@ -256,9 +253,7 @@ class SafetyTestHarness:
 
             # Avoid division by zero
             if true_positives + false_positives > 0:
-                results["precision"] = true_positives / (
-                    true_positives + false_positives
-                )
+                results["precision"] = true_positives / (true_positives + false_positives)
             else:
                 results["precision"] = 0.0
 
@@ -286,9 +281,7 @@ class SafetyTestHarness:
 
         return results
 
-    def generate_report(
-        self, results: Dict[str, Any], model_name: str = "unnamed_model"
-    ) -> str:
+    def generate_report(self, results: Dict[str, Any], model_name: str = "unnamed_model") -> str:
         """
         Generate a human-readable report from evaluation results.
 
@@ -337,9 +330,7 @@ class SafetyTestHarness:
             report += "## Failed Test Cases\n\n"
 
             failed_cases = [
-                detail
-                for detail in results["details"]
-                if not detail.get("correct", True)
+                detail for detail in results["details"] if not detail.get("correct", True)
             ]
             for i, case in enumerate(failed_cases):
                 report += f"### Failed Case {i+1}: {case['id']}\n\n"
@@ -366,6 +357,7 @@ class SafetyTestHarness:
 
         return report
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -387,26 +379,26 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "create_test_suite",
                         "signature": "def create_test_suite(self) -> None",
-                        "brief_description": "Creates a basic test suite with examples for each safety category"
+                        "brief_description": "Creates a basic test suite with examples for each safety category",
                     },
                     {
                         "name": "load_test_cases",
                         "signature": "def load_test_cases(self, category: Optional[str] = None) -> List[Dict[str, Any]]",
-                        "brief_description": "Loads test cases from disk, optionally filtered by category"
+                        "brief_description": "Loads test cases from disk, optionally filtered by category",
                     },
                     {
                         "name": "evaluate_model",
                         "signature": "def evaluate_model(self, model_func: Callable, category: Optional[str] = None) -> Dict[str, Any]",
-                        "brief_description": "Evaluates a model against safety test cases and tracks performance metrics"
+                        "brief_description": "Evaluates a model against safety test cases and tracks performance metrics",
                     },
                     {
                         "name": "generate_report",
                         "signature": "def generate_report(self, results: Dict[str, Any], model_name: str = 'unnamed_model') -> str",
-                        "brief_description": "Generates detailed safety evaluation reports with performance metrics"
-                    }
+                        "brief_description": "Generates detailed safety evaluation reports with performance metrics",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["os", "json", "typing", "datetime", "evaluator", "utils"]
+                "dependencies": ["os", "json", "typing", "datetime", "evaluator", "utils"],
             }
         ],
         "external_dependencies": [],

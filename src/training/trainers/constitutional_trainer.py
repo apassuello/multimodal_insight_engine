@@ -16,7 +16,6 @@ import torch.nn.functional as F
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import os
 
@@ -25,7 +24,6 @@ from tqdm import tqdm
 
 from .language_model_trainer import LanguageModelTrainer
 
-
 # Import constitutional AI components
 try:
     from src.safety.constitutional import (
@@ -33,6 +31,7 @@ try:
         RLAIFTrainer,
         setup_default_framework,
     )
+
     CONSTITUTIONAL_AI_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_AI_AVAILABLE = False
@@ -64,7 +63,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         use_rlaif: bool = False,
         critique_model: Optional[nn.Module] = None,
         constitutional_weight: float = 0.5,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the constitutional trainer.
@@ -96,7 +95,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             max_grad_norm=max_grad_norm,
             device=device,
             log_dir=log_dir,
-            **kwargs
+            **kwargs,
         )
 
         # Check if constitutional AI is available
@@ -116,7 +115,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         self.constitutional_evaluator = ConstitutionalSafetyEvaluator(
             framework=self.constitutional_framework,
             critique_model=critique_model,
-            use_self_critique=(critique_model is not None)
+            use_self_critique=(critique_model is not None),
         )
 
         # Setup RLAIF trainer if requested
@@ -128,7 +127,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
                 constitutional_framework=self.constitutional_framework,
                 critique_model=critique_model,
                 learning_rate=learning_rate,
-                device=self.device
+                device=self.device,
             )
 
         # Constitutional training parameters
@@ -139,11 +138,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         self.constitutional_scores = []
         self.principle_violation_history = []
 
-    def train_step(
-        self,
-        batch: Dict[str, torch.Tensor],
-        step: int
-    ) -> Dict[str, float]:
+    def train_step(self, batch: Dict[str, torch.Tensor], step: int) -> Dict[str, float]:
         """
         Perform a single training step with constitutional feedback.
 
@@ -181,15 +176,12 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             "total_loss": total_loss.item(),
             "lm_loss": lm_loss.item(),
             "constitutional_loss": constitutional_loss.item(),
-            "learning_rate": self.optimizer.param_groups[0]["lr"]
+            "learning_rate": self.optimizer.param_groups[0]["lr"],
         }
 
         return metrics
 
-    def _compute_language_modeling_loss(
-        self,
-        batch: Dict[str, torch.Tensor]
-    ) -> torch.Tensor:
+    def _compute_language_modeling_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Compute standard language modeling loss.
 
@@ -221,17 +213,12 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             # Compute cross-entropy loss
             logits = outputs.logits if hasattr(outputs, "logits") else outputs
             loss = F.cross_entropy(
-                logits.view(-1, logits.size(-1)),
-                labels.view(-1),
-                ignore_index=-100
+                logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-100
             )
 
         return loss
 
-    def _compute_constitutional_loss(
-        self,
-        batch: Dict[str, torch.Tensor]
-    ) -> torch.Tensor:
+    def _compute_constitutional_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Compute constitutional loss by evaluating generated responses.
 
@@ -287,9 +274,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             return torch.tensor(0.0, device=self.device)
 
     def _extract_prompts_from_batch(
-        self,
-        batch: Dict[str, torch.Tensor],
-        max_samples: int = 4
+        self, batch: Dict[str, torch.Tensor], max_samples: int = 4
     ) -> List[str]:
         """
         Extract prompts from training batch for constitutional evaluation.
@@ -303,7 +288,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         """
         try:
             # Check if model has tokenizer
-            if not hasattr(self.model, 'tokenizer'):
+            if not hasattr(self.model, "tokenizer"):
                 return []
 
             tokenizer = self.model.tokenizer
@@ -340,11 +325,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             logger.info(f"Warning: Failed to extract prompts from batch: {e}")
             return []
 
-    def _generate_response_for_evaluation(
-        self,
-        prompt: str,
-        max_length: int = 100
-    ) -> str:
+    def _generate_response_for_evaluation(self, prompt: str, max_length: int = 100) -> str:
         """
         Generate a response for constitutional evaluation.
 
@@ -357,7 +338,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         """
         try:
             # Check if model has tokenizer and generation capability
-            if not hasattr(self.model, 'tokenizer'):
+            if not hasattr(self.model, "tokenizer"):
                 return ""
 
             tokenizer = self.model.tokenizer
@@ -369,7 +350,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             # Generate response
             self.model.eval()
             with torch.no_grad():
-                if hasattr(self.model, 'generate'):
+                if hasattr(self.model, "generate"):
                     # Use model's generate method if available
                     output_ids = self.model.generate(
                         **inputs,
@@ -377,13 +358,15 @@ class ConstitutionalTrainer(LanguageModelTrainer):
                         do_sample=True,
                         temperature=0.9,
                         top_p=0.9,
-                        pad_token_id=tokenizer.pad_token_id if hasattr(tokenizer, 'pad_token_id') else 0
+                        pad_token_id=(
+                            tokenizer.pad_token_id if hasattr(tokenizer, "pad_token_id") else 0
+                        ),
                     )
                 else:
                     # Fallback: use forward pass for one token
                     outputs = self.model(**inputs)
-                    outputs.logits if hasattr(outputs, 'logits') else outputs
-                    output_ids = inputs['input_ids']
+                    outputs.logits if hasattr(outputs, "logits") else outputs
+                    output_ids = inputs["input_ids"]
 
             self.model.train()
 
@@ -392,7 +375,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Remove prompt from response
             if response.startswith(prompt):
-                response = response[len(prompt):].strip()
+                response = response[len(prompt) :].strip()
 
             return response
 
@@ -400,10 +383,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             logger.info(f"Warning: Failed to generate response for evaluation: {e}")
             return ""
 
-    def evaluate_constitutional_compliance(
-        self,
-        texts: List[str]
-    ) -> Dict[str, Any]:
+    def evaluate_constitutional_compliance(self, texts: List[str]) -> Dict[str, Any]:
         """
         Evaluate texts for constitutional compliance.
 
@@ -420,10 +400,9 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
         # Aggregate metrics
         num_flagged = sum(1 for ev in evaluations if ev["flagged"])
-        avg_weighted_score = np.mean([
-            ev.get("direct_evaluation", {}).get("weighted_score", 0.0)
-            for ev in evaluations
-        ])
+        avg_weighted_score = np.mean(
+            [ev.get("direct_evaluation", {}).get("weighted_score", 0.0) for ev in evaluations]
+        )
 
         # Count violations by principle
         principle_violations = {}
@@ -437,7 +416,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             "num_flagged": num_flagged,
             "compliance_rate": 1.0 - (num_flagged / len(texts)) if texts else 1.0,
             "avg_weighted_score": avg_weighted_score,
-            "principle_violations": principle_violations
+            "principle_violations": principle_violations,
         }
 
     def train(
@@ -445,7 +424,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         num_epochs: int,
         eval_interval: int = 1000,
         save_interval: int = 5000,
-        eval_samples: int = 100
+        eval_samples: int = 100,
     ) -> Dict[str, Any]:
         """
         Train the model with constitutional AI supervision.
@@ -460,14 +439,16 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             Training history
         """
         logger.info(f"Starting Constitutional AI training for {num_epochs} epochs...")
-        logger.info(f"Constitutional principles: {self.constitutional_framework.get_active_principles()}")
+        logger.info(
+            f"Constitutional principles: {self.constitutional_framework.get_active_principles()}"
+        )
 
         self.num_epochs = num_epochs
         training_history = {
             "train_losses": [],
             "val_losses": [],
             "constitutional_scores": [],
-            "compliance_rates": []
+            "compliance_rates": [],
         }
 
         for epoch in range(num_epochs):
@@ -487,13 +468,17 @@ class ConstitutionalTrainer(LanguageModelTrainer):
                 epoch_metrics.append(metrics)
 
                 # Update progress bar
-                progress_bar.set_postfix({
-                    "loss": f"{metrics['total_loss']:.4f}",
-                    "lr": f"{metrics['learning_rate']:.7f}"
-                })
+                progress_bar.set_postfix(
+                    {
+                        "loss": f"{metrics['total_loss']:.4f}",
+                        "lr": f"{metrics['learning_rate']:.7f}",
+                    }
+                )
 
                 # Log training step
-                self._log_training_step(metrics["total_loss"], metrics["learning_rate"], self.global_step)
+                self._log_training_step(
+                    metrics["total_loss"], metrics["learning_rate"], self.global_step
+                )
 
                 self.global_step += 1
 
@@ -538,8 +523,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
     def _save_checkpoint(self, epoch: int, loss: float):
         """Save training checkpoint."""
         checkpoint_path = os.path.join(
-            self.log_dir,
-            f"checkpoint_epoch_{epoch}_step_{self.global_step}.pt"
+            self.log_dir, f"checkpoint_epoch_{epoch}_step_{self.global_step}.pt"
         )
         self.model.save(
             checkpoint_path,
@@ -549,8 +533,10 @@ class ConstitutionalTrainer(LanguageModelTrainer):
             additional_info={
                 "global_step": self.global_step,
                 "constitutional_framework": self.constitutional_framework.name,
-                "constitutional_scores": self.constitutional_scores[-100:] if self.constitutional_scores else []
-            }
+                "constitutional_scores": (
+                    self.constitutional_scores[-100:] if self.constitutional_scores else []
+                ),
+            },
         )
 
     def _validate(self) -> float:
@@ -574,7 +560,9 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         }
 
         constitutional_summary = {
-            "constitutional_scores": self.constitutional_scores[-100:] if self.constitutional_scores else [],
+            "constitutional_scores": (
+                self.constitutional_scores[-100:] if self.constitutional_scores else []
+            ),
             "evaluator_stats": self.constitutional_evaluator.get_statistics(),
             "framework_stats": self.constitutional_framework.get_statistics(),
         }

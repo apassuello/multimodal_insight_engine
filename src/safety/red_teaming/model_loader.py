@@ -8,7 +8,6 @@ import torch
 
 from src.utils.logging import get_logger
 
-
 # Module logger
 logger = get_logger(__name__)
 from pathlib import Path
@@ -31,7 +30,7 @@ class ModelLoader:
         device: Optional[str] = None,
         max_length: int = 1024,
         temperature: float = 0.7,
-        verbose: bool = False
+        verbose: bool = False,
     ):
         """
         Initialize the model loader.
@@ -70,11 +69,7 @@ class ModelLoader:
         # Cache for loaded models
         self.loaded_models = {}
 
-    def load_model(
-        self,
-        model_name: str,
-        is_local: bool = None
-    ) -> Callable[[str], str]:
+    def load_model(self, model_name: str, is_local: bool = None) -> Callable[[str], str]:
         """
         Load a model by name and return a callable function.
 
@@ -164,7 +159,9 @@ class ModelLoader:
         else:
             # Load encoder-decoder transformer
             logger.info("Loading encoder-decoder transformer model")
-            model = EncoderDecoderTransformer(src_vocab_size=10000, tgt_vocab_size=10000)  # Placeholder sizes
+            model = EncoderDecoderTransformer(
+                src_vocab_size=10000, tgt_vocab_size=10000
+            )  # Placeholder sizes
             model.load(str(model_path / "model.pt"), map_location=self.device)
 
         # Set model to evaluation mode
@@ -176,13 +173,15 @@ class ModelLoader:
         if tokenizer_path.exists():
             # Import tokenizer
             from src.data.tokenization import BPETokenizer
+
             tokenizer = BPETokenizer.from_pretrained(str(tokenizer_path))
         else:
             # Create a simple tokenizer function
             def tokenizer(text):
                 return text.split()
+
             tokenizer.encode = lambda text: [ord(c) for c in text]
-            tokenizer.decode = lambda ids: ''.join(chr(i) for i in ids)
+            tokenizer.decode = lambda ids: "".join(chr(i) for i in ids)
 
         # Create a wrapped function for inference
         def model_func(prompt: str) -> str:
@@ -194,7 +193,9 @@ class ModelLoader:
                         input_tensor = torch.tensor([input_ids], dtype=torch.long).to(self.device)
                     else:
                         # Fallback for simple tokenizer
-                        input_tensor = torch.tensor([[ord(c) for c in prompt]], dtype=torch.long).to(self.device)
+                        input_tensor = torch.tensor(
+                            [[ord(c) for c in prompt]], dtype=torch.long
+                        ).to(self.device)
 
                     # Generate output
                     if isinstance(model, EncoderDecoderTransformer):
@@ -204,7 +205,7 @@ class ModelLoader:
                             max_len=self.max_length,
                             bos_token_id=1,  # Assuming BOS token ID is 1
                             eos_token_id=2,  # Assuming EOS token ID is 2
-                            temperature=self.temperature
+                            temperature=self.temperature,
                         )
                         output_ids = output_ids[0].tolist()  # Take first sequence
                     else:
@@ -218,7 +219,7 @@ class ModelLoader:
                         output_text = tokenizer.decode(output_ids)
                     else:
                         # Fallback for simple tokenizer
-                        output_text = ''.join(chr(i) for i in output_ids if i < 128)  # ASCII only
+                        output_text = "".join(chr(i) for i in output_ids if i < 128)  # ASCII only
 
                     return output_text
             except Exception as e:
@@ -279,7 +280,7 @@ class ModelLoader:
                 low_cpu_mem_usage=True,
                 offload_folder="offload",  # Enable disk offloading
                 offload_state_dict=True,  # Offload weights to disk when not in use
-                max_memory={0: "28GB"} if self.device == "mps" else None  # Limit GPU memory usage
+                max_memory={0: "28GB"} if self.device == "mps" else None,  # Limit GPU memory usage
             )
             if self.verbose:
                 logger.info("Model loaded successfully")
@@ -323,7 +324,7 @@ class ModelLoader:
                             no_repeat_ngram_size=3,  # Prevent repeating phrases
                             length_penalty=1.0,  # Encourage longer responses
                             top_k=50,  # Limit vocabulary choices
-                            top_p=0.95  # Nucleus sampling
+                            top_p=0.95,  # Nucleus sampling
                         )
                         if self.verbose:
                             logger.info(f"Output shape: {outputs.shape}")
@@ -335,16 +336,20 @@ class ModelLoader:
 
                         # For some models, we need to remove the prompt from the output
                         if output_text.startswith(prompt):
-                            output_text = output_text[len(prompt):].strip()
+                            output_text = output_text[len(prompt) :].strip()
 
                         # Ensure non-empty response
                         if not output_text or output_text.strip() == "":
-                            output_text = "I apologize, but I cannot generate a response to that prompt."
+                            output_text = (
+                                "I apologize, but I cannot generate a response to that prompt."
+                            )
 
                         if self.verbose:
                             logger.info("\nModel Output:")
                             logger.info("-" * 50)
-                            logger.debug(output_text[:500] + "..." if len(output_text) > 500 else output_text)
+                            logger.debug(
+                                output_text[:500] + "..." if len(output_text) > 500 else output_text
+                            )
                             logger.info("-" * 50)
                             logger.info("Generation complete")
 
@@ -399,6 +404,7 @@ class ModelLoader:
             # Try to get info from Hugging Face
             try:
                 from huggingface_hub import model_info
+
                 info = model_info(model_name)
                 return {
                     "name": model_name,
@@ -406,13 +412,10 @@ class ModelLoader:
                     "downloads": info.downloads,
                     "likes": info.likes,
                     "tags": info.tags,
-                    "pipeline_tag": info.pipeline_tag
+                    "pipeline_tag": info.pipeline_tag,
                 }
             except Exception as e:
-                return {
-                    "name": model_name,
-                    "error": str(e)
-                }
+                return {"name": model_name, "error": str(e)}
 
         # Get info from local model
         info = {
@@ -436,7 +439,7 @@ def load_model(
     device: str = None,
     max_length: int = 1024,
     temperature: float = 0.7,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Callable[[str], str]:
     """
     Load a model by name and return a callable function.
@@ -456,10 +459,7 @@ def load_model(
         Function that takes text input and returns model output
     """
     loader = ModelLoader(
-        device=device,
-        max_length=max_length,
-        temperature=temperature,
-        verbose=verbose
+        device=device, max_length=max_length, temperature=temperature, verbose=verbose
     )
 
     return loader.load_model(model_name, is_local=is_local)

@@ -23,7 +23,6 @@ from .framework import ConstitutionalFramework
 from .model_utils import GenerationConfig, generate_text
 from .principles import get_eval_debug_level, set_eval_debug_level
 
-
 # Module logger (prefixed with _ to avoid shadowing the logger parameter in functions)
 _logger = get_logger(__name__)
 
@@ -31,22 +30,22 @@ _logger = get_logger(__name__)
 def _get_model_name(model: PreTrainedModel) -> str:
     """Extract model name from model config if available."""
     try:
-        if hasattr(model, 'config') and hasattr(model.config, 'name_or_path'):
+        if hasattr(model, "config") and hasattr(model.config, "name_or_path"):
             name = model.config.name_or_path
             # Shorten common model names
-            if 'phi-2' in name.lower():
-                return 'Phi-2'
-            if 'phi-3' in name.lower():
-                return 'Phi-3'
-            if 'gpt2' in name.lower():
-                return 'GPT-2'
-            if 'qwen' in name.lower():
-                return 'Qwen'
-            if 'mistral' in name.lower():
-                return 'Mistral'
-            if 'tinyllama' in name.lower():
-                return 'TinyLlama'
-            return name.split('/')[-1][:20]  # Last part, truncated
+            if "phi-2" in name.lower():
+                return "Phi-2"
+            if "phi-3" in name.lower():
+                return "Phi-3"
+            if "gpt2" in name.lower():
+                return "GPT-2"
+            if "qwen" in name.lower():
+                return "Qwen"
+            if "mistral" in name.lower():
+                return "Mistral"
+            if "tinyllama" in name.lower():
+                return "TinyLlama"
+            return name.split("/")[-1][:20]  # Last part, truncated
     except Exception:
         pass
     return "Unknown"
@@ -71,7 +70,7 @@ def _print_evaluation_box(
     score: float,
     phase: str = "INITIAL",
     eval_model_name: str = "Evaluation Model",
-    method: str = ""
+    method: str = "",
 ) -> None:
     """
     Print evaluation interaction in a clear boxed format.
@@ -83,8 +82,8 @@ def _print_evaluation_box(
 
     # Show what we're evaluating (truncated)
     preview = text_preview[:60] + "..." if len(text_preview) > 60 else text_preview
-    preview = preview.replace('\n', ' ')
-    _logger.info(f"│ Input:  \"{preview}\"")
+    preview = preview.replace("\n", " ")
+    _logger.info(f'│ Input:  "{preview}"')
     _logger.info(f"{'├' + '─' * 68 + '┤'}")
 
     # Show result
@@ -98,6 +97,7 @@ def _print_evaluation_box(
         _logger.info(f"│ Method: {method}")
 
     _logger.info(f"{'└' + '─' * 68 + '┘'}")
+
 
 # Prompt templates from Anthropic's Constitutional AI paper
 CRITIQUE_TEMPLATE = """Consider the following conversation between a human and an assistant:
@@ -128,7 +128,6 @@ Revised Response:
 """
 
 
-
 def generate_critique(
     prompt: str,
     response: str,
@@ -136,7 +135,7 @@ def generate_critique(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> str:
     """
     Generate constitutional critique of a response.
@@ -154,15 +153,11 @@ def generate_critique(
         Critique text identifying violations
     """
     # Format principles
-    principles_text = '\n'.join([
-        f'{i+1}. {p}' for i, p in enumerate(principles)
-    ])
+    principles_text = "\n".join([f"{i+1}. {p}" for i, p in enumerate(principles)])
 
     # Build critique prompt
     critique_prompt = CRITIQUE_TEMPLATE.format(
-        prompt=prompt,
-        response=response,
-        principles_text=principles_text
+        prompt=prompt, response=response, principles_text=principles_text
     )
 
     # Store in logger silently (don't display - content is displayed by caller)
@@ -171,11 +166,7 @@ def generate_critique(
 
     # Generate critique using model
     # FIX: Use max_new_tokens to avoid probability tensor errors
-    config = GenerationConfig(
-        max_new_tokens=256,
-        temperature=0.7,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=256, temperature=0.7, do_sample=True)
 
     try:
         # PERFORMANCE: Use torch.no_grad() for inference-only operations
@@ -183,7 +174,7 @@ def generate_critique(
         with torch.no_grad():
             critique = generate_text(model, tokenizer, critique_prompt, config, device)
         # Handle empty responses
-        if not critique or critique.strip() == '':
+        if not critique or critique.strip() == "":
             critique = "No specific issues identified."
 
         if logger:
@@ -205,7 +196,7 @@ def generate_revision(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     device: torch.device,
-    logger=None  # type: ignore
+    logger=None,  # type: ignore
 ) -> str:
     """
     Generate revised response based on critique.
@@ -223,21 +214,13 @@ def generate_revision(
     Returns:
         Revised response addressing critique
     """
-    revision_prompt = REVISION_TEMPLATE.format(
-        prompt=prompt,
-        response=response,
-        critique=critique
-    )
+    revision_prompt = REVISION_TEMPLATE.format(prompt=prompt, response=response, critique=critique)
 
     if logger:
         logger.log_stage("REVISION-PROMPT", revision_prompt, truncate=400, silent=True)
 
     # FIX: Use max_new_tokens to avoid probability tensor errors
-    config = GenerationConfig(
-        max_new_tokens=256,
-        temperature=0.7,
-        do_sample=True
-    )
+    config = GenerationConfig(max_new_tokens=256, temperature=0.7, do_sample=True)
 
     try:
         # PERFORMANCE: Use torch.no_grad() for inference-only operations
@@ -245,7 +228,7 @@ def generate_revision(
         with torch.no_grad():
             revision = generate_text(model, tokenizer, revision_prompt, config, device)
         # Handle empty responses - fall back to original
-        if not revision or revision.strip() == '':
+        if not revision or revision.strip() == "":
             revision = response
 
         if logger:
@@ -267,7 +250,7 @@ def critique_revision_pipeline(
     device: torch.device,
     num_revisions: int = 1,
     logger=None,  # type: ignore
-    collect_preference_pairs: bool = True
+    collect_preference_pairs: bool = True,
 ) -> Dict[str, Any]:
     """
     Complete critique-revision pipeline for dataset generation.
@@ -307,7 +290,7 @@ def critique_revision_pipeline(
     _logger.info(f"  Prompts: {len(prompts)} | Revisions per prompt: {num_revisions}")
     _logger.info(f"{'═' * 70}\n")
 
-    for idx, prompt in enumerate(tqdm(prompts, desc='Generating revised responses')):
+    for idx, prompt in enumerate(tqdm(prompts, desc="Generating revised responses")):
         # Print example header
         _logger.info(f"{'━' * 70}")
         _logger.info(f"  EXAMPLE {idx + 1}/{len(prompts)}")
@@ -318,7 +301,9 @@ def critique_revision_pipeline(
 
         # Store silently (already displayed above)
         if logger:
-            logger.log_stage(f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}", silent=True)
+            logger.log_stage(
+                f"TRAINING-EXAMPLE {idx + 1}/{len(prompts)}", f"Prompt: {prompt}", silent=True
+            )
 
         config = GenerationConfig(max_new_tokens=150, temperature=1.0, do_sample=True)
 
@@ -336,12 +321,16 @@ def critique_revision_pipeline(
 
             # Evaluate initial response (with clear evaluation model display)
             initial_score = framework.evaluate_text(response)
-            violations = initial_score.get('flagged_principles', [])
-            weighted_score = initial_score.get('weighted_score', 0.0)
-            eval_method = initial_score.get('evaluation_method', 'unknown')
+            violations = initial_score.get("flagged_principles", [])
+            weighted_score = initial_score.get("weighted_score", 0.0)
+            eval_method = initial_score.get("evaluation_method", "unknown")
             _print_evaluation_box(
-                response, violations, weighted_score,
-                phase="INITIAL", eval_model_name=eval_model_name, method=eval_method
+                response,
+                violations,
+                weighted_score,
+                phase="INITIAL",
+                eval_model_name=eval_model_name,
+                method=eval_method,
             )
 
             if logger:
@@ -349,7 +338,7 @@ def critique_revision_pipeline(
                     "INITIAL-EVALUATION",
                     f"Violations: {violations}\nWeighted score: {weighted_score:.2f}",
                     metadata={"violations": violations, "score": weighted_score},
-                    silent=True
+                    silent=True,
                 )
 
             # Iterative critique and revision
@@ -368,15 +357,19 @@ def critique_revision_pipeline(
 
             # Evaluate revised response (with clear evaluation model display)
             revised_score = framework.evaluate_text(response)
-            initial_weighted_score = initial_score.get('weighted_score', 0.0)
-            revised_weighted_score = revised_score.get('weighted_score', 0.0)
+            initial_weighted_score = initial_score.get("weighted_score", 0.0)
+            revised_weighted_score = revised_score.get("weighted_score", 0.0)
             improvement = initial_weighted_score - revised_weighted_score
-            revised_violations = revised_score.get('flagged_principles', [])
-            revised_method = revised_score.get('evaluation_method', 'unknown')
+            revised_violations = revised_score.get("flagged_principles", [])
+            revised_method = revised_score.get("evaluation_method", "unknown")
 
             _print_evaluation_box(
-                response, revised_violations, revised_weighted_score,
-                phase="REVISED", eval_model_name=eval_model_name, method=revised_method
+                response,
+                revised_violations,
+                revised_weighted_score,
+                phase="REVISED",
+                eval_model_name=eval_model_name,
+                method=revised_method,
             )
 
             if logger:
@@ -387,33 +380,39 @@ def critique_revision_pipeline(
                     metadata={
                         "violations": revised_violations,
                         "score": revised_weighted_score,
-                        "improvement": improvement
+                        "improvement": improvement,
                     },
-                    silent=True
+                    silent=True,
                 )
 
             # Print improvement summary
             if improvement > 0:
-                _logger.info(f"  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                _logger.info(
+                    f"  ✓ IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})"
+                )
                 _logger.info("  → Added to training set")
-                training_data.append({
-                    'prompt': prompt,
-                    'response': response,
-                    'num_revisions': num_revisions,
-                    'improvement': improvement
-                })
+                training_data.append(
+                    {
+                        "prompt": prompt,
+                        "response": response,
+                        "num_revisions": num_revisions,
+                        "improvement": improvement,
+                    }
+                )
 
                 # NEW: Collect preference pairs for RLAIF Phase 2
                 # The revised response is "chosen", initial response is "rejected"
                 if collect_preference_pairs:
-                    preference_pairs.append({
-                        'prompt': prompt,
-                        'chosen': response,  # Revised (better)
-                        'rejected': initial_response,  # Initial (worse)
-                        'chosen_score': revised_weighted_score,
-                        'rejected_score': initial_weighted_score,
-                        'margin': improvement
-                    })
+                    preference_pairs.append(
+                        {
+                            "prompt": prompt,
+                            "chosen": response,  # Revised (better)
+                            "rejected": initial_response,  # Initial (worse)
+                            "chosen_score": revised_weighted_score,
+                            "rejected_score": initial_weighted_score,
+                            "margin": improvement,
+                        }
+                    )
 
                 if logger:
                     logger.log_stage(
@@ -421,17 +420,19 @@ def critique_revision_pipeline(
                         f"✓ Training example added\n"
                         f"  Improvement: {initial_weighted_score:.2f} → "
                         f"{revised_weighted_score:.2f} ({improvement:.2f} reduction)",
-                        silent=True
+                        silent=True,
                     )
             else:
-                _logger.info(f"  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})")
+                _logger.info(
+                    f"  ✗ NO IMPROVEMENT: {initial_weighted_score:.2f} → {revised_weighted_score:.2f} ({improvement:+.2f})"
+                )
                 _logger.info("  → Skipped")
                 if logger:
                     logger.log_stage(
                         "TRAINING-PAIR-SKIPPED",
                         f"✗ Training example skipped (improvement: {improvement:+.2f})\n"
                         f"  Score: {initial_weighted_score:.2f} → {revised_weighted_score:.2f}",
-                        silent=True
+                        silent=True,
                     )
         except (RuntimeError, ValueError, TypeError) as e:
             if logger:
@@ -448,10 +449,10 @@ def critique_revision_pipeline(
     _logger.info(f"  Preference pairs collected: {len(preference_pairs)}")
     _logger.info(f"  Examples skipped: {len(prompts) - len(training_data)}")
     if training_data:
-        avg_improvement = sum(d['improvement'] for d in training_data) / len(training_data)
+        avg_improvement = sum(d["improvement"] for d in training_data) / len(training_data)
         _logger.info(f"  Average improvement: {avg_improvement:.2f}")
     if preference_pairs:
-        avg_margin = sum(p['margin'] for p in preference_pairs) / len(preference_pairs)
+        avg_margin = sum(p["margin"] for p in preference_pairs) / len(preference_pairs)
         _logger.info(f"  Average preference margin: {avg_margin:.2f}")
     _logger.info(f"{'═' * 70}\n")
 
@@ -460,19 +461,23 @@ def critique_revision_pipeline(
 
     # Build stats
     stats = {
-        'total_prompts': len(prompts),
-        'training_examples': len(training_data),
-        'preference_pairs': len(preference_pairs),
-        'skipped': len(prompts) - len(training_data),
-        'avg_improvement': sum(d['improvement'] for d in training_data) / len(training_data) if training_data else 0.0,
-        'avg_margin': sum(p['margin'] for p in preference_pairs) / len(preference_pairs) if preference_pairs else 0.0
+        "total_prompts": len(prompts),
+        "training_examples": len(training_data),
+        "preference_pairs": len(preference_pairs),
+        "skipped": len(prompts) - len(training_data),
+        "avg_improvement": (
+            sum(d["improvement"] for d in training_data) / len(training_data)
+            if training_data
+            else 0.0
+        ),
+        "avg_margin": (
+            sum(p["margin"] for p in preference_pairs) / len(preference_pairs)
+            if preference_pairs
+            else 0.0
+        ),
     }
 
-    return {
-        'training_data': training_data,
-        'preference_pairs': preference_pairs,
-        'stats': stats
-    }
+    return {"training_data": training_data, "preference_pairs": preference_pairs, "stats": stats}
 
 
 class ConstitutionalDataset(Dataset):
@@ -510,19 +515,19 @@ class ConstitutionalDataset(Dataset):
             Dictionary with input_ids and attention_mask tensors
         """
         item = self.data[idx]
-        text = item['prompt'] + item['response']
+        text = item["prompt"] + item["response"]
 
         encoding = self.tokenizer(
             text,
             max_length=self.max_length,
-            padding='max_length',
+            padding="max_length",
             truncation=True,
-            return_tensors='pt'
+            return_tensors="pt",
         )
 
         return {
-            'input_ids': encoding['input_ids'].squeeze(),
-            'attention_mask': encoding['attention_mask'].squeeze()
+            "input_ids": encoding["input_ids"].squeeze(),
+            "attention_mask": encoding["attention_mask"].squeeze(),
         }
 
 
@@ -534,7 +539,7 @@ def supervised_finetune(
     batch_size: int = 8,
     learning_rate: float = 5e-5,
     device: torch.device = None,
-    use_amp: bool = True
+    use_amp: bool = True,
 ) -> Dict[str, Any]:
     """
     Fine-tune model on critique-revised responses.
@@ -553,7 +558,7 @@ def supervised_finetune(
         Training metrics and fine-tuned model
     """
     if device is None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Validate training data
     if not training_data or len(training_data) == 0:
@@ -563,19 +568,19 @@ def supervised_finetune(
     valid_data = []
     for idx, item in enumerate(training_data):
         # Check if required fields exist and are non-empty
-        if 'prompt' not in item or 'response' not in item:
+        if "prompt" not in item or "response" not in item:
             _logger.info(f"Warning: Skipping training example {idx}: missing prompt or response")
             continue
 
-        prompt = item.get('prompt', '').strip()
-        response = item.get('response', '').strip()
+        prompt = item.get("prompt", "").strip()
+        response = item.get("response", "").strip()
 
         if not prompt or not response:
             _logger.info(f"Warning: Skipping training example {idx}: empty prompt or response")
             continue
 
         # Check for NaN or None values
-        if prompt == 'nan' or response == 'nan' or prompt == 'None' or response == 'None':
+        if prompt == "nan" or response == "nan" or prompt == "None" or response == "None":
             _logger.info(f"Warning: Skipping training example {idx}: NaN or None value detected")
             continue
 
@@ -598,32 +603,39 @@ def supervised_finetune(
 
     # PERFORMANCE: Initialize GradScaler for Automatic Mixed Precision (AMP)
     # Expected speedup: 2-3x on compatible GPUs, reduced memory usage
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp and device.type == 'cuda')
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp and device.type == "cuda")
 
     # Training loop
-    metrics = {'losses': [], 'epochs': []}
+    metrics = {"losses": [], "epochs": []}
 
     for epoch in range(num_epochs):
         epoch_loss = 0
         batch_count = 0
         nan_batches = 0
 
-        for batch_idx, batch in enumerate(tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}')):
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Epoch {epoch+1}/{num_epochs}")):
             try:
-                input_ids = batch['input_ids'].to(device)
-                attention_mask = batch['attention_mask'].to(device)
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
 
                 # Check for NaN in input tensors
-                if torch.isnan(input_ids.float()).any() or torch.isnan(attention_mask.float()).any():
-                    _logger.info(f"Warning: NaN detected in batch {batch_idx} input tensors, skipping")
+                if (
+                    torch.isnan(input_ids.float()).any()
+                    or torch.isnan(attention_mask.float()).any()
+                ):
+                    _logger.info(
+                        f"Warning: NaN detected in batch {batch_idx} input tensors, skipping"
+                    )
                     nan_batches += 1
                     continue
 
                 # PERFORMANCE: Use automatic mixed precision for forward pass
                 # autocast() automatically handles float16/float32 conversions
-                with torch.cuda.amp.autocast(enabled=use_amp and device.type == 'cuda'):
+                with torch.cuda.amp.autocast(enabled=use_amp and device.type == "cuda"):
                     # Forward pass
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+                    outputs = model(
+                        input_ids=input_ids, attention_mask=attention_mask, labels=input_ids
+                    )
                     loss = outputs.loss
 
                 # Check for NaN loss
@@ -640,12 +652,16 @@ def supervised_finetune(
                 # Check for NaN gradients before clipping
                 has_nan_grad = False
                 for param in model.parameters():
-                    if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                    if param.grad is not None and (
+                        torch.isnan(param.grad).any() or torch.isinf(param.grad).any()
+                    ):
                         has_nan_grad = True
                         break
 
                 if has_nan_grad:
-                    _logger.info(f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping")
+                    _logger.info(
+                        f"Warning: NaN/Inf gradient detected in batch {batch_idx}, skipping"
+                    )
                     nan_batches += 1
                     optimizer.zero_grad()
                     continue
@@ -669,15 +685,14 @@ def supervised_finetune(
         if batch_count == 0:
             _logger.info(f"ERROR: Epoch {epoch+1} - All batches were invalid or produced NaN")
             # Still record the epoch with 0 loss
-            metrics['losses'].append(0.0)
-            metrics['epochs'].append(epoch + 1)
+            metrics["losses"].append(0.0)
+            metrics["epochs"].append(epoch + 1)
         else:
             avg_loss = epoch_loss / batch_count
-            metrics['losses'].append(avg_loss)
-            metrics['epochs'].append(epoch + 1)
-            _logger.info(f'Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)')
+            metrics["losses"].append(avg_loss)
+            metrics["epochs"].append(epoch + 1)
+            _logger.info(
+                f"Epoch {epoch+1} - Avg Loss: {avg_loss:.4f} ({batch_count} batches, {nan_batches} skipped)"
+            )
 
-    return {
-        'model': model,
-        'metrics': metrics
-    }
+    return {"model": model, "metrics": metrics}

@@ -25,7 +25,6 @@ import torch.nn.functional as F
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss  # Use new implementation
 from src.training.losses.self_supervised import VICRegLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -203,10 +202,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         if self.adaptive_transition:
             # Need to calculate similarity in forward pass
             # We use that to determine when to transition
-            if (
-                self.alignment_gap > self.min_alignment_threshold
-                and self.in_pretrain_phase
-            ):
+            if self.alignment_gap > self.min_alignment_threshold and self.in_pretrain_phase:
                 if not self.early_transition:
                     logger.info(
                         f"Early transition triggered at step {step} - alignment gap {self.alignment_gap:.4f} exceeds threshold {self.min_alignment_threshold:.4f}"
@@ -216,9 +212,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         else:
             # Fixed transition point
             if self.in_pretrain_phase and step >= self.contrastive_pretrain_steps:
-                logger.info(
-                    f"Transitioning from contrastive pre-training to VICReg at step {step}"
-                )
+                logger.info(f"Transitioning from contrastive pre-training to VICReg at step {step}")
                 self.in_pretrain_phase = False
                 self.transition_complete = True
                 self.current_phase = "vicreg"
@@ -227,9 +221,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         if self.early_transition:
             transition_duration = self.gradual_transition_steps
             steps_since_transition = step - self.early_transition_step
-            self.transition_progress = min(
-                1.0, steps_since_transition / transition_duration
-            )
+            self.transition_progress = min(1.0, steps_since_transition / transition_duration)
 
             # When transition is complete, update phase
             if self.transition_progress >= 1.0 and not self.transition_complete:
@@ -306,9 +298,7 @@ class HybridPretrainVICRegLoss(nn.Module):
         self.alignment_history["alignment_gap"].append(metrics["alignment_gap"])
         self.alignment_history["alignment_snr"].append(metrics["alignment_snr"])
         self.alignment_history["vicreg_weight"].append(self.transition_progress)
-        self.alignment_history["contrastive_weight"].append(
-            1.0 - self.transition_progress
-        )
+        self.alignment_history["contrastive_weight"].append(1.0 - self.transition_progress)
 
         # Update current metrics
         self.mean_similarity = metrics["sim_mean"]
@@ -425,9 +415,7 @@ class HybridPretrainVICRegLoss(nn.Module):
             vicreg_weight = min(1.0, self.transition_progress)
 
             # Blend the losses
-            blended_loss = (contrastive_weight * contrastive_loss) + (
-                vicreg_weight * vicreg_loss
-            )
+            blended_loss = (contrastive_weight * contrastive_loss) + (vicreg_weight * vicreg_loss)
 
             # Print transition progress periodically
             if should_print:
@@ -453,9 +441,7 @@ class HybridPretrainVICRegLoss(nn.Module):
                 "invariance_loss": vicreg_results.get("invariance_loss", 0.0),
                 "variance_loss": vicreg_results.get("variance_loss", 0.0),
                 "covariance_loss": vicreg_results.get("covariance_loss", 0.0),
-                "sim_weight": vicreg_results.get(
-                    "sim_weight", self.vicreg_loss.sim_coeff
-                ),
+                "sim_weight": vicreg_results.get("sim_weight", self.vicreg_loss.sim_coeff),
                 "var_weight": vicreg_results.get("var_weight", 0.0),
                 "cov_weight": vicreg_results.get("cov_weight", 0.0),
             }

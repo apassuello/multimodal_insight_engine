@@ -18,7 +18,6 @@ from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -54,7 +53,7 @@ def generate_comparison(
     principles: List[str],
     model,
     tokenizer,
-    device: torch.device
+    device: torch.device,
 ) -> Dict[str, Any]:
     """
     Compare two responses and determine which better follows constitutional principles.
@@ -94,22 +93,15 @@ def generate_comparison(
     from .model_utils import GenerationConfig, generate_text
 
     # Format principles as numbered list
-    principles_text = '\n'.join([f'{i+1}. {p}' for i, p in enumerate(principles)])
+    principles_text = "\n".join([f"{i+1}. {p}" for i, p in enumerate(principles)])
 
     # Build comparison prompt using the template
     comparison_prompt = COMPARISON_TEMPLATE.format(
-        prompt=prompt,
-        response_a=response_a,
-        response_b=response_b,
-        principles_text=principles_text
+        prompt=prompt, response_a=response_a, response_b=response_b, principles_text=principles_text
     )
 
     # Generate comparison using model
-    config = GenerationConfig(
-        max_length=300,
-        temperature=0.7,
-        do_sample=True
-    )
+    config = GenerationConfig(max_length=300, temperature=0.7, do_sample=True)
 
     comparison_text = generate_text(model, tokenizer, comparison_prompt, config, device)
 
@@ -117,14 +109,14 @@ def generate_comparison(
     preference = extract_preference(comparison_text)
 
     # Determine chosen and rejected responses
-    response_chosen = response_a if preference == 'A' else response_b
-    response_rejected = response_b if preference == 'A' else response_a
+    response_chosen = response_a if preference == "A" else response_b
+    response_rejected = response_b if preference == "A" else response_a
 
     return {
-        'preferred': preference,
-        'comparison_text': comparison_text,
-        'response_chosen': response_chosen,
-        'response_rejected': response_rejected
+        "preferred": preference,
+        "comparison_text": comparison_text,
+        "response_chosen": response_chosen,
+        "response_rejected": response_rejected,
     }
 
 
@@ -154,62 +146,70 @@ def extract_preference(comparison_text: str) -> str:
     text = comparison_text.lower()
 
     # Pattern 1: "Response A/B is better/superior/preferred"
-    if re.search(r'\bresponse\s+a\b.{0,50}\b(better|superior|preferred|stronger)', text):
-        return 'A'
-    if re.search(r'\bresponse\s+b\b.{0,50}\b(better|superior|preferred|stronger)', text):
-        return 'B'
+    if re.search(r"\bresponse\s+a\b.{0,50}\b(better|superior|preferred|stronger)", text):
+        return "A"
+    if re.search(r"\bresponse\s+b\b.{0,50}\b(better|superior|preferred|stronger)", text):
+        return "B"
 
     # Pattern 2: "better/prefer/choose ... Response A/B"
-    if re.search(r'\b(better|prefer|choose).{0,50}\bresponse\s+a\b', text):
-        return 'A'
-    if re.search(r'\b(better|prefer|choose).{0,50}\bresponse\s+b\b', text):
-        return 'B'
+    if re.search(r"\b(better|prefer|choose).{0,50}\bresponse\s+a\b", text):
+        return "A"
+    if re.search(r"\b(better|prefer|choose).{0,50}\bresponse\s+b\b", text):
+        return "B"
 
     # Pattern 3: "A/B is better/preferred"
-    if re.search(r'\ba\s+(is|seems|appears).{0,30}\b(better|superior|preferred)', text):
-        return 'A'
-    if re.search(r'\bb\s+(is|seems|appears).{0,30}\b(better|superior|preferred)', text):
-        return 'B'
+    if re.search(r"\ba\s+(is|seems|appears).{0,30}\b(better|superior|preferred)", text):
+        return "A"
+    if re.search(r"\bb\s+(is|seems|appears).{0,30}\b(better|superior|preferred)", text):
+        return "B"
 
     # Pattern 4: Direct statements like "A better" or "prefer B" (allow words in between)
-    if re.search(r'\bprefer.{0,50}\ba\b', text):
-        return 'A'
-    if re.search(r'\bprefer.{0,50}\bb\b', text):
-        return 'B'
+    if re.search(r"\bprefer.{0,50}\ba\b", text):
+        return "A"
+    if re.search(r"\bprefer.{0,50}\bb\b", text):
+        return "B"
 
     # Pattern 5: "choose A" or "select B"
-    if re.search(r'\b(choose|select)\s+a\b', text):
-        return 'A'
-    if re.search(r'\b(choose|select)\s+b\b', text):
-        return 'B'
+    if re.search(r"\b(choose|select)\s+a\b", text):
+        return "A"
+    if re.search(r"\b(choose|select)\s+b\b", text):
+        return "B"
 
     # Pattern 6: Look for "A:" or "B:" at the start indicating final choice
-    if re.search(r'^\s*a\s*:', text):
-        return 'A'
-    if re.search(r'^\s*b\s*:', text):
-        return 'B'
+    if re.search(r"^\s*a\s*:", text):
+        return "A"
+    if re.search(r"^\s*b\s*:", text):
+        return "B"
 
     # Pattern 7: "Response B" mentioned more positively than "Response A"
     # Count positive mentions
-    a_positive = len(re.findall(r'\bresponse\s+a\b.{0,50}\b(good|excellent|accurate|helpful|clear)', text))
-    b_positive = len(re.findall(r'\bresponse\s+b\b.{0,50}\b(good|excellent|accurate|helpful|clear)', text))
+    a_positive = len(
+        re.findall(r"\bresponse\s+a\b.{0,50}\b(good|excellent|accurate|helpful|clear)", text)
+    )
+    b_positive = len(
+        re.findall(r"\bresponse\s+b\b.{0,50}\b(good|excellent|accurate|helpful|clear)", text)
+    )
 
     if b_positive > a_positive:
-        return 'B'
+        return "B"
     elif a_positive > b_positive:
-        return 'A'
+        return "A"
 
     # Pattern 8: Look for negative mentions (worse, problematic, inaccurate)
-    a_negative = len(re.findall(r'\bresponse\s+a\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)', text))
-    b_negative = len(re.findall(r'\bresponse\s+b\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)', text))
+    a_negative = len(
+        re.findall(r"\bresponse\s+a\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)", text)
+    )
+    b_negative = len(
+        re.findall(r"\bresponse\s+b\b.{0,50}\b(worse|poor|inaccurate|unhelpful|unclear)", text)
+    )
 
     if a_negative > b_negative:
-        return 'B'  # A has more negatives, so B is better
+        return "B"  # A has more negatives, so B is better
     elif b_negative > a_negative:
-        return 'A'  # B has more negatives, so A is better
+        return "A"  # B has more negatives, so A is better
 
     # Default to 'A' if preference is unclear or tie
-    return 'A'
+    return "A"
 
 
 def generate_preference_pairs(
@@ -218,7 +218,7 @@ def generate_preference_pairs(
     tokenizer,
     framework,
     device: torch.device,
-    responses_per_prompt: int = 2
+    responses_per_prompt: int = 2,
 ) -> List[Dict[str, Any]]:
     """
     Generate preference pairs for reward model training.
@@ -258,6 +258,7 @@ def generate_preference_pairs(
     """
     try:
         from tqdm import tqdm
+
         use_tqdm = True
     except ImportError:
         use_tqdm = False
@@ -271,13 +272,11 @@ def generate_preference_pairs(
 
     # Configuration for generating diverse responses
     config = GenerationConfig(
-        max_length=150,
-        temperature=1.0,  # Higher temperature for diversity
-        do_sample=True
+        max_length=150, temperature=1.0, do_sample=True  # Higher temperature for diversity
     )
 
     # Setup iterator with optional progress bar
-    iterator = tqdm(prompts, desc='Generating preference pairs') if use_tqdm else prompts
+    iterator = tqdm(prompts, desc="Generating preference pairs") if use_tqdm else prompts
 
     for prompt in iterator:
         # Generate multiple response candidates for this prompt
@@ -297,19 +296,23 @@ def generate_preference_pairs(
                     principles=principles,
                     model=model,
                     tokenizer=tokenizer,
-                    device=device
+                    device=device,
                 )
 
                 # Add to preference dataset
-                preference_data.append({
-                    'prompt': prompt,
-                    'response_chosen': comparison['response_chosen'],
-                    'response_rejected': comparison['response_rejected'],
-                    'comparison_reasoning': comparison['comparison_text']
-                })
+                preference_data.append(
+                    {
+                        "prompt": prompt,
+                        "response_chosen": comparison["response_chosen"],
+                        "response_rejected": comparison["response_rejected"],
+                        "comparison_reasoning": comparison["comparison_text"],
+                    }
+                )
             except Exception as e:
                 # Log error but continue processing
-                logger.info(f"Warning: Failed to generate comparison for prompt '{prompt[:50]}...': {e}")
+                logger.info(
+                    f"Warning: Failed to generate comparison for prompt '{prompt[:50]}...': {e}"
+                )
                 continue
 
     return preference_data
@@ -336,12 +339,7 @@ class PreferenceDataset(Dataset):
         ...     # Train reward model...
     """
 
-    def __init__(
-        self,
-        data: List[Dict[str, Any]],
-        tokenizer,
-        max_length: int = 512
-    ):
+    def __init__(self, data: List[Dict[str, Any]], tokenizer, max_length: int = 512):
         """
         Initialize preference dataset.
 
@@ -375,30 +373,30 @@ class PreferenceDataset(Dataset):
         item = self.data[idx]
 
         # Combine prompt with responses for full context
-        chosen_text = item['prompt'] + ' ' + item['response_chosen']
-        rejected_text = item['prompt'] + ' ' + item['response_rejected']
+        chosen_text = item["prompt"] + " " + item["response_chosen"]
+        rejected_text = item["prompt"] + " " + item["response_rejected"]
 
         # Tokenize chosen response
         chosen_encoding = self.tokenizer(
             chosen_text,
             max_length=self.max_length,
-            padding='max_length',
+            padding="max_length",
             truncation=True,
-            return_tensors='pt'
+            return_tensors="pt",
         )
 
         # Tokenize rejected response
         rejected_encoding = self.tokenizer(
             rejected_text,
             max_length=self.max_length,
-            padding='max_length',
+            padding="max_length",
             truncation=True,
-            return_tensors='pt'
+            return_tensors="pt",
         )
 
         return {
-            'chosen_input_ids': chosen_encoding['input_ids'].squeeze(),
-            'chosen_attention_mask': chosen_encoding['attention_mask'].squeeze(),
-            'rejected_input_ids': rejected_encoding['input_ids'].squeeze(),
-            'rejected_attention_mask': rejected_encoding['attention_mask'].squeeze()
+            "chosen_input_ids": chosen_encoding["input_ids"].squeeze(),
+            "chosen_attention_mask": chosen_encoding["attention_mask"].squeeze(),
+            "rejected_input_ids": rejected_encoding["input_ids"].squeeze(),
+            "rejected_attention_mask": rejected_encoding["attention_mask"].squeeze(),
         }

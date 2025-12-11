@@ -51,9 +51,7 @@ class ImagePreprocessor:
             ]
         )
 
-    def preprocess(
-        self, image: Union[str, Image.Image, np.ndarray, torch.Tensor]
-    ) -> torch.Tensor:
+    def preprocess(self, image: Union[str, Image.Image, np.ndarray, torch.Tensor]) -> torch.Tensor:
         """
         Preprocess an image for input to a Vision Transformer.
 
@@ -189,16 +187,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "preprocess",
                         "signature": "preprocess(self, image: Union[str, Image.Image, np.ndarray, torch.Tensor]) -> torch.Tensor",
-                        "brief_description": "Processes a single image from various input formats to a standardized tensor"
+                        "brief_description": "Processes a single image from various input formats to a standardized tensor",
                     },
                     {
                         "name": "batch_preprocess",
                         "signature": "batch_preprocess(self, images: List[Union[str, Image.Image, np.ndarray, torch.Tensor]]) -> torch.Tensor",
-                        "brief_description": "Processes multiple images into a batch tensor"
-                    }
+                        "brief_description": "Processes multiple images into a batch tensor",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torchvision.transforms", "PIL.Image", "numpy", "torch.nn.functional"]
+                "dependencies": [
+                    "torchvision.transforms",
+                    "PIL.Image",
+                    "numpy",
+                    "torch.nn.functional",
+                ],
             },
             {
                 "name": "PatchExtractor",
@@ -207,13 +210,13 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Tuple[int, int]]",
-                        "brief_description": "Extracts patches from a batch of images and returns patch dimensions"
+                        "brief_description": "Extracts patches from a batch of images and returns patch dimensions",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
-            }
+                "dependencies": ["torch", "torch.nn"],
+            },
         ],
         "external_dependencies": ["torch", "torchvision", "PIL", "numpy"],
-        "complexity_score": 6  # Moderate complexity due to handling multiple input formats
+        "complexity_score": 6,  # Moderate complexity due to handling multiple input formats
     }

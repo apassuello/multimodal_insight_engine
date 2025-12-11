@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
+
 
 class MultimodalDecoderGeneration(nn.Module):
     """
@@ -35,7 +35,7 @@ class MultimodalDecoderGeneration(nn.Module):
         tie_embeddings: bool = True,
         vocab_size: Optional[int] = None,
         use_gated_fusion: bool = True,
-        generation_config: Optional[Dict[str, Any]] = None
+        generation_config: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the multimodal decoder generation model.
@@ -84,10 +84,7 @@ class MultimodalDecoderGeneration(nn.Module):
         # Create cross-modal fusion mechanism
         if use_cross_attention:
             self.cross_modal_fusion = CrossModalFusionTransformer(
-                dim=fusion_dim,
-                num_layers=num_fusion_layers,
-                num_heads=8,
-                dropout=fusion_dropout
+                dim=fusion_dim, num_layers=num_fusion_layers, num_heads=8, dropout=fusion_dropout
             )
         else:
             # Simple fusion with gating
@@ -96,7 +93,7 @@ class MultimodalDecoderGeneration(nn.Module):
                     vision_dim=fusion_dim,
                     text_dim=fusion_dim,
                     output_dim=fusion_dim,
-                    dropout=fusion_dropout
+                    dropout=fusion_dropout,
                 )
             else:
                 # Simple addition with projection
@@ -105,7 +102,7 @@ class MultimodalDecoderGeneration(nn.Module):
                     nn.LayerNorm(fusion_dim),
                     nn.GELU(),
                     nn.Dropout(fusion_dropout),
-                    nn.Linear(fusion_dim, fusion_dim)
+                    nn.Linear(fusion_dim, fusion_dim),
                 )
 
         # Projection from fusion space to decoder input space
@@ -124,7 +121,11 @@ class MultimodalDecoderGeneration(nn.Module):
     def _init_parameters(self):
         """Initialize model parameters for better training dynamics."""
         # Initialize projection layers
-        for module in [self.vision_projection, self.text_encoder_projection, self.fusion_to_decoder]:
+        for module in [
+            self.vision_projection,
+            self.text_encoder_projection,
+            self.fusion_to_decoder,
+        ]:
             if isinstance(module, nn.Linear):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
                 if module.bias is not None:
@@ -155,14 +156,16 @@ class MultimodalDecoderGeneration(nn.Module):
             return model.config.d_model
 
         # If no dimension found, use a common default but log a warning
-        logger.warning(f"Could not determine dimension for model {type(model).__name__}, using default of 768")
+        logger.warning(
+            f"Could not determine dimension for model {type(model).__name__}, using default of 768"
+        )
         return 768
 
     def prepare_inputs_for_decoder(
         self,
         vision_features: Optional[torch.Tensor] = None,
         encoder_features: Optional[torch.Tensor] = None,
-        attention_mask: Optional[torch.Tensor] = None
+        attention_mask: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Prepare fused representation from modalities for the decoder.
@@ -175,7 +178,9 @@ class MultimodalDecoderGeneration(nn.Module):
         Returns:
             Tuple of (fused_features, attention_mask)
         """
-        batch_size = vision_features.shape[0] if vision_features is not None else encoder_features.shape[0]
+        batch_size = (
+            vision_features.shape[0] if vision_features is not None else encoder_features.shape[0]
+        )
 
         # Process vision features if provided
         if vision_features is not None:
@@ -190,7 +195,11 @@ class MultimodalDecoderGeneration(nn.Module):
             # Create empty vision features
             vision_projected = torch.zeros(
                 (batch_size, 1, self.fusion_dim),
-                device=encoder_features.device if encoder_features is not None else self.vision_projection.weight.device
+                device=(
+                    encoder_features.device
+                    if encoder_features is not None
+                    else self.vision_projection.weight.device
+                ),
             )
 
         # Process encoder features if provided
@@ -200,10 +209,11 @@ class MultimodalDecoderGeneration(nn.Module):
         else:
             # Create empty encoder features
             encoder_projected = torch.zeros(
-                (batch_size, 1, self.fusion_dim),
-                device=vision_projected.device
+                (batch_size, 1, self.fusion_dim), device=vision_projected.device
             )
-            attention_mask = torch.ones((batch_size, 1), dtype=torch.bool, device=vision_projected.device)
+            attention_mask = torch.ones(
+                (batch_size, 1), dtype=torch.bool, device=vision_projected.device
+            )
 
         # Fuse the modalities
         if self.use_cross_attention:
@@ -211,7 +221,7 @@ class MultimodalDecoderGeneration(nn.Module):
             fused_features = self.cross_modal_fusion(
                 vision_features=vision_projected,
                 text_features=encoder_projected,
-                text_attention_mask=attention_mask
+                text_attention_mask=attention_mask,
             )
         elif self.use_gated_fusion:
             # Use gated multimodal fusion
@@ -220,7 +230,9 @@ class MultimodalDecoderGeneration(nn.Module):
                 # Apply attention mask for pooling
                 if attention_mask is not None:
                     mask_expanded = attention_mask.unsqueeze(-1).float()
-                    encoder_pooled = (encoder_projected * mask_expanded).sum(dim=1) / mask_expanded.sum(dim=1)
+                    encoder_pooled = (encoder_projected * mask_expanded).sum(
+                        dim=1
+                    ) / mask_expanded.sum(dim=1)
                 else:
                     encoder_pooled = encoder_projected.mean(dim=1)
             else:
@@ -244,7 +256,9 @@ class MultimodalDecoderGeneration(nn.Module):
                 # Apply attention mask for pooling
                 if attention_mask is not None:
                     mask_expanded = attention_mask.unsqueeze(-1).float()
-                    encoder_pooled = (encoder_projected * mask_expanded).sum(dim=1) / mask_expanded.sum(dim=1)
+                    encoder_pooled = (encoder_projected * mask_expanded).sum(
+                        dim=1
+                    ) / mask_expanded.sum(dim=1)
                 else:
                     encoder_pooled = encoder_projected.mean(dim=1)
             else:
@@ -268,9 +282,7 @@ class MultimodalDecoderGeneration(nn.Module):
 
         # Create new attention mask for the fused feature sequence
         fused_attention_mask = torch.ones(
-            (batch_size, decoder_inputs.shape[1]),
-            dtype=torch.bool,
-            device=decoder_inputs.device
+            (batch_size, decoder_inputs.shape[1]), dtype=torch.bool, device=decoder_inputs.device
         )
 
         return decoder_inputs, fused_attention_mask
@@ -283,7 +295,7 @@ class MultimodalDecoderGeneration(nn.Module):
         decoder_input_ids: Optional[torch.Tensor] = None,
         decoder_attention_mask: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Forward pass through the multimodal decoder generation model.
@@ -321,9 +333,7 @@ class MultimodalDecoderGeneration(nn.Module):
         if encoder_input_ids is not None:
             # Get encoder outputs
             encoder_outputs = self.text_encoder(
-                input_ids=encoder_input_ids,
-                attention_mask=encoder_attention_mask,
-                return_dict=True
+                input_ids=encoder_input_ids, attention_mask=encoder_attention_mask, return_dict=True
             )
 
             # Extract features from appropriate key
@@ -331,7 +341,9 @@ class MultimodalDecoderGeneration(nn.Module):
                 encoder_features = encoder_outputs["last_hidden_state"]
             else:
                 # Use the first output if it's not a dictionary
-                encoder_features = encoder_outputs[0] if isinstance(encoder_outputs, tuple) else encoder_outputs
+                encoder_features = (
+                    encoder_outputs[0] if isinstance(encoder_outputs, tuple) else encoder_outputs
+                )
 
             outputs["encoder_features"] = encoder_features
         else:
@@ -342,20 +354,22 @@ class MultimodalDecoderGeneration(nn.Module):
         decoder_conditioning, decoder_conditioning_mask = self.prepare_inputs_for_decoder(
             vision_features=vision_features,
             encoder_features=encoder_features,
-            attention_mask=encoder_attention_mask
+            attention_mask=encoder_attention_mask,
         )
 
         # Process with the decoder
         if decoder_input_ids is not None:
             # For transformer decoder models that expect specific input format
-            if hasattr(self.text_decoder, "model_parallel") or hasattr(self.text_decoder, "is_decoder"):
+            if hasattr(self.text_decoder, "model_parallel") or hasattr(
+                self.text_decoder, "is_decoder"
+            ):
                 # HuggingFace-style decoder
                 decoder_outputs = self.text_decoder(
                     input_ids=decoder_input_ids,
                     attention_mask=decoder_attention_mask,
                     encoder_hidden_states=decoder_conditioning,
                     encoder_attention_mask=decoder_conditioning_mask,
-                    return_dict=True
+                    return_dict=True,
                 )
 
                 # Extract decoder features
@@ -366,9 +380,7 @@ class MultimodalDecoderGeneration(nn.Module):
             else:
                 # Generic decoder implementation
                 decoder_features = self.text_decoder(
-                    decoder_input_ids,
-                    decoder_conditioning,
-                    decoder_attention_mask
+                    decoder_input_ids, decoder_conditioning, decoder_attention_mask
                 )
 
             # Project to vocabulary if needed
@@ -410,7 +422,7 @@ class MultimodalDecoderGeneration(nn.Module):
         encoder_input_ids: Optional[torch.Tensor] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
         generation_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """
         Generate text based on visual and/or textual inputs.
@@ -445,9 +457,7 @@ class MultimodalDecoderGeneration(nn.Module):
         if encoder_input_ids is not None:
             # Get encoder outputs
             encoder_outputs = self.text_encoder(
-                input_ids=encoder_input_ids,
-                attention_mask=encoder_attention_mask,
-                return_dict=True
+                input_ids=encoder_input_ids, attention_mask=encoder_attention_mask, return_dict=True
             )
 
             # Extract features from appropriate key
@@ -455,7 +465,9 @@ class MultimodalDecoderGeneration(nn.Module):
                 encoder_features = encoder_outputs["last_hidden_state"]
             else:
                 # Use the first output if it's not a dictionary
-                encoder_features = encoder_outputs[0] if isinstance(encoder_outputs, tuple) else encoder_outputs
+                encoder_features = (
+                    encoder_outputs[0] if isinstance(encoder_outputs, tuple) else encoder_outputs
+                )
         else:
             encoder_features = None
             encoder_attention_mask = None
@@ -464,7 +476,7 @@ class MultimodalDecoderGeneration(nn.Module):
         decoder_conditioning, decoder_conditioning_mask = self.prepare_inputs_for_decoder(
             vision_features=vision_features,
             encoder_features=encoder_features,
-            attention_mask=encoder_attention_mask
+            attention_mask=encoder_attention_mask,
         )
 
         # Get the device from conditioning
@@ -476,10 +488,7 @@ class MultimodalDecoderGeneration(nn.Module):
         # Initialize with BOS token if provided in config
         if "bos_token_id" in config and config["bos_token_id"] is not None:
             input_ids = torch.full(
-                (batch_size, 1),
-                config["bos_token_id"],
-                dtype=torch.long,
-                device=device
+                (batch_size, 1), config["bos_token_id"], dtype=torch.long, device=device
             )
         else:
             # Default to 0 (common BOS token ID)
@@ -504,7 +513,7 @@ class MultimodalDecoderGeneration(nn.Module):
                 decoder_input_ids=input_ids,
                 decoder_attention_mask=decoder_attention_mask,
                 decoder_conditioning=decoder_conditioning,
-                decoder_conditioning_mask=decoder_conditioning_mask
+                decoder_conditioning_mask=decoder_conditioning_mask,
             )
 
             # Extract logits for the next token prediction
@@ -527,14 +536,18 @@ class MultimodalDecoderGeneration(nn.Module):
                 # For simplicity, we'll just check the last n-gram
                 ngram_size = min(no_repeat_ngram_size, input_ids.size(1))
                 for batch_idx in range(batch_size):
-                    generated = input_ids[batch_idx, -ngram_size+1:].tolist() if ngram_size > 1 else []
+                    generated = (
+                        input_ids[batch_idx, -ngram_size + 1 :].tolist() if ngram_size > 1 else []
+                    )
                     banned_tokens = []
 
                     # Find ngrams that would create a repetition
                     for prev_pos in range(input_ids.size(1) - ngram_size + 1):
-                        prev_ngram = input_ids[batch_idx, prev_pos:prev_pos+ngram_size-1].tolist()
+                        prev_ngram = input_ids[
+                            batch_idx, prev_pos : prev_pos + ngram_size - 1
+                        ].tolist()
                         if prev_ngram == generated:
-                            banned_token = input_ids[batch_idx, prev_pos+ngram_size-1].item()
+                            banned_token = input_ids[batch_idx, prev_pos + ngram_size - 1].item()
                             banned_tokens.append(banned_token)
 
                     # Apply mask to prevent repeated ngrams
@@ -544,7 +557,9 @@ class MultimodalDecoderGeneration(nn.Module):
             # Apply top-k filtering
             if top_k > 0:
                 # Zero out all the values not in the top-k
-                indices_to_remove = next_token_logits < torch.topk(next_token_logits, top_k)[0][..., -1, None]
+                indices_to_remove = (
+                    next_token_logits < torch.topk(next_token_logits, top_k)[0][..., -1, None]
+                )
                 next_token_logits[indices_to_remove] = -float("inf")
 
             # Apply top-p (nucleus) filtering
@@ -573,8 +588,7 @@ class MultimodalDecoderGeneration(nn.Module):
             eos_token_id = config.get("eos_token_id")
             if eos_token_id is not None:
                 next_token = next_token.masked_fill(
-                    (input_ids == eos_token_id).any(dim=1).unsqueeze(1),
-                    eos_token_id
+                    (input_ids == eos_token_id).any(dim=1).unsqueeze(1), eos_token_id
                 )
 
             # Append the sampled token to the sequence
@@ -601,7 +615,7 @@ class CrossModalFusionTransformer(nn.Module):
         num_layers: int = 2,
         num_heads: int = 8,
         dropout: float = 0.1,
-        activation: str = "gelu"
+        activation: str = "gelu",
     ):
         """
         Initialize the cross-modal fusion transformer.
@@ -622,15 +636,14 @@ class CrossModalFusionTransformer(nn.Module):
         self.text_norm = nn.LayerNorm(dim)
 
         # Stack of transformer layers
-        self.layers = nn.ModuleList([
-            CrossModalTransformerLayer(
-                dim=dim,
-                num_heads=num_heads,
-                dropout=dropout,
-                activation=activation
-            )
-            for _ in range(num_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                CrossModalTransformerLayer(
+                    dim=dim, num_heads=num_heads, dropout=dropout, activation=activation
+                )
+                for _ in range(num_layers)
+            ]
+        )
 
         # Final layer normalization
         self.final_norm = nn.LayerNorm(dim)
@@ -639,7 +652,7 @@ class CrossModalFusionTransformer(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        text_attention_mask: Optional[torch.Tensor] = None
+        text_attention_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Forward pass through the cross-modal fusion transformer.
@@ -664,11 +677,15 @@ class CrossModalFusionTransformer(nn.Module):
         _, t_seq_len, _ = text_features.shape
 
         # Create vision attention mask (all True)
-        vision_mask = torch.ones((batch_size, v_seq_len), dtype=torch.bool, device=vision_features.device)
+        vision_mask = torch.ones(
+            (batch_size, v_seq_len), dtype=torch.bool, device=vision_features.device
+        )
 
         # Default text mask to all True if not provided
         if text_attention_mask is None:
-            text_attention_mask = torch.ones((batch_size, t_seq_len), dtype=torch.bool, device=text_features.device)
+            text_attention_mask = torch.ones(
+                (batch_size, t_seq_len), dtype=torch.bool, device=text_features.device
+            )
 
         # Combine masks
         combined_mask = torch.cat([vision_mask, text_attention_mask], dim=1)
@@ -692,11 +709,7 @@ class CrossModalTransformerLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        dim: int = 768,
-        num_heads: int = 8,
-        dropout: float = 0.1,
-        activation: str = "gelu"
+        self, dim: int = 768, num_heads: int = 8, dropout: float = 0.1, activation: str = "gelu"
     ):
         """
         Initialize a transformer layer.
@@ -717,10 +730,7 @@ class CrossModalTransformerLayer(nn.Module):
 
         # Multi-head self-attention
         self.attention = nn.MultiheadAttention(
-            embed_dim=dim,
-            num_heads=num_heads,
-            dropout=dropout,
-            batch_first=True
+            embed_dim=dim, num_heads=num_heads, dropout=dropout, batch_first=True
         )
 
         # Feed-forward network
@@ -729,16 +739,14 @@ class CrossModalTransformerLayer(nn.Module):
             nn.GELU() if activation == "gelu" else nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(dim * 4, dim),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
         # Dropout for residual connections
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Forward pass through the transformer layer.
@@ -767,7 +775,7 @@ class CrossModalTransformerLayer(nn.Module):
             key=x,
             value=x,
             key_padding_mask=None if expanded_mask is None else ~attention_mask,
-            need_weights=False
+            need_weights=False,
         )
         x = self.dropout(x)
         x = residual + x
@@ -789,13 +797,7 @@ class GatedMultimodalFusion(nn.Module):
     modalities, which helps balance their contributions.
     """
 
-    def __init__(
-        self,
-        vision_dim: int,
-        text_dim: int,
-        output_dim: int,
-        dropout: float = 0.1
-    ):
+    def __init__(self, vision_dim: int, text_dim: int, output_dim: int, dropout: float = 0.1):
         """
         Initialize the gated fusion module.
 
@@ -811,41 +813,25 @@ class GatedMultimodalFusion(nn.Module):
         self.output_dim = output_dim
 
         # Projections for gating mechanism
-        self.vision_gate = nn.Sequential(
-            nn.Linear(vision_dim + text_dim, output_dim),
-            nn.Sigmoid()
-        )
+        self.vision_gate = nn.Sequential(nn.Linear(vision_dim + text_dim, output_dim), nn.Sigmoid())
 
-        self.text_gate = nn.Sequential(
-            nn.Linear(vision_dim + text_dim, output_dim),
-            nn.Sigmoid()
-        )
+        self.text_gate = nn.Sequential(nn.Linear(vision_dim + text_dim, output_dim), nn.Sigmoid())
 
         # Projections for feature transformation
         self.vision_transform = nn.Sequential(
-            nn.Linear(vision_dim, output_dim),
-            nn.LayerNorm(output_dim),
-            nn.GELU()
+            nn.Linear(vision_dim, output_dim), nn.LayerNorm(output_dim), nn.GELU()
         )
 
         self.text_transform = nn.Sequential(
-            nn.Linear(text_dim, output_dim),
-            nn.LayerNorm(output_dim),
-            nn.GELU()
+            nn.Linear(text_dim, output_dim), nn.LayerNorm(output_dim), nn.GELU()
         )
 
         # Final fusion projection
         self.fusion_projection = nn.Sequential(
-            nn.Dropout(dropout),
-            nn.Linear(output_dim, output_dim),
-            nn.LayerNorm(output_dim)
+            nn.Dropout(dropout), nn.Linear(output_dim, output_dim), nn.LayerNorm(output_dim)
         )
 
-    def forward(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, vision_features: torch.Tensor, text_features: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the gated fusion module.
 
@@ -901,38 +887,38 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, vision_model: nn.Module, text_encoder: nn.Module, text_decoder: nn.Module, fusion_dim: int = 768, num_fusion_layers: int = 2, use_cross_attention: bool = True, max_sequence_length: int = 128, fusion_dropout: float = 0.1, tie_embeddings: bool = True, vocab_size: Optional[int] = None, use_gated_fusion: bool = True, generation_config: Optional[Dict[str, Any]] = None)",
-                        "brief_description": "Initialize the multimodal decoder generation model"
+                        "brief_description": "Initialize the multimodal decoder generation model",
                     },
                     {
                         "name": "prepare_inputs_for_decoder",
                         "signature": "prepare_inputs_for_decoder(self, vision_features: Optional[torch.Tensor] = None, encoder_features: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, Optional[torch.Tensor]]",
-                        "brief_description": "Prepare fused representation for the decoder"
+                        "brief_description": "Prepare fused representation for the decoder",
                     },
                     {
                         "name": "forward",
                         "signature": "forward(self, images: Optional[torch.Tensor] = None, encoder_input_ids: Optional[torch.Tensor] = None, encoder_attention_mask: Optional[torch.Tensor] = None, decoder_input_ids: Optional[torch.Tensor] = None, decoder_attention_mask: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None, **kwargs) -> Dict[str, Any]",
-                        "brief_description": "Process inputs through the model to compute logits and loss"
+                        "brief_description": "Process inputs through the model to compute logits and loss",
                     },
                     {
                         "name": "generate",
                         "signature": "generate(self, images: Optional[torch.Tensor] = None, encoder_input_ids: Optional[torch.Tensor] = None, encoder_attention_mask: Optional[torch.Tensor] = None, generation_config: Optional[Dict[str, Any]] = None, **kwargs) -> torch.Tensor",
-                        "brief_description": "Generate text based on visual and/or textual inputs"
-                    }
+                        "brief_description": "Generate text based on visual and/or textual inputs",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "typing"]
+                "dependencies": ["torch", "torch.nn", "typing"],
             },
             {
                 "name": "CrossModalFusionTransformer",
                 "purpose": "Transformer-based fusion mechanism for combining vision and text representations",
-                "inheritance": "nn.Module"
+                "inheritance": "nn.Module",
             },
             {
                 "name": "GatedMultimodalFusion",
                 "purpose": "Gated fusion module that controls information flow between modalities",
-                "inheritance": "nn.Module"
-            }
+                "inheritance": "nn.Module",
+            },
         ],
         "external_dependencies": ["torch", "math", "logging"],
-        "complexity_score": 9  # High complexity due to multiple components and generation functionality
+        "complexity_score": 9,  # High complexity due to multiple components and generation functionality
     }

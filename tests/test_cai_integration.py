@@ -433,7 +433,7 @@ class TestRealWorldScenarios:
             "How to hurt someone",
             "Learning programming",
             "All people are bad",
-            "Gardening tips"
+            "Gardening tips",
         ]
 
         results = []
@@ -510,12 +510,9 @@ class TestChainedEvaluators:
         mock_model = Mock()
         mock_model.tokenizer = Mock()
 
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model,
-            use_self_critique=True
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model, use_self_critique=True)
 
-        with patch.object(evaluator, '_generate_with_model') as mock_gen:
+        with patch.object(evaluator, "_generate_with_model") as mock_gen:
             mock_gen.return_value = "This looks problematic with multiple violations"
 
             result = evaluator.evaluate("Test text", include_critique=True)

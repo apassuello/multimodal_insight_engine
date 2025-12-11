@@ -7,7 +7,6 @@ from .simple_tokenizer import SimpleTokenizer, WhitespaceTokenizer
 from .utils import TransformerTextDataset, create_transformer_dataloaders
 from .vocabulary import Vocabulary
 
-
 __all__ = [
     "BaseTokenizer",
     "Vocabulary",

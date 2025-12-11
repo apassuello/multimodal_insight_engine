@@ -16,7 +16,6 @@ import torch.nn as nn
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 import numpy as np
 from tqdm import tqdm
@@ -49,7 +48,7 @@ class RLAIFTrainer:
         ppo_value_coef: float = 0.5,
         ppo_entropy_coef: float = 0.01,
         kl_penalty_coef: float = 0.02,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
     ):
         """
         Initialize the RLAIF trainer.
@@ -70,7 +69,8 @@ class RLAIFTrainer:
         """
         self.policy_model = policy_model
         self.constitutional_framework = (
-            constitutional_framework if constitutional_framework is not None
+            constitutional_framework
+            if constitutional_framework is not None
             else setup_default_framework()
         )
         self.critique_model = critique_model if critique_model is not None else policy_model
@@ -95,7 +95,7 @@ class RLAIFTrainer:
         self.evaluator = ConstitutionalSafetyEvaluator(
             framework=self.constitutional_framework,
             critique_model=self.critique_model,
-            use_self_critique=True
+            use_self_critique=True,
         )
 
         # PPO trainer (initialized lazily in train())
@@ -107,14 +107,14 @@ class RLAIFTrainer:
             "total_prompts_processed": 0,
             "total_responses_generated": 0,
             "avg_constitutional_score": 0.0,
-            "improvement_rate": 0.0
+            "improvement_rate": 0.0,
         }
 
     def generate_training_data(
         self,
         prompts: List[str],
         num_responses_per_prompt: int = 5,
-        use_tokenizer: Optional[Any] = None
+        use_tokenizer: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generate training data with constitutional feedback.
@@ -148,22 +148,26 @@ class RLAIFTrainer:
                 combined_score = self._compute_combined_score(evaluation, critique)
 
                 responses.append(response)
-                evaluations.append({
-                    "constitutional_eval": evaluation,
-                    "critique": critique,
-                    "combined_score": combined_score,
-                    "flagged": evaluation["flagged"]
-                })
+                evaluations.append(
+                    {
+                        "constitutional_eval": evaluation,
+                        "critique": critique,
+                        "combined_score": combined_score,
+                        "flagged": evaluation["flagged"],
+                    }
+                )
 
                 self.stats["total_responses_generated"] += 1
 
             # Add to training data
-            training_data.append({
-                "prompt": prompt,
-                "responses": responses,
-                "evaluations": evaluations,
-                "best_response_idx": self._select_best_response(evaluations)
-            })
+            training_data.append(
+                {
+                    "prompt": prompt,
+                    "responses": responses,
+                    "evaluations": evaluations,
+                    "best_response_idx": self._select_best_response(evaluations),
+                }
+            )
 
             self.stats["total_prompts_processed"] += 1
 
@@ -185,24 +189,16 @@ class RLAIFTrainer:
 
             # Get tokenizer
             if tokenizer is None:
-                if hasattr(self.policy_model, 'tokenizer'):
+                if hasattr(self.policy_model, "tokenizer"):
                     tokenizer = self.policy_model.tokenizer
                 else:
                     return f"[No tokenizer available for {prompt[:30]}...]"
 
             # Generate response
-            config = GenerationConfig(
-                max_length=150,
-                temperature=self.temperature,
-                do_sample=True
-            )
+            config = GenerationConfig(max_length=150, temperature=self.temperature, do_sample=True)
 
             response = generate_text(
-                self.policy_model,
-                tokenizer,
-                prompt,
-                config,
-                device=self.device
+                self.policy_model, tokenizer, prompt, config, device=self.device
             )
 
             return response
@@ -242,17 +238,13 @@ Analysis:"""
             model = self.critique_model if self.critique_model is not None else self.policy_model
 
             # Get tokenizer
-            if hasattr(model, 'tokenizer'):
+            if hasattr(model, "tokenizer"):
                 tokenizer = model.tokenizer
             else:
                 return "[No tokenizer available for critique generation]"
 
             # Generate critique
-            config = GenerationConfig(
-                max_length=256,
-                temperature=0.7,
-                do_sample=True
-            )
+            config = GenerationConfig(max_length=256, temperature=0.7, do_sample=True)
 
             critique = generate_text(model, tokenizer, critique_prompt, config, device=self.device)
             return critique
@@ -260,11 +252,7 @@ Analysis:"""
         except Exception as e:
             return f"[Critique generation error: {str(e)}]"
 
-    def _compute_combined_score(
-        self,
-        evaluation: Dict[str, Any],
-        critique: str
-    ) -> float:
+    def _compute_combined_score(self, evaluation: Dict[str, Any], critique: str) -> float:
         """
         Compute combined score from constitutional evaluation and critique.
 
@@ -299,9 +287,20 @@ Analysis:"""
             Score representing severity of issues (0-10 scale)
         """
         negative_terms = [
-            "unsafe", "harmful", "biased", "incorrect", "misleading",
-            "deceptive", "inappropriate", "problematic", "concerning",
-            "violation", "issue", "unfair", "coercive", "manipulative"
+            "unsafe",
+            "harmful",
+            "biased",
+            "incorrect",
+            "misleading",
+            "deceptive",
+            "inappropriate",
+            "problematic",
+            "concerning",
+            "violation",
+            "issue",
+            "unfair",
+            "coercive",
+            "manipulative",
         ]
 
         critique_lower = critique.lower()
@@ -341,7 +340,7 @@ Analysis:"""
                 learning_rate=self.learning_rate,
                 clip_epsilon=self.ppo_epsilon,
                 value_loss_coef=self.ppo_value_coef,
-                kl_penalty=self.kl_penalty_coef
+                kl_penalty=self.kl_penalty_coef,
             )
 
     def train(
@@ -352,7 +351,7 @@ Analysis:"""
         num_epochs_per_batch: int = 4,
         max_length: int = 150,
         tokenizer: Optional[Any] = None,
-        validation_prompts: Optional[List[str]] = None
+        validation_prompts: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Train the policy model using constitutional AI feedback with PPO.
@@ -376,7 +375,7 @@ Analysis:"""
         """
         # Get tokenizer
         if tokenizer is None:
-            if hasattr(self.policy_model, 'tokenizer'):
+            if hasattr(self.policy_model, "tokenizer"):
                 tokenizer = self.policy_model.tokenizer
             else:
                 raise ValueError("Tokenizer required for training")
@@ -402,7 +401,7 @@ Analysis:"""
             batch_size=batch_size,
             num_epochs_per_batch=num_epochs_per_batch,
             max_length=max_length,
-            temperature=self.temperature
+            temperature=self.temperature,
         )
 
         # Update statistics
@@ -417,8 +416,8 @@ Analysis:"""
 
             if len(ppo_results["training_history"]["step_avg_rewards"]) > 1:
                 improvement = (
-                    ppo_results["training_history"]["step_avg_rewards"][-1] -
-                    ppo_results["training_history"]["step_avg_rewards"][0]
+                    ppo_results["training_history"]["step_avg_rewards"][-1]
+                    - ppo_results["training_history"]["step_avg_rewards"][0]
                 )
                 self.stats["improvement_rate"] = float(improvement)
 
@@ -437,14 +436,10 @@ Analysis:"""
         return {
             "ppo_results": ppo_results,
             "validation_results": validation_results,
-            "final_stats": self.stats
+            "final_stats": self.stats,
         }
 
-    def validate(
-        self,
-        validation_prompts: List[str],
-        tokenizer: Optional[Any] = None
-    ) -> float:
+    def validate(self, validation_prompts: List[str], tokenizer: Optional[Any] = None) -> float:
         """
         Validate model on validation prompts.
 
@@ -473,5 +468,5 @@ Analysis:"""
         return {
             **self.stats,
             "evaluator_stats": self.evaluator.get_statistics(),
-            "framework_stats": self.constitutional_framework.get_statistics()
+            "framework_stats": self.constitutional_framework.get_statistics(),
         }

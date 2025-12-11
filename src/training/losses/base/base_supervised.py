@@ -14,12 +14,7 @@ import torch.nn.functional as F
 from .mixins import NormalizationMixin, ProjectionMixin
 
 
-class BaseSupervisedLoss(
-    NormalizationMixin,
-    ProjectionMixin,
-    nn.Module,
-    ABC
-):
+class BaseSupervisedLoss(NormalizationMixin, ProjectionMixin, nn.Module, ABC):
     """
     Base class for supervised learning losses.
 
@@ -43,7 +38,7 @@ class BaseSupervisedLoss(
         input_dim: Optional[int] = None,
         projection_dim: Optional[int] = None,
         reduction: str = "mean",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize base supervised loss.
@@ -68,23 +63,25 @@ class BaseSupervisedLoss(
         self.num_classes = num_classes
         self.label_smoothing = label_smoothing
 
-        assert reduction in ["mean", "sum", "none"], \
-            f"reduction must be 'mean', 'sum', or 'none', got {reduction}"
+        assert reduction in [
+            "mean",
+            "sum",
+            "none",
+        ], f"reduction must be 'mean', 'sum', or 'none', got {reduction}"
         self.reduction = reduction
 
         # Register class weights as buffer (not a parameter)
         if class_weights is not None:
             if num_classes is not None:
-                assert len(class_weights) == num_classes, \
-                    f"class_weights length ({len(class_weights)}) must match num_classes ({num_classes})"
-            self.register_buffer('class_weights', class_weights)
+                assert (
+                    len(class_weights) == num_classes
+                ), f"class_weights length ({len(class_weights)}) must match num_classes ({num_classes})"
+            self.register_buffer("class_weights", class_weights)
         else:
             self.class_weights = None
 
     def apply_label_smoothing(
-        self,
-        labels: torch.Tensor,
-        num_classes: Optional[int] = None
+        self, labels: torch.Tensor, num_classes: Optional[int] = None
     ) -> torch.Tensor:
         """
         Apply label smoothing to hard labels.
@@ -127,10 +124,7 @@ class BaseSupervisedLoss(
         return smoothed
 
     def weighted_cross_entropy(
-        self,
-        logits: torch.Tensor,
-        labels: torch.Tensor,
-        weights: Optional[torch.Tensor] = None
+        self, logits: torch.Tensor, labels: torch.Tensor, weights: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Compute weighted cross-entropy loss.
@@ -175,11 +169,7 @@ class BaseSupervisedLoss(
             return loss
 
     @abstractmethod
-    def forward(
-        self,
-        *args,
-        **kwargs
-    ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+    def forward(self, *args, **kwargs) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         """
         Compute the loss.
 
@@ -190,11 +180,7 @@ class BaseSupervisedLoss(
         """
         raise NotImplementedError("Subclasses must implement forward()")
 
-    def reduce_loss(
-        self,
-        loss: torch.Tensor,
-        reduction: Optional[str] = None
-    ) -> torch.Tensor:
+    def reduce_loss(self, loss: torch.Tensor, reduction: Optional[str] = None) -> torch.Tensor:
         """
         Apply reduction to loss values.
 

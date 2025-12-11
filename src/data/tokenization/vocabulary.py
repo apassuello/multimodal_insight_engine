@@ -5,8 +5,8 @@ import os
 from collections import Counter
 from typing import Dict, List, Optional
 
-
 logger = logging.getLogger(__name__)
+
 
 class Vocabulary:
     """
@@ -223,7 +223,7 @@ class Vocabulary:
                     "eos_token": self.eos_token,
                     "mask_token": self.mask_token,
                 },
-                "vocab_size": len(self.idx_to_token)
+                "vocab_size": len(self.idx_to_token),
             }
 
             # Save to file
@@ -360,8 +360,7 @@ class Vocabulary:
 
         # Filter by frequency and limit vocabulary size
         filtered_tokens = [
-            token for token, count in counter.most_common(max_vocab_size)
-            if count >= min_freq
+            token for token, count in counter.most_common(max_vocab_size) if count >= min_freq
         ]
 
         # Log vocabulary statistics
@@ -396,6 +395,7 @@ class Vocabulary:
             "mask_token_idx": self.token_to_idx[self.mask_token],
         }
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -417,48 +417,48 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "add_token",
                         "signature": "add_token(self, token: str) -> int",
-                        "brief_description": "Add a token to the vocabulary and return its index"
+                        "brief_description": "Add a token to the vocabulary and return its index",
                     },
                     {
                         "name": "token_to_index",
                         "signature": "token_to_index(self, token: str) -> int",
-                        "brief_description": "Convert a token to its index with validation"
+                        "brief_description": "Convert a token to its index with validation",
                     },
                     {
                         "name": "index_to_token",
                         "signature": "index_to_token(self, idx: int) -> str",
-                        "brief_description": "Convert an index to its token with validation"
+                        "brief_description": "Convert an index to its token with validation",
                     },
                     {
                         "name": "tokens_to_indices",
                         "signature": "tokens_to_indices(self, tokens: List[str]) -> List[int]",
-                        "brief_description": "Convert a list of tokens to their indices"
+                        "brief_description": "Convert a list of tokens to their indices",
                     },
                     {
                         "name": "indices_to_tokens",
                         "signature": "indices_to_tokens(self, indices: List[int]) -> List[str]",
-                        "brief_description": "Convert a list of indices to their tokens"
+                        "brief_description": "Convert a list of indices to their tokens",
                     },
                     {
                         "name": "save",
                         "signature": "save(self, path: str) -> None",
-                        "brief_description": "Save vocabulary to a JSON file"
+                        "brief_description": "Save vocabulary to a JSON file",
                     },
                     {
                         "name": "load",
                         "signature": "load(cls, path: str) -> 'Vocabulary'",
-                        "brief_description": "Load vocabulary from a JSON file"
+                        "brief_description": "Load vocabulary from a JSON file",
                     },
                     {
                         "name": "build_from_texts",
                         "signature": "build_from_texts(cls, texts: List[str], tokenizer, max_vocab_size: Optional[int] = None, min_freq: int = 1, **kwargs) -> 'Vocabulary'",
-                        "brief_description": "Build a vocabulary from a list of texts using the provided tokenizer"
-                    }
+                        "brief_description": "Build a vocabulary from a list of texts using the provided tokenizer",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["json", "collections.Counter", "logging"]
+                "dependencies": ["json", "collections.Counter", "logging"],
             }
         ],
         "external_dependencies": ["json", "collections.Counter", "logging"],
-        "complexity_score": 6  # Moderate-high complexity due to multiple conversion methods and robust error handling
+        "complexity_score": 6,  # Moderate-high complexity due to multiple conversion methods and robust error handling
     }

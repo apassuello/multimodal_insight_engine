@@ -86,6 +86,7 @@ class BaseTokenizer(ABC):
         """
         pass
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -107,38 +108,38 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "tokenize",
                         "signature": "tokenize(self, text: str) -> List[str]",
-                        "brief_description": "Convert text into tokens"
+                        "brief_description": "Convert text into tokens",
                     },
                     {
                         "name": "encode",
                         "signature": "encode(self, text: str) -> List[int]",
-                        "brief_description": "Convert text to token indices"
+                        "brief_description": "Convert text to token indices",
                     },
                     {
                         "name": "decode",
                         "signature": "decode(self, token_ids: List[int]) -> str",
-                        "brief_description": "Convert token indices back to text"
+                        "brief_description": "Convert token indices back to text",
                     },
                     {
                         "name": "batch_encode",
                         "signature": "batch_encode(self, texts: List[str]) -> List[List[int]]",
-                        "brief_description": "Encode multiple texts efficiently"
+                        "brief_description": "Encode multiple texts efficiently",
                     },
                     {
                         "name": "vocab_size",
                         "signature": "vocab_size(self) -> int",
-                        "brief_description": "Get the size of the vocabulary"
+                        "brief_description": "Get the size of the vocabulary",
                     },
                     {
                         "name": "special_tokens",
                         "signature": "special_tokens(self) -> Dict[str, int]",
-                        "brief_description": "Get the special tokens used by this tokenizer"
-                    }
+                        "brief_description": "Get the special tokens used by this tokenizer",
+                    },
                 ],
                 "inheritance": "ABC",
-                "dependencies": ["abc.ABC"]
+                "dependencies": ["abc.ABC"],
             }
         ],
         "external_dependencies": ["abc"],
-        "complexity_score": 2  # Low complexity as it's just an interface definition
+        "complexity_score": 2,  # Low complexity as it's just an interface definition
     }

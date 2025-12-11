@@ -20,7 +20,6 @@ from typing import List
 from src.data.tokenization import BPETokenizer
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -29,7 +28,7 @@ def train_joint_bpe_tokenizer(
     tgt_texts: List[str],
     vocab_size: int = 8000,
     min_frequency: int = 2,
-    save_dir: str = "models/tokenizers"
+    save_dir: str = "models/tokenizers",
 ) -> BPETokenizer:
     """
     Train a joint BPE tokenizer for both source and target texts.
@@ -60,7 +59,7 @@ def train_joint_bpe_tokenizer(
     combined_texts = src_texts + tgt_texts
 
     # Train BPE tokenizer
-    tokenizer = BPETokenizer(num_merges=vocab_size-256)
+    tokenizer = BPETokenizer(num_merges=vocab_size - 256)
     tokenizer.train(
         texts=combined_texts,
         vocab_size=vocab_size,
@@ -118,13 +117,13 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "train_joint_bpe_tokenizer",
                 "signature": "train_joint_bpe_tokenizer(src_texts: List[str], tgt_texts: List[str], vocab_size: int = 8000, min_frequency: int = 2, save_dir: str = 'models/tokenizers') -> BPETokenizer",
-                "brief_description": "Trains a shared BPE tokenizer on combined source and target language texts"
+                "brief_description": "Trains a shared BPE tokenizer on combined source and target language texts",
             },
             {
                 "name": "main",
                 "signature": "main()",
-                "brief_description": "Demonstrates the usage of joint BPE tokenizer training with example texts"
-            }
+                "brief_description": "Demonstrates the usage of joint BPE tokenizer training with example texts",
+            },
         ],
         "external_dependencies": ["src.data.tokenization"],
         "complexity_score": 3,  # Low complexity as it's a straightforward tokenizer training module

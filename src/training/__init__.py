@@ -11,10 +11,10 @@ from .trainers.multimodal import MultimodalTrainer
 from .trainers.trainer import train_model
 from .trainers.transformer_trainer import TransformerTrainer
 
-
 # Optional Constitutional AI trainer
 try:
     from .trainers.constitutional_trainer import ConstitutionalTrainer
+
     CONSTITUTIONAL_TRAINER_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_TRAINER_AVAILABLE = False
@@ -39,7 +39,6 @@ from .optimizers import (
     LinearWarmupLR,
     OneCycleLR,
 )
-
 
 __all__ = [
     "train_model",

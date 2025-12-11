@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 logger = logging.getLogger(__name__)
 
 """MODULE: ema_moco_loss.py
@@ -180,7 +179,7 @@ class EMAMoCoLoss(nn.Module):
         text_queries: torch.Tensor,
         vision_features: Optional[torch.Tensor] = None,
         text_features: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute MoCo loss with EMA-updated encoders and memory queue.
@@ -200,11 +199,7 @@ class EMAMoCoLoss(nn.Module):
             if isinstance(vision_queries, torch.Tensor)
             else vision_features.shape[0]
         )
-        device = (
-            vision_features.device
-            if vision_features is not None
-            else vision_queries.device
-        )
+        device = vision_features.device if vision_features is not None else vision_queries.device
 
         # Step 1: Compute query features using the query encoders (if not provided)
         if vision_features is None:
@@ -243,9 +238,7 @@ class EMAMoCoLoss(nn.Module):
                 text_key_features = text_features.clone().detach()
 
             # Update the queues with the new keys
-            self._dequeue_and_enqueue(
-                text_key_features, self.text_queue, self.text_queue_ptr
-            )
+            self._dequeue_and_enqueue(text_key_features, self.text_queue, self.text_queue_ptr)
             if self.symmetric:
                 self._dequeue_and_enqueue(
                     vision_key_features, self.vision_queue, self.vision_queue_ptr
@@ -262,9 +255,7 @@ class EMAMoCoLoss(nn.Module):
 
         # Negatives: compare with all samples in the queue
         # Shape: [batch_size, K]
-        v2t_neg_logits = (
-            torch.matmul(vision_features, self.text_queue.to(device)) / self.T
-        )
+        v2t_neg_logits = torch.matmul(vision_features, self.text_queue.to(device)) / self.T
 
         # Combine positives and negatives
         # Shape: [batch_size, batch_size + K]
@@ -285,9 +276,7 @@ class EMAMoCoLoss(nn.Module):
 
             # Negatives: compare with all samples in the queue
             # Shape: [batch_size, K]
-            t2v_neg_logits = (
-                torch.matmul(text_features, self.vision_queue.to(device)) / self.T
-            )
+            t2v_neg_logits = torch.matmul(text_features, self.vision_queue.to(device)) / self.T
 
             # Combine positives and negatives
             # Shape: [batch_size, batch_size + K]

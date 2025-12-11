@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -28,7 +27,7 @@ class WikipediaDataset:
         cache_processed_data: bool = True,
         cache_dir: Optional[str] = None,
         image_size: int = 224,
-        random_seed: int = 42
+        random_seed: int = 42,
     ):
         """
         Initialize the Wikipedia dataset.
@@ -90,14 +89,14 @@ class WikipediaDataset:
             Parsed feature dictionary
         """
         feature_description = {
-            'image/encoded': tf.io.FixedLenFeature([], tf.string),
-            'image/format': tf.io.FixedLenFeature([], tf.string),
-            'image/height': tf.io.FixedLenFeature([], tf.int64),
-            'image/width': tf.io.FixedLenFeature([], tf.int64),
-            'text/encoded': tf.io.FixedLenFeature([], tf.string),
-            'text/format': tf.io.FixedLenFeature([], tf.string),
-            'webpage/url': tf.io.FixedLenFeature([], tf.string, default_value=''),
-            'webpage/title': tf.io.FixedLenFeature([], tf.string, default_value=''),
+            "image/encoded": tf.io.FixedLenFeature([], tf.string),
+            "image/format": tf.io.FixedLenFeature([], tf.string),
+            "image/height": tf.io.FixedLenFeature([], tf.int64),
+            "image/width": tf.io.FixedLenFeature([], tf.int64),
+            "text/encoded": tf.io.FixedLenFeature([], tf.string),
+            "text/format": tf.io.FixedLenFeature([], tf.string),
+            "webpage/url": tf.io.FixedLenFeature([], tf.string, default_value=""),
+            "webpage/title": tf.io.FixedLenFeature([], tf.string, default_value=""),
         }
 
         return tf.io.parse_single_example(example_proto, feature_description)
@@ -127,7 +126,7 @@ class WikipediaDataset:
         Returns:
             Processed text string
         """
-        return text_data.decode('utf-8')
+        return text_data.decode("utf-8")
 
     def _get_cache_path(self):
         """Get path for cached processed data."""
@@ -154,12 +153,7 @@ class WikipediaDataset:
             raise FileNotFoundError(f"No files found for split '{self.split}' in {self.data_dir}")
 
         # Initialize data containers
-        data = {
-            'images': [],
-            'texts': [],
-            'urls': [],
-            'titles': []
-        }
+        data = {"images": [], "texts": [], "urls": [], "titles": []}
 
         # Process each file
         total_examples = 0
@@ -174,18 +168,18 @@ class WikipediaDataset:
                 parsed = self._parse_example(example_proto)
 
                 # Process image
-                image_data = parsed['image/encoded'].numpy()
+                image_data = parsed["image/encoded"].numpy()
                 image = self._process_image(image_data).numpy()
-                data['images'].append(image)
+                data["images"].append(image)
 
                 # Process text
-                text_data = parsed['text/encoded'].numpy()
+                text_data = parsed["text/encoded"].numpy()
                 text = self._process_text(text_data)
-                data['texts'].append(text)
+                data["texts"].append(text)
 
                 # Get metadata
-                data['urls'].append(parsed['webpage/url'].numpy().decode('utf-8'))
-                data['titles'].append(parsed['webpage/title'].numpy().decode('utf-8'))
+                data["urls"].append(parsed["webpage/url"].numpy().decode("utf-8"))
+                data["titles"].append(parsed["webpage/title"].numpy().decode("utf-8"))
 
                 total_examples += 1
 
@@ -195,7 +189,7 @@ class WikipediaDataset:
         logger.info(f"Loaded {total_examples} examples from {self.split} split")
 
         # Convert lists to tensors
-        data['images'] = torch.tensor(np.array(data['images']), dtype=torch.float32)
+        data["images"] = torch.tensor(np.array(data["images"]), dtype=torch.float32)
 
         # Cache processed data if enabled
         if cache_path:
@@ -215,15 +209,13 @@ class WikipediaDataset:
 
         # Create tensor dictionary
         tensor_dict = {
-            'image': self.data['images'],
-            'text': self.data['texts'],  # This will be handled by the collate function
-            'metadata': {
-                'url': self.data['urls'],
-                'title': self.data['titles']
-            }
+            "image": self.data["images"],
+            "text": self.data["texts"],  # This will be handled by the collate function
+            "metadata": {"url": self.data["urls"], "title": self.data["titles"]},
         }
 
         return MultimodalDataset(tensor_dict)
+
 
 def create_wiki_dataloaders(
     data_dir: str = "data/wiki",
@@ -231,7 +223,7 @@ def create_wiki_dataloaders(
     max_examples: Optional[Dict[str, int]] = None,
     num_workers: int = 0,
     image_size: int = 224,
-    random_seed: int = 42
+    random_seed: int = 42,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     """
     Create DataLoaders for train, validation, and test sets.
@@ -259,7 +251,7 @@ def create_wiki_dataloaders(
         split="train",
         max_examples=max_examples.get("train"),
         image_size=image_size,
-        random_seed=random_seed
+        random_seed=random_seed,
     ).to_pytorch_dataset()
 
     val_dataset = WikipediaDataset(
@@ -267,7 +259,7 @@ def create_wiki_dataloaders(
         split="val",
         max_examples=max_examples.get("val"),
         image_size=image_size,
-        random_seed=random_seed
+        random_seed=random_seed,
     ).to_pytorch_dataset()
 
     test_dataset = WikipediaDataset(
@@ -275,7 +267,7 @@ def create_wiki_dataloaders(
         split="test",
         max_examples=max_examples.get("test"),
         image_size=image_size,
-        random_seed=random_seed
+        random_seed=random_seed,
     ).to_pytorch_dataset()
 
     # Create dataloaders
@@ -284,7 +276,7 @@ def create_wiki_dataloaders(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        collate_fn=collate_fn
+        collate_fn=collate_fn,
     )
 
     val_loader = create_dataloader(
@@ -292,7 +284,7 @@ def create_wiki_dataloaders(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        collate_fn=collate_fn
+        collate_fn=collate_fn,
     )
 
     test_loader = create_dataloader(
@@ -300,10 +292,11 @@ def create_wiki_dataloaders(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        collate_fn=collate_fn
+        collate_fn=collate_fn,
     )
 
     return train_loader, val_loader, test_loader
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -326,30 +319,30 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__init__",
                         "signature": "__init__(self, data_dir: str = 'data/wiki', split: str = 'train', max_examples: Optional[int] = None, cache_processed_data: bool = True, cache_dir: Optional[str] = None, image_size: int = 224, random_seed: int = 42)",
-                        "brief_description": "Initialize the dataset with data split and processing options"
+                        "brief_description": "Initialize the dataset with data split and processing options",
                     },
                     {
                         "name": "load_data",
                         "signature": "load_data(self) -> Dict[str, List[Any]]",
-                        "brief_description": "Load and preprocess data from TFRecord files with caching capability"
+                        "brief_description": "Load and preprocess data from TFRecord files with caching capability",
                     },
                     {
                         "name": "to_pytorch_dataset",
                         "signature": "to_pytorch_dataset(self)",
-                        "brief_description": "Convert to a PyTorch dataset compatible with MultimodalDataset"
-                    }
+                        "brief_description": "Convert to a PyTorch dataset compatible with MultimodalDataset",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["tensorflow", "torch", "numpy", "tqdm"]
+                "dependencies": ["tensorflow", "torch", "numpy", "tqdm"],
             }
         ],
         "key_functions": [
             {
                 "name": "create_wiki_dataloaders",
                 "signature": "create_wiki_dataloaders(data_dir: str = 'data/wiki', batch_size: int = 32, max_examples: Optional[Dict[str, int]] = None, num_workers: int = 0, image_size: int = 224, random_seed: int = 42) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]",
-                "brief_description": "Create DataLoaders for train, validation, and test sets"
+                "brief_description": "Create DataLoaders for train, validation, and test sets",
             }
         ],
         "external_dependencies": ["tensorflow", "torch", "numpy", "tqdm"],
-        "complexity_score": 5  # High complexity for handling TFRecord data and image processing
+        "complexity_score": 5,  # High complexity for handling TFRecord data and image processing
     }

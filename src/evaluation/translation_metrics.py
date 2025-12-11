@@ -8,17 +8,19 @@ from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
 # Download required NLTK data
 try:
-    nltk.data.find('tokenizers/punkt')
+    nltk.data.find("tokenizers/punkt")
 except LookupError:
-    nltk.download('punkt')
+    nltk.download("punkt")
 
-def calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[float, ...] = (0.4, 0.3, 0.2, 0.1)) -> float:
+
+def calculate_bleu(
+    hypotheses: List[str], references: List[str], weights: Tuple[float, ...] = (0.4, 0.3, 0.2, 0.1)
+) -> float:
     """
     Calculate BLEU score using NLTK's implementation.
 
@@ -43,6 +45,7 @@ def calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[
         scores.append(score)
 
     return float(np.mean(scores))
+
 
 def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
     """
@@ -71,6 +74,7 @@ def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
 
     return float(np.mean(scores))
 
+
 def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[str, float]:
     """
     Evaluate translation quality using multiple metrics.
@@ -85,10 +89,8 @@ def evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[s
     bleu = calculate_bleu(hypotheses, references)
     ter = calculate_ter(hypotheses, references)
 
-    return {
-        "bleu": bleu,
-        "ter": ter
-    }
+    return {"bleu": bleu, "ter": ter}
+
 
 def print_evaluation_results(scores: Dict[str, float]):
     """
@@ -101,6 +103,7 @@ def print_evaluation_results(scores: Dict[str, float]):
     logger.info(f"BLEU Score: {scores['bleu']:.4f}")
     logger.info(f"TER Score:  {scores['ter']:.4f}")
     logger.info("=" * 35)
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -119,24 +122,24 @@ def extract_file_metadata(file_path=__file__):
             {
                 "name": "calculate_bleu",
                 "signature": "calculate_bleu(hypotheses: List[str], references: List[str], weights: Tuple[float, ...] = (0.4, 0.3, 0.2, 0.1)) -> float",
-                "brief_description": "Calculates BLEU score for translation quality using NLTK's implementation with smoothing"
+                "brief_description": "Calculates BLEU score for translation quality using NLTK's implementation with smoothing",
             },
             {
                 "name": "calculate_ter",
                 "signature": "calculate_ter(hypotheses: List[str], references: List[str]) -> float",
-                "brief_description": "Calculates Translation Edit Rate (TER) to measure edit distance between translations"
+                "brief_description": "Calculates Translation Edit Rate (TER) to measure edit distance between translations",
             },
             {
                 "name": "evaluate_translation",
                 "signature": "evaluate_translation(hypotheses: List[str], references: List[str]) -> Dict[str, float]",
-                "brief_description": "Evaluates translation quality using multiple metrics and returns consolidated results"
+                "brief_description": "Evaluates translation quality using multiple metrics and returns consolidated results",
             },
             {
                 "name": "print_evaluation_results",
                 "signature": "print_evaluation_results(scores: Dict[str, float])",
-                "brief_description": "Formats and prints evaluation results in a readable format"
-            }
+                "brief_description": "Formats and prints evaluation results in a readable format",
+            },
         ],
         "external_dependencies": ["numpy", "nltk", "re"],
-        "complexity_score": 3  # Moderate-low complexity with straightforward implementation of standard metrics
+        "complexity_score": 3,  # Moderate-low complexity with straightforward implementation of standard metrics
     }

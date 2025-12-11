@@ -18,7 +18,6 @@ import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +45,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         sampling_strategy: str = "auto",
         memory_bank_size: int = 4096,
         dataset_size: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize SimCLR loss.
@@ -79,7 +78,7 @@ class SimCLRLoss(BaseContrastiveLoss):
             input_dim=input_dim,
             projection_dim=projection_dim,
             reduction=reduction,
-            **kwargs
+            **kwargs,
         )
 
         self.loss_type = loss_type
@@ -99,8 +98,12 @@ class SimCLRLoss(BaseContrastiveLoss):
         if self.sampling_strategy == "global":
             self.dataset_size = dataset_size or 1000
             embedding_dim = projection_dim if use_projection else (input_dim or 768)
-            self.register_buffer("global_vision_embeddings", torch.zeros(self.dataset_size, embedding_dim))
-            self.register_buffer("global_text_embeddings", torch.zeros(self.dataset_size, embedding_dim))
+            self.register_buffer(
+                "global_vision_embeddings", torch.zeros(self.dataset_size, embedding_dim)
+            )
+            self.register_buffer(
+                "global_text_embeddings", torch.zeros(self.dataset_size, embedding_dim)
+            )
             self.register_buffer("global_indices", torch.zeros(self.dataset_size, dtype=torch.long))
             self.register_buffer("global_size", torch.zeros(1, dtype=torch.long))
             self.register_buffer("global_initialized", torch.tensor(False))
@@ -112,7 +115,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         match_ids: Optional[List[str]] = None,
         indices: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute contrastive loss between vision and text features.
@@ -160,7 +163,11 @@ class SimCLRLoss(BaseContrastiveLoss):
             loss, similarity = self._compute_memory_bank_loss(
                 vision_features, text_features, v2t_targets, t2i_targets
             )
-        elif self.sampling_strategy == "global" and indices is not None and self.global_initialized.item():
+        elif (
+            self.sampling_strategy == "global"
+            and indices is not None
+            and self.global_initialized.item()
+        ):
             loss, similarity = self._compute_global_loss(
                 vision_features, text_features, match_ids, indices
             )
@@ -175,16 +182,10 @@ class SimCLRLoss(BaseContrastiveLoss):
             similarity, v2t_targets, t2i_targets, vision_features, text_features
         )
 
-        return {
-            "loss": loss,
-            **metrics
-        }
+        return {"loss": loss, **metrics}
 
     def _create_targets(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Create target indices for vision→text and text→vision based on match_ids.
@@ -209,8 +210,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         # Create unique integer mapping for efficient comparison
         unique_ids = {mid: idx for idx, mid in enumerate(set(string_match_ids))}
         match_ids_tensor = torch.tensor(
-            [unique_ids[mid] for mid in string_match_ids],
-            device=device
+            [unique_ids[mid] for mid in string_match_ids], device=device
         )
 
         # Use broadcasting to create match matrix efficiently
@@ -244,7 +244,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         text_features: torch.Tensor,
         v2t_targets: torch.Tensor,
         t2i_targets: torch.Tensor,
-        batch_size: int
+        batch_size: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute in-batch contrastive loss."""
         # Use base class method for similarity (includes temperature scaling)
@@ -267,7 +267,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         v2t_targets: torch.Tensor,
-        t2i_targets: torch.Tensor
+        t2i_targets: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute memory bank contrastive loss."""
         actual_bank_size = int(self.bank_size.item())
@@ -303,7 +303,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         match_ids: Optional[List[str]],
-        indices: torch.Tensor
+        indices: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute global contrastive loss."""
         actual_global_size = int(self.global_size.item())
@@ -340,7 +340,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         indices: torch.Tensor,
         match_ids: Optional[List[str]],
         actual_global_size: int,
-        device: torch.device
+        device: torch.device,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Create targets for global loss."""
         indices.shape[0]
@@ -358,16 +358,9 @@ class SimCLRLoss(BaseContrastiveLoss):
                 v2t_targets.append(i % actual_global_size)
                 t2v_targets.append(i % actual_global_size)
 
-        return (
-            torch.tensor(v2t_targets, device=device),
-            torch.tensor(t2v_targets, device=device)
-        )
+        return (torch.tensor(v2t_targets, device=device), torch.tensor(t2v_targets, device=device))
 
-    def _update_memory_bank(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor
-    ):
+    def _update_memory_bank(self, vision_features: torch.Tensor, text_features: torch.Tensor):
         """Update memory bank with current batch."""
         with torch.no_grad():
             batch_size = vision_features.shape[0]
@@ -386,18 +379,15 @@ class SimCLRLoss(BaseContrastiveLoss):
 
                 new_ptr = overflow
             else:
-                self.vision_bank[ptr:ptr + batch_size] = vision_features.detach()
-                self.text_bank[ptr:ptr + batch_size] = text_features.detach()
+                self.vision_bank[ptr : ptr + batch_size] = vision_features.detach()
+                self.text_bank[ptr : ptr + batch_size] = text_features.detach()
                 new_ptr = ptr + batch_size
 
             self.bank_ptr[0] = new_ptr % self.memory_bank_size
             self.bank_size[0] = min(self.bank_size.item() + batch_size, self.memory_bank_size)
 
     def _update_global_embeddings(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor,
-        indices: torch.Tensor
+        self, vision_features: torch.Tensor, text_features: torch.Tensor, indices: torch.Tensor
     ):
         """Update global embeddings buffer."""
         with torch.no_grad():
@@ -417,7 +407,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         v2t_targets: torch.Tensor,
         t2i_targets: torch.Tensor,
         vision_features: torch.Tensor,
-        text_features: torch.Tensor
+        text_features: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         """Compute accuracy and retrieval metrics."""
         with torch.no_grad():
@@ -450,5 +440,5 @@ class SimCLRLoss(BaseContrastiveLoss):
                 "v2t_accuracy": v2t_accuracy,
                 "t2v_accuracy": t2v_accuracy,
                 "accuracy": accuracy,
-                **{f"recalls.{k}": v for k, v in recalls.items()}
+                **{f"recalls.{k}": v for k, v in recalls.items()},
             }

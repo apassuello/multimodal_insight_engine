@@ -9,7 +9,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 class DataPreprocessor:
     """A class for handling data preprocessing operations."""
 
-    def __init__(self, method: str = 'standard'):
+    def __init__(self, method: str = "standard"):
         """
         Initialize the preprocessor.
 
@@ -17,7 +17,7 @@ class DataPreprocessor:
             method: Scaling method to use ('standard' or 'minmax')
         """
         self.method = method
-        self.scaler = StandardScaler() if method == 'standard' else MinMaxScaler()
+        self.scaler = StandardScaler() if method == "standard" else MinMaxScaler()
         self.is_fitted = False
 
     def fit(self, data: Union[torch.Tensor, np.ndarray]) -> None:
@@ -83,6 +83,7 @@ class DataPreprocessor:
         original = self.scaler.inverse_transform(data)
         return torch.from_numpy(original).float()
 
+
 def create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Create sequences from time series data.
@@ -98,12 +99,15 @@ def create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor,
     targets = []
 
     for i in range(len(data) - seq_length):
-        sequences.append(data[i:i + seq_length])
+        sequences.append(data[i : i + seq_length])
         targets.append(data[i + seq_length])
 
     return torch.stack(sequences), torch.stack(targets)
 
-def split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
+def split_data(
+    data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 0.1
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Split data into train, validation, and test sets.
 
@@ -120,10 +124,11 @@ def split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 
     val_size = int(total_size * val_ratio)
 
     train_data = data[:train_size]
-    val_data = data[train_size:train_size + val_size]
-    test_data = data[train_size + val_size:]
+    val_data = data[train_size : train_size + val_size]
+    test_data = data[train_size + val_size :]
 
     return train_data, val_data, test_data
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -146,40 +151,40 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "fit",
                         "signature": "fit(self, data: Union[torch.Tensor, np.ndarray]) -> None",
-                        "brief_description": "Fit the preprocessor on the data"
+                        "brief_description": "Fit the preprocessor on the data",
                     },
                     {
                         "name": "transform",
                         "signature": "transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
-                        "brief_description": "Transform the data using the fitted preprocessor"
+                        "brief_description": "Transform the data using the fitted preprocessor",
                     },
                     {
                         "name": "fit_transform",
                         "signature": "fit_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
-                        "brief_description": "Fit the preprocessor and transform the data"
+                        "brief_description": "Fit the preprocessor and transform the data",
                     },
                     {
                         "name": "inverse_transform",
                         "signature": "inverse_transform(self, data: Union[torch.Tensor, np.ndarray]) -> torch.Tensor",
-                        "brief_description": "Inverse transform data back to original scale"
-                    }
+                        "brief_description": "Inverse transform data back to original scale",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["torch", "numpy", "sklearn.preprocessing"]
+                "dependencies": ["torch", "numpy", "sklearn.preprocessing"],
             }
         ],
         "key_functions": [
             {
                 "name": "create_sequences",
                 "signature": "create_sequences(data: torch.Tensor, seq_length: int) -> Tuple[torch.Tensor, torch.Tensor]",
-                "brief_description": "Create input-target sequences from time series data"
+                "brief_description": "Create input-target sequences from time series data",
             },
             {
                 "name": "split_data",
                 "signature": "split_data(data: torch.Tensor, train_ratio: float = 0.8, val_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]",
-                "brief_description": "Split data into train, validation, and test sets"
-            }
+                "brief_description": "Split data into train, validation, and test sets",
+            },
         ],
         "external_dependencies": ["torch", "numpy", "sklearn"],
-        "complexity_score": 4  # Moderate complexity with multiple utility functions
+        "complexity_score": 4,  # Moderate complexity with multiple utility functions
     }

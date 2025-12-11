@@ -15,7 +15,6 @@ import torch
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         base_temperature: float = 0.07,
         min_temp: float = 0.04,
         max_temp: float = 0.2,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize dynamic temperature loss.
@@ -46,11 +45,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
             min_temp: Minimum allowed temperature
             max_temp: Maximum allowed temperature
         """
-        super().__init__(
-            temperature=base_temperature,
-            normalize_features=True,
-            **kwargs
-        )
+        super().__init__(temperature=base_temperature, normalize_features=True, **kwargs)
 
         self.base_temperature = base_temperature
         self.min_temp = min_temp
@@ -61,7 +56,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         match_ids: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute contrastive loss with dynamic temperature.
@@ -124,10 +119,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         }
 
     def _create_match_matrix(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating matches."""
         if match_ids is None:
@@ -140,9 +132,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         return match_matrix
 
     def _calculate_dynamic_temperature(
-        self,
-        sim_matrix: torch.Tensor,
-        match_matrix: torch.Tensor
+        self, sim_matrix: torch.Tensor, match_matrix: torch.Tensor
     ) -> torch.Tensor:
         """
         Calculate temperature based on separation between positives and negatives.
@@ -166,10 +156,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         return dynamic_temp
 
     def _compute_bidirectional_loss(
-        self,
-        sim_matrix: torch.Tensor,
-        match_matrix: torch.Tensor,
-        temperature: torch.Tensor
+        self, sim_matrix: torch.Tensor, match_matrix: torch.Tensor, temperature: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute InfoNCE loss in both directions with given temperature."""
         batch_size = sim_matrix.shape[0]

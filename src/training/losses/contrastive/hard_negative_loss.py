@@ -17,7 +17,6 @@ import torch
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
         hard_negative_factor: float = 2.0,
         mining_strategy: str = "semi-hard",
         hard_negative_percentile: float = 90.0,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize hard negative mining loss.
@@ -51,7 +50,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
             temperature=temperature,
             normalize_features=True,
             hard_negative_percentile=hard_negative_percentile,
-            **kwargs
+            **kwargs,
         )
 
         self.hard_negative_factor = hard_negative_factor
@@ -62,7 +61,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
         match_ids: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute contrastive loss with hard negative mining.
@@ -115,10 +114,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
         }
 
     def _create_match_matrix(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating matches."""
         if match_ids is None:
@@ -131,10 +127,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
         return match_matrix
 
     def _compute_direction_loss_with_mining(
-        self,
-        sim_matrix: torch.Tensor,
-        match_matrix: torch.Tensor,
-        direction: str
+        self, sim_matrix: torch.Tensor, match_matrix: torch.Tensor, direction: str
     ) -> torch.Tensor:
         """Compute InfoNCE loss with hard negative mining for one direction."""
         batch_size = sim_matrix.shape[0]
@@ -153,9 +146,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
             neg_sims = sim_matrix[i, neg_indices]
 
             # Mine hard negatives and get weights
-            hard_weights = self._mine_and_weight_negatives(
-                pos_sims, neg_sims
-            )
+            hard_weights = self._mine_and_weight_negatives(pos_sims, neg_sims)
 
             # Compute weighted InfoNCE loss
             pos_exp = torch.exp(pos_sims / self.temp)
@@ -170,9 +161,7 @@ class HardNegativeLoss(BaseContrastiveLoss):
         return total_loss
 
     def _mine_and_weight_negatives(
-        self,
-        pos_sims: torch.Tensor,
-        neg_sims: torch.Tensor
+        self, pos_sims: torch.Tensor, neg_sims: torch.Tensor
     ) -> torch.Tensor:
         """Mine hard negatives and return weights."""
         mean_pos_sim = pos_sims.mean()

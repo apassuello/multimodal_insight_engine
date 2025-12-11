@@ -7,7 +7,6 @@ from .base_tokenizer import BaseTokenizer
 from .preprocessing import clean_text, segment_on_punc
 from .vocabulary import Vocabulary
 
-
 logger = get_logger(__name__)
 
 
@@ -103,7 +102,7 @@ class WhitespaceTokenizer(BaseTokenizer):
             The reconstructed text
         """
         tokens = self.vocab.indices_to_tokens(token_ids)
-        return ' '.join(tokens)
+        return " ".join(tokens)
 
     def batch_encode(self, texts: List[str]) -> List[List[int]]:
         """
@@ -191,7 +190,7 @@ class SimpleTokenizer:
         self,
         pretrained_model_name: Optional[str] = None,
         max_length: int = 77,
-        add_special_tokens: bool = True
+        add_special_tokens: bool = True,
     ):
         """
         Initialize the tokenizer adapter.
@@ -221,35 +220,58 @@ class SimpleTokenizer:
                 from transformers import AutoTokenizer
 
                 # Determine the right tokenizer based on model name
-                if 'mobilebert' in pretrained_model_name.lower():
+                if "mobilebert" in pretrained_model_name.lower():
                     from transformers import MobileBertTokenizer
+
                     self.hf_tokenizer = MobileBertTokenizer.from_pretrained(pretrained_model_name)
-                elif 'albert' in pretrained_model_name.lower():
+                elif "albert" in pretrained_model_name.lower():
                     from transformers import AlbertTokenizer
+
                     self.hf_tokenizer = AlbertTokenizer.from_pretrained(pretrained_model_name)
-                elif 'bert' in pretrained_model_name.lower() and 'distil' not in pretrained_model_name.lower():
+                elif (
+                    "bert" in pretrained_model_name.lower()
+                    and "distil" not in pretrained_model_name.lower()
+                ):
                     from transformers import BertTokenizer
+
                     self.hf_tokenizer = BertTokenizer.from_pretrained(pretrained_model_name)
-                elif 'roberta' in pretrained_model_name.lower():
+                elif "roberta" in pretrained_model_name.lower():
                     from transformers import RobertaTokenizer
+
                     self.hf_tokenizer = RobertaTokenizer.from_pretrained(pretrained_model_name)
-                elif 'distilbert' in pretrained_model_name.lower():
+                elif "distilbert" in pretrained_model_name.lower():
                     from transformers import DistilBertTokenizer
+
                     self.hf_tokenizer = DistilBertTokenizer.from_pretrained(pretrained_model_name)
                 else:
                     # Default to AutoTokenizer
                     self.hf_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
 
                 # Update special token indices using the HF tokenizer's dictionary
-                if hasattr(self.hf_tokenizer, 'pad_token_id') and self.hf_tokenizer.pad_token_id is not None:
+                if (
+                    hasattr(self.hf_tokenizer, "pad_token_id")
+                    and self.hf_tokenizer.pad_token_id is not None
+                ):
                     self._special_tokens["pad_token_idx"] = self.hf_tokenizer.pad_token_id
-                if hasattr(self.hf_tokenizer, 'unk_token_id') and self.hf_tokenizer.unk_token_id is not None:
+                if (
+                    hasattr(self.hf_tokenizer, "unk_token_id")
+                    and self.hf_tokenizer.unk_token_id is not None
+                ):
                     self._special_tokens["unk_token_idx"] = self.hf_tokenizer.unk_token_id
-                if hasattr(self.hf_tokenizer, 'bos_token_id') and self.hf_tokenizer.bos_token_id is not None:
+                if (
+                    hasattr(self.hf_tokenizer, "bos_token_id")
+                    and self.hf_tokenizer.bos_token_id is not None
+                ):
                     self._special_tokens["bos_token_idx"] = self.hf_tokenizer.bos_token_id
-                if hasattr(self.hf_tokenizer, 'eos_token_id') and self.hf_tokenizer.eos_token_id is not None:
+                if (
+                    hasattr(self.hf_tokenizer, "eos_token_id")
+                    and self.hf_tokenizer.eos_token_id is not None
+                ):
                     self._special_tokens["eos_token_idx"] = self.hf_tokenizer.eos_token_id
-                if hasattr(self.hf_tokenizer, 'mask_token_id') and self.hf_tokenizer.mask_token_id is not None:
+                if (
+                    hasattr(self.hf_tokenizer, "mask_token_id")
+                    and self.hf_tokenizer.mask_token_id is not None
+                ):
                     self._special_tokens["mask_token_idx"] = self.hf_tokenizer.mask_token_id
 
                 logger.info(f"Loaded HuggingFace tokenizer for {pretrained_model_name}")
@@ -271,7 +293,7 @@ class SimpleTokenizer:
                 unk_token="<UNK>",
                 bos_token="<BOS>",
                 eos_token="<EOS>",
-                mask_token="<MASK>"
+                mask_token="<MASK>",
             )
 
             # Create tokenizer
@@ -295,7 +317,7 @@ class SimpleTokenizer:
                 max_length=self.max_length,
                 padding="max_length",
                 truncation=True,
-                return_tensors="pt"
+                return_tensors="pt",
             )
 
             # Return the input_ids as a list
@@ -306,7 +328,7 @@ class SimpleTokenizer:
 
             # Truncate or pad to max_length
             if len(token_ids) > self.max_length:
-                token_ids = token_ids[:self.max_length]
+                token_ids = token_ids[: self.max_length]
             else:
                 pad_token = self.special_tokens["pad_token_idx"]
                 token_ids = token_ids + [pad_token] * (self.max_length - len(token_ids))
@@ -364,7 +386,7 @@ class SimpleTokenizer:
                 max_length=self.max_length,
                 padding="max_length",
                 truncation=True,
-                return_tensors="pt"
+                return_tensors="pt",
             )
 
             # Return the input_ids as a list of lists

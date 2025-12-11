@@ -14,7 +14,6 @@ import torch
 
 from ..base import BaseSupervisedLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +42,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         similarity_threshold: float = 0.5,
         use_class_weights: bool = False,
         reduction: str = "mean",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize supervised contrastive loss.
@@ -57,10 +56,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
             reduction: Loss reduction method
         """
         super().__init__(
-            normalize_features=True,
-            temperature=temperature,
-            reduction=reduction,
-            **kwargs
+            normalize_features=True, temperature=temperature, reduction=reduction, **kwargs
         )
 
         self.contrast_mode = contrast_mode
@@ -75,7 +71,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         labels: Optional[torch.Tensor] = None,
         similarity_scores: Optional[torch.Tensor] = None,
         class_weights: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute supervised contrastive loss using labels or similarity scores.
@@ -99,9 +95,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         text_features = self.normalize(text_features)
 
         # Create positive pairs mask from labels or similarity scores
-        mask = self._create_positive_mask(
-            labels, similarity_scores, batch_size, device
-        )
+        mask = self._create_positive_mask(labels, similarity_scores, batch_size, device)
 
         # Remove self-contrast (diagonal)
         logits_mask = torch.ones_like(mask) - torch.eye(batch_size, device=device)
@@ -127,18 +121,34 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
 
         if self.contrast_mode in ["all", "intra"]:
             intra_vision_loss = self._compute_intra_modal_loss(
-                vision_features, mask, logits_mask, pos_per_sample,
-                valid_samples, labels, class_weights
+                vision_features,
+                mask,
+                logits_mask,
+                pos_per_sample,
+                valid_samples,
+                labels,
+                class_weights,
             )
             intra_text_loss = self._compute_intra_modal_loss(
-                text_features, mask, logits_mask, pos_per_sample,
-                valid_samples, labels, class_weights
+                text_features,
+                mask,
+                logits_mask,
+                pos_per_sample,
+                valid_samples,
+                labels,
+                class_weights,
             )
 
         if self.contrast_mode in ["all", "cross"]:
             cross_modal_loss = self._compute_cross_modal_loss(
-                vision_features, text_features, mask, logits_mask,
-                pos_per_sample, valid_samples, labels, class_weights
+                vision_features,
+                text_features,
+                mask,
+                logits_mask,
+                pos_per_sample,
+                valid_samples,
+                labels,
+                class_weights,
             )
 
         # Compute total loss
@@ -161,7 +171,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         labels: Optional[torch.Tensor],
         similarity_scores: Optional[torch.Tensor],
         batch_size: int,
-        device: torch.device
+        device: torch.device,
     ) -> torch.Tensor:
         """Create mask indicating which pairs are positives."""
         if labels is not None:
@@ -194,7 +204,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         pos_per_sample: torch.Tensor,
         valid_samples: torch.Tensor,
         labels: Optional[torch.Tensor],
-        class_weights: Optional[torch.Tensor]
+        class_weights: Optional[torch.Tensor],
     ) -> torch.Tensor:
         """Compute supervised contrastive loss within a modality."""
         # Compute similarity
@@ -234,7 +244,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         pos_per_sample: torch.Tensor,
         valid_samples: torch.Tensor,
         labels: Optional[torch.Tensor],
-        class_weights: Optional[torch.Tensor]
+        class_weights: Optional[torch.Tensor],
     ) -> torch.Tensor:
         """Compute supervised contrastive loss across modalities."""
         # Compute cross-modal similarity
@@ -266,9 +276,7 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         return loss[valid_samples]
 
     def _get_sample_weights(
-        self,
-        labels: torch.Tensor,
-        class_weights: torch.Tensor
+        self, labels: torch.Tensor, class_weights: torch.Tensor
     ) -> torch.Tensor:
         """Get per-sample weights from class weights."""
         if len(labels.shape) > 1 and labels.shape[1] > 1:

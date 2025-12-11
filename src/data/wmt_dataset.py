@@ -21,7 +21,6 @@ from tqdm import tqdm
 
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -193,9 +192,7 @@ class WMTDataset:
 
                 if filtered_examples:
                     examples = filtered_examples
-                    logger.info(
-                        f"Filtered to {len(examples)} examples in subset: {self.subset}"
-                    )
+                    logger.info(f"Filtered to {len(examples)} examples in subset: {self.subset}")
                 else:
                     logger.info(
                         f"Warning: No examples found in subset '{self.subset}', using all data"
@@ -221,9 +218,7 @@ class WMTDataset:
                 )
 
             # Clean up - remove empty lines
-            cleaned_data = [
-                (s, t) for s, t in zip(src_data, tgt_data) if s.strip() and t.strip()
-            ]
+            cleaned_data = [(s, t) for s, t in zip(src_data, tgt_data) if s.strip() and t.strip()]
 
             if cleaned_data:
                 src_data, tgt_data = zip(*cleaned_data)

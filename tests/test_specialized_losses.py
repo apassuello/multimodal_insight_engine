@@ -18,7 +18,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 # Import loss functions
 try:
     from src.training.losses.decorrelation_loss import DecorrelationLoss
@@ -56,7 +55,6 @@ except ImportError:
 # ============================================================================
 
 
-
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -72,11 +70,12 @@ def extract_loss(result):
     - tensor: returns as-is
     """
     if isinstance(result, dict):
-        return result.get('loss', result.get('total_loss', result.get('contrastive_loss')))
+        return result.get("loss", result.get("total_loss", result.get("contrastive_loss")))
     elif isinstance(result, tuple):
         return result[0]
     else:
         return result
+
 
 @pytest.fixture
 def device():
@@ -129,7 +128,6 @@ class TestDecorrelationLoss:
 
         result = loss_fn(vision_features)
 
-
         loss = extract_loss(result)
         assert isinstance(loss, torch.Tensor)
         assert loss.shape == torch.Size([])
@@ -162,7 +160,6 @@ class TestDecorrelationLoss:
 
         result = loss_fn(vision_features)
 
-
         loss = extract_loss(result)
         loss.backward()
 
@@ -175,7 +172,6 @@ class TestDecorrelationLoss:
         loss_fn_high = DecorrelationLoss(coef=10.0)
 
         result = loss_fn_low(vision_features)
-
 
         loss_low = extract_loss(result)
         result = loss_fn_high(vision_features)
@@ -192,7 +188,6 @@ class TestDecorrelationLoss:
 
         result = loss_fn_norm(vision_features)
 
-
         loss_norm = extract_loss(result)
         result = loss_fn_no_norm(vision_features)
         loss_no_norm = extract_loss(result)
@@ -205,7 +200,9 @@ class TestDecorrelationLoss:
         # Create orthogonal (uncorrelated) features
         features = torch.eye(min(batch_size, embed_dim), embed_dim, device=device)
         if batch_size > embed_dim:
-            features = torch.cat([features, torch.randn(batch_size - embed_dim, embed_dim, device=device)])
+            features = torch.cat(
+                [features, torch.randn(batch_size - embed_dim, embed_dim, device=device)]
+            )
 
         loss_fn = DecorrelationLoss(coef=1.0)
         result = loss_fn(features)
@@ -218,7 +215,9 @@ class TestDecorrelationLoss:
         """Test with highly correlated features."""
         # Create highly correlated features (all similar)
         base = torch.randn(1, embed_dim, device=device)
-        features = base.repeat(batch_size, 1) + torch.randn(batch_size, embed_dim, device=device) * 0.01
+        features = (
+            base.repeat(batch_size, 1) + torch.randn(batch_size, embed_dim, device=device) * 0.01
+        )
 
         loss_fn = DecorrelationLoss(coef=1.0)
         result = loss_fn(features)
@@ -253,95 +252,93 @@ class TestMultitaskLoss:
         """Test basic forward pass with multiple tasks."""
         # Create simple loss functions for each task
         loss_functions = {
-            'task1': nn.MSELoss(),
-            'task2': nn.L1Loss(),
+            "task1": nn.MSELoss(),
+            "task2": nn.L1Loss(),
         }
 
         loss_fn = MultitaskLoss(loss_functions=loss_functions)
 
         # Create inputs and targets
         inputs = {
-            'task1': torch.randn(8, 10, device=device),
-            'task2': torch.randn(8, 10, device=device),
+            "task1": torch.randn(8, 10, device=device),
+            "task2": torch.randn(8, 10, device=device),
         }
         targets = {
-            'task1': torch.randn(8, 10, device=device),
-            'task2': torch.randn(8, 10, device=device),
+            "task1": torch.randn(8, 10, device=device),
+            "task2": torch.randn(8, 10, device=device),
         }
 
         result = loss_fn(inputs, targets)
 
         assert isinstance(result, dict)
-        assert 'loss' in result or 'total_loss' in result
+        assert "loss" in result or "total_loss" in result
         # Check that loss is valid
-        total_loss = result.get('loss', result.get('total_loss'))
+        total_loss = result.get("loss", result.get("total_loss"))
         assert isinstance(total_loss, torch.Tensor)
         assert not torch.isnan(total_loss)
 
     def test_custom_weights(self, device):
         """Test with custom task weights."""
         loss_functions = {
-            'task1': nn.MSELoss(),
-            'task2': nn.L1Loss(),
+            "task1": nn.MSELoss(),
+            "task2": nn.L1Loss(),
         }
 
-        loss_weights = {'task1': 0.7, 'task2': 0.3}
+        loss_weights = {"task1": 0.7, "task2": 0.3}
 
-        loss_fn = MultitaskLoss(
-            loss_functions=loss_functions, loss_weights=loss_weights
-        )
+        loss_fn = MultitaskLoss(loss_functions=loss_functions, loss_weights=loss_weights)
 
         inputs = {
-            'task1': torch.randn(8, 10, device=device),
-            'task2': torch.randn(8, 10, device=device),
+            "task1": torch.randn(8, 10, device=device),
+            "task2": torch.randn(8, 10, device=device),
         }
         targets = {
-            'task1': torch.randn(8, 10, device=device),
-            'task2': torch.randn(8, 10, device=device),
+            "task1": torch.randn(8, 10, device=device),
+            "task2": torch.randn(8, 10, device=device),
         }
 
         result = loss_fn(inputs, targets)
-        total_loss = result.get('loss', result.get('total_loss'))
+        total_loss = result.get("loss", result.get("total_loss"))
         assert not torch.isnan(total_loss)
 
     def test_gradient_flow(self, device):
         """Test gradient flow through multitask loss."""
         loss_functions = {
-            'task1': nn.MSELoss(),
-            'task2': nn.MSELoss(),
+            "task1": nn.MSELoss(),
+            "task2": nn.MSELoss(),
         }
 
         loss_fn = MultitaskLoss(loss_functions=loss_functions)
 
         inputs = {
-            'task1': torch.randn(8, 10, device=device, requires_grad=True),
-            'task2': torch.randn(8, 10, device=device, requires_grad=True),
+            "task1": torch.randn(8, 10, device=device, requires_grad=True),
+            "task2": torch.randn(8, 10, device=device, requires_grad=True),
         }
         targets = {
-            'task1': torch.randn(8, 10, device=device),
-            'task2': torch.randn(8, 10, device=device),
+            "task1": torch.randn(8, 10, device=device),
+            "task2": torch.randn(8, 10, device=device),
         }
 
         result = loss_fn(inputs, targets)
-        total_loss = result.get('loss', result.get('total_loss'))
+        total_loss = result.get("loss", result.get("total_loss"))
         total_loss.backward()
 
         # Check gradients
-        assert inputs['task1'].grad is not None
-        assert inputs['task2'].grad is not None
+        assert inputs["task1"].grad is not None
+        assert inputs["task2"].grad is not None
 
     def test_missing_task(self, device):
         """Test handling of missing task in inputs."""
         loss_functions = {
-            'task1': nn.MSELoss(),
-            'task2': nn.MSELoss(),
+            "task1": nn.MSELoss(),
+            "task2": nn.MSELoss(),
         }
 
         loss_fn = MultitaskLoss(loss_functions=loss_functions)
 
         # Only provide task1
-        inputs = {'task1': torch.randn(8, 10, device=device)}
-        targets = {'task1': torch.randn(8, 10, device=device)}
+        inputs = {"task1": torch.randn(8, 10, device=device)}
+        targets = {"task1": torch.randn(8, 10, device=device)}
 
         result = loss_fn(inputs, targets)
         # Should handle missing task gracefully
@@ -365,8 +362,8 @@ class TestCLIPStyleLoss:
 
         # May return dict or tensor
         if isinstance(result, dict):
-            assert 'loss' in result or 'total_loss' in result
-            loss = result.get('loss', result.get('total_loss'))
+            assert "loss" in result or "total_loss" in result
+            loss = result.get("loss", result.get("total_loss"))
         else:
             loss = result
 
@@ -382,7 +379,7 @@ class TestCLIPStyleLoss:
         result = loss_fn(vision_features, text_features, match_ids=match_ids)
 
         if isinstance(result, dict):
-            loss = result.get('loss', result.get('total_loss'))
+            loss = result.get("loss", result.get("total_loss"))
         else:
             loss = result
 
@@ -396,8 +393,8 @@ class TestCLIPStyleLoss:
         result_low = loss_fn_low(vision_features, text_features)
         result_high = loss_fn_high(vision_features, text_features)
 
-        loss_low = result_low['loss'] if isinstance(result_low, dict) else result_low
-        loss_high = result_high['loss'] if isinstance(result_high, dict) else result_high
+        loss_low = result_low["loss"] if isinstance(result_low, dict) else result_low
+        loss_high = result_high["loss"] if isinstance(result_high, dict) else result_high
 
         # Different temperatures should lead to different losses
         assert not torch.allclose(loss_low, loss_high)
@@ -412,7 +409,7 @@ class TestCLIPStyleLoss:
         loss_fn = CLIPStyleLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
         loss.backward()
 
         assert vision_features.grad is not None
@@ -428,8 +425,10 @@ class TestCLIPStyleLoss:
         result_no_smooth = loss_fn_no_smooth(vision_features, text_features)
         result_smooth = loss_fn_smooth(vision_features, text_features)
 
-        loss_no_smooth = result_no_smooth['loss'] if isinstance(result_no_smooth, dict) else result_no_smooth
-        loss_smooth = result_smooth['loss'] if isinstance(result_smooth, dict) else result_smooth
+        loss_no_smooth = (
+            result_no_smooth["loss"] if isinstance(result_no_smooth, dict) else result_no_smooth
+        )
+        loss_smooth = result_smooth["loss"] if isinstance(result_smooth, dict) else result_smooth
 
         # Label smoothing should affect loss value
         assert not torch.isnan(loss_no_smooth)
@@ -443,7 +442,7 @@ class TestCLIPStyleLoss:
         loss_fn = CLIPStyleLoss(temperature=0.07)
 
         result = loss_fn(vision_large, text_large)
-        loss = result['loss'] if isinstance(result, dict) else result
+        loss = result["loss"] if isinstance(result, dict) else result
 
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
@@ -463,14 +462,14 @@ class TestCombinedLoss:
         # Test with appropriate inputs
         try:
             loss_functions = {
-                'mse': nn.MSELoss(),
-                'l1': nn.L1Loss(),
+                "mse": nn.MSELoss(),
+                "l1": nn.L1Loss(),
             }
 
             loss_fn = CombinedLoss(loss_functions=loss_functions)
             result = loss_fn(vision_features, text_features)
             if isinstance(result, dict):
-                loss = result.get('loss', result.get('total_loss'))
+                loss = result.get("loss", result.get("total_loss"))
             else:
                 loss = result
             assert not torch.isnan(loss)
@@ -481,11 +480,11 @@ class TestCombinedLoss:
     def test_weighted_combination(self, device):
         """Test weighted combination of losses."""
         loss_functions = {
-            'mse': nn.MSELoss(),
-            'l1': nn.L1Loss(),
+            "mse": nn.MSELoss(),
+            "l1": nn.L1Loss(),
         }
 
-        weights = {'mse': 0.7, 'l1': 0.3}
+        weights = {"mse": 0.7, "l1": 0.3}
 
         try:
             loss_fn = CombinedLoss(loss_functions=loss_functions, weights=weights)
@@ -495,7 +494,7 @@ class TestCombinedLoss:
 
             result = loss_fn(inputs, targets)
             if isinstance(result, dict):
-                loss = result.get('loss', result.get('total_loss'))
+                loss = result.get("loss", result.get("total_loss"))
             else:
                 loss = result
             assert not torch.isnan(loss)
@@ -515,7 +514,7 @@ class TestLossFactory:
     def test_create_contrastive_loss(self):
         """Test creating contrastive loss from factory."""
         try:
-            loss = create_loss('contrastive', temperature=0.07)
+            loss = create_loss("contrastive", temperature=0.07)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -524,7 +523,7 @@ class TestLossFactory:
     def test_create_vicreg_loss(self):
         """Test creating VICReg loss from factory."""
         try:
-            loss = create_loss('vicreg', sim_coeff=10.0)
+            loss = create_loss("vicreg", sim_coeff=10.0)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -534,7 +533,7 @@ class TestLossFactory:
         """Test handling of invalid loss type."""
         try:
             with pytest.raises((ValueError, KeyError)):
-                create_loss('invalid_loss_type')
+                create_loss("invalid_loss_type")
         except Exception:
             pytest.skip("Loss factory has different interface")
 

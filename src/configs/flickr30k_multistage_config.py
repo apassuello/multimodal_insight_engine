@@ -40,9 +40,7 @@ def create_flickr30k_training_config(
         batch_size=batch_sizes[0],
         optimizer=OptimizerConfig(lr=learning_rates[0]),
         losses=[
-            LossConfig(
-                name="clip_style_loss", weight=1.0, params={"temperature": 0.07}
-            ),
+            LossConfig(name="clip_style_loss", weight=1.0, params={"temperature": 0.07}),
             LossConfig(name="decorrelation_loss", weight=0.5, params={}),
         ],
         components=[

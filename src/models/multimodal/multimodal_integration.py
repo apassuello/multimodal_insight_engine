@@ -23,7 +23,6 @@ from src.models.transformer import EncoderDecoderTransformer
 from src.models.vision.vision_transformer import VisionTransformer
 from src.utils.logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -109,9 +108,7 @@ class MultiModalTransformer(BaseModel):
         # Pass text through encoder
         # Removed torch.no_grad() to allow gradient flow
         # Use the encoder part of the text model
-        text_encoding = self.text_model.encode(
-            text["src"], src_mask=text.get("src_mask")
-        )
+        text_encoding = self.text_model.encode(text["src"], src_mask=text.get("src_mask"))
 
         # Use the final hidden state of the first token (assumed to be [CLS] or similar)
         text_features = text_encoding[:, 0, :]
@@ -295,10 +292,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
         expected_seq_len = self.vision_model.pos_embed.shape[1]
 
         # 2. Add class token if needed (ensuring compatibility with pos_embed shape)
-        if (
-            hasattr(self.vision_model, "cls_token")
-            and self.vision_model.cls_token is not None
-        ):
+        if hasattr(self.vision_model, "cls_token") and self.vision_model.cls_token is not None:
             cls_tokens = self.vision_model.cls_token.expand(B, -1, -1)
             x = torch.cat((cls_tokens, x), dim=1)
         elif expected_seq_len > x.shape[1]:
@@ -348,8 +342,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
 
         # Check if this is a HuggingFace model
         is_huggingface = (
-            hasattr(self.text_model, "encoder")
-            and "bert" in str(type(self.text_model)).lower()
+            hasattr(self.text_model, "encoder") and "bert" in str(type(self.text_model)).lower()
         )
         is_mps = original_device.type == "mps"
 
@@ -363,9 +356,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                 return text_features  # Already on correct device
             else:
                 # Try forward method as fallback
-                return self.text_model(
-                    text_data["src"], src_mask=text_data.get("src_mask")
-                )
+                return self.text_model(text_data["src"], src_mask=text_data.get("src_mask"))
         except Exception as e:
             # If we're on MPS with a HuggingFace model, provide a more informative message
             if is_huggingface and is_mps:
@@ -403,9 +394,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                     if hasattr(encoder_cpu, "embeddings") and hasattr(
                         encoder_cpu.embeddings, "word_embeddings"
                     ):
-                        vocab_size = encoder_cpu.embeddings.word_embeddings.weight.size(
-                            0
-                        )
+                        vocab_size = encoder_cpu.embeddings.word_embeddings.weight.size(0)
                         if torch.max(cpu_src) >= vocab_size:
                             logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
@@ -416,9 +405,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                     features = outputs.last_hidden_state
                     # Move encoder back if needed
                     if original_model_device != torch.device("cpu"):
-                        self.text_model.encoder = self.text_model.encoder.to(
-                            original_model_device
-                        )
+                        self.text_model.encoder = self.text_model.encoder.to(original_model_device)
                 elif hasattr(self.text_model, "encode"):
                     # Use full model on CPU with encode method
                     text_model_cpu = self.text_model.to("cpu")
@@ -427,9 +414,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                     if hasattr(text_model_cpu, "embeddings") and hasattr(
                         text_model_cpu.embeddings, "word_embeddings"
                     ):
-                        vocab_size = (
-                            text_model_cpu.embeddings.word_embeddings.weight.size(0)
-                        )
+                        vocab_size = text_model_cpu.embeddings.word_embeddings.weight.size(0)
                         if torch.max(cpu_src) >= vocab_size:
                             logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
@@ -448,9 +433,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                     if hasattr(text_model_cpu, "embeddings") and hasattr(
                         text_model_cpu.embeddings, "word_embeddings"
                     ):
-                        vocab_size = (
-                            text_model_cpu.embeddings.word_embeddings.weight.size(0)
-                        )
+                        vocab_size = text_model_cpu.embeddings.word_embeddings.weight.size(0)
                         if torch.max(cpu_src) >= vocab_size:
                             logger.info(
                                 f"Clipping token indices that exceed vocabulary size ({vocab_size})"
@@ -622,22 +605,16 @@ class CrossAttentionMultiModalTransformer(BaseModel):
                 results["fusion_features"] = fusion_outputs["fusion_features"]
 
                 # Calculate similarity using normalized fused features
-                fused_vision = F.normalize(
-                    fusion_outputs["fusion_features"], p=2, dim=1
-                )
+                fused_vision = F.normalize(fusion_outputs["fusion_features"], p=2, dim=1)
                 fused_text = F.normalize(fusion_outputs["fusion_features"], p=2, dim=1)
-                results["similarity"] = torch.matmul(
-                    fused_vision, fused_text.transpose(0, 1)
-                )
+                results["similarity"] = torch.matmul(fused_vision, fused_text.transpose(0, 1))
 
                 # Classification prediction (match/no-match)
                 if hasattr(self, "classifier"):
                     # Ensure classifier is on the target device
                     if next(self.classifier.parameters()).device != target_device:
                         self.classifier = self.classifier.to(target_device)
-                    results["classification"] = self.classifier(
-                        fusion_outputs["fusion_features"]
-                    )
+                    results["classification"] = self.classifier(fusion_outputs["fusion_features"])
 
             # Use pooled fusion if available (from co-attention)
             if "pooled_fusion" in fusion_outputs:
@@ -696,9 +673,7 @@ class CrossAttentionMultiModalTransformer(BaseModel):
             text_global = F.normalize(text_global, p=2, dim=1)
 
             # Compute raw similarity
-            results["raw_similarity"] = torch.matmul(
-                vision_global, text_global.transpose(0, 1)
-            )
+            results["raw_similarity"] = torch.matmul(vision_global, text_global.transpose(0, 1))
 
         # Final device consistency check
         for key, value in results.items():

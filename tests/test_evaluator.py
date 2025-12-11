@@ -33,10 +33,10 @@ class TestConstitutionalSafetyEvaluatorInit:
         """Test initialization with custom framework."""
         custom_framework = ConstitutionalFramework(name="custom")
 
-        def eval_fn(text): return {"flagged": False}
-        custom_framework.add_principle(
-            ConstitutionalPrinciple("test", "desc", eval_fn)
-        )
+        def eval_fn(text):
+            return {"flagged": False}
+
+        custom_framework.add_principle(ConstitutionalPrinciple("test", "desc", eval_fn))
 
         evaluator = ConstitutionalSafetyEvaluator(framework=custom_framework)
 
@@ -46,10 +46,7 @@ class TestConstitutionalSafetyEvaluatorInit:
     def test_init_with_critique_model(self):
         """Test initialization with critique model."""
         mock_model = Mock()
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model,
-            use_self_critique=True
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model, use_self_critique=True)
 
         assert evaluator.critique_model is mock_model
         assert evaluator.use_self_critique is True
@@ -150,7 +147,7 @@ class TestEvaluateWithSelfCritique:
         evaluator = ConstitutionalSafetyEvaluator()
 
         # Mock the evaluate method to verify it's called correctly
-        with patch.object(evaluator, 'evaluate') as mock_evaluate:
+        with patch.object(evaluator, "evaluate") as mock_evaluate:
             mock_evaluate.return_value = {"flagged": False}
 
             evaluator.evaluate_with_self_critique("Test text")
@@ -189,9 +186,7 @@ class TestGenerateImprovedResponse:
         prompt = "Tell me about safety"
         response = "This is a safe response"
 
-        improved_response, evaluation = self.evaluator.generate_improved_response(
-            prompt, response
-        )
+        improved_response, evaluation = self.evaluator.generate_improved_response(prompt, response)
 
         assert isinstance(improved_response, str)
         assert isinstance(evaluation, dict)
@@ -214,9 +209,7 @@ class TestGenerateImprovedResponse:
         prompt = "Question"
         response = "How to hurt someone"
 
-        improved, evaluation = self.evaluator.generate_improved_response(
-            prompt, response
-        )
+        improved, evaluation = self.evaluator.generate_improved_response(prompt, response)
 
         # Should return original since no model to improve
         assert improved == response
@@ -225,23 +218,20 @@ class TestGenerateImprovedResponse:
     def test_respects_max_iterations(self):
         """Test that max_iterations is respected."""
         evaluator_with_model = ConstitutionalSafetyEvaluator(
-            critique_model=Mock(),
-            use_self_critique=True
+            critique_model=Mock(), use_self_critique=True
         )
 
         # Mock to always flag (would loop forever without max_iterations)
-        with patch.object(evaluator_with_model, 'evaluate') as mock_eval:
+        with patch.object(evaluator_with_model, "evaluate") as mock_eval:
             mock_eval.return_value = {"flagged": True, "reasoning": "Test"}
 
-            with patch.object(evaluator_with_model, '_generate_improvement') as mock_gen:
+            with patch.object(evaluator_with_model, "_generate_improvement") as mock_gen:
                 mock_gen.return_value = "Different response each time"
 
                 prompt = "Question"
                 response = "Bad response"
 
-                evaluator_with_model.generate_improved_response(
-                    prompt, response, max_iterations=2
-                )
+                evaluator_with_model.generate_improved_response(prompt, response, max_iterations=2)
 
                 # Should be called max 2 times during iterations
                 assert mock_eval.call_count <= 3  # Initial + 2 iterations + final
@@ -253,14 +243,11 @@ class TestGenerateCritique:
     def test_returns_dict_with_expected_keys(self):
         """Test that critique result has expected structure."""
         mock_model = Mock()
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model,
-            use_self_critique=True
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model, use_self_critique=True)
 
         direct_eval = {"flagged_principles": [], "any_flagged": False}
 
-        with patch.object(evaluator, '_generate_with_model') as mock_gen:
+        with patch.object(evaluator, "_generate_with_model") as mock_gen:
             mock_gen.return_value = "This looks safe"
 
             result = evaluator._generate_critique("Test text", direct_eval)
@@ -272,12 +259,9 @@ class TestGenerateCritique:
     def test_calls_generate_with_model(self):
         """Test that it calls _generate_with_model."""
         mock_model = Mock()
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model,
-            use_self_critique=True
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model, use_self_critique=True)
 
-        with patch.object(evaluator, '_generate_with_model') as mock_gen:
+        with patch.object(evaluator, "_generate_with_model") as mock_gen:
             mock_gen.return_value = "Critique text"
 
             evaluator._generate_critique("Test", {"flagged_principles": []})
@@ -287,12 +271,9 @@ class TestGenerateCritique:
     def test_flags_based_on_critique_content(self):
         """Test that flagging depends on critique content."""
         mock_model = Mock()
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model,
-            use_self_critique=True
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model, use_self_critique=True)
 
-        with patch.object(evaluator, '_generate_with_model') as mock_gen:
+        with patch.object(evaluator, "_generate_with_model") as mock_gen:
             # Critique indicating issues
             mock_gen.return_value = "This violates multiple principles and is problematic"
 
@@ -389,11 +370,9 @@ class TestGenerateWithModel:
         mock_tokenizer = Mock()
         mock_model.tokenizer = mock_tokenizer
 
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model)
 
-        with patch('src.safety.constitutional.model_utils.generate_text') as mock_gen:
+        with patch("src.safety.constitutional.model_utils.generate_text") as mock_gen:
             mock_gen.return_value = "Generated text"
 
             result = evaluator._generate_with_model("Prompt")
@@ -405,9 +384,7 @@ class TestGenerateWithModel:
         """Test handling of model without tokenizer."""
         mock_model = Mock(spec=[])  # No tokenizer attribute
 
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model)
 
         result = evaluator._generate_with_model("Prompt")
 
@@ -418,11 +395,9 @@ class TestGenerateWithModel:
         mock_model = Mock()
         mock_model.tokenizer = Mock()
 
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model)
 
-        with patch('src.safety.constitutional.model_utils.generate_text', side_effect=ImportError):
+        with patch("src.safety.constitutional.model_utils.generate_text", side_effect=ImportError):
             result = evaluator._generate_with_model("Prompt")
 
             assert "required" in result.lower()
@@ -432,11 +407,12 @@ class TestGenerateWithModel:
         mock_model = Mock()
         mock_model.tokenizer = Mock()
 
-        evaluator = ConstitutionalSafetyEvaluator(
-            critique_model=mock_model
-        )
+        evaluator = ConstitutionalSafetyEvaluator(critique_model=mock_model)
 
-        with patch('src.safety.constitutional.model_utils.generate_text', side_effect=Exception("Test error")):
+        with patch(
+            "src.safety.constitutional.model_utils.generate_text",
+            side_effect=Exception("Test error"),
+        ):
             result = evaluator._generate_with_model("Prompt")
 
             assert "error" in result.lower()
@@ -453,9 +429,7 @@ class TestSynthesizeReasoning:
         direct_eval = {
             "any_flagged": True,
             "flagged_principles": ["harm_prevention"],
-            "principle_results": {
-                "harm_prevention": {"reasoning": "Contains harmful content"}
-            }
+            "principle_results": {"harm_prevention": {"reasoning": "Contains harmful content"}},
         }
 
         reasoning = evaluator._synthesize_reasoning(direct_eval)
@@ -467,11 +441,7 @@ class TestSynthesizeReasoning:
         """Test reasoning when no issues found."""
         evaluator = ConstitutionalSafetyEvaluator()
 
-        direct_eval = {
-            "any_flagged": False,
-            "flagged_principles": [],
-            "principle_results": {}
-        }
+        direct_eval = {"any_flagged": False, "flagged_principles": [], "principle_results": {}}
 
         reasoning = evaluator._synthesize_reasoning(direct_eval)
 
@@ -600,7 +570,7 @@ class TestCritiqueIndicatesIssues:
         critiques = [
             "This violates the principle and is problematic",
             "Multiple issues here: harmful content and misleading claims",
-            "This is inappropriate and demonstrates bias"
+            "This is inappropriate and demonstrates bias",
         ]
 
         for critique in critiques:
@@ -619,7 +589,7 @@ class TestCritiqueIndicatesIssues:
         critiques = [
             "This looks good and helpful",
             "The response is appropriate",
-            "No problems identified"
+            "No problems identified",
         ]
 
         for critique in critiques:
@@ -630,7 +600,7 @@ class TestCritiqueIndicatesIssues:
         critiques = [
             "This VIOLATES the principle and is PROBLEMATIC",
             "multiple ISSUES here",
-            "HARMFUL and DANGEROUS content"
+            "HARMFUL and DANGEROUS content",
         ]
 
         for critique in critiques:
@@ -655,7 +625,7 @@ class TestCombineReasoning:
         """Test that direct evaluation and critique are combined."""
         direct_eval = {
             "harm_prevention": {"flagged": True, "reason": "Harmful content"},
-            "truthfulness": {"flagged": True, "reason": "Misleading"}
+            "truthfulness": {"flagged": True, "reason": "Misleading"},
         }
         critique = "This response has additional issues with bias"
 
@@ -667,9 +637,7 @@ class TestCombineReasoning:
 
     def test_handles_empty_critique(self):
         """Test handling of empty critique."""
-        direct_eval = {
-            "harm_prevention": {"flagged": True}
-        }
+        direct_eval = {"harm_prevention": {"flagged": True}}
 
         result = combine_reasoning(direct_eval, "")
 
@@ -678,9 +646,7 @@ class TestCombineReasoning:
 
     def test_handles_no_violations(self):
         """Test handling when no violations found."""
-        direct_eval = {
-            "harm_prevention": {"flagged": False}
-        }
+        direct_eval = {"harm_prevention": {"flagged": False}}
 
         result = combine_reasoning(direct_eval, "")
 
@@ -700,10 +666,7 @@ class TestCombineReasoning:
 
     def test_formats_principle_names(self):
         """Test that principle names are formatted nicely."""
-        direct_eval = {
-            "harm_prevention": {"flagged": True},
-            "autonomy_respect": {"flagged": True}
-        }
+        direct_eval = {"harm_prevention": {"flagged": True}, "autonomy_respect": {"flagged": True}}
 
         result = combine_reasoning(direct_eval, "")
 

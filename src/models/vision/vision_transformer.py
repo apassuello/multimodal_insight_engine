@@ -51,9 +51,7 @@ class PatchEmbed(nn.Module):
 
         # Patch projection using convolution
         # This is more efficient than manually splitting and embedding
-        self.proj = nn.Conv2d(
-            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
-        )
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -402,8 +400,7 @@ class VisionTransformer(BaseModel):
         pe = torch.zeros(num_tokens, embed_dim)
         position = torch.arange(0, num_tokens, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(
-            torch.arange(0, embed_dim, 2, dtype=torch.float)
-            * (-math.log(10000.0) / embed_dim)
+            torch.arange(0, embed_dim, 2, dtype=torch.float) * (-math.log(10000.0) / embed_dim)
         )
 
         # Apply sine to even indices
@@ -575,11 +572,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Projects image to patch embeddings"
+                        "brief_description": "Projects image to patch embeddings",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             },
             {
                 "name": "Attention",
@@ -588,11 +585,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Performs multi-head attention operation"
+                        "brief_description": "Performs multi-head attention operation",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             },
             {
                 "name": "Block",
@@ -601,11 +598,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Processes input through attention and MLP layers with residual connections"
+                        "brief_description": "Processes input through attention and MLP layers with residual connections",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             },
             {
                 "name": "VisionTransformer",
@@ -614,28 +611,28 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x: torch.Tensor, return_features: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]",
-                        "brief_description": "Forward pass through the model to get class logits and optionally features"
+                        "brief_description": "Forward pass through the model to get class logits and optionally features",
                     },
                     {
                         "name": "forward_features",
                         "signature": "forward_features(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Forward pass to extract features before classification head"
+                        "brief_description": "Forward pass to extract features before classification head",
                     },
                     {
                         "name": "extract_features",
                         "signature": "extract_features(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Convenience method to extract features for external use"
+                        "brief_description": "Convenience method to extract features for external use",
                     },
                     {
                         "name": "configure_optimizers",
                         "signature": "configure_optimizers(self, lr: float = 1e-3, weight_decay: float = 0.05, betas: Tuple[float, float] = (0.9, 0.999)) -> torch.optim.Optimizer",
-                        "brief_description": "Creates optimizer with weight decay excluded from bias and norm parameters"
-                    }
+                        "brief_description": "Creates optimizer with weight decay excluded from bias and norm parameters",
+                    },
                 ],
                 "inheritance": "BaseModel",
-                "dependencies": ["torch", "torch.nn", "..base_model"]
-            }
+                "dependencies": ["torch", "torch.nn", "..base_model"],
+            },
         ],
         "external_dependencies": ["torch", "math"],
-        "complexity_score": 8  # High complexity due to complete transformer implementation
+        "complexity_score": 8,  # High complexity due to complete transformer implementation
     }

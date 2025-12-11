@@ -173,25 +173,25 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "__getitem__",
                         "signature": "__getitem__(self, idx: int) -> Dict[str, Any]",
-                        "brief_description": "Get a sample from the dataset as a dictionary with standardized keys"
+                        "brief_description": "Get a sample from the dataset as a dictionary with standardized keys",
                     }
                 ],
                 "inheritance": "Dataset",
-                "dependencies": ["torch.utils.data.Dataset"]
+                "dependencies": ["torch.utils.data.Dataset"],
             }
         ],
         "key_functions": [
             {
                 "name": "create_dictionary_dataloader",
                 "signature": "create_dictionary_dataloader(dataset: Dataset, batch_size: int = 32, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True, keys: List[str] = None) -> DataLoader",
-                "brief_description": "Create a DataLoader that returns dictionary-format batches"
+                "brief_description": "Create a DataLoader that returns dictionary-format batches",
             },
             {
                 "name": "load_cifar10_dict",
                 "signature": "load_cifar10_dict(batch_size: int = 128, num_workers: int = 4, image_size: int = 32) -> Tuple[DataLoader, DataLoader, List[str]]",
-                "brief_description": "Load CIFAR-10 dataset with dictionary-format data loaders"
-            }
+                "brief_description": "Load CIFAR-10 dataset with dictionary-format data loaders",
+            },
         ],
         "external_dependencies": ["torch", "torch.utils.data"],
-        "complexity_score": 3  # Low-moderate complexity for dataset wrapping and standardization
+        "complexity_score": 3,  # Low-moderate complexity for dataset wrapping and standardization
     }

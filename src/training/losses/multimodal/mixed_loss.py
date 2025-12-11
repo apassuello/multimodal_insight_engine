@@ -17,7 +17,6 @@ import torch.nn.functional as F
 
 from ..base import BaseContrastiveLoss
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +41,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         input_dim: Optional[int] = None,
         projection_dim: int = 256,
         use_projection: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize mixed contrastive loss.
@@ -64,7 +63,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
             input_dim=input_dim,
             projection_dim=projection_dim,
             reduction=reduction,
-            **kwargs
+            **kwargs,
         )
 
         # Set default loss weights if not provided
@@ -82,7 +81,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         text_features: torch.Tensor,
         match_ids: Optional[List[str]] = None,
         labels: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Compute mixed contrastive loss.
@@ -163,14 +162,11 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
             "loss_infonce": loss_infonce,
             "loss_nt_xent": loss_nt_xent,
             "loss_supervised": loss_supervised,
-            **metrics
+            **metrics,
         }
 
     def _create_targets(
-        self,
-        batch_size: int,
-        match_ids: Optional[List[str]],
-        device: torch.device
+        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Create target indices based on semantic matching IDs.
@@ -192,11 +188,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         string_match_ids = [str(mid) for mid in match_ids]
 
         # Create match matrix
-        match_matrix = torch.zeros(
-            (batch_size, batch_size),
-            dtype=torch.bool,
-            device=device
-        )
+        match_matrix = torch.zeros((batch_size, batch_size), dtype=torch.bool, device=device)
 
         for i in range(batch_size):
             for j in range(batch_size):
@@ -225,10 +217,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         return v2t_targets, t2i_targets
 
     def _supervised_contrastive_loss(
-        self,
-        vision_features: torch.Tensor,
-        text_features: torch.Tensor,
-        labels: torch.Tensor
+        self, vision_features: torch.Tensor, text_features: torch.Tensor, labels: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute supervised contrastive loss using class labels.
@@ -290,7 +279,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         v2t_targets: torch.Tensor,
         t2i_targets: torch.Tensor,
         vision_features: torch.Tensor,
-        text_features: torch.Tensor
+        text_features: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         """Compute accuracy and retrieval metrics."""
         with torch.no_grad():
@@ -323,5 +312,5 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
                 "v2t_accuracy": v2t_accuracy,
                 "t2v_accuracy": t2v_accuracy,
                 "accuracy": accuracy,
-                **{f"recalls.{k}": v for k, v in recalls.items()}
+                **{f"recalls.{k}": v for k, v in recalls.items()},
             }

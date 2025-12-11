@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 """MODULE: attention.py
 PURPOSE: Implements various attention mechanisms for transformer architectures
 KEY COMPONENTS:
@@ -43,7 +42,7 @@ class ScaledDotProductAttention(nn.Module):
         key: torch.Tensor,
         value: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -114,9 +113,7 @@ class SimpleAttention(nn.Module):
     This class adds projections for query, key, and value vectors.
     """
 
-    def __init__(
-        self, input_dim: int, attention_dim: Optional[int] = None, dropout: float = 0.0
-    ):
+    def __init__(self, input_dim: int, attention_dim: Optional[int] = None, dropout: float = 0.0):
         """
         Initialize the attention mechanism.
 
@@ -161,7 +158,7 @@ class SimpleAttention(nn.Module):
         key: Optional[torch.Tensor] = None,
         value: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -322,7 +319,7 @@ class MultiHeadAttention(nn.Module):
         value: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
         rotary_emb: Optional[nn.Module] = None,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the multi-head attention mechanism.
@@ -367,7 +364,7 @@ class MultiHeadAttention(nn.Module):
 
         # Linear projections
         q = self.query_projection(query)  # [batch_size, num_queries, input_dim]
-        k = self.key_projection(key)      # [batch_size, num_keys, input_dim]
+        k = self.key_projection(key)  # [batch_size, num_keys, input_dim]
         v = self.value_projection(value)  # [batch_size, num_values, input_dim]
 
         # Split heads
@@ -405,6 +402,7 @@ class MultiHeadAttention(nn.Module):
 
         return output, avg_attention_weights
 
+
 class GroupedQueryAttention(nn.Module):
     """Implements Grouped-Query Attention (GQA) mechanism as described in papers like PaLM-2.
 
@@ -432,8 +430,12 @@ class GroupedQueryAttention(nn.Module):
 
     def __init__(self, d_model, num_heads, num_key_value_heads):
         super().__init__()
-        assert d_model % num_heads == 0, f"d_model {d_model} must be divisible by num_heads {num_heads}"
-        assert num_heads % num_key_value_heads == 0, f"num_heads {num_heads} must be divisible by num_key_value_heads {num_key_value_heads}"
+        assert (
+            d_model % num_heads == 0
+        ), f"d_model {d_model} must be divisible by num_heads {num_heads}"
+        assert (
+            num_heads % num_key_value_heads == 0
+        ), f"num_heads {num_heads} must be divisible by num_key_value_heads {num_key_value_heads}"
 
         self.d_model = d_model
         self.num_heads = num_heads
@@ -555,7 +557,9 @@ class ALiBiAttention(nn.Module):
         slopes = torch.Tensor(self._get_slopes(num_heads))
 
         # Create distance matrix [seq_len, seq_len]
-        distances = torch.arange(max_seq_length).unsqueeze(0) - torch.arange(max_seq_length).unsqueeze(1)
+        distances = torch.arange(max_seq_length).unsqueeze(0) - torch.arange(
+            max_seq_length
+        ).unsqueeze(1)
 
         # Convert to bias matrix [1, num_heads, seq_len, seq_len]
         self.alibi_bias = slopes.unsqueeze(1).unsqueeze(1) * distances.unsqueeze(0)
@@ -574,16 +578,19 @@ class ALiBiAttention(nn.Module):
         Returns:
             list: List of n slopes, one for each attention head
         """
+
         def get_slopes_power_of_2(n):
-            start = 2**(-(2**-(math.log2(n)-3)))
-            return [start * 2**(-i) for i in range(n)]
+            start = 2 ** (-(2 ** -(math.log2(n) - 3)))
+            return [start * 2 ** (-i) for i in range(n)]
 
         if math.log2(n).is_integer():
             return get_slopes_power_of_2(n)
         else:
-            closest_power_of_2 = 2**math.floor(math.log2(n))
-            return get_slopes_power_of_2(closest_power_of_2) + \
-                   get_slopes_power_of_2(2*closest_power_of_2)[0:n-closest_power_of_2]
+            closest_power_of_2 = 2 ** math.floor(math.log2(n))
+            return (
+                get_slopes_power_of_2(closest_power_of_2)
+                + get_slopes_power_of_2(2 * closest_power_of_2)[0 : n - closest_power_of_2]
+            )
 
     def forward(self, x, mask=None):
         """Forward pass of the ALiBi attention layer.
@@ -631,6 +638,7 @@ class ALiBiAttention(nn.Module):
 
         return output
 
+
 def extract_file_metadata(file_path=__file__):
     """
     Extract structured metadata about this module.
@@ -652,11 +660,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, torch.Tensor]",
-                        "brief_description": "Compute attention scores and context vectors"
+                        "brief_description": "Compute attention scores and context vectors",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "math"]
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional", "math"],
             },
             {
                 "name": "MultiHeadAttention",
@@ -665,21 +673,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, query: torch.Tensor, key: Optional[torch.Tensor] = None, value: Optional[torch.Tensor] = None, mask: Optional[torch.Tensor] = None, rotary_emb: Optional[nn.Module] = None, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, torch.Tensor]",
-                        "brief_description": "Compute multi-head attention with optional rotary embeddings"
+                        "brief_description": "Compute multi-head attention with optional rotary embeddings",
                     },
                     {
                         "name": "split_heads",
                         "signature": "split_heads(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Split input tensor into multiple attention heads"
+                        "brief_description": "Split input tensor into multiple attention heads",
                     },
                     {
                         "name": "combine_heads",
                         "signature": "combine_heads(self, x: torch.Tensor) -> torch.Tensor",
-                        "brief_description": "Combine multiple attention heads into a single tensor"
-                    }
+                        "brief_description": "Combine multiple attention heads into a single tensor",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "torch.nn.functional"]
+                "dependencies": ["torch", "torch.nn", "torch.nn.functional"],
             },
             {
                 "name": "GroupedQueryAttention",
@@ -688,11 +696,11 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x, mask=None)",
-                        "brief_description": "Compute grouped query attention"
+                        "brief_description": "Compute grouped query attention",
                     }
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn"]
+                "dependencies": ["torch", "torch.nn"],
             },
             {
                 "name": "ALiBiAttention",
@@ -701,17 +709,17 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "forward",
                         "signature": "forward(self, x, mask=None)",
-                        "brief_description": "Compute attention with ALiBi biases"
+                        "brief_description": "Compute attention with ALiBi biases",
                     },
                     {
                         "name": "_get_slopes",
                         "signature": "_get_slopes(self, n)",
-                        "brief_description": "Compute attention slopes for ALiBi"
-                    }
+                        "brief_description": "Compute attention slopes for ALiBi",
+                    },
                 ],
                 "inheritance": "nn.Module",
-                "dependencies": ["torch", "torch.nn", "math"]
-            }
+                "dependencies": ["torch", "torch.nn", "math"],
+            },
         ],
         "external_dependencies": ["torch"],
         "complexity_score": 8,  # High complexity due to multiple attention mechanisms and optimizations

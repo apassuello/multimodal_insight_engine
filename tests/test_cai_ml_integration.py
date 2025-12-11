@@ -35,6 +35,7 @@ class MockOutput:
 
 class MockLanguageModel(nn.Module):
     """Mock language model that properly implements forward() with hidden states."""
+
     def __init__(self, vocab_size=1000, hidden_size=768):
         super().__init__()
         self.vocab_size = vocab_size
@@ -65,9 +66,7 @@ class TestMLModelIntegration:
         mock_model = Mock(spec=nn.Module)
 
         evaluator = ConstitutionalSafetyEvaluator(
-            framework=framework,
-            critique_model=mock_model,
-            use_self_critique=True
+            framework=framework, critique_model=mock_model, use_self_critique=True
         )
 
         assert evaluator.critique_model is not None
@@ -92,9 +91,7 @@ class TestMLModelIntegration:
         mock_model = Mock(spec=nn.Module)
 
         evaluator = ConstitutionalSafetyEvaluator(
-            framework=framework,
-            critique_model=mock_model,
-            use_self_critique=True
+            framework=framework, critique_model=mock_model, use_self_critique=True
         )
 
         # Text that passes regex but should be caught by ML
@@ -113,7 +110,7 @@ class TestMLModelIntegration:
         reward_model = RewardModel(mock_base_model, hidden_size=768)
 
         # Check reward head exists
-        assert hasattr(reward_model, 'reward_head')
+        assert hasattr(reward_model, "reward_head")
         assert isinstance(reward_model.reward_head, nn.Sequential)
 
         # Check architecture: 768 -> 256 -> 1
@@ -203,9 +200,9 @@ class TestCAIArchitectureDesign:
         evaluator = ConstitutionalSafetyEvaluator()
 
         # Check evaluator has both mechanisms
-        assert hasattr(evaluator, 'framework')  # Tier 1: Regex
-        assert hasattr(evaluator, 'critique_model')  # Tier 2: ML
-        assert hasattr(evaluator, 'use_self_critique')
+        assert hasattr(evaluator, "framework")  # Tier 1: Regex
+        assert hasattr(evaluator, "critique_model")  # Tier 2: ML
+        assert hasattr(evaluator, "use_self_critique")
 
         # Check stats track both mechanisms
         assert "flagged_by_direct" in evaluator.stats

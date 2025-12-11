@@ -14,7 +14,6 @@ from .utils import (
     TOXICITY_PATTERNS,
 )
 
-
 """MODULE: filter.py
 PURPOSE: Implements safety filtering mechanisms for model inputs and outputs
 KEY COMPONENTS:
@@ -82,9 +81,7 @@ class SafetyFilter:
             "is_safe": is_safe,
             "evaluation": evaluation,
             "reason": (
-                "Override applied"
-                if (not is_safe and override and self.allow_override)
-                else ""
+                "Override applied" if (not is_safe and override and self.allow_override) else ""
             ),
         }
 
@@ -158,15 +155,11 @@ class SafetyFilter:
                     replacements: List[Tuple[int, int, str]] = []
                     for match in matches:
                         word = match.group(0)
-                        replacements.append(
-                            (match.start(), match.end(), "*" * len(word))
-                        )
+                        replacements.append((match.start(), match.end(), "*" * len(word)))
 
                     # Apply replacements in reverse order to maintain indices
                     for start, end, replacement in sorted(replacements, reverse=True):
-                        redacted_text = (
-                            redacted_text[:start] + replacement + redacted_text[end:]
-                        )
+                        redacted_text = redacted_text[:start] + replacement + redacted_text[end:]
 
             elif category in [CATEGORY_HARMFUL_INSTRUCTIONS, CATEGORY_BIAS]:
                 # More complex categories might require more sophisticated handling
@@ -176,6 +169,7 @@ class SafetyFilter:
                     redacted_text += disclaimer
 
         return redacted_text
+
 
 def extract_file_metadata(file_path=__file__):
     """
@@ -198,21 +192,21 @@ def extract_file_metadata(file_path=__file__):
                     {
                         "name": "validate_input",
                         "signature": "def validate_input(self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False) -> Tuple[bool, Dict[str, Any]]",
-                        "brief_description": "Validates input text for safety concerns with optional override"
+                        "brief_description": "Validates input text for safety concerns with optional override",
                     },
                     {
                         "name": "filter_output",
                         "signature": "def filter_output(self, output_text: str, metadata: Optional[Dict[str, Any]] = None) -> Tuple[str, Dict[str, Any]]",
-                        "brief_description": "Filters output text to ensure safety and remove unsafe content"
+                        "brief_description": "Filters output text to ensure safety and remove unsafe content",
                     },
                     {
                         "name": "_redact_unsafe_content",
                         "signature": "def _redact_unsafe_content(self, text: str, evaluation: Dict[str, Any]) -> str",
-                        "brief_description": "Redacts unsafe content from text based on safety evaluation"
-                    }
+                        "brief_description": "Redacts unsafe content from text based on safety evaluation",
+                    },
                 ],
                 "inheritance": "object",
-                "dependencies": ["re", "typing", "evaluator", "utils"]
+                "dependencies": ["re", "typing", "evaluator", "utils"],
             }
         ],
         "external_dependencies": [],

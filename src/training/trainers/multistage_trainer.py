@@ -40,7 +40,6 @@ from src.training.strategies.single_modality_strategy import SingleModalityStrat
 from src.training.strategies.training_strategy import TrainingStrategy
 from src.utils.metrics_tracker import MetricsTracker
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -144,13 +143,9 @@ class MultistageTrainer:
 
         # Validate strategies
         if not self.strategies:
-            logger.warning(
-                "No training strategies provided. Training will not be effective."
-            )
+            logger.warning("No training strategies provided. Training will not be effective.")
         else:
-            logger.info(
-                f"Initialized MultistageTrainer with {len(self.strategies)} stages"
-            )
+            logger.info(f"Initialized MultistageTrainer with {len(self.strategies)} stages")
             for stage_name, stage_info in self.strategies.items():
                 logger.info(
                     f"  {stage_name}: {stage_info['epochs']} epochs with {type(stage_info['strategy']).__name__}"
@@ -173,9 +168,7 @@ class MultistageTrainer:
             elif stage_config.name == "end_to_end_fine_tuning":
                 strategy_class = EndToEndStrategy
             else:
-                logger.warning(
-                    f"Unknown stage type: {stage_config.name}, using default strategy"
-                )
+                logger.warning(f"Unknown stage type: {stage_config.name}, using default strategy")
                 strategy_class = TrainingStrategy
 
             # Create the strategy
@@ -241,9 +234,7 @@ class MultistageTrainer:
             component = component_map.get(comp_config.name)
 
             if component is None:
-                logger.warning(
-                    f"Component {comp_config.name} not found in model, skipping"
-                )
+                logger.warning(f"Component {comp_config.name} not found in model, skipping")
                 continue
 
             if comp_config.freeze:
@@ -267,9 +258,7 @@ class MultistageTrainer:
         logger.info("Starting multistage training")
 
         # Track total epochs across all stages
-        sum(
-            stage_info["epochs"] for stage_info in self.strategies.values()
-        )
+        sum(stage_info["epochs"] for stage_info in self.strategies.values())
         current_global_epoch = 0
 
         # Train through each stage
@@ -284,9 +273,7 @@ class MultistageTrainer:
             logger.info(f"Starting {stage_name} with {stage_epochs} epochs")
 
             # Create stage-specific directories
-            stage_checkpoint_dir = os.path.join(
-                self.checkpoint_dir, f"{stage_idx+1}_{stage_name}"
-            )
+            stage_checkpoint_dir = os.path.join(self.checkpoint_dir, f"{stage_idx+1}_{stage_name}")
             stage_log_dir = os.path.join(self.log_dir, f"{stage_idx+1}_{stage_name}")
             os.makedirs(stage_checkpoint_dir, exist_ok=True)
             os.makedirs(stage_log_dir, exist_ok=True)
@@ -326,16 +313,11 @@ class MultistageTrainer:
             current_global_epoch += stage_epochs
 
             # Save stage completion checkpoint
-            checkpoint_path = os.path.join(
-                stage_checkpoint_dir, f"{stage_name}_complete.pt"
-            )
+            checkpoint_path = os.path.join(stage_checkpoint_dir, f"{stage_name}_complete.pt")
             self._save_checkpoint(checkpoint_path, stage_metrics)
 
             # Evaluate after stage if requested
-            if (
-                self.extra_config.get("evaluate_after_stage", True)
-                and self.val_dataloader
-            ):
+            if self.extra_config.get("evaluate_after_stage", True) and self.val_dataloader:
                 logger.info(f"Evaluating after {stage_name}")
                 val_metrics = self._evaluate(self.current_strategy, self.val_dataloader)
 
@@ -396,9 +378,7 @@ class MultistageTrainer:
         # Initialize metrics and best model state
         epoch_metrics = {}
         best_model_state = None
-        best_metric_value = (
-            float("inf") if metrics_tracker.mode == "min" else float("-inf")
-        )
+        best_metric_value = float("inf") if metrics_tracker.mode == "min" else float("-inf")
 
         # Train for specified epochs
         for epoch in range(epochs):
@@ -537,9 +517,7 @@ class MultistageTrainer:
 
         return epoch_metrics
 
-    def _evaluate(
-        self, strategy: TrainingStrategy, dataloader: DataLoader
-    ) -> Dict[str, float]:
+    def _evaluate(self, strategy: TrainingStrategy, dataloader: DataLoader) -> Dict[str, float]:
         """
         Evaluate the model using the provided strategy and dataloader.
 
@@ -577,9 +555,7 @@ class MultistageTrainer:
 
         return all_metrics
 
-    def _save_checkpoint(
-        self, path: str, metrics: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def _save_checkpoint(self, path: str, metrics: Optional[Dict[str, Any]] = None) -> None:
         """
         Save a checkpoint of the current training state.
 
@@ -602,22 +578,16 @@ class MultistageTrainer:
         if self.current_strategy:
             # Include optimizer state if available
             if hasattr(self.current_strategy, "optimizer"):
-                checkpoint["optimizer_state_dict"] = (
-                    self.current_strategy.optimizer.state_dict()
-                )
+                checkpoint["optimizer_state_dict"] = self.current_strategy.optimizer.state_dict()
 
             # Include scheduler state if available
             if hasattr(self.current_strategy, "scheduler"):
-                checkpoint["scheduler_state_dict"] = (
-                    self.current_strategy.scheduler.state_dict()
-                )
+                checkpoint["scheduler_state_dict"] = self.current_strategy.scheduler.state_dict()
 
         # Include configuration if available
         if self.config:
             checkpoint["config"] = (
-                self.config.to_dict()
-                if hasattr(self.config, "to_dict")
-                else vars(self.config)
+                self.config.to_dict() if hasattr(self.config, "to_dict") else vars(self.config)
             )
 
         # Save checkpoint
@@ -657,20 +627,12 @@ class MultistageTrainer:
             self.current_strategy = self.strategies[self.current_stage]["strategy"]
 
             # Restore optimizer state if available
-            if "optimizer_state_dict" in checkpoint and hasattr(
-                self.current_strategy, "optimizer"
-            ):
-                self.current_strategy.optimizer.load_state_dict(
-                    checkpoint["optimizer_state_dict"]
-                )
+            if "optimizer_state_dict" in checkpoint and hasattr(self.current_strategy, "optimizer"):
+                self.current_strategy.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
             # Restore scheduler state if available
-            if "scheduler_state_dict" in checkpoint and hasattr(
-                self.current_strategy, "scheduler"
-            ):
-                self.current_strategy.scheduler.load_state_dict(
-                    checkpoint["scheduler_state_dict"]
-                )
+            if "scheduler_state_dict" in checkpoint and hasattr(self.current_strategy, "scheduler"):
+                self.current_strategy.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         logger.info(f"Checkpoint loaded from {path}")
         logger.info(
@@ -708,9 +670,7 @@ class MultistageTrainer:
         stage_checkpoint_dir = os.path.join(
             self.checkpoint_dir, f"{stage_idx+1}_{self.current_stage}"
         )
-        stage_log_dir = os.path.join(
-            self.log_dir, f"{stage_idx+1}_{self.current_stage}"
-        )
+        stage_log_dir = os.path.join(self.log_dir, f"{stage_idx+1}_{self.current_stage}")
         os.makedirs(stage_checkpoint_dir, exist_ok=True)
         os.makedirs(stage_log_dir, exist_ok=True)
 
@@ -750,9 +710,7 @@ class MultistageTrainer:
         }
 
         # Save stage completion checkpoint
-        checkpoint_path = os.path.join(
-            stage_checkpoint_dir, f"{self.current_stage}_complete.pt"
-        )
+        checkpoint_path = os.path.join(stage_checkpoint_dir, f"{self.current_stage}_complete.pt")
         self._save_checkpoint(checkpoint_path, stage_metrics)
 
         return self.stage_results[stage_idx]
@@ -809,9 +767,7 @@ class MultistageTrainer:
         # Add config if available
         if self.config:
             model_dict["config"] = (
-                self.config.to_dict()
-                if hasattr(self.config, "to_dict")
-                else vars(self.config)
+                self.config.to_dict() if hasattr(self.config, "to_dict") else vars(self.config)
             )
 
         # Save the model
