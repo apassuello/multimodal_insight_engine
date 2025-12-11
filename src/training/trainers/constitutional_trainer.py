@@ -29,7 +29,6 @@ from .language_model_trainer import LanguageModelTrainer
 # Import constitutional AI components
 try:
     from src.safety.constitutional import (
-        ConstitutionalFramework,
         ConstitutionalSafetyEvaluator,
         RLAIFTrainer,
         setup_default_framework,
