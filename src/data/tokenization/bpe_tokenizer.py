@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
 from .base_tokenizer import BaseTokenizer
+from .optimized_bpe_tokenizer import OptimizedBPETokenizer
 from .preprocessing import clean_text
 from .vocabulary import Vocabulary
 

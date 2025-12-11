@@ -8,6 +8,7 @@ appropriate configuration.
 """
 
 import logging
+import os
 from typing import Any
 
 import torch
@@ -153,8 +154,6 @@ def create_multimodal_model(args: Any, device: torch.device) -> nn.Module:
 
     # Create text transformer with pretrained weights
     try:
-        from transformers import AutoModel, AutoTokenizer
-
         logger.info(f"Loading pretrained text model: {args.text_model}")
 
         # Check if we should use a pretrained text model from HuggingFace

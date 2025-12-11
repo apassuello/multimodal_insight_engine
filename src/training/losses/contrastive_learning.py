@@ -22,6 +22,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.training.losses.contrastive.simclr_loss import SimCLRLoss
+
 
 logger = logging.getLogger(__name__)
 
@@ -249,9 +251,9 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         logger.info(f"MultiModalMixedContrastiveLoss initialized with dimension: {dim}")
 
         # Base contrastive loss with correct input dimension
-        self.contrastive_loss = ContrastiveLoss(
+        self.contrastive_loss = SimCLRLoss(
             temperature=temperature,
-            add_projection=False,
+            use_projection=False,
             input_dim=dim,  # Pass the correct dimension
             projection_dim=min(
                 512, dim // 2

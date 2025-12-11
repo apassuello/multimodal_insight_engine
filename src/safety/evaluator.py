@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 # Optional constitutional AI support
 try:
-    from .constitutional import ConstitutionalFramework, ConstitutionalSafetyEvaluator
+    from .constitutional import ConstitutionalSafetyEvaluator
     CONSTITUTIONAL_AI_AVAILABLE = True
 except ImportError:
     CONSTITUTIONAL_AI_AVAILABLE = False
