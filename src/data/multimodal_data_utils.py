@@ -25,6 +25,7 @@ import torch
 
 from src.utils.logging import get_logger
 
+
 logger = get_logger(__name__)
 from collections import defaultdict
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ from dataclasses import dataclass
 from torch.utils.data import BatchSampler, DataLoader, Sampler, SubsetRandomSampler
 
 from .multimodal_dataset import EnhancedMultimodalDataset
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+
 # Skip this entire module if WMTBPETokenizer doesn't exist
 try:
     from src.data.tokenization.wmt_bpe_tokenizer import WMTBPETokenizer

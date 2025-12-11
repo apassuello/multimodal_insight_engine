@@ -10,6 +10,7 @@ import os
 import sys
 from typing import Optional, Union
 
+
 # Re-export NullHandler from standard logging
 NullHandler = std_logging.NullHandler
 

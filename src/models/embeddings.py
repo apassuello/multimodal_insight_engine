@@ -4,6 +4,7 @@ import os
 import torch
 import torch.nn as nn
 
+
 """MODULE: embeddings.py
 PURPOSE: Implements token embedding layers for transformer models with proper initialization and scaling
 KEY COMPONENTS:

@@ -21,6 +21,7 @@ from .self_supervised import BarlowTwinsLoss, VICRegLoss
 from .supervised import SupervisedContrastiveLoss as SupervisedLoss
 from .wrappers import CombinedLoss, MultitaskLoss
 
+
 # Backward compatibility aliases
 ContrastiveLoss = SimCLRLoss
 MultiModalMixedContrastiveLoss = MixedMultimodalLoss

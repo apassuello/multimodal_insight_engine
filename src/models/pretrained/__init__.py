@@ -5,6 +5,7 @@ from .huggingface_wrapper import DimensionMatchingWrapper, HuggingFaceTextModelW
 from .model_registry import ModelRegistry
 from .vision_transformer import VisionTransformerWrapper
 
+
 __all__ = [
     "PretrainedModelWrapper",
     "CLIPModelWrapper",

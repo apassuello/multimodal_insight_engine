@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from matplotlib.figure import Figure
 
+
 """MODULE: positional.py
 PURPOSE: Implements various positional encoding schemes for transformer models to handle sequence order information
 KEY COMPONENTS:
