@@ -21,9 +21,7 @@ from ..models.pretrained.huggingface_wrapper import (
 from ..models.transformer import EncoderDecoderTransformer
 from ..models.vision.vision_transformer import VisionTransformer
 from ..utils.model_utils import count_parameters
-from .multimodal.multimodal_integration import (
-    CrossAttentionMultiModalTransformer,
-)
+from .multimodal.multimodal_integration import CrossAttentionMultiModalTransformer
 
 
 logger = logging.getLogger(__name__)

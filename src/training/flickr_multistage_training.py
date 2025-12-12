@@ -31,10 +31,7 @@ from src.data.multimodal_dataset import EnhancedMultimodalDataset
 
 # Local imports
 from src.models.multimodal.vicreg_multimodal_model import VICRegMultimodalModel
-from src.models.pretrained import (
-    HuggingFaceTextModelWrapper,
-    VisionTransformerWrapper,
-)
+from src.models.pretrained import HuggingFaceTextModelWrapper, VisionTransformerWrapper
 from src.training.losses import HardNegativeMiningContrastiveLoss
 from src.training.losses.contrastive import MoCoLoss as MemoryQueueContrastiveLoss
 from src.training.losses.contrastive import SimCLRLoss as ContrastiveLoss

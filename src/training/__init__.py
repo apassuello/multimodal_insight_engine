@@ -33,13 +33,7 @@ from .losses import (
 from .losses.loss_factory import create_loss_function
 
 # Import optimizers
-from .optimizers import (
-    AdamW,
-    CosineAnnealingLR,
-    GradientClipper,
-    LinearWarmupLR,
-    OneCycleLR,
-)
+from .optimizers import AdamW, CosineAnnealingLR, GradientClipper, LinearWarmupLR, OneCycleLR
 
 
 __all__ = [

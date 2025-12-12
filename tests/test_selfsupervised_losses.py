@@ -15,11 +15,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.training.losses import (
-    BarlowTwinsLoss,
-    HybridPretrainVICRegLoss,
-    VICRegLoss,
-)
+from src.training.losses import BarlowTwinsLoss, HybridPretrainVICRegLoss, VICRegLoss
 
 
 # ============================================================================

@@ -17,10 +17,7 @@ from src.training.trainers.multimodal import MultimodalTrainer
 from src.training.trainers.multistage_trainer import MultistageTrainer
 
 # Import utilities
-from src.utils.learningrate_scheduler import (
-    LinearWarmupScheduler,
-    WarmupCosineScheduler,
-)
+from src.utils.learningrate_scheduler import LinearWarmupScheduler, WarmupCosineScheduler
 
 
 logger = logging.getLogger(__name__)

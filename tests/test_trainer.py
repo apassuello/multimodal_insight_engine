@@ -13,10 +13,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
-from src.training.trainers.multimodal.trainer import (
-    ModalityBalancingScheduler,
-    MultimodalTrainer,
-)
+from src.training.trainers.multimodal.trainer import ModalityBalancingScheduler, MultimodalTrainer
 
 
 class DictDataset(Dataset):
