@@ -31,9 +31,7 @@ from torch.optim.adamw import AdamW
 from torch.utils.data import DataLoader
 
 from src.data.tokenization.tokenizer_metrics import log_tokenizer_evaluation
-from src.training.losses import (
-    MultiModalMixedContrastiveLoss,
-)
+from src.training.losses import MultiModalMixedContrastiveLoss
 
 # Local imports
 from .checkpoint_manager import CheckpointManager

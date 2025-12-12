@@ -12,11 +12,7 @@ import torch.nn.functional as F
 # Add the src directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from src.models.attention import (
-    MultiHeadAttention,
-    ScaledDotProductAttention,
-    SimpleAttention,
-)
+from src.models.attention import MultiHeadAttention, ScaledDotProductAttention, SimpleAttention
 
 
 def test_scaled_dot_product_attention():

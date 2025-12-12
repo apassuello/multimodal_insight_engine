@@ -6,16 +6,9 @@ from .contrastive import (
     MoCoLoss,
     SimCLRLoss,
 )
-from .contrastive_learning import (
-    compute_recall_at_k,
-    nt_xent_loss,
-    supervised_contrastive_loss,
-)
+from .contrastive_learning import compute_recall_at_k, nt_xent_loss, supervised_contrastive_loss
 from .hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
-from .losses import (
-    CrossEntropyLoss,
-    MeanSquaredError,
-)
+from .losses import CrossEntropyLoss, MeanSquaredError
 from .multimodal import MixedMultimodalLoss
 from .self_supervised import BarlowTwinsLoss, VICRegLoss
 from .supervised import SupervisedContrastiveLoss as SupervisedLoss

@@ -15,9 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
-from src.models.multimodal.bidirectional_cross_attention import (
-    BidirectionalCrossAttention,
-)
+from src.models.multimodal.bidirectional_cross_attention import BidirectionalCrossAttention
 from src.models.multimodal.co_attention_fusion import CoAttentionFusion
 from src.models.transformer import EncoderDecoderTransformer
 from src.models.vision.vision_transformer import VisionTransformer

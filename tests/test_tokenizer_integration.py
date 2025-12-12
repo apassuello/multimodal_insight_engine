@@ -12,10 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our tokenization modules
-from src.data.tokenization import (
-    BPETokenizer,
-    create_transformer_dataloaders,
-)
+from src.data.tokenization import BPETokenizer, create_transformer_dataloaders
 
 # Import the transformer and training components
 from src.models.transformer import EncoderDecoderTransformer

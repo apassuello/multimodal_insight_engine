@@ -12,10 +12,7 @@ from .cross_modal_attention_base import CrossModalAttention
 from .dual_encoder import DualEncoder
 from .gated_cross_modal_attention import GatedCrossModalAttention
 from .multimodal_decoder_generation import MultimodalDecoderGeneration
-from .multimodal_integration import (
-    CrossAttentionMultiModalTransformer,
-    MultiModalTransformer,
-)
+from .multimodal_integration import CrossAttentionMultiModalTransformer, MultiModalTransformer
 from .vicreg_multimodal_model import VICRegMultimodalModel
 
 

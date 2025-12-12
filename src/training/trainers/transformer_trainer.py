@@ -44,11 +44,7 @@ from src.utils.logging import get_logger
 # Module logger
 logger = get_logger(__name__)
 
-from src.training.transformer_utils import (
-    LabelSmoothing,
-    create_causal_mask,
-    create_padding_mask,
-)
+from src.training.transformer_utils import LabelSmoothing, create_causal_mask, create_padding_mask
 
 
 class TransformerTrainer:
