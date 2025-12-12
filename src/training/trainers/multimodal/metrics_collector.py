@@ -21,7 +21,7 @@ SPECIAL NOTES:
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -102,7 +102,7 @@ class MetricsCollector:
         """
         return self.history.get(metric_name, [])
 
-    def get_latest(self, metric_name: str) -> Optional[float]:
+    def get_latest(self, metric_name: str) -> float | None:
         """
         Get the latest value of a metric.
 
@@ -184,7 +184,7 @@ class MetricsCollector:
         else:
             return "No obvious training issues detected from metrics."
 
-    def plot_history(self, save_dir: Optional[str] = None) -> None:
+    def plot_history(self, save_dir: str | None = None) -> None:
         """
         Plot training history metrics.
 
@@ -250,7 +250,7 @@ class MetricsCollector:
         if self._alignment_history["step"]:
             self._plot_alignment_metrics(save_dir)
 
-    def _plot_alignment_metrics(self, save_dir: Optional[str] = None) -> None:
+    def _plot_alignment_metrics(self, save_dir: str | None = None) -> None:
         """
         Plot alignment-specific metrics.
 

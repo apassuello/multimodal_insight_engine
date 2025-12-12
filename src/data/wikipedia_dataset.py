@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -24,9 +24,9 @@ class WikipediaDataset:
         self,
         data_dir: str = "data/wiki",
         split: str = "train",
-        max_examples: Optional[int] = None,
+        max_examples: int | None = None,
         cache_processed_data: bool = True,
-        cache_dir: Optional[str] = None,
+        cache_dir: str | None = None,
         image_size: int = 224,
         random_seed: int = 42,
     ):
@@ -221,7 +221,7 @@ class WikipediaDataset:
 def create_wiki_dataloaders(
     data_dir: str = "data/wiki",
     batch_size: int = 32,
-    max_examples: Optional[Dict[str, int]] = None,
+    max_examples: Dict[str, int] | None = None,
     num_workers: int = 0,
     image_size: int = 224,
     random_seed: int = 42,

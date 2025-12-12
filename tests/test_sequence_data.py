@@ -55,7 +55,7 @@ def test_transformer_collate_fn(sample_sequences, device):
     # Create a batch of examples
     batch = [
         {"src_tokens": src, "tgt_tokens": tgt}
-        for src, tgt in zip(sample_sequences["source"], sample_sequences["target"])
+        for src, tgt in zip(sample_sequences["source"], sample_sequences["target"], strict=False)
     ]
 
     # Collate the batch
@@ -186,7 +186,7 @@ def test_transformer_collator(sample_sequences, device):
     # Create a batch of examples
     batch = [
         {"src_tokens": src, "tgt_tokens": tgt}
-        for src, tgt in zip(sample_sequences["source"], sample_sequences["target"])
+        for src, tgt in zip(sample_sequences["source"], sample_sequences["target"], strict=False)
     ]
 
     # Collate the batch

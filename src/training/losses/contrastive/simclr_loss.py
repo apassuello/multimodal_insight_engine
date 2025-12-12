@@ -11,7 +11,7 @@ Supports:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -40,12 +40,12 @@ class SimCLRLoss(BaseContrastiveLoss):
         temperature: float = 0.07,
         loss_type: str = "infonce",
         reduction: str = "mean",
-        input_dim: Optional[int] = None,
+        input_dim: int | None = None,
         projection_dim: int = 256,
         use_projection: bool = True,
         sampling_strategy: str = "auto",
         memory_bank_size: int = 4096,
-        dataset_size: Optional[int] = None,
+        dataset_size: int | None = None,
         **kwargs,
     ):
         """
@@ -113,9 +113,9 @@ class SimCLRLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
-        indices: Optional[torch.Tensor] = None,
-        labels: Optional[torch.Tensor] = None,
+        match_ids: List[str] | None = None,
+        indices: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -186,7 +186,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         return {"loss": loss, **metrics}
 
     def _create_targets(
-        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
+        self, batch_size: int, match_ids: List[str] | None, device: torch.device
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Create target indices for vision→text and text→vision based on match_ids.
@@ -303,7 +303,7 @@ class SimCLRLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]],
+        match_ids: List[str] | None,
         indices: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute global contrastive loss."""
@@ -339,7 +339,7 @@ class SimCLRLoss(BaseContrastiveLoss):
     def _create_global_targets(
         self,
         indices: torch.Tensor,
-        match_ids: Optional[List[str]],
+        match_ids: List[str] | None,
         actual_global_size: int,
         device: torch.device,
     ) -> Tuple[torch.Tensor, torch.Tensor]:

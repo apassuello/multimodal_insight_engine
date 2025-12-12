@@ -435,7 +435,9 @@ class TestRewardModelTrainer:
 
             # Check that weights match
             for p1, p2 in zip(
-                reward_model.reward_head.parameters(), new_model.reward_head.parameters()
+                reward_model.reward_head.parameters(),
+                new_model.reward_head.parameters(),
+                strict=False,
             ):
                 assert torch.allclose(p1, p2), "Loaded weights don't match saved weights"
 

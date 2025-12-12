@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -47,10 +47,10 @@ class BaseModel(nn.Module):
     def save(
         self,
         path: str,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        epoch: Optional[int] = None,
-        loss: Optional[float] = None,
-        additional_info: Optional[Dict[str, Any]] = None,
+        optimizer: torch.optim.Optimizer | None = None,
+        epoch: int | None = None,
+        loss: float | None = None,
+        additional_info: Dict[str, Any] | None = None,
     ):
         """
         Save model weights and training state to a file.
@@ -85,7 +85,7 @@ class BaseModel(nn.Module):
         torch.save(state_dict, path)
         logger.info(f"Model saved to {path}")
 
-    def load(self, path: str, map_location: Optional[str] = None):
+    def load(self, path: str, map_location: str | None = None):
         """
         Load model weights from a file.
 

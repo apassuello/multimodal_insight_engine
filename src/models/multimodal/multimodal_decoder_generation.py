@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -34,9 +34,9 @@ class MultimodalDecoderGeneration(nn.Module):
         max_sequence_length: int = 128,
         fusion_dropout: float = 0.1,
         tie_embeddings: bool = True,
-        vocab_size: Optional[int] = None,
+        vocab_size: int | None = None,
         use_gated_fusion: bool = True,
-        generation_config: Optional[Dict[str, Any]] = None,
+        generation_config: Dict[str, Any] | None = None,
     ):
         """
         Initialize the multimodal decoder generation model.
@@ -164,10 +164,10 @@ class MultimodalDecoderGeneration(nn.Module):
 
     def prepare_inputs_for_decoder(
         self,
-        vision_features: Optional[torch.Tensor] = None,
-        encoder_features: Optional[torch.Tensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        vision_features: torch.Tensor | None = None,
+        encoder_features: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor | None]:
         """
         Prepare fused representation from modalities for the decoder.
 
@@ -290,12 +290,12 @@ class MultimodalDecoderGeneration(nn.Module):
 
     def forward(
         self,
-        images: Optional[torch.Tensor] = None,
-        encoder_input_ids: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
-        decoder_input_ids: Optional[torch.Tensor] = None,
-        decoder_attention_mask: Optional[torch.Tensor] = None,
-        labels: Optional[torch.Tensor] = None,
+        images: torch.Tensor | None = None,
+        encoder_input_ids: torch.Tensor | None = None,
+        encoder_attention_mask: torch.Tensor | None = None,
+        decoder_input_ids: torch.Tensor | None = None,
+        decoder_attention_mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -419,10 +419,10 @@ class MultimodalDecoderGeneration(nn.Module):
 
     def generate(
         self,
-        images: Optional[torch.Tensor] = None,
-        encoder_input_ids: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
-        generation_config: Optional[Dict[str, Any]] = None,
+        images: torch.Tensor | None = None,
+        encoder_input_ids: torch.Tensor | None = None,
+        encoder_attention_mask: torch.Tensor | None = None,
+        generation_config: Dict[str, Any] | None = None,
         **kwargs,
     ) -> torch.Tensor:
         """
@@ -653,7 +653,7 @@ class CrossModalFusionTransformer(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        text_attention_mask: Optional[torch.Tensor] = None,
+        text_attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass through the cross-modal fusion transformer.
@@ -746,9 +746,7 @@ class CrossModalTransformerLayer(nn.Module):
         # Dropout for residual connections
         self.dropout = nn.Dropout(dropout)
 
-    def forward(
-        self, x: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
         """
         Forward pass through the transformer layer.
 

@@ -15,8 +15,9 @@ KEY COMPONENTS:
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List
 
 import torch
 from PIL import Image
@@ -33,10 +34,10 @@ class ImageDataset(Dataset):
     def __init__(
         self,
         root_dir: str,
-        transform: Optional[Callable] = None,
+        transform: Callable | None = None,
         image_size: int = 224,
         split: str = "train",
-        class_mapping_file: Optional[str] = None,
+        class_mapping_file: str | None = None,
     ):
         """
         Initialize the image dataset.

@@ -1,5 +1,5 @@
 # src/data/sequence_data.py
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -73,11 +73,11 @@ class TransformerDataset(Dataset):
         self,
         source_sequences: List[List[int]],
         target_sequences: List[List[int]],
-        max_src_len: Optional[int] = None,
-        max_tgt_len: Optional[int] = None,
+        max_src_len: int | None = None,
+        max_tgt_len: int | None = None,
         pad_idx: int = 0,
-        bos_idx: Optional[int] = None,
-        eos_idx: Optional[int] = None,
+        bos_idx: int | None = None,
+        eos_idx: int | None = None,
     ):
         """
         Initialize the transformer dataset.
@@ -209,11 +209,11 @@ class TransformerDataModule:
         source_sequences: List[List[int]],
         target_sequences: List[List[int]],
         batch_size: int = 32,
-        max_src_len: Optional[int] = None,
-        max_tgt_len: Optional[int] = None,
+        max_src_len: int | None = None,
+        max_tgt_len: int | None = None,
         pad_idx: int = 0,
-        bos_idx: Optional[int] = None,
-        eos_idx: Optional[int] = None,
+        bos_idx: int | None = None,
+        eos_idx: int | None = None,
         val_split: float = 0.1,
         shuffle: bool = True,
         num_workers: int = 0,

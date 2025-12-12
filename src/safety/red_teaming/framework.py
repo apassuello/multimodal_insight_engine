@@ -3,7 +3,8 @@
 import datetime
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Dict, List
 
 
 class RedTeamingFramework:
@@ -51,7 +52,7 @@ class RedTeamingFramework:
         self.attack_strategies[name] = strategy_fn
 
     def generate_adversarial_inputs(
-        self, base_prompts: List[str], strategy_name: Optional[str] = None, num_variations: int = 5
+        self, base_prompts: List[str], strategy_name: str | None = None, num_variations: int = 5
     ) -> Dict[str, List[str]]:
         """
         Generate adversarial inputs using registered strategies.
@@ -185,7 +186,7 @@ class RedTeamingFramework:
         return evaluation_results
 
     def generate_report(
-        self, results: Optional[Dict[str, Any]] = None, include_details: bool = False
+        self, results: Dict[str, Any] | None = None, include_details: bool = False
     ) -> str:
         """
         Generate a human-readable report from evaluation results.

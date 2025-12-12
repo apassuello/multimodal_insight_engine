@@ -7,7 +7,7 @@ across the application with support for loading from files and environment.
 
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from src.utils.logging import get_logger
 
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class ConfigManager:
     """Manager for application configuration values."""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize the configuration manager.
 

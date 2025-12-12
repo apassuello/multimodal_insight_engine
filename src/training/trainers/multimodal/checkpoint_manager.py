@@ -17,7 +17,7 @@ SPECIAL NOTES:
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -34,8 +34,8 @@ class CheckpointManager:
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         checkpoint_dir: str,
-        scheduler: Optional[Any] = None,
-        device: Optional[torch.device] = None,
+        scheduler: Any | None = None,
+        device: torch.device | None = None,
     ):
         """
         Initialize the checkpoint manager.
@@ -66,11 +66,11 @@ class CheckpointManager:
     def save_checkpoint(
         self,
         path: str,
-        current_epoch: Optional[int] = None,
-        global_step: Optional[int] = None,
-        best_val_metric: Optional[float] = None,
-        patience_counter: Optional[int] = None,
-        history: Optional[Dict[str, list]] = None,
+        current_epoch: int | None = None,
+        global_step: int | None = None,
+        best_val_metric: float | None = None,
+        patience_counter: int | None = None,
+        history: Dict[str, list] | None = None,
     ) -> None:
         """
         Save a checkpoint.
@@ -156,7 +156,7 @@ class CheckpointManager:
             "history": dict(self.history),
         }
 
-    def get_latest_checkpoint(self) -> Optional[str]:
+    def get_latest_checkpoint(self) -> str | None:
         """
         Find the most recent checkpoint in the checkpoint directory.
 
@@ -182,7 +182,7 @@ class CheckpointManager:
         logger.info(f"Found latest checkpoint: {latest}")
         return latest
 
-    def get_checkpoint_path(self, epoch: int, metric_value: Optional[float] = None) -> str:
+    def get_checkpoint_path(self, epoch: int, metric_value: float | None = None) -> str:
         """
         Generate a checkpoint path for a given epoch.
 
@@ -229,11 +229,11 @@ class CheckpointManager:
 
     def update_state(
         self,
-        current_epoch: Optional[int] = None,
-        global_step: Optional[int] = None,
-        best_val_metric: Optional[float] = None,
-        patience_counter: Optional[int] = None,
-        history: Optional[Dict[str, list]] = None,
+        current_epoch: int | None = None,
+        global_step: int | None = None,
+        best_val_metric: float | None = None,
+        patience_counter: int | None = None,
+        history: Dict[str, list] | None = None,
     ) -> None:
         """
         Update internal training state.

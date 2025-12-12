@@ -576,9 +576,9 @@ class IWSLTDataset:
         # Limit dataset size if specified
         if self.max_examples is not None and len(all_src_data) > self.max_examples:
             # Shuffle with a fixed random seed for reproducibility
-            combined = list(zip(all_src_data, all_tgt_data))
+            combined = list(zip(all_src_data, all_tgt_data, strict=False))
             random.shuffle(combined)
-            all_src_data, all_tgt_data = zip(*combined[: self.max_examples])
+            all_src_data, all_tgt_data = zip(*combined[: self.max_examples], strict=False)
             all_src_data, all_tgt_data = list(all_src_data), list(all_tgt_data)
 
         return all_src_data, all_tgt_data

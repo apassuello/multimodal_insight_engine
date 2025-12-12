@@ -18,7 +18,8 @@ DEPENDENCIES:
 import logging
 import os
 import random
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from collections.abc import Iterator
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -100,9 +101,9 @@ class SemanticGroupBatchSampler(BatchSampler):
         batch_size: int,
         drop_last: bool = True,
         min_samples_per_group: int = 2,
-        max_samples_per_group: Optional[int] = None,
+        max_samples_per_group: int | None = None,
         cap_strategy: str = "random",
-        groups_per_batch: Optional[int] = None,
+        groups_per_batch: int | None = None,
     ):
         """
         Initialize the semantic group batch sampler.

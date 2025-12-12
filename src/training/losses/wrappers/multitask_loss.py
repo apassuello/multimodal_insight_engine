@@ -18,7 +18,7 @@ SPECIAL NOTES:
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -38,7 +38,7 @@ class MultitaskLoss(nn.Module):
     def __init__(
         self,
         loss_functions: Dict[str, nn.Module],
-        loss_weights: Optional[Dict[str, float]] = None,
+        loss_weights: Dict[str, float] | None = None,
         dynamic_weighting: bool = False,
         reduction: str = "mean",
     ):

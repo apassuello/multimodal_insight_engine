@@ -11,9 +11,10 @@ SPECIAL NOTES: Supports multiple data formats and HuggingFace datasets integrati
 
 import csv
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from torch.utils.data import Dataset
 
@@ -69,9 +70,9 @@ class PromptDataset(Dataset):
         self,
         data_source: Union[str, Path, List[str], List[Dict[str, Any]]],
         prompt_field: str = "prompt",
-        template: Optional[PromptTemplate] = None,
-        transform: Optional[Callable] = None,
-        max_samples: Optional[int] = None,
+        template: PromptTemplate | None = None,
+        transform: Callable | None = None,
+        max_samples: int | None = None,
     ):
         """
         Initialize prompt dataset.
@@ -93,7 +94,7 @@ class PromptDataset(Dataset):
     def _load_data(
         self,
         data_source: Union[str, Path, List[str], List[Dict[str, Any]]],
-        max_samples: Optional[int],
+        max_samples: int | None,
     ) -> List[Dict[str, Any]]:
         """Load data from various sources."""
         if isinstance(data_source, (str, Path)):
@@ -225,10 +226,10 @@ class PromptResponseDataset(Dataset):
         data_source: Union[str, Path, List[Dict[str, Any]]],
         prompt_field: str = "prompt",
         response_field: str = "response",
-        label_field: Optional[str] = None,
-        template: Optional[PromptTemplate] = None,
-        transform: Optional[Callable] = None,
-        max_samples: Optional[int] = None,
+        label_field: str | None = None,
+        template: PromptTemplate | None = None,
+        transform: Callable | None = None,
+        max_samples: int | None = None,
     ):
         """
         Initialize prompt-response dataset.
@@ -302,7 +303,7 @@ class ConstitutionalTrainingDataset(Dataset):
         prompts: Union[List[str], PromptDataset],
         num_responses_per_prompt: int = 5,
         include_baseline_responses: bool = False,
-        baseline_responses: Optional[List[List[str]]] = None,
+        baseline_responses: List[List[str]] | None = None,
     ):
         """
         Initialize constitutional training dataset.
@@ -351,9 +352,9 @@ def load_huggingface_dataset(
     dataset_name: str,
     split: str = "train",
     prompt_field: str = "text",
-    response_field: Optional[str] = None,
-    max_samples: Optional[int] = None,
-    cache_dir: Optional[str] = None,
+    response_field: str | None = None,
+    max_samples: int | None = None,
+    cache_dir: str | None = None,
 ) -> Union[PromptDataset, PromptResponseDataset]:
     """
     Load dataset from HuggingFace datasets library.

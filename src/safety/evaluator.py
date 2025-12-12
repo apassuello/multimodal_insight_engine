@@ -10,7 +10,7 @@ SPECIAL NOTES: Implements configurable sensitivity levels and threshold-based sa
 import json
 import os
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from src.utils.logging import get_logger
 
@@ -49,11 +49,11 @@ class SafetyEvaluator:
 
     def __init__(
         self,
-        safety_thresholds: Optional[Dict[str, float]] = None,
+        safety_thresholds: Dict[str, float] | None = None,
         sensitivity: str = SENSITIVITY_MEDIUM,
         log_dir: str = "safety_data/logs",
         use_constitutional_ai: bool = False,
-        constitutional_framework: Optional[Any] = None,
+        constitutional_framework: Any | None = None,
     ):
         """
         Initialize the safety evaluator.
@@ -115,7 +115,7 @@ class SafetyEvaluator:
             "category_counts": dict.fromkeys(self.safety_thresholds, 0),
         }
 
-    def evaluate_text(self, text: str, use_constitutional: Optional[bool] = None) -> Dict[str, Any]:
+    def evaluate_text(self, text: str, use_constitutional: bool | None = None) -> Dict[str, Any]:
         """
         Evaluate text for safety concerns.
 
@@ -258,7 +258,7 @@ class SafetyEvaluator:
         self,
         text: str,
         results: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Dict[str, Any] | None = None,
     ) -> None:
         """
         Log safety evaluation results.
@@ -353,7 +353,7 @@ class SafetyEvaluator:
         )
 
     def validate_input(
-        self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False
+        self, input_text: str, metadata: Dict[str, Any] | None = None, override: bool = False
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Validate input text for safety.
@@ -385,7 +385,7 @@ class SafetyEvaluator:
         return is_safe, validation_info
 
     def filter_output(
-        self, output_text: str, metadata: Optional[Dict[str, Any]] = None
+        self, output_text: str, metadata: Dict[str, Any] | None = None
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Filter output text for safety.

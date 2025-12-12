@@ -295,7 +295,7 @@ def prepare_for_transformer(
     sample_mask = de_batch["attention_mask"][0].tolist()
 
     # Only include tokens where attention mask is 1 (exclude padding)
-    active_tokens = [idx for idx, mask in zip(sample_seq, sample_mask) if mask == 1]
+    active_tokens = [idx for idx, mask in zip(sample_seq, sample_mask, strict=False) if mask == 1]
 
     print(f"Sample sequence length: {len(active_tokens)}")
     print(f"Decoded German sample: {de_tokenizer.decode(active_tokens)}")

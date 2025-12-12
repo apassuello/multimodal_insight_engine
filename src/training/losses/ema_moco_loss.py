@@ -3,7 +3,7 @@
 import copy
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -134,7 +134,7 @@ class EMAMoCoLoss(nn.Module):
             return
 
         # For each parameter in the model, update with momentum
-        for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
+        for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters(), strict=False):
             # Update formula: param_k = m * param_k + (1 - m) * param_q
             param_k.data = param_k.data * self.m + param_q.data * (1.0 - self.m)
 
@@ -178,8 +178,8 @@ class EMAMoCoLoss(nn.Module):
         self,
         vision_queries: torch.Tensor,
         text_queries: torch.Tensor,
-        vision_features: Optional[torch.Tensor] = None,
-        text_features: Optional[torch.Tensor] = None,
+        vision_features: torch.Tensor | None = None,
+        text_features: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """

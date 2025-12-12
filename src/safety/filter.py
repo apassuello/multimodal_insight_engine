@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from .evaluator import SafetyEvaluator
 from .utils import (
@@ -49,7 +49,7 @@ class SafetyFilter:
     def validate_input(
         self,
         input_text: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Dict[str, Any] | None = None,
         override: bool = False,
     ) -> Tuple[bool, Dict[str, Any]]:
         """
@@ -87,7 +87,7 @@ class SafetyFilter:
         }
 
     def filter_output(
-        self, output_text: str, metadata: Optional[Dict[str, Any]] = None
+        self, output_text: str, metadata: Dict[str, Any] | None = None
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Filter output text to ensure safety.

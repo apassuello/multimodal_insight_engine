@@ -8,7 +8,7 @@ DEPENDENCIES: torch, language_model_trainer, constitutional AI modules
 SPECIAL NOTES: Implements Constitutional AI training approach for safer model outputs
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -54,16 +54,16 @@ class ConstitutionalTrainer(LanguageModelTrainer):
         self,
         model: nn.Module,
         train_dataloader: torch.utils.data.DataLoader,
-        val_dataloader: Optional[torch.utils.data.DataLoader] = None,
+        val_dataloader: torch.utils.data.DataLoader | None = None,
         learning_rate: float = 5e-5,
         weight_decay: float = 0.01,
         warmup_steps: int = 1000,
         max_grad_norm: float = 1.0,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         log_dir: str = "logs/constitutional",
-        constitutional_framework: Optional[Any] = None,
+        constitutional_framework: Any | None = None,
         use_rlaif: bool = False,
-        critique_model: Optional[nn.Module] = None,
+        critique_model: nn.Module | None = None,
         constitutional_weight: float = 0.5,
         **kwargs,
     ):
@@ -252,7 +252,7 @@ class ConstitutionalTrainer(LanguageModelTrainer):
 
             # Evaluate responses
             violation_scores = []
-            for prompt, response in zip(prompts, responses):
+            for prompt, response in zip(prompts, responses, strict=False):
                 eval_result = self.constitutional_evaluator.evaluate(response)
 
                 # Extract violation score (weighted_score from direct evaluation)

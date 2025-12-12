@@ -15,7 +15,6 @@ SPECIAL NOTES:
 """
 
 import os
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -39,7 +38,7 @@ class CrossEntropyLoss(nn.Module):
     """
 
     def __init__(
-        self, smoothing: float = 0.1, reduction: str = "mean", weight: Optional[torch.Tensor] = None
+        self, smoothing: float = 0.1, reduction: str = "mean", weight: torch.Tensor | None = None
     ):
         super().__init__()
         self.smoothing = smoothing
@@ -50,7 +49,7 @@ class CrossEntropyLoss(nn.Module):
         self,
         input: torch.Tensor,
         target: torch.Tensor,
-        sample_weight: Optional[torch.Tensor] = None,
+        sample_weight: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Compute the cross-entropy loss with label smoothing.
@@ -100,7 +99,7 @@ class MeanSquaredError(nn.Module):
             Defaults to None.
     """
 
-    def __init__(self, reduction: str = "mean", clip_grad: Optional[float] = None):
+    def __init__(self, reduction: str = "mean", clip_grad: float | None = None):
         super().__init__()
         self.reduction = reduction
         self.clip_grad = clip_grad
@@ -109,7 +108,7 @@ class MeanSquaredError(nn.Module):
         self,
         input: torch.Tensor,
         target: torch.Tensor,
-        sample_weight: Optional[torch.Tensor] = None,
+        sample_weight: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Compute the mean squared error loss.

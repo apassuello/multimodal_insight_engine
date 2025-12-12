@@ -2,7 +2,8 @@
 
 import json
 import os
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any, Dict
 
 import torch
 
@@ -28,7 +29,7 @@ class ModelLoader:
     def __init__(
         self,
         local_models_dir: str = "./models/pretrained/",
-        device: Optional[str] = None,
+        device: str | None = None,
         max_length: int = 1024,
         temperature: float = 0.7,
         verbose: bool = False,

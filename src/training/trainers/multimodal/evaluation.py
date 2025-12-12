@@ -20,7 +20,8 @@ SPECIAL NOTES:
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any, Dict, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -115,7 +116,7 @@ class Evaluator:
         dataloader: torch.utils.data.DataLoader,
         prepare_model_inputs_fn: Callable,
         to_device_fn: Callable,
-    ) -> Optional[Tuple[torch.Tensor, torch.Tensor, List[int]]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, List[int]] | None:
         """
         Collect all embeddings from the dataset.
 
@@ -197,7 +198,7 @@ class Evaluator:
 
     def _extract_features(
         self, outputs: Dict[str, torch.Tensor], preferred_keys: List[str]
-    ) -> Optional[torch.Tensor]:
+    ) -> torch.Tensor | None:
         """
         Extract features from model outputs with fallback keys.
 
@@ -439,7 +440,7 @@ class Evaluator:
         self,
         image_embeddings: torch.Tensor,
         text_embeddings: torch.Tensor,
-        indices: Optional[List[int]] = None,
+        indices: List[int] | None = None,
     ) -> Dict[str, float]:
         """
         Compute retrieval metrics from pre-computed embeddings.

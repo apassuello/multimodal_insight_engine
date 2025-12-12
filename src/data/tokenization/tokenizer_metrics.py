@@ -8,7 +8,7 @@ and reporting metrics on tokenizer performance.
 import logging
 import random
 from collections import Counter
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ def calculate_tokenizer_metrics(
 
         logger.info("Most common tokens:")
         for i, (token, freq) in enumerate(
-            zip(metrics["top_tokens"], metrics["top_token_frequencies"])
+            zip(metrics["top_tokens"], metrics["top_token_frequencies"], strict=False)
         ):
             logger.info(f"  {i+1}. '{token}': {freq:.2%}")
 
@@ -271,7 +271,7 @@ def calculate_semantic_token_metrics(
 def log_tokenizer_evaluation(
     tokenizer: Any,
     text_data: List[str],
-    match_ids: Optional[List[str]] = None,
+    match_ids: List[str] | None = None,
     epoch: int = 0,
 ) -> Dict[str, Any]:
     """
@@ -298,7 +298,7 @@ def log_tokenizer_evaluation(
     if match_ids is not None:
         # Group texts by match_id
         semantic_groups = {}
-        for text, mid in zip(text_data, match_ids):
+        for text, mid in zip(text_data, match_ids, strict=False):
             if mid not in semantic_groups:
                 semantic_groups[mid] = []
             semantic_groups[mid].append(text)

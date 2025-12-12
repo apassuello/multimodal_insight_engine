@@ -1,7 +1,8 @@
 # src/utils/profiling.py
 import os
 import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any, Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +25,7 @@ class ModelProfiler:
     and other performance metrics for PyTorch models.
     """
 
-    def __init__(self, model: torch.nn.Module, device: Optional[torch.device] = None):
+    def __init__(self, model: torch.nn.Module, device: torch.device | None = None):
         """
         Initialize the profiler.
 
@@ -175,7 +176,7 @@ class ModelProfiler:
 
         return memory_metrics
 
-    def generate_report(self, save_path: Optional[str] = None) -> str:
+    def generate_report(self, save_path: str | None = None) -> str:
         """
         Generate a human-readable report of the profiling results.
 
@@ -246,7 +247,7 @@ class ModelProfiler:
 
         return report
 
-    def plot_metrics(self, save_dir: Optional[str] = None) -> Dict[str, plt.Figure]:
+    def plot_metrics(self, save_dir: str | None = None) -> Dict[str, plt.Figure]:
         """
         Plot various metrics from the profiling results.
 
@@ -304,10 +305,10 @@ class ModelProfiler:
         use_mps: bool = True,
         num_steps: int = 10,
         warmup: int = 3,
-        activities: Optional[List[str]] = None,
+        activities: List[str] | None = None,
         record_shapes: bool = True,
         profile_memory: bool = True,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> None:
         """
         Profile the model using PyTorch's built-in profiler.
@@ -409,7 +410,7 @@ class ModelProfiler:
         batch_sizes: List[int],
         sequence_lengths: List[int],
         num_iterations: int = 5,
-        save_dir: Optional[str] = None,
+        save_dir: str | None = None,
     ) -> pd.DataFrame:
         """
         Benchmark the model across different batch sizes and sequence lengths.
@@ -500,7 +501,7 @@ class ModelProfiler:
     def trace_memory_by_layer(
         self,
         input_data: Union[torch.Tensor, Dict[str, torch.Tensor]],
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Dict[str, float]:
         """
         Trace memory usage by layer in the model.
@@ -607,7 +608,7 @@ class ModelProfiler:
         train_fn: Callable,
         duration: int = 60,
         interval: float = 0.5,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> pd.DataFrame:
         """
         Monitor hardware utilization during model training or inference.
@@ -759,7 +760,7 @@ class ModelBenchmarkSuite:
         num_iterations: int = 5,
         profile_with_pytorch: bool = True,
         trace_memory: bool = True,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> Dict[str, Any]:
         """
         Run a comprehensive benchmark on a model.
@@ -844,7 +845,7 @@ class ModelBenchmarkSuite:
         self,
         model_names: List[str] = None,
         metric: str = "avg_time",
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> pd.DataFrame:
         """
         Compare performance metrics across multiple models.
@@ -896,7 +897,7 @@ class ModelBenchmarkSuite:
         return comparison_df
 
     def _plot_model_comparison(
-        self, comparison_df: pd.DataFrame, metric: str = "avg_time", save_path: Optional[str] = None
+        self, comparison_df: pd.DataFrame, metric: str = "avg_time", save_path: str | None = None
     ) -> None:
         """
         Plot comparison between models.

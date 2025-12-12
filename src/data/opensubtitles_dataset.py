@@ -1,6 +1,6 @@
 import os
 import random
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from src.utils.logging import get_logger
 
@@ -21,7 +21,7 @@ class OpenSubtitlesDataset:
         data_dir: str = "data/os",
         src_lang: str = "de",
         tgt_lang: str = "en",
-        max_examples: Optional[int] = None,
+        max_examples: int | None = None,
         random_seed: int = 42,
     ):
         """
@@ -223,7 +223,7 @@ class OpenSubtitlesDataset:
 
         # Filter out empty lines and lines that are too long or short
         filtered_pairs = []
-        for src, tgt in zip(src_data, tgt_data):
+        for src, tgt in zip(src_data, tgt_data, strict=False):
             # Skip if either is empty
             if not src or not tgt:
                 continue
@@ -240,7 +240,7 @@ class OpenSubtitlesDataset:
             filtered_pairs = filtered_pairs[: self.max_examples]
 
         # Unzip the pairs
-        src_data, tgt_data = zip(*filtered_pairs) if filtered_pairs else ([], [])
+        src_data, tgt_data = zip(*filtered_pairs, strict=False) if filtered_pairs else ([], [])
 
         logger.info(f"Loaded {len(src_data)} parallel sentences")
 

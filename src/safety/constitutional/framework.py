@@ -12,7 +12,8 @@ SPECIAL NOTES: Foundation for Constitutional AI approach inspired by Anthropic's
 """
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Dict, List
 
 from src.utils.logging import get_logger
 
@@ -62,9 +63,9 @@ class ConstitutionalPrinciple:
     def evaluate(
         self,
         text: str,
-        model: Optional[Any] = None,
-        tokenizer: Optional[Any] = None,
-        device: Optional[Any] = None,
+        model: Any | None = None,
+        tokenizer: Any | None = None,
+        device: Any | None = None,
         logger=None,  # type: ignore
     ) -> Dict[str, Any]:
         """
@@ -134,11 +135,11 @@ class ConstitutionalFramework:
     def __init__(
         self,
         name: str = "default_framework",
-        model: Optional[Any] = None,
-        tokenizer: Optional[Any] = None,
-        device: Optional[Any] = None,
+        model: Any | None = None,
+        tokenizer: Any | None = None,
+        device: Any | None = None,
         use_hf_api: bool = False,
-        hf_api_token: Optional[str] = None,
+        hf_api_token: str | None = None,
     ):
         """
         Initialize the constitutional framework.
@@ -165,7 +166,7 @@ class ConstitutionalFramework:
 
         self.principles: Dict[str, ConstitutionalPrinciple] = {}
         self.evaluation_history: List[Dict[str, Any]] = []
-        self._model_name: Optional[str] = None  # Track model name for display
+        self._model_name: str | None = None  # Track model name for display
 
         # HuggingFace API configuration
         self._use_hf_api = use_hf_api
@@ -179,8 +180,8 @@ class ConstitutionalFramework:
         self,
         model: Any,
         tokenizer: Any,
-        device: Optional[Any] = None,
-        model_name: Optional[str] = None,
+        device: Any | None = None,
+        model_name: str | None = None,
     ) -> None:
         """
         Set or change the evaluation model.
@@ -236,7 +237,7 @@ class ConstitutionalFramework:
         self._model_name = "Regex Only"
         logger.info("[Framework] Switched to regex-only evaluation (no AI model)")
 
-    def _setup_hf_api(self, api_token: Optional[str] = None) -> bool:
+    def _setup_hf_api(self, api_token: str | None = None) -> bool:
         """
         Setup HuggingFace API evaluator.
 
@@ -265,7 +266,7 @@ class ConstitutionalFramework:
             self._use_hf_api = False
             return False
 
-    def use_hf_api(self, api_token: Optional[str] = None) -> bool:
+    def use_hf_api(self, api_token: str | None = None) -> bool:
         """
         Switch to HuggingFace API-based evaluation.
 

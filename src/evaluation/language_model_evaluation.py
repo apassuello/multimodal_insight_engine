@@ -2,7 +2,7 @@
 import json
 import math
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +29,7 @@ class LanguageModelEvaluator:
         self,
         model: torch.nn.Module,
         tokenizer,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ):
         """
         Initialize the evaluator.
@@ -268,7 +268,7 @@ class LanguageModelEvaluator:
             tokens = [self.tokenizer.decode([token_id]) for token_id in input_ids[0, 1:].tolist()]
             token_analysis = [
                 {"token": token, "probability": prob}
-                for token, prob in zip(tokens, next_token_probs)
+                for token, prob in zip(tokens, next_token_probs, strict=False)
             ]
 
         return {
@@ -422,7 +422,7 @@ class LanguageModelEvaluator:
     def visualize_attention_patterns(
         self,
         text: str,
-        save_dir: Optional[str] = None,
+        save_dir: str | None = None,
     ) -> List[Figure]:
         """
         Visualize attention patterns across all layers and heads.
@@ -512,7 +512,7 @@ class LanguageModelEvaluator:
     def evaluate_on_dataset(
         self,
         texts: List[str],
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Dict[str, Any]:
         """
         Evaluate the model on a dataset of texts.
@@ -566,7 +566,7 @@ class LanguageModelEvaluator:
     def plot_perplexity_distribution(
         self,
         perplexities: List[float],
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> Figure:
         """
         Plot the distribution of perplexities.

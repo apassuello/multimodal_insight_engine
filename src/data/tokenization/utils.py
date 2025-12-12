@@ -17,7 +17,7 @@ SPECIAL NOTES:
 
 # src/data/tokenization/utils.py
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -37,7 +37,7 @@ class TransformerTextDataset(Dataset):
         self,
         texts: List[str],
         tokenizer: BaseTokenizer,
-        max_length: Optional[int] = None,
+        max_length: int | None = None,
         add_bos: bool = True,
         add_eos: bool = True,
         return_tensors: bool = True,
@@ -116,12 +116,12 @@ class TransformerTextDataset(Dataset):
 def create_transformer_dataloaders(
     train_texts: List[str],
     tokenizer: BaseTokenizer,
-    val_texts: Optional[List[str]] = None,
+    val_texts: List[str] | None = None,
     batch_size: int = 32,
-    max_length: Optional[int] = None,
+    max_length: int | None = None,
     shuffle: bool = True,
     num_workers: int = 0,
-) -> Tuple[DataLoader, Optional[DataLoader]]:
+) -> Tuple[DataLoader, DataLoader | None]:
     """
     Create DataLoaders for transformer training.
 
@@ -209,7 +209,7 @@ def transformer_collate_fn(
         padded_ids = torch.zeros((len(batch), max_len), dtype=input_ids[0].dtype)
         padded_masks = torch.zeros((len(batch), max_len), dtype=attention_masks[0].dtype)
 
-        for i, (ids, mask) in enumerate(zip(input_ids, attention_masks)):
+        for i, (ids, mask) in enumerate(zip(input_ids, attention_masks, strict=False)):
             padded_ids[i, : ids.size(0)] = ids
             padded_masks[i, : mask.size(0)] = mask
 

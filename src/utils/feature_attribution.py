@@ -20,7 +20,7 @@ SPECIAL NOTES:
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,7 +81,7 @@ class GradCAM:
     def __call__(
         self,
         input_image: torch.Tensor,
-        target_class: Optional[int] = None,
+        target_class: int | None = None,
     ) -> Tuple[np.ndarray, torch.Tensor]:
         """
         Generate a GradCAM heatmap.
@@ -164,8 +164,8 @@ class IntegratedGradients:
     def __call__(
         self,
         input_tensor: torch.Tensor,
-        target_class: Optional[int] = None,
-        baseline: Optional[torch.Tensor] = None,
+        target_class: int | None = None,
+        baseline: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute integrated gradients for an input.
@@ -257,7 +257,7 @@ class SaliencyMap:
     def __call__(
         self,
         input_tensor: torch.Tensor,
-        target_class: Optional[int] = None,
+        target_class: int | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute saliency map for an input.
@@ -411,7 +411,7 @@ def attribution_for_multimodal_model(
     image: torch.Tensor,
     text: Union[str, torch.Tensor],
     attribution_method: str = "grad_cam",
-    target_class: Optional[int] = None,
+    target_class: int | None = None,
     **kwargs,
 ) -> Dict[str, Any]:
     """

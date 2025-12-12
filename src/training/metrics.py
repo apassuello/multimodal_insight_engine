@@ -64,7 +64,7 @@ class Accuracy:
             self.correct += (pred == target).sum().item()
         else:
             _, pred = torch.topk(pred, k=self.top_k, dim=-1)
-            self.correct += sum(1 for p, t in zip(pred, target) if t in p)
+            self.correct += sum(1 for p, t in zip(pred, target, strict=False) if t in p)
         self.total += target.size(0)
 
     def compute(self) -> float:

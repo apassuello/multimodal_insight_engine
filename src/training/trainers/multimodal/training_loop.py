@@ -21,7 +21,8 @@ SPECIAL NOTES:
 
 import logging
 from collections import defaultdict
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -42,12 +43,12 @@ class TrainingLoop:
         device: torch.device,
         mixed_precision: bool = False,
         accumulation_steps: int = 1,
-        clip_grad_norm: Optional[float] = None,
+        clip_grad_norm: float | None = None,
         log_steps: int = 50,
-        scheduler: Optional[Any] = None,
+        scheduler: Any | None = None,
         enable_diagnostics: bool = True,
         check_feature_collapse: bool = True,
-        grad_scheduler: Optional[Any] = None,
+        grad_scheduler: Any | None = None,
     ):
         """
         Initialize the training loop.
@@ -96,7 +97,7 @@ class TrainingLoop:
         prepare_model_inputs_fn: Callable,
         prepare_loss_inputs_fn: Callable,
         to_device_fn: Callable,
-        evaluation_fn: Optional[Callable] = None,
+        evaluation_fn: Callable | None = None,
         evaluation_steps: int = 0,
     ) -> Dict[str, float]:
         """

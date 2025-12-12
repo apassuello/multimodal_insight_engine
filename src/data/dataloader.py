@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -49,7 +49,7 @@ def create_dataloader(
     num_workers: int = 0,
     pin_memory: bool = True,
     drop_last: bool = False,
-    collate_fn: Optional[callable] = None,
+    collate_fn: callable | None = None,
 ) -> DataLoader:
     """
     Create a DataLoader from a dataset.
@@ -95,11 +95,11 @@ def collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
 
 def get_dataloaders(
     train_data: Dict[str, torch.Tensor],
-    val_data: Optional[Dict[str, torch.Tensor]] = None,
-    test_data: Optional[Dict[str, torch.Tensor]] = None,
+    val_data: Dict[str, torch.Tensor] | None = None,
+    test_data: Dict[str, torch.Tensor] | None = None,
     batch_size: int = 32,
     num_workers: int = 0,
-) -> Tuple[DataLoader, Optional[DataLoader], Optional[DataLoader]]:
+) -> Tuple[DataLoader, DataLoader | None, DataLoader | None]:
     """
     Create DataLoaders for train, validation, and test sets.
 

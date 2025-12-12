@@ -1,6 +1,6 @@
 import os
 import random
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from src.utils.logging import get_logger
 
@@ -15,7 +15,7 @@ class WMTDataLoader:
         source_lang: str,
         target_lang: str,
         batch_size: int = 32,
-        max_examples: Optional[int] = None,
+        max_examples: int | None = None,
         seed: int = 42,
         shuffle: bool = True,
     ):
@@ -71,7 +71,7 @@ class WMTDataLoader:
         # Filter out empty lines and lines that are too long or short
         filtered_pairs = [
             (src, tgt)
-            for src, tgt in zip(src_data, tgt_data)
+            for src, tgt in zip(src_data, tgt_data, strict=False)
             if src and tgt and len(src.split()) <= 100 and len(tgt.split()) <= 100
         ]
 
@@ -82,7 +82,7 @@ class WMTDataLoader:
             filtered_pairs = filtered_pairs[: self.max_examples]
 
         # Unzip the pairs
-        src_data, tgt_data = zip(*filtered_pairs) if filtered_pairs else ([], [])
+        src_data, tgt_data = zip(*filtered_pairs, strict=False) if filtered_pairs else ([], [])
 
         logger.info(f"Loaded {len(src_data)} parallel sentences")
 

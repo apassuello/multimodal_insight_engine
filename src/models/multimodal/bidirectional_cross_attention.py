@@ -15,7 +15,7 @@ DEPENDENCIES:
 """
 
 import os
-from typing import Dict, Optional
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -102,8 +102,8 @@ class BidirectionalCrossAttention(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        vision_mask: Optional[torch.Tensor] = None,
-        text_mask: Optional[torch.Tensor] = None,
+        vision_mask: torch.Tensor | None = None,
+        text_mask: torch.Tensor | None = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass for bidirectional cross-attention.

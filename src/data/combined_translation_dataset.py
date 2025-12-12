@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 from src.utils.logging import get_logger
 
@@ -17,7 +17,7 @@ class CombinedTranslationDataset:
         self,
         src_lang: str = "de",
         tgt_lang: str = "en",
-        datasets: Optional[Dict[str, int]] = None,  # Dict of dataset_name: max_examples
+        datasets: Dict[str, int] | None = None,  # Dict of dataset_name: max_examples
         seed: int = 42,
     ):
         """

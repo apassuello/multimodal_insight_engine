@@ -9,7 +9,7 @@ SPECIAL NOTES: Supports temperature, top-k, and top-p sampling strategies.
 """
 
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -27,7 +27,7 @@ class TextGenerator:
         self,
         model: torch.nn.Module,
         tokenizer,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ):
         """
         Initialize the text generator.
@@ -66,8 +66,8 @@ class TextGenerator:
         prompt: str,
         max_new_tokens: int = 50,
         temperature: float = 1.0,
-        top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
+        top_k: int | None = None,
+        top_p: float | None = None,
         do_sample: bool = True,
         num_return_sequences: int = 1,
         return_attention: bool = False,

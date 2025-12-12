@@ -7,17 +7,16 @@ name = "multimodal_insight_engine"
 version = "0.1.0"
 description = "Advanced portfolio project implementing transformer-based models from scratch with Constitutional AI safety principles"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 authors = [
     {name = "Arthur Passuello"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.urls]
@@ -28,8 +27,8 @@ Repository = "https://github.com/apassuello/multimodal_insight_engine"
 # Ruff - Modern Python Linter (Replaces flake8, pylint, isort, and more)
 # ==============================================================================
 [tool.ruff]
-# Target Python 3.8+ for compatibility
-target-version = "py38"
+# Target Python 3.10+ for compatibility
+target-version = "py310"
 
 # Line length matches Black
 line-length = 100
@@ -107,7 +106,7 @@ lines-after-imports = 2
 # ==============================================================================
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py310', 'py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -126,7 +125,7 @@ exclude = '''
 # MyPy - Static Type Checker
 # ==============================================================================
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # Gradually enable

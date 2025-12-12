@@ -1,5 +1,5 @@
 # src/data/tokenization/simple_tokenizer.py
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from src.utils.logging import get_logger
 
@@ -21,7 +21,7 @@ class WhitespaceTokenizer(BaseTokenizer):
 
     def __init__(
         self,
-        vocab: Optional[Vocabulary] = None,
+        vocab: Vocabulary | None = None,
         split_on_punct: bool = True,
         lower_case: bool = True,
     ):
@@ -189,7 +189,7 @@ class SimpleTokenizer:
 
     def __init__(
         self,
-        pretrained_model_name: Optional[str] = None,
+        pretrained_model_name: str | None = None,
         max_length: int = 77,
         add_special_tokens: bool = True,
     ):

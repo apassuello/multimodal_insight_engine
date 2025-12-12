@@ -13,7 +13,6 @@ SPECIAL NOTES: This module follows the architecture described in "Attention is A
 """
 
 import os
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -92,7 +91,7 @@ class TransformerEncoderLayer(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the encoder layer.
@@ -149,7 +148,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(
         self,
-        vocab_size: Optional[int] = None,
+        vocab_size: int | None = None,
         d_model: int = 512,
         num_heads: int = 8,
         num_layers: int = 6,
@@ -223,7 +222,7 @@ class TransformerEncoder(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the encoder.
@@ -286,8 +285,8 @@ class Transformer(BaseModel):
         dropout: float = 0.1,
         max_seq_length: int = 5000,
         positional_encoding: str = "sinusoidal",
-        input_dim: Optional[int] = None,
-        output_dim: Optional[int] = None,
+        input_dim: int | None = None,
+        output_dim: int | None = None,
     ):
         """
         Initialize the transformer model.
@@ -329,7 +328,7 @@ class Transformer(BaseModel):
         if output_dim is not None and output_dim != d_model:
             self.output_projection = nn.Linear(d_model, output_dim)
 
-    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
         """
         Forward pass for the transformer.
 
@@ -447,8 +446,8 @@ class TransformerDecoderLayer(nn.Module):
         self,
         x: torch.Tensor,
         memory: torch.Tensor,
-        tgt_mask: Optional[torch.Tensor] = None,
-        memory_mask: Optional[torch.Tensor] = None,
+        tgt_mask: torch.Tensor | None = None,
+        memory_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the decoder layer.
@@ -520,7 +519,7 @@ class TransformerDecoder(nn.Module):
 
     def __init__(
         self,
-        vocab_size: Optional[int] = None,
+        vocab_size: int | None = None,
         d_model: int = 512,
         num_heads: int = 8,
         num_layers: int = 6,
@@ -594,8 +593,8 @@ class TransformerDecoder(nn.Module):
         self,
         x: torch.Tensor,
         memory: torch.Tensor,
-        tgt_mask: Optional[torch.Tensor] = None,
-        memory_mask: Optional[torch.Tensor] = None,
+        tgt_mask: torch.Tensor | None = None,
+        memory_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the decoder.
@@ -779,9 +778,9 @@ class EncoderDecoderTransformer(BaseModel):
         self,
         src: torch.Tensor,
         tgt: torch.Tensor,
-        src_mask: Optional[torch.Tensor] = None,
-        tgt_mask: Optional[torch.Tensor] = None,
-        memory_mask: Optional[torch.Tensor] = None,
+        src_mask: torch.Tensor | None = None,
+        tgt_mask: torch.Tensor | None = None,
+        memory_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for the transformer.
@@ -820,7 +819,7 @@ class EncoderDecoderTransformer(BaseModel):
         # Return logits without applying softmax
         return output
 
-    def encode(self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def encode(self, src: torch.Tensor, src_mask: torch.Tensor | None = None) -> torch.Tensor:
         """
         Encode source sequence.
 
@@ -881,8 +880,8 @@ class EncoderDecoderTransformer(BaseModel):
         self,
         tgt: torch.Tensor,
         memory: torch.Tensor,
-        tgt_mask: Optional[torch.Tensor] = None,
-        memory_mask: Optional[torch.Tensor] = None,
+        tgt_mask: torch.Tensor | None = None,
+        memory_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Decode target sequence given encoder memory.
@@ -912,8 +911,8 @@ class EncoderDecoderTransformer(BaseModel):
         max_len: int,
         bos_token_id: int,
         eos_token_id: int,
-        src_mask: Optional[torch.Tensor] = None,
-        memory_mask: Optional[torch.Tensor] = None,
+        src_mask: torch.Tensor | None = None,
+        memory_mask: torch.Tensor | None = None,
         temperature: float = 1.0,
     ) -> torch.Tensor:
         """

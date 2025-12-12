@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.safety.evaluator import SafetyEvaluator
 
@@ -17,9 +17,9 @@ class AdversarialRobustnessEvaluator:
 
     def __init__(
         self,
-        safety_evaluator: Optional[SafetyEvaluator] = None,
-        jailbreak_phrases: Optional[List[str]] = None,
-        metrics: Optional[List[str]] = None,
+        safety_evaluator: SafetyEvaluator | None = None,
+        jailbreak_phrases: List[str] | None = None,
+        metrics: List[str] | None = None,
     ):
         """
         Initialize the adversarial robustness evaluator.

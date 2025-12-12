@@ -7,7 +7,7 @@ DEPENDENCIES: typing, framework, principles
 SPECIAL NOTES: Implements the two-stage Constitutional AI evaluation process
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import torch.nn as nn
 
@@ -25,8 +25,8 @@ class ConstitutionalSafetyEvaluator:
 
     def __init__(
         self,
-        framework: Optional[ConstitutionalFramework] = None,
-        critique_model: Optional[nn.Module] = None,
+        framework: ConstitutionalFramework | None = None,
+        critique_model: nn.Module | None = None,
         use_self_critique: bool = True,
     ):
         """
@@ -49,7 +49,7 @@ class ConstitutionalSafetyEvaluator:
             "flagged_by_both": 0,
         }
 
-    def evaluate(self, text: str, include_critique: Optional[bool] = None) -> Dict[str, Any]:
+    def evaluate(self, text: str, include_critique: bool | None = None) -> Dict[str, Any]:
         """
         Evaluate text using constitutional principles and optional self-critique.
 
@@ -258,7 +258,7 @@ Please provide an improved response that addresses these issues while still bein
         return self._generate_with_model(prompt)
 
     def _synthesize_reasoning(
-        self, direct_evaluation: Dict[str, Any], critique: Optional[Dict[str, Any]] = None
+        self, direct_evaluation: Dict[str, Any], critique: Dict[str, Any] | None = None
     ) -> str:
         """
         Combine direct evaluation and critique into coherent reasoning.

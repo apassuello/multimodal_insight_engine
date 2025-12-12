@@ -5,7 +5,7 @@ to add specific capabilities like temperature scaling, normalization,
 projection heads, and hard negative mining.
 """
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -94,9 +94,9 @@ class ProjectionMixin:
         self,
         *args,
         use_projection: bool = False,
-        input_dim: Optional[int] = None,
+        input_dim: int | None = None,
         projection_dim: int = 256,
-        projection_hidden_dim: Optional[int] = None,
+        projection_hidden_dim: int | None = None,
         num_projection_layers: int = 2,
         **kwargs,
     ):

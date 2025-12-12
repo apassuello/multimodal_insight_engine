@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -42,8 +42,8 @@ class ScaledDotProductAttention(nn.Module):
         query: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-        device: Optional[torch.device] = None,
+        mask: torch.Tensor | None = None,
+        device: torch.device | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -114,7 +114,7 @@ class SimpleAttention(nn.Module):
     This class adds projections for query, key, and value vectors.
     """
 
-    def __init__(self, input_dim: int, attention_dim: Optional[int] = None, dropout: float = 0.0):
+    def __init__(self, input_dim: int, attention_dim: int | None = None, dropout: float = 0.0):
         """
         Initialize the attention mechanism.
 
@@ -156,10 +156,10 @@ class SimpleAttention(nn.Module):
     def forward(
         self,
         query: torch.Tensor,
-        key: Optional[torch.Tensor] = None,
-        value: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
-        device: Optional[torch.device] = None,
+        key: torch.Tensor | None = None,
+        value: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        device: torch.device | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the attention mechanism.
@@ -316,11 +316,11 @@ class MultiHeadAttention(nn.Module):
     def forward(
         self,
         query: torch.Tensor,
-        key: Optional[torch.Tensor] = None,
-        value: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
-        rotary_emb: Optional[nn.Module] = None,
-        device: Optional[torch.device] = None,
+        key: torch.Tensor | None = None,
+        value: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        rotary_emb: nn.Module | None = None,
+        device: torch.device | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the multi-head attention mechanism.

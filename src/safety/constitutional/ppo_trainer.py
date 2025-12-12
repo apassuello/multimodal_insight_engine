@@ -9,7 +9,7 @@ DEPENDENCIES: torch, transformers, typing
 SPECIAL NOTES: Implements full PPO algorithm for RLAIF Phase 2c
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -301,7 +301,7 @@ class PPOTrainer:
         rewards_list = []
 
         with torch.no_grad():
-            for prompt, response in zip(prompts, responses):
+            for prompt, response in zip(prompts, responses, strict=False):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
                 prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
@@ -368,7 +368,7 @@ class PPOTrainer:
         """
         values_list = []
 
-        for prompt, response in zip(prompts, responses):
+        for prompt, response in zip(prompts, responses, strict=False):
             # Tokenize prompt and response separately then concatenate
             # This ensures exact boundary alignment
             prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
@@ -441,7 +441,7 @@ class PPOTrainer:
         values_list = []
 
         with torch.no_grad():
-            for prompt, response in zip(prompts, responses):
+            for prompt, response in zip(prompts, responses, strict=False):
                 # Tokenize prompt to get prompt length
                 prompt_inputs = self.tokenizer(
                     prompt, return_tensors="pt", padding=True, truncation=True
@@ -497,7 +497,7 @@ class PPOTrainer:
 
         all_logprobs = []
 
-        for prompt, response in zip(prompts, responses):
+        for prompt, response in zip(prompts, responses, strict=False):
             # Tokenize prompt and response separately then concatenate
             # This ensures exact boundary alignment
             prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
@@ -567,7 +567,7 @@ class PPOTrainer:
         all_logprobs = []
 
         with torch.no_grad():
-            for prompt, response in zip(prompts, responses):
+            for prompt, response in zip(prompts, responses, strict=False):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
                 prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
@@ -639,7 +639,7 @@ class PPOTrainer:
         all_logprobs = []
 
         with torch.no_grad():
-            for prompt, response in zip(prompts, responses):
+            for prompt, response in zip(prompts, responses, strict=False):
                 # Tokenize prompt and response separately then concatenate
                 # This ensures exact boundary alignment
                 prompt_tokens = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
@@ -815,7 +815,7 @@ class PPOTrainer:
         num_epochs_per_batch: int = 4,
         max_length: int = 150,
         temperature: float = 1.0,
-        checkpoint_dir: Optional[str] = None,
+        checkpoint_dir: str | None = None,
         checkpoint_freq: int = 10,
     ) -> Dict[str, Any]:
         """

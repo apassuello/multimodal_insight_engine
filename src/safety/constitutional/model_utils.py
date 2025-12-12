@@ -9,7 +9,7 @@ SPECIAL NOTES: Provides model integration for constitutional training
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 import torch
 
@@ -24,19 +24,19 @@ class GenerationConfig:
     """Configuration for text generation."""
 
     max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
-    max_length: Optional[int] = None  # Deprecated, kept for compatibility
+    max_length: int | None = None  # Deprecated, kept for compatibility
     temperature: float = 1.0
     top_p: float = 1.0  # FIX: Disable top_p filtering (1.0 = no filtering)
     top_k: int = 0  # FIX: Disable top_k filtering (0 = no filtering)
     num_return_sequences: int = 1
     do_sample: bool = True
-    pad_token_id: Optional[int] = None
-    eos_token_id: Optional[int] = None
-    min_new_tokens: Optional[int] = None  # Minimum tokens to generate
+    pad_token_id: int | None = None
+    eos_token_id: int | None = None
+    min_new_tokens: int | None = None  # Minimum tokens to generate
 
 
 def load_model(
-    model_name: str = "gpt2", device: Optional[torch.device] = None, load_in_8bit: bool = False
+    model_name: str = "gpt2", device: torch.device | None = None, load_in_8bit: bool = False
 ):
     """
     Load a pretrained language model and tokenizer.
@@ -88,8 +88,8 @@ def generate_text(
     model,
     tokenizer,
     prompt: str,
-    generation_config: Optional[GenerationConfig] = None,
-    device: Optional[torch.device] = None,
+    generation_config: GenerationConfig | None = None,
+    device: torch.device | None = None,
 ) -> str:
     """
     Generate text from a prompt using the model.
@@ -166,9 +166,9 @@ def batch_generate(
     model,
     tokenizer,
     prompts: List[str],
-    generation_config: Optional[GenerationConfig] = None,
+    generation_config: GenerationConfig | None = None,
     batch_size: int = 4,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     show_progress: bool = True,
 ) -> List[str]:
     """

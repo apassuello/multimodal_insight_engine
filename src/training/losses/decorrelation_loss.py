@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -132,9 +132,9 @@ class DecorrelationLoss(nn.Module):
 
     def forward(
         self,
-        vision_features: Optional[torch.Tensor] = None,
-        text_features: Optional[torch.Tensor] = None,
-        features: Optional[torch.Tensor] = None,  # Generic features (if only one modality)
+        vision_features: torch.Tensor | None = None,
+        text_features: torch.Tensor | None = None,
+        features: torch.Tensor | None = None,  # Generic features (if only one modality)
         **kwargs,
     ) -> Dict[str, Any]:
         """

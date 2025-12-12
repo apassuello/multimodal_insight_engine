@@ -26,7 +26,7 @@ import copy
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -60,13 +60,13 @@ class MultistageTrainer:
         self,
         model: nn.Module,
         train_dataloader: DataLoader,
-        val_dataloader: Optional[DataLoader] = None,
-        test_dataloader: Optional[DataLoader] = None,
-        config: Optional[TrainingConfig] = None,
-        strategies: Optional[Dict[str, Dict]] = None,
+        val_dataloader: DataLoader | None = None,
+        test_dataloader: DataLoader | None = None,
+        config: TrainingConfig | None = None,
+        strategies: Dict[str, Dict] | None = None,
         checkpoint_dir: str = "checkpoints",
         log_dir: str = "logs",
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         **kwargs,
     ):
         """
@@ -556,7 +556,7 @@ class MultistageTrainer:
 
         return all_metrics
 
-    def _save_checkpoint(self, path: str, metrics: Optional[Dict[str, Any]] = None) -> None:
+    def _save_checkpoint(self, path: str, metrics: Dict[str, Any] | None = None) -> None:
         """
         Save a checkpoint of the current training state.
 
@@ -716,7 +716,7 @@ class MultistageTrainer:
 
         return self.stage_results[stage_idx]
 
-    def evaluate(self, dataloader: Optional[DataLoader] = None) -> Dict[str, float]:
+    def evaluate(self, dataloader: DataLoader | None = None) -> Dict[str, float]:
         """
         Evaluate the model on a dataset.
 

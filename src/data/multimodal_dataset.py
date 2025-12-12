@@ -21,7 +21,8 @@ import os
 import pickle  # Used for backward compatibility with old caches
 import random
 import time
-from typing import Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Dict, List, Union
 
 import PIL.Image as Image
 import torch
@@ -50,18 +51,18 @@ class MultimodalDataset(Dataset):
     def __init__(
         self,
         data_root: str,
-        image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None,
+        image_processor: Union[ImagePreprocessor, transforms.Compose] | None = None,
         text_tokenizer=None,  # Type depends on your tokenizer implementation
         max_text_length: int = 77,
         split: str = "train",
-        transform_image: Optional[Callable] = None,
-        transform_text: Optional[Callable] = None,
+        transform_image: Callable | None = None,
+        transform_text: Callable | None = None,
         metadata_file: str = "metadata.json",
         image_key: str = "image_path",
         caption_key: str = "caption",
-        label_key: Optional[str] = "label",
+        label_key: str | None = "label",
         image_dir: str = "images",
-        limit_samples: Optional[int] = None,
+        limit_samples: int | None = None,
         return_metadata: bool = False,
     ):
         """
@@ -362,13 +363,13 @@ class Flickr30kDataset(MultimodalDataset):
     def __init__(
         self,
         data_root: str = "",
-        image_processor: Optional[Union[ImagePreprocessor, transforms.Compose]] = None,
+        image_processor: Union[ImagePreprocessor, transforms.Compose] | None = None,
         text_tokenizer=None,
         max_text_length: int = 77,
         split: str = "train",
-        transform_image: Optional[Callable] = None,
-        transform_text: Optional[Callable] = None,
-        limit_samples: Optional[int] = None,
+        transform_image: Callable | None = None,
+        transform_text: Callable | None = None,
+        limit_samples: int | None = None,
         return_metadata: bool = False,
     ):
         """
@@ -726,11 +727,11 @@ class EnhancedMultimodalDataset(Dataset):
         max_text_length: int = 77,
         dataset_name: str = "flickr30k",
         synthetic_samples: int = 100,
-        cache_dir: Optional[str] = None,
-        max_samples: Optional[int] = None,
+        cache_dir: str | None = None,
+        max_samples: int | None = None,
         captions_per_image: int = 1,  # New parameter: Number of captions to use per image (1-5)
         min_samples_per_group: int = 2,  # Pass through semantic grouping parameters
-        max_samples_per_group: Optional[int] = None,
+        max_samples_per_group: int | None = None,
         cap_strategy: str = "random",
     ):
         """
@@ -1056,9 +1057,9 @@ class EnhancedMultimodalDataset(Dataset):
 
         # Thoroughly break position correlation by completely shuffling (for all splits)
         # This is critical to prevent the model from learning shortcuts
-        combined = list(zip(self.dataset, self.match_ids))
+        combined = list(zip(self.dataset, self.match_ids, strict=False))
         random.shuffle(combined)
-        self.dataset, self.match_ids = zip(*combined)
+        self.dataset, self.match_ids = zip(*combined, strict=False)
 
         # Unpack the shuffled data
         self.dataset = list(self.dataset)  # Convert back to list

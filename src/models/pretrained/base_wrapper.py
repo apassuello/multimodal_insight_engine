@@ -1,6 +1,6 @@
 # src/models/pretrained/base_wrapper.py
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -36,7 +36,7 @@ class PretrainedModelWrapper(nn.Module):
 
         torch.save(state_dict, path)
 
-    def load(self, path: str, map_location: Optional[str] = None) -> Dict[str, Any]:
+    def load(self, path: str, map_location: str | None = None) -> Dict[str, Any]:
         """Load wrapper configuration and model weights."""
         checkpoint = torch.load(path, map_location=map_location, weights_only=True)
 

@@ -1,6 +1,7 @@
 import os
 import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any, Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -15,14 +16,14 @@ logger = get_logger(__name__)
 def train_model(
     model: nn.Module,
     train_dataloader: torch.utils.data.DataLoader,
-    val_dataloader: Optional[torch.utils.data.DataLoader] = None,
+    val_dataloader: torch.utils.data.DataLoader | None = None,
     epochs: int = 10,
     learning_rate: float = 0.001,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
-    early_stopping_patience: Optional[int] = None,
-    device: Optional[Union[str, torch.device]] = None,
-    callbacks: Optional[List[Callable[[nn.Module, int, Dict[str, List[float]]], Any]]] = None,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
+    early_stopping_patience: int | None = None,
+    device: Union[str, torch.device] | None = None,
+    callbacks: List[Callable[[nn.Module, int, Dict[str, List[float]]], Any]] | None = None,
 ) -> Dict[str, List[float]]:
     """
     A generic training loop for PyTorch models.

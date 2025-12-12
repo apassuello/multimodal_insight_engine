@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,11 +36,11 @@ class GradientHandler:
     def __init__(
         self,
         model: nn.Module,
-        clip_value: Optional[float] = None,
-        component_ratios: Optional[Dict[str, float]] = None,
+        clip_value: float | None = None,
+        component_ratios: Dict[str, float] | None = None,
         balance_modalities: bool = False,
         log_frequency: int = 100,
-        visualization_dir: Optional[str] = None,
+        visualization_dir: str | None = None,
     ):
         """
         Initialize the gradient handler.

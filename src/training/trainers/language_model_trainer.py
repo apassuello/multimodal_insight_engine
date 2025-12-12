@@ -25,7 +25,6 @@ SPECIAL NOTES:
 import math
 import os
 import time
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import torch
@@ -50,12 +49,12 @@ class LanguageModelTrainer:
         self,
         model: nn.Module,
         train_dataloader: torch.utils.data.DataLoader,
-        val_dataloader: Optional[torch.utils.data.DataLoader] = None,
+        val_dataloader: torch.utils.data.DataLoader | None = None,
         learning_rate: float = 5e-5,
         weight_decay: float = 0.01,
         warmup_steps: int = 1000,
         max_grad_norm: float = 1.0,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         log_dir: str = "logs",
         **kwargs,
     ):

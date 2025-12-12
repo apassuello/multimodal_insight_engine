@@ -20,7 +20,7 @@ SPECIAL NOTES:
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -251,7 +251,7 @@ class DataHandler:
 
     def _extract_features(
         self, outputs: Dict[str, torch.Tensor]
-    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], str]:
+    ) -> Tuple[torch.Tensor | None, torch.Tensor | None, str]:
         """
         Extract features from model outputs with fallback.
 

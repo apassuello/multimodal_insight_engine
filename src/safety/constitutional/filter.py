@@ -8,7 +8,7 @@ SPECIAL NOTES: Extends safety filtering with principled transformations
 """
 
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from .framework import ConstitutionalFramework
 from .principles import setup_default_framework
@@ -23,8 +23,8 @@ class ConstitutionalSafetyFilter:
 
     def __init__(
         self,
-        constitutional_framework: Optional[ConstitutionalFramework] = None,
-        base_safety_evaluator: Optional[Any] = None,
+        constitutional_framework: ConstitutionalFramework | None = None,
+        base_safety_evaluator: Any | None = None,
         strict_mode: bool = False,
     ):
         """
@@ -52,7 +52,7 @@ class ConstitutionalSafetyFilter:
         }
 
     def validate_input(
-        self, input_text: str, metadata: Optional[Dict[str, Any]] = None, override: bool = False
+        self, input_text: str, metadata: Dict[str, Any] | None = None, override: bool = False
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Validate input text using constitutional principles.
@@ -113,7 +113,7 @@ class ConstitutionalSafetyFilter:
     def filter_output(
         self,
         output_text: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Dict[str, Any] | None = None,
         apply_transformations: bool = True,
     ) -> Tuple[str, Dict[str, Any]]:
         """

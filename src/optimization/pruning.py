@@ -9,7 +9,7 @@ SPECIAL NOTES: Supports magnitude, structured, and iterative pruning methods."""
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import torch.nn as nn
 import torch.nn.utils.prune as prune
@@ -27,9 +27,9 @@ class PruningConfig:
         self,
         method: str = "magnitude",  # "magnitude", "structured", "l1_unstructured", etc.
         amount: Union[float, int] = 0.2,  # Amount to prune (percentage or absolute)
-        dim: Optional[int] = None,  # Dimension for structured pruning
+        dim: int | None = None,  # Dimension for structured pruning
         n_iterations: int = 1,  # Number of pruning iterations
-        pruning_dims: Optional[List[str]] = None,  # Parameters to prune
+        pruning_dims: List[str] | None = None,  # Parameters to prune
         sparsity_distribution: str = "uniform",  # How to distribute sparsity
         reinitialize: bool = False,  # Whether to reinitialize pruned weights
     ):
@@ -74,7 +74,7 @@ class ModelPruner:
     def __init__(
         self,
         model: nn.Module,
-        config: Optional[PruningConfig] = None,
+        config: PruningConfig | None = None,
     ):
         """
         Initialize the model pruner.
