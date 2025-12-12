@@ -13,7 +13,7 @@ import json
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 # Safety categories
@@ -152,7 +152,7 @@ def calculate_category_score(matches: Dict[str, List[str]], text: str) -> float:
 def evaluate_text_safety(
     text: str,
     sensitivity: str = SENSITIVITY_MEDIUM,
-    safety_thresholds: Optional[Dict[str, float]] = None,
+    safety_thresholds: Dict[str, float] | None = None,
 ) -> Dict[str, Any]:
     """
     Evaluate text for various safety concerns.

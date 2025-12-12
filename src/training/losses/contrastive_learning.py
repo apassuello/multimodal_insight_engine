@@ -16,7 +16,7 @@ DEPENDENCIES:
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -149,8 +149,8 @@ def supervised_contrastive_loss(
 def compute_recall_at_k(
     similarity: torch.Tensor,
     K: List[int] = None,
-    v2t_targets: Optional[torch.Tensor] = None,
-    t2i_targets: Optional[torch.Tensor] = None,
+    v2t_targets: torch.Tensor | None = None,
+    t2i_targets: torch.Tensor | None = None,
 ) -> Dict[str, float]:
     """
     Compute recall@K metrics for image-text retrieval.
@@ -264,12 +264,12 @@ class MultiModalMixedContrastiveLoss(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
-        class_logits: Optional[torch.Tensor] = None,
-        class_labels: Optional[torch.Tensor] = None,
-        matching_logits: Optional[torch.Tensor] = None,
-        matching_labels: Optional[torch.Tensor] = None,
-        hard_negatives: Optional[Dict[str, torch.Tensor]] = None,
+        match_ids: List[str] | None = None,
+        class_logits: torch.Tensor | None = None,
+        class_labels: torch.Tensor | None = None,
+        matching_logits: torch.Tensor | None = None,
+        matching_labels: torch.Tensor | None = None,
+        hard_negatives: Dict[str, torch.Tensor] | None = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Compute mixed contrastive loss.

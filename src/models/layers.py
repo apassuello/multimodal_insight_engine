@@ -1,5 +1,5 @@
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -103,8 +103,8 @@ class FeedForwardBlock(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        hidden_dim: Optional[int] = None,
-        output_dim: Optional[int] = None,
+        hidden_dim: int | None = None,
+        output_dim: int | None = None,
         activation: Literal["relu", "gelu", "tanh", "sigmoid"] = "relu",
         dropout: float = 0.0,
         use_layer_norm: bool = False,

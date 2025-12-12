@@ -19,7 +19,7 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer
@@ -572,9 +572,9 @@ def _evaluate_harm_with_regex(text: str) -> Dict[str, Any]:
 
 def evaluate_harm_potential(
     text: str,
-    model: Optional[Any] = None,
-    tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None,
+    model: Any | None = None,
+    tokenizer: Any | None = None,
+    device: torch.device | None = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,  # NEW: Use regex as safety net
     logger=None,  # type: ignore
@@ -810,9 +810,9 @@ def _evaluate_truthfulness_with_regex(text: str) -> Dict[str, Any]:
 
 def evaluate_truthfulness(
     text: str,
-    model: Optional[Any] = None,
-    tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None,
+    model: Any | None = None,
+    tokenizer: Any | None = None,
+    device: torch.device | None = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
     logger=None,  # type: ignore
@@ -1082,9 +1082,9 @@ def _evaluate_fairness_with_regex(text: str) -> Dict[str, Any]:
 
 def evaluate_fairness(
     text: str,
-    model: Optional[Any] = None,
-    tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None,
+    model: Any | None = None,
+    tokenizer: Any | None = None,
+    device: torch.device | None = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
     logger=None,  # type: ignore
@@ -1258,9 +1258,9 @@ def _evaluate_autonomy_with_regex(text: str) -> Dict[str, Any]:
 
 def evaluate_autonomy_respect(
     text: str,
-    model: Optional[Any] = None,
-    tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None,
+    model: Any | None = None,
+    tokenizer: Any | None = None,
+    device: torch.device | None = None,
     use_ai: bool = True,
     hybrid_mode: bool = True,
     logger=None,  # type: ignore
@@ -1318,9 +1318,9 @@ def evaluate_autonomy_respect(
 
 
 def setup_default_framework(
-    model: Optional[Any] = None,
-    tokenizer: Optional[Any] = None,
-    device: Optional[torch.device] = None,
+    model: Any | None = None,
+    tokenizer: Any | None = None,
+    device: torch.device | None = None,
 ) -> ConstitutionalFramework:
     """
     Setup a constitutional framework with all four core principles.

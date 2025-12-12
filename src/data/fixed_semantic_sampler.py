@@ -9,7 +9,8 @@ for effective contrastive learning.
 import logging
 import random
 from collections import defaultdict
-from typing import Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Dict, List
 
 import torch
 from torch.utils.data import Dataset, Sampler
@@ -35,7 +36,7 @@ class FixedSemanticBatchSampler(Sampler):
         dataset: Dataset,
         batch_size: int,
         min_samples_per_group: int = 5,
-        max_samples_per_group: Optional[int] = None,
+        max_samples_per_group: int | None = None,
         shuffle: bool = True,
         drop_last: bool = True,
         verbose: bool = False,

@@ -67,7 +67,7 @@ class DictionaryDataset(Dataset):
                 keys = self.keys[: len(sample)]
 
             # Create dictionary from tuple
-            return dict(zip(keys, sample))
+            return dict(zip(keys, sample, strict=False))
 
         # If single item, assume it's the first key
         return {self.keys[0]: sample}

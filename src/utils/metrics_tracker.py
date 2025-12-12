@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -399,7 +399,7 @@ class MetricsTracker:
         diag_similarity: float,
         mean_similarity: float,
         std_similarity: float,
-        step: Optional[int] = None,
+        step: int | None = None,
     ) -> None:
         """
         Update metrics related to multimodal alignment quality.

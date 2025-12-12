@@ -16,7 +16,7 @@ DEPENDENCIES:
 """
 
 import os
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -75,7 +75,7 @@ class CrossModalAttention(nn.Module):
         self,
         query_features: torch.Tensor,
         key_features: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for cross-modal attention.

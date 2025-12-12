@@ -9,7 +9,7 @@ DEPENDENCIES: torch, typing, logging
 SPECIAL NOTES: Supports dynamic, static, and quantization-aware training methods."""
 
 import os
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import torch
 import torch.nn as nn
@@ -29,7 +29,7 @@ class QuantizationConfig:
     def __init__(
         self,
         quantization_type: str = "dynamic",  # "dynamic", "static", or "qat" (quantization-aware training)
-        dtype: Optional[torch.dtype] = None,  # torch.qint8, torch.float16, etc.
+        dtype: torch.dtype | None = None,  # torch.qint8, torch.float16, etc.
         quantize_weights: bool = True,
         quantize_activations: bool = True,
         bits: int = 8,  # 8-bit or 16-bit quantization
@@ -135,9 +135,9 @@ class DynamicQuantizer(ModelOptimizer):
     def __init__(
         self,
         model: nn.Module,
-        config: Optional[QuantizationConfig] = None,
+        config: QuantizationConfig | None = None,
         dtype: torch.dtype = torch.qint8,
-        qconfig_spec: Optional[Dict[Type[nn.Module], Any]] = None,
+        qconfig_spec: Dict[Type[nn.Module], Any] | None = None,
     ):
         """
         Initialize the dynamic quantizer.
@@ -212,12 +212,12 @@ class DynamicQuantizer(ModelOptimizer):
         def matches_pattern(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> bool:
             if len(modules) < len(pattern):
                 return False
-            return all(isinstance(m, p) for m, p in zip(modules, pattern))
+            return all(isinstance(m, p) for m, p in zip(modules, pattern, strict=False))
 
         # Helper function to fuse a sequence of modules
         def fuse_sequence(
             modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]
-        ) -> Optional[nn.Module]:
+        ) -> nn.Module | None:
             if pattern == (nn.Conv2d, nn.BatchNorm2d, nn.ReLU):
                 return ConvBnReLU2d(
                     modules[0], modules[1], modules[2]  # Conv2d  # BatchNorm2d  # ReLU
@@ -308,8 +308,8 @@ class StaticQuantizer(ModelOptimizer):
     def __init__(
         self,
         model: nn.Module,
-        config: Optional[QuantizationConfig] = None,
-        calibration_loader: Optional[torch.utils.data.DataLoader] = None,
+        config: QuantizationConfig | None = None,
+        calibration_loader: torch.utils.data.DataLoader | None = None,
     ):
         """
         Initialize the static quantizer.
@@ -401,7 +401,7 @@ class StaticQuantizer(ModelOptimizer):
                     break
 
     def _fuse_modules(
-        self, model: nn.Module, fusion_patterns: Optional[List[Tuple[Type[nn.Module], ...]]] = None
+        self, model: nn.Module, fusion_patterns: List[Tuple[Type[nn.Module], ...]] | None = None
     ) -> nn.Module:
         """
         Fuse modules for improved quantization.
@@ -427,12 +427,12 @@ class StaticQuantizer(ModelOptimizer):
         def matches_pattern(modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]) -> bool:
             if len(modules) < len(pattern):
                 return False
-            return all(isinstance(m, p) for m, p in zip(modules, pattern))
+            return all(isinstance(m, p) for m, p in zip(modules, pattern, strict=False))
 
         # Helper function to fuse a sequence of modules
         def fuse_sequence(
             modules: List[nn.Module], pattern: Tuple[Type[nn.Module], ...]
-        ) -> Optional[nn.Module]:
+        ) -> nn.Module | None:
             if pattern == (nn.Linear, nn.LayerNorm):
                 # Custom fusion logic for Linear + LayerNorm
                 return nn.Sequential(modules[0], modules[1])

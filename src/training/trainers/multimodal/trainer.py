@@ -22,7 +22,7 @@ DEPENDENCIES:
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Third-party imports
 import torch
@@ -165,26 +165,26 @@ class MultimodalTrainer:
         self,
         model: nn.Module,
         train_dataloader: DataLoader,
-        val_dataloader: Optional[DataLoader] = None,
-        test_dataloader: Optional[DataLoader] = None,
-        optimizer: Optional[Any] = None,
-        scheduler: Optional[Any] = None,
-        loss_fn: Optional[nn.Module] = None,
+        val_dataloader: DataLoader | None = None,
+        test_dataloader: DataLoader | None = None,
+        optimizer: Any | None = None,
+        scheduler: Any | None = None,
+        loss_fn: nn.Module | None = None,
         num_epochs: int = 20,
         learning_rate: float = 1e-4,
         weight_decay: float = 0.01,
         warmup_steps: int = 0,
         checkpoint_dir: str = "checkpoints",
         log_dir: str = "logs",
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         mixed_precision: bool = False,
         accumulation_steps: int = 1,
         evaluation_steps: int = 0,
         log_steps: int = 50,
-        early_stopping_patience: Optional[int] = None,
-        clip_grad_norm: Optional[float] = None,
+        early_stopping_patience: int | None = None,
+        clip_grad_norm: float | None = None,
         balance_modality_gradients: bool = False,
-        args: Optional[Any] = None,
+        args: Any | None = None,
     ):
         """
         Initialize the multimodal trainer.

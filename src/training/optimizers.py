@@ -19,7 +19,7 @@ SPECIAL NOTES:
 
 import math
 import os
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import torch
 import torch.optim as optim
@@ -51,7 +51,7 @@ class AdamW(optim.AdamW):
         eps: float = 1e-8,
         weight_decay: float = 0,
         amsgrad: bool = False,
-        clip_grad: Optional[float] = None,
+        clip_grad: float | None = None,
     ):
         super().__init__(
             params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, amsgrad=amsgrad
@@ -166,7 +166,7 @@ class OneCycleLR(_LRScheduler):
             float: The loss value if closure is provided
         """
         self.step_count += 1
-        for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
+        for param_group, lr in zip(self.optimizer.param_groups, self.get_lr(), strict=False):
             param_group["lr"] = lr
         return self.optimizer.step(closure) if closure is not None else None
 
@@ -229,7 +229,7 @@ class LinearWarmupLR(_LRScheduler):
     """
 
     def __init__(
-        self, optimizer, warmup_steps: int, start_lr: float = 0, target_lr: Optional[float] = None
+        self, optimizer, warmup_steps: int, start_lr: float = 0, target_lr: float | None = None
     ):
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr

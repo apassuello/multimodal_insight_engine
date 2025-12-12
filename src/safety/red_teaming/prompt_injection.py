@@ -2,7 +2,8 @@
 
 import random
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any, Dict, List, Tuple
 
 from src.utils.logging import get_logger
 
@@ -238,8 +239,8 @@ class PromptInjectionTester:
     def generate_injection(
         self,
         prompt: str,
-        target_action: Optional[str] = None,
-        injection_position: Optional[str] = None,
+        target_action: str | None = None,
+        injection_position: str | None = None,
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate a prompt injection based on a legitimate prompt.

@@ -17,7 +17,7 @@ DEPENDENCIES:
 """
 
 import os
-from typing import Dict, Optional
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -34,9 +34,9 @@ class CombinedLoss(nn.Module):
     def __init__(
         self,
         primary_loss: nn.Module,
-        secondary_loss: Optional[nn.Module] = None,
+        secondary_loss: nn.Module | None = None,
         secondary_loss_weight: float = 0.5,
-        tertiary_loss: Optional[nn.Module] = None,
+        tertiary_loss: nn.Module | None = None,
         tertiary_loss_weight: float = 0.3,
     ):
         """

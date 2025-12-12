@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch
@@ -272,8 +272,8 @@ class CLIPStyleDirectProjection(nn.Module):
 
     def forward(
         self,
-        images: Optional[torch.Tensor] = None,
-        text_data: Optional[Union[Dict[str, torch.Tensor], torch.Tensor]] = None,
+        images: torch.Tensor | None = None,
+        text_data: Union[Dict[str, torch.Tensor], torch.Tensor] | None = None,
     ) -> Dict[str, Any]:
         """
         Forward pass for the CLIP-style model.

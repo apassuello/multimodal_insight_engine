@@ -8,7 +8,7 @@ clusters compared to unsupervised contrastive learning.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 
@@ -69,9 +69,9 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        similarity_scores: Optional[torch.Tensor] = None,
-        class_weights: Optional[torch.Tensor] = None,
+        labels: torch.Tensor | None = None,
+        similarity_scores: torch.Tensor | None = None,
+        class_weights: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -169,8 +169,8 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
 
     def _create_positive_mask(
         self,
-        labels: Optional[torch.Tensor],
-        similarity_scores: Optional[torch.Tensor],
+        labels: torch.Tensor | None,
+        similarity_scores: torch.Tensor | None,
         batch_size: int,
         device: torch.device,
     ) -> torch.Tensor:
@@ -204,8 +204,8 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         logits_mask: torch.Tensor,
         pos_per_sample: torch.Tensor,
         valid_samples: torch.Tensor,
-        labels: Optional[torch.Tensor],
-        class_weights: Optional[torch.Tensor],
+        labels: torch.Tensor | None,
+        class_weights: torch.Tensor | None,
     ) -> torch.Tensor:
         """Compute supervised contrastive loss within a modality."""
         # Compute similarity
@@ -244,8 +244,8 @@ class SupervisedContrastiveLoss(BaseSupervisedLoss):
         logits_mask: torch.Tensor,
         pos_per_sample: torch.Tensor,
         valid_samples: torch.Tensor,
-        labels: Optional[torch.Tensor],
-        class_weights: Optional[torch.Tensor],
+        labels: torch.Tensor | None,
+        class_weights: torch.Tensor | None,
     ) -> torch.Tensor:
         """Compute supervised contrastive loss across modalities."""
         # Compute cross-modal similarity

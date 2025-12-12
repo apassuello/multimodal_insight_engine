@@ -15,7 +15,7 @@ DEPENDENCIES:
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -110,8 +110,8 @@ class CoAttentionFusion(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        vision_mask: Optional[torch.Tensor] = None,
-        text_mask: Optional[torch.Tensor] = None,
+        vision_mask: torch.Tensor | None = None,
+        text_mask: torch.Tensor | None = None,
     ) -> Dict[str, Any]:
         """
         Forward pass for co-attention fusion.

@@ -15,7 +15,7 @@ DEPENDENCIES:
 
 import os
 import random
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from tqdm import tqdm
 
@@ -219,10 +219,12 @@ class WMTDataset:
                 )
 
             # Clean up - remove empty lines
-            cleaned_data = [(s, t) for s, t in zip(src_data, tgt_data) if s.strip() and t.strip()]
+            cleaned_data = [
+                (s, t) for s, t in zip(src_data, tgt_data, strict=False) if s.strip() and t.strip()
+            ]
 
             if cleaned_data:
-                src_data, tgt_data = zip(*cleaned_data)
+                src_data, tgt_data = zip(*cleaned_data, strict=False)
                 src_data, tgt_data = list(src_data), list(tgt_data)
             else:
                 src_data, tgt_data = [], []
@@ -230,10 +232,10 @@ class WMTDataset:
             # Limit dataset size if specified
             if self.max_examples is not None and len(src_data) > self.max_examples:
                 # Shuffle with a fixed random seed for reproducibility
-                combined = list(zip(src_data, tgt_data))
+                combined = list(zip(src_data, tgt_data, strict=False))
                 random.shuffle(combined)
                 combined = combined[: self.max_examples]
-                src_data, tgt_data = zip(*combined)
+                src_data, tgt_data = zip(*combined, strict=False)
                 src_data, tgt_data = list(src_data), list(tgt_data)
 
             # Cache the dataset to files for faster loading next time
@@ -292,7 +294,7 @@ class WMTDataset:
         except Exception as e:
             logger.info(f"Warning: Failed to save cache files: {e}")
 
-    def _load_from_cache(self) -> Optional[Tuple[List[str], List[str]]]:
+    def _load_from_cache(self) -> Tuple[List[str], List[str]] | None:
         """Try to load dataset from cache files."""
         src_file, tgt_file = self._get_cache_path()
 
@@ -307,10 +309,10 @@ class WMTDataset:
                 if len(src_data) > 0 and len(tgt_data) > 0:
                     # Apply max_examples limit if needed
                     if self.max_examples and len(src_data) > self.max_examples:
-                        combined = list(zip(src_data, tgt_data))
+                        combined = list(zip(src_data, tgt_data, strict=False))
                         random.shuffle(combined)
                         combined = combined[: self.max_examples]
-                        src_data, tgt_data = zip(*combined)
+                        src_data, tgt_data = zip(*combined, strict=False)
                         src_data, tgt_data = list(src_data), list(tgt_data)
 
                     return src_data, tgt_data

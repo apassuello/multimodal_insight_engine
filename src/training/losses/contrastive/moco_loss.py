@@ -10,7 +10,7 @@ Implements Momentum Contrast approach with:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn.functional as F
@@ -101,7 +101,7 @@ class MoCoLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
+        match_ids: List[str] | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -208,7 +208,7 @@ class MoCoLoss(BaseContrastiveLoss):
         self.queue_fill_level = self.queue_fill_level.to(device)
 
     def _create_match_matrix(
-        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
+        self, batch_size: int, match_ids: List[str] | None, device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating which pairs should match."""
         if match_ids is None:

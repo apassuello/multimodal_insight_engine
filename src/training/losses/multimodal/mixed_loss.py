@@ -10,7 +10,7 @@ Combines multiple contrastive objectives:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -37,9 +37,9 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
     def __init__(
         self,
         temperature: float = 0.07,
-        loss_weights: Optional[Dict[str, float]] = None,
+        loss_weights: Dict[str, float] | None = None,
         reduction: str = "mean",
-        input_dim: Optional[int] = None,
+        input_dim: int | None = None,
         projection_dim: int = 256,
         use_projection: bool = False,
         **kwargs,
@@ -80,8 +80,8 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
-        labels: Optional[torch.Tensor] = None,
+        match_ids: List[str] | None = None,
+        labels: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -167,7 +167,7 @@ class MixedMultimodalLoss(BaseContrastiveLoss):
         }
 
     def _create_targets(
-        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
+        self, batch_size: int, match_ids: List[str] | None, device: torch.device
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Create target indices based on semantic matching IDs.

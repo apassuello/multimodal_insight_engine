@@ -41,7 +41,7 @@ def calculate_bleu(
     smoothing = SmoothingFunction().method1
     scores = []
 
-    for hyp, ref in zip(hyp_tokens, ref_tokens):
+    for hyp, ref in zip(hyp_tokens, ref_tokens, strict=False):
         score = sentence_bleu([ref], hyp, weights=weights, smoothing_function=smoothing)
         scores.append(score)
 
@@ -61,7 +61,7 @@ def calculate_ter(hypotheses: List[str], references: List[str]) -> float:
     """
     scores = []
 
-    for hyp, ref in zip(hypotheses, references):
+    for hyp, ref in zip(hypotheses, references, strict=False):
         # Tokenize
         hyp_tokens = nltk.word_tokenize(hyp.lower())
         ref_tokens = nltk.word_tokenize(ref.lower())

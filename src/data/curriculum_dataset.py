@@ -108,7 +108,7 @@ class CurriculumTranslationDataset(Dataset):
 
         if self.curriculum_strategy == "length":
             # Length-based curriculum: shorter sentences are easier
-            for src, tgt in zip(self.source_sequences, self.target_sequences):
+            for src, tgt in zip(self.source_sequences, self.target_sequences, strict=False):
                 # Use maximum length as difficulty
                 difficulty = max(len(src), len(tgt))
                 difficulties.append(difficulty)
@@ -125,7 +125,7 @@ class CurriculumTranslationDataset(Dataset):
             token_rarity = {token: total_tokens / count for token, count in counter.items()}
 
             # Calculate average token rarity for each example
-            for src, tgt in zip(self.source_sequences, self.target_sequences):
+            for src, tgt in zip(self.source_sequences, self.target_sequences, strict=False):
                 # Average rarity across both source and target
                 src_rarity = sum(token_rarity.get(t, 1.0) for t in src) / max(1, len(src))
                 tgt_rarity = sum(token_rarity.get(t, 1.0) for t in tgt) / max(1, len(tgt))
@@ -134,7 +134,7 @@ class CurriculumTranslationDataset(Dataset):
 
         elif self.curriculum_strategy == "similarity":
             # Similarity-based curriculum: sentences with similar lengths are easier
-            for src, tgt in zip(self.source_sequences, self.target_sequences):
+            for src, tgt in zip(self.source_sequences, self.target_sequences, strict=False):
                 # Ratio of longer to shorter (always ≥ 1.0)
                 longer = max(len(src), len(tgt))
                 shorter = min(len(src), len(tgt))
@@ -158,7 +158,7 @@ class CurriculumTranslationDataset(Dataset):
     def _calculate_difficulties_by_length(self) -> List[float]:
         """Calculate difficulty scores based on sequence length."""
         difficulties = []
-        for src, tgt in zip(self.source_sequences, self.target_sequences):
+        for src, tgt in zip(self.source_sequences, self.target_sequences, strict=False):
             difficulty = max(len(src), len(tgt))
             difficulties.append(difficulty)
         return difficulties

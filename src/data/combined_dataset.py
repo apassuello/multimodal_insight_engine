@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 from src.utils.logging import get_logger
 
@@ -18,7 +18,7 @@ class CombinedDataset:
         self,
         src_lang: str = "de",
         tgt_lang: str = "en",
-        max_examples: Optional[int] = None,
+        max_examples: int | None = None,
     ):
         """
         Initialize the combined dataset.
@@ -49,9 +49,9 @@ class CombinedDataset:
         # Shuffle the combined data
         import random
 
-        combined = list(zip(self.src_data, self.tgt_data))
+        combined = list(zip(self.src_data, self.tgt_data, strict=False))
         random.shuffle(combined)
-        self.src_data, self.tgt_data = zip(*combined)
+        self.src_data, self.tgt_data = zip(*combined, strict=False)
 
         # Convert back to lists
         self.src_data = list(self.src_data)

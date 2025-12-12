@@ -5,7 +5,7 @@ including label handling, class weighting, and common supervised patterns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import torch
 import torch.nn as nn
@@ -30,13 +30,13 @@ class BaseSupervisedLoss(NormalizationMixin, ProjectionMixin, nn.Module, ABC):
 
     def __init__(
         self,
-        num_classes: Optional[int] = None,
-        class_weights: Optional[torch.Tensor] = None,
+        num_classes: int | None = None,
+        class_weights: torch.Tensor | None = None,
         label_smoothing: float = 0.0,
         normalize_features: bool = False,
         use_projection: bool = False,
-        input_dim: Optional[int] = None,
-        projection_dim: Optional[int] = None,
+        input_dim: int | None = None,
+        projection_dim: int | None = None,
         reduction: str = "mean",
         **kwargs,
     ):
@@ -81,7 +81,7 @@ class BaseSupervisedLoss(NormalizationMixin, ProjectionMixin, nn.Module, ABC):
             self.class_weights = None
 
     def apply_label_smoothing(
-        self, labels: torch.Tensor, num_classes: Optional[int] = None
+        self, labels: torch.Tensor, num_classes: int | None = None
     ) -> torch.Tensor:
         """
         Apply label smoothing to hard labels.
@@ -124,7 +124,7 @@ class BaseSupervisedLoss(NormalizationMixin, ProjectionMixin, nn.Module, ABC):
         return smoothed
 
     def weighted_cross_entropy(
-        self, logits: torch.Tensor, labels: torch.Tensor, weights: Optional[torch.Tensor] = None
+        self, logits: torch.Tensor, labels: torch.Tensor, weights: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Compute weighted cross-entropy loss.
@@ -180,7 +180,7 @@ class BaseSupervisedLoss(NormalizationMixin, ProjectionMixin, nn.Module, ABC):
         """
         raise NotImplementedError("Subclasses must implement forward()")
 
-    def reduce_loss(self, loss: torch.Tensor, reduction: Optional[str] = None) -> torch.Tensor:
+    def reduce_loss(self, loss: torch.Tensor, reduction: str | None = None) -> torch.Tensor:
         """
         Apply reduction to loss values.
 

@@ -36,8 +36,8 @@ class TranslationDataset(Dataset):
         target_texts: List[str],
         source_tokenizer: BPETokenizer,
         target_tokenizer: BPETokenizer,
-        max_source_length: Optional[int] = None,
-        max_target_length: Optional[int] = None,
+        max_source_length: int | None = None,
+        max_target_length: int | None = None,
     ):
         """
         Initialize the dataset.
@@ -218,12 +218,12 @@ def create_translation_dataloaders(
     source_tokenizer: BPETokenizer,
     target_tokenizer: BPETokenizer,
     batch_size: int = 32,
-    max_source_length: Optional[int] = None,
-    max_target_length: Optional[int] = None,
+    max_source_length: int | None = None,
+    max_target_length: int | None = None,
     shuffle: bool = True,
     validation_split: float = 0.1,
     random_seed: int = 42,
-) -> Tuple[DataLoader, Optional[DataLoader]]:
+) -> Tuple[DataLoader, DataLoader | None]:
     """
     Create dataloaders for translation training.
 

@@ -8,7 +8,7 @@ SPECIAL NOTES: Current implementation uses a simple integration approach that wi
 """
 
 import os
-from typing import Dict, Optional
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -119,8 +119,8 @@ class MultiModalTransformer(BaseModel):
 
     def forward(
         self,
-        image: Optional[torch.Tensor] = None,
-        text: Optional[Dict[str, torch.Tensor]] = None,
+        image: torch.Tensor | None = None,
+        text: Dict[str, torch.Tensor] | None = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass of the multimodal transformer.
@@ -466,8 +466,8 @@ class CrossAttentionMultiModalTransformer(BaseModel):
 
     def forward(
         self,
-        images: Optional[torch.Tensor] = None,
-        text_data: Optional[Dict[str, torch.Tensor]] = None,
+        images: torch.Tensor | None = None,
+        text_data: Dict[str, torch.Tensor] | None = None,
         return_attention: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """

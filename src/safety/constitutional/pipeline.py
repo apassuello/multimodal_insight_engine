@@ -9,7 +9,7 @@ DEPENDENCIES: torch, critique_revision, preference_comparison, reward_model, ppo
 SPECIAL NOTES: Implements full Anthropic Constitutional AI methodology
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -56,9 +56,9 @@ class ConstitutionalPipeline:
         self,
         base_model: nn.Module,
         tokenizer: Any,
-        device: Optional[torch.device] = None,
-        constitutional_framework: Optional[ConstitutionalFramework] = None,
-        value_model: Optional[nn.Module] = None,
+        device: torch.device | None = None,
+        constitutional_framework: ConstitutionalFramework | None = None,
+        value_model: nn.Module | None = None,
         phase1_learning_rate: float = 5e-5,
         phase2_learning_rate: float = 1e-6,
         reward_model_learning_rate: float = 1e-5,
@@ -122,7 +122,7 @@ class ConstitutionalPipeline:
             self.value_model.to(self.device)
 
         # Reward model (initialized in Phase 2)
-        self.reward_model: Optional[RewardModel] = None
+        self.reward_model: RewardModel | None = None
 
         # Training state
         self.phase1_complete = False
@@ -150,8 +150,8 @@ class ConstitutionalPipeline:
         phase2_ppo_steps: int = 100,
         phase2_ppo_batch_size: int = 16,
         phase2_ppo_epochs_per_batch: int = 4,
-        validation_prompts: Optional[List[str]] = None,
-        save_dir: Optional[str] = None,
+        validation_prompts: List[str] | None = None,
+        save_dir: str | None = None,
         resume_from_phase1: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -282,7 +282,7 @@ class ConstitutionalPipeline:
         num_epochs: int,
         num_revisions: int,
         batch_size: int,
-        validation_prompts: Optional[List[str]] = None,
+        validation_prompts: List[str] | None = None,
     ) -> Dict[str, Any]:
         """
         Run Phase 1: Critique-Revision-Supervised Learning.
@@ -357,7 +357,7 @@ class ConstitutionalPipeline:
         ppo_steps: int,
         ppo_batch_size: int,
         ppo_epochs_per_batch: int,
-        validation_prompts: Optional[List[str]] = None,
+        validation_prompts: List[str] | None = None,
     ) -> Dict[str, Any]:
         """
         Run Phase 2: RLAIF with Preference Learning and PPO.
@@ -481,7 +481,7 @@ class ConstitutionalPipeline:
         }
 
     def evaluate_constitutional_compliance(
-        self, test_prompts: List[str], model: Optional[nn.Module] = None
+        self, test_prompts: List[str], model: nn.Module | None = None
     ) -> Dict[str, Any]:
         """
         Evaluate model's constitutional compliance on test prompts.

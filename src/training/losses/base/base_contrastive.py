@@ -6,7 +6,7 @@ and common contrastive loss patterns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -49,7 +49,7 @@ class BaseContrastiveLoss(
         normalize_features: bool = True,
         learnable_temperature: bool = False,
         use_projection: bool = False,
-        input_dim: Optional[int] = None,
+        input_dim: int | None = None,
         projection_dim: int = 256,
         use_hard_negatives: bool = False,
         hard_negative_weight: float = 1.0,
@@ -116,8 +116,8 @@ class BaseContrastiveLoss(
     def create_positive_mask(
         self,
         batch_size: int,
-        match_ids: Optional[List[str]] = None,
-        device: Optional[torch.device] = None,
+        match_ids: List[str] | None = None,
+        device: torch.device | None = None,
     ) -> torch.Tensor:
         """
         Create boolean mask indicating positive pairs.
@@ -150,7 +150,7 @@ class BaseContrastiveLoss(
         self,
         similarity: torch.Tensor,
         positive_mask: torch.Tensor,
-        negative_mask: Optional[torch.Tensor] = None,
+        negative_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Compute InfoNCE (Normalized Temperature-scaled Cross Entropy) loss.
@@ -212,7 +212,7 @@ class BaseContrastiveLoss(
             return losses
 
     def nt_xent_loss(
-        self, features: torch.Tensor, labels: Optional[torch.Tensor] = None
+        self, features: torch.Tensor, labels: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Compute NT-Xent (Normalized Temperature-scaled Cross Entropy) loss.
@@ -263,7 +263,7 @@ class BaseContrastiveLoss(
         """
         raise NotImplementedError("Subclasses must implement forward()")
 
-    def reduce_loss(self, loss: torch.Tensor, reduction: Optional[str] = None) -> torch.Tensor:
+    def reduce_loss(self, loss: torch.Tensor, reduction: str | None = None) -> torch.Tensor:
         """
         Apply reduction to loss values.
 

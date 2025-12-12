@@ -5,7 +5,7 @@ import re
 import threading
 import time
 from collections import Counter, OrderedDict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import psutil
 import torch
@@ -27,7 +27,7 @@ class LRUCache:
     that have exceeded their TTL (time to live).
     """
 
-    def __init__(self, capacity: int = 10000, ttl: Optional[float] = None):
+    def __init__(self, capacity: int = 10000, ttl: float | None = None):
         """
         Initialize the LRU cache.
 
@@ -62,7 +62,7 @@ class LRUCache:
             return value
         raise KeyError(key)
 
-    def get(self, key: Any) -> Optional[Any]:
+    def get(self, key: Any) -> Any | None:
         """
         Get a value from the cache.
 
@@ -165,12 +165,12 @@ class OptimizedBPETokenizer(BaseTokenizer):
 
     def __init__(
         self,
-        vocab: Optional[Vocabulary] = None,
-        merges: Optional[List[Tuple[str, str]]] = None,
+        vocab: Vocabulary | None = None,
+        merges: List[Tuple[str, str]] | None = None,
         num_merges: int = 10000,
         lower_case: bool = True,
-        device: Optional[str] = None,
-        cache_config: Optional[Dict[str, Any]] = None,
+        device: str | None = None,
+        cache_config: Dict[str, Any] | None = None,
         vectorized: bool = True,
         preserve_punctuation: bool = True,
         preserve_case: bool = False,
@@ -577,7 +577,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
         return self.vocab.tokens_to_indices(tokens)
 
     def batch_encode_optimized(
-        self, texts: List[str], batch_size: Optional[int] = None
+        self, texts: List[str], batch_size: int | None = None
     ) -> List[List[int]]:
         """
         Encode a batch of texts to token IDs with optimized processing.
@@ -926,7 +926,7 @@ class OptimizedBPETokenizer(BaseTokenizer):
     def train(
         self,
         texts: List[str],
-        vocab_size: Optional[int] = None,
+        vocab_size: int | None = None,
         min_frequency: int = 2,
         show_progress: bool = True,
     ) -> None:
@@ -1122,7 +1122,7 @@ def _preprocess_without_multiprocessing(dataset, de_tokenizer, en_tokenizer, bat
         tgt_token_ids = en_tokenizer.batch_encode_optimized(batch_tgt)
 
         # Add special tokens efficiently
-        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids, strict=False):
             src_sequences.append([src_bos_idx] + src_ids + [src_eos_idx])
             tgt_sequences.append([tgt_bos_idx] + tgt_ids + [tgt_eos_idx])
 
@@ -1177,7 +1177,7 @@ def _preprocess_with_multiprocessing(dataset, de_tokenizer, en_tokenizer, batch_
         src_sequences = []
         tgt_sequences = []
 
-        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids, strict=False):
             src_sequences.append(
                 [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
             )

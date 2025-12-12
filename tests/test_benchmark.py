@@ -61,7 +61,7 @@ def original_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batch
         tgt_token_ids = en_tokenizer.batch_encode(batch_tgt, batch_size=batch_size)
 
         # Add special tokens efficiently
-        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids, strict=False):
             src_sequences.append([src_bos_idx] + src_ids + [src_eos_idx])
             tgt_sequences.append([tgt_bos_idx] + tgt_ids + [tgt_eos_idx])
 
@@ -147,7 +147,7 @@ def optimized_preprocess_data_with_bpe(dataset, de_tokenizer, en_tokenizer, batc
             tgt_batch_tokens.append(token_ids)
 
         # Add special tokens
-        for src_ids, tgt_ids in zip(src_batch_tokens, tgt_batch_tokens):
+        for src_ids, tgt_ids in zip(src_batch_tokens, tgt_batch_tokens, strict=False):
             src_sequences.append([src_bos_idx] + src_ids + [src_eos_idx])
             tgt_sequences.append([tgt_bos_idx] + tgt_ids + [tgt_eos_idx])
 

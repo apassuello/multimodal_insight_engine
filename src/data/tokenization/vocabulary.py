@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class Vocabulary:
 
     def __init__(
         self,
-        tokens: Optional[List[str]] = None,
+        tokens: List[str] | None = None,
         pad_token: str = "<pad>",
         unk_token: str = "<unk>",
         bos_token: str = "<bos>",
@@ -309,7 +309,7 @@ class Vocabulary:
         cls,
         texts: List[str],
         tokenizer,
-        max_vocab_size: Optional[int] = None,
+        max_vocab_size: int | None = None,
         min_freq: int = 1,
         **kwargs,
     ) -> "Vocabulary":

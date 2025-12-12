@@ -3,7 +3,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -38,10 +38,10 @@ class TrainingStrategy(ABC):
     def __init__(
         self,
         model: nn.Module,
-        optimizer: Optional[Optimizer] = None,
-        scheduler: Optional[Any] = None,
-        loss_fn: Optional[nn.Module] = None,
-        device: Optional[torch.device] = None,
+        optimizer: Optimizer | None = None,
+        scheduler: Any | None = None,
+        loss_fn: nn.Module | None = None,
+        device: torch.device | None = None,
         **kwargs,
     ):
         """

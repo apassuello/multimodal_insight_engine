@@ -16,7 +16,7 @@ KEY COMPONENTS:
 """
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,13 +42,13 @@ class VisionTransformerTrainer:
         self,
         model: VisionTransformer,
         train_dataloader: DataLoader,
-        val_dataloader: Optional[DataLoader] = None,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        scheduler: Optional[Any] = None,
-        criterion: Optional[nn.Module] = None,
+        val_dataloader: DataLoader | None = None,
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: Any | None = None,
+        criterion: nn.Module | None = None,
         num_epochs: int = 100,
-        early_stopping_patience: Optional[int] = 10,
-        device: Optional[torch.device] = None,
+        early_stopping_patience: int | None = 10,
+        device: torch.device | None = None,
         save_dir: str = "checkpoints",
         experiment_name: str = "vit_experiment",
         mixup_alpha: float = 0.0,

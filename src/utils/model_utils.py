@@ -25,7 +25,7 @@ data conversion, and other helper functions for model management.
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 import torch
 
@@ -90,7 +90,7 @@ def print_model_summary(model: nn.Module, title: str = "MODEL SUMMARY") -> None:
     logger.info("=" * 50 + "\n")
 
 
-def get_device(device_name: Optional[str] = None) -> torch.device:
+def get_device(device_name: str | None = None) -> torch.device:
     """
     Get the appropriate device based on availability.
 

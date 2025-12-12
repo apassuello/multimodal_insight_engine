@@ -7,7 +7,8 @@ datasets, with configurable strategies for both image and text modalities.
 
 import logging
 import random
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -27,8 +28,8 @@ class MultimodalAugmentationPipeline:
 
     def __init__(
         self,
-        image_augs: Optional[List[Callable]] = None,
-        text_augs: Optional[List[Callable]] = None,
+        image_augs: List[Callable] | None = None,
+        text_augs: List[Callable] | None = None,
         image_aug_prob: float = 0.5,
         text_aug_prob: float = 0.3,
         consistency_mode: str = "matched",

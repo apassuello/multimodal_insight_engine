@@ -183,7 +183,7 @@ class TurboBPEPreprocessor:
         src_sequences = []
         tgt_sequences = []
 
-        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+        for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids, strict=False):
             src_sequences.append(
                 [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
             )
@@ -238,7 +238,7 @@ class TurboBPEPreprocessor:
             tgt_token_ids = self._process_text_batch(tgt_batch, tgt_tokenizer)
 
             # Add special tokens
-            for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids):
+            for src_ids, tgt_ids in zip(src_token_ids, tgt_token_ids, strict=False):
                 src_sequences.append(
                     [special_tokens["src_bos"]] + src_ids + [special_tokens["src_eos"]]
                 )

@@ -7,7 +7,7 @@ better interpretability.
 """
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 def plot_training_history(
     history: Dict[str, List[float]],
     figsize: Tuple[int, int] = (12, 8),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> None:
     """
     Plot training metrics history.
@@ -62,7 +62,7 @@ def plot_attention_weights(
     layer: int = 0,
     head: int = 0,
     figsize: Tuple[int, int] = (10, 10),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> None:
     """
     Visualize attention weights from a transformer model.
@@ -103,10 +103,10 @@ def plot_attention_weights(
 
 def plot_embeddings_tsne(
     embeddings: torch.Tensor,
-    labels: Optional[List[Any]] = None,
+    labels: List[Any] | None = None,
     random_state: int = 42,
     figsize: Tuple[int, int] = (10, 10),
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> None:
     """
     Visualize embeddings using t-SNE dimensionality reduction.
@@ -172,7 +172,7 @@ def count_parameters(model: nn.Module) -> int:
 
 
 def visualize_similarity_matrix(
-    similarity_matrix: torch.Tensor, captions: List[str], save_path: Optional[str] = None
+    similarity_matrix: torch.Tensor, captions: List[str], save_path: str | None = None
 ) -> None:
     """
     Visualize the similarity matrix between images and texts.
@@ -223,8 +223,8 @@ def visualize_attention_maps(
     attention_maps: Dict[str, torch.Tensor],
     images: torch.Tensor,
     captions: List[str],
-    save_dir: Optional[str] = None,
-    model: Optional[nn.Module] = None,
+    save_dir: str | None = None,
+    model: nn.Module | None = None,
 ) -> None:
     """
     Visualize attention maps between images and texts.

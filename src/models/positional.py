@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -123,7 +123,7 @@ class PositionalEncoding(nn.Module):
 
         return self.dropout(x)
 
-    def visualize_encodings(self, seq_length: Optional[int] = None) -> Figure:
+    def visualize_encodings(self, seq_length: int | None = None) -> Figure:
         """
         Visualize the positional encodings as a heatmap.
 
@@ -247,7 +247,7 @@ class RotaryPositionEncoding(nn.Module):
         self.register_buffer("cos_cached", emb_cos)
         self.register_buffer("sin_cached", emb_sin)
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: Optional[int] = None) -> tuple:
+    def forward(self, q: torch.Tensor, k: torch.Tensor, seq_len: int | None = None) -> tuple:
         """
         Apply rotary position embeddings to query and key tensors.
 

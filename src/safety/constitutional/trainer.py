@@ -9,7 +9,7 @@ SPECIAL NOTES: Implements scalable AI feedback for model fine-tuning by combinin
 constitutional evaluation with PPO-based reinforcement learning
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -39,17 +39,17 @@ class RLAIFTrainer:
     def __init__(
         self,
         policy_model: nn.Module,
-        constitutional_framework: Optional[ConstitutionalFramework] = None,
-        critique_model: Optional[nn.Module] = None,
-        reward_model: Optional[RewardModel] = None,
-        value_model: Optional[nn.Module] = None,
+        constitutional_framework: ConstitutionalFramework | None = None,
+        critique_model: nn.Module | None = None,
+        reward_model: RewardModel | None = None,
+        value_model: nn.Module | None = None,
         learning_rate: float = 1e-6,
         temperature: float = 1.0,
         ppo_epsilon: float = 0.2,
         ppo_value_coef: float = 0.5,
         ppo_entropy_coef: float = 0.01,
         kl_penalty_coef: float = 0.02,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ):
         """
         Initialize the RLAIF trainer.
@@ -100,7 +100,7 @@ class RLAIFTrainer:
         )
 
         # PPO trainer (initialized lazily in train())
-        self.ppo_trainer: Optional[PPOTrainer] = None
+        self.ppo_trainer: PPOTrainer | None = None
 
         # Training statistics
         self.stats = {
@@ -115,7 +115,7 @@ class RLAIFTrainer:
         self,
         prompts: List[str],
         num_responses_per_prompt: int = 5,
-        use_tokenizer: Optional[Any] = None,
+        use_tokenizer: Any | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Generate training data with constitutional feedback.
@@ -174,7 +174,7 @@ class RLAIFTrainer:
 
         return training_data
 
-    def _generate_response(self, prompt: str, tokenizer: Optional[Any] = None) -> str:
+    def _generate_response(self, prompt: str, tokenizer: Any | None = None) -> str:
         """
         Generate a response from the policy model.
 
@@ -351,8 +351,8 @@ Analysis:"""
         batch_size: int = 16,
         num_epochs_per_batch: int = 4,
         max_length: int = 150,
-        tokenizer: Optional[Any] = None,
-        validation_prompts: Optional[List[str]] = None,
+        tokenizer: Any | None = None,
+        validation_prompts: List[str] | None = None,
     ) -> Dict[str, Any]:
         """
         Train the policy model using constitutional AI feedback with PPO.
@@ -440,7 +440,7 @@ Analysis:"""
             "final_stats": self.stats,
         }
 
-    def validate(self, validation_prompts: List[str], tokenizer: Optional[Any] = None) -> float:
+    def validate(self, validation_prompts: List[str], tokenizer: Any | None = None) -> float:
         """
         Validate model on validation prompts.
 

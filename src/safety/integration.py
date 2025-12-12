@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .filter import SafetyFilter
 
@@ -52,7 +52,7 @@ class SafetyAugmentedModel:
         # Store safety events for monitoring
         self.safety_events = []
 
-    def predict(self, input_text: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def predict(self, input_text: str, metadata: Dict[str, Any] | None = None) -> Dict[str, Any]:
         """
         Generate a prediction with safety guardrails.
 

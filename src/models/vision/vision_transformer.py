@@ -12,7 +12,7 @@ SPECIAL NOTES: Follows the architecture described in "An Image is Worth 16x16 Wo
 
 import math
 import os
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -180,8 +180,8 @@ class MLP(nn.Module):
     def __init__(
         self,
         in_features: int,
-        hidden_features: Optional[int] = None,
-        out_features: Optional[int] = None,
+        hidden_features: int | None = None,
+        out_features: int | None = None,
         act_layer: nn.Module = nn.GELU,
         drop: float = 0.0,
     ):

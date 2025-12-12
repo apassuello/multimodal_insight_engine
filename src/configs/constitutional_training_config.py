@@ -9,7 +9,7 @@ SPECIAL NOTES: Provides flexible configuration for constitutional AI training
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -52,7 +52,7 @@ class ConstitutionalTrainingConfig:
     # ========== Constitutional Principles Configuration ==========
 
     # Which principles to enable (if None, uses all)
-    enabled_principles: Optional[List[str]] = None
+    enabled_principles: List[str] | None = None
 
     # Custom principle weights (principle_name: weight)
     principle_weights: Dict[str, float] = field(
@@ -70,7 +70,7 @@ class ConstitutionalTrainingConfig:
     model_name: str = "gpt2"
 
     # Model parameters
-    vocab_size: Optional[int] = None
+    vocab_size: int | None = None
     hidden_size: int = 768
     num_layers: int = 12
     num_heads: int = 12
@@ -78,21 +78,21 @@ class ConstitutionalTrainingConfig:
 
     # Whether to use a separate critique model
     use_critique_model: bool = False
-    critique_model_name: Optional[str] = None
+    critique_model_name: str | None = None
 
     # ========== Data Configuration ==========
 
     # Training data path
-    train_data_path: Optional[str] = None
+    train_data_path: str | None = None
 
     # Validation data path
-    val_data_path: Optional[str] = None
+    val_data_path: str | None = None
 
     # Training prompts for RLAIF (if not using data files)
-    training_prompts: Optional[List[str]] = None
+    training_prompts: List[str] | None = None
 
     # Validation prompts
-    validation_prompts: Optional[List[str]] = None
+    validation_prompts: List[str] | None = None
 
     # ========== Evaluation Configuration ==========
 
@@ -120,7 +120,7 @@ class ConstitutionalTrainingConfig:
     seed: int = 42
 
     # Device ('cpu', 'cuda', 'mps', or None for auto)
-    device: Optional[str] = None
+    device: str | None = None
 
     def __post_init__(self):
         """Validate and process configuration."""

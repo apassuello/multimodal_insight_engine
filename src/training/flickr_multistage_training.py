@@ -16,7 +16,7 @@ import json
 import logging
 import os
 from collections import defaultdict
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import torch
@@ -63,7 +63,7 @@ class FlickrMultistageTrainer:
         model: nn.Module,
         data_root: str,
         output_dir: str = "flickr30k",
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         batch_size: int = 64,
         num_workers: int = 4,
         stage1_epochs: int = 30,

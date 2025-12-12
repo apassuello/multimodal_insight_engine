@@ -12,8 +12,9 @@ SPECIAL NOTES: Uses HF Inference API for accurate toxicity/harm detection withou
 
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict
 
 from src.utils.logging import get_logger
 
@@ -30,7 +31,7 @@ class HFAPIConfig:
     toxicity_model: str = "unitary/toxic-bert"
 
     # API token (optional for public models, but recommended)
-    api_token: Optional[str] = None
+    api_token: str | None = None
 
     # Retry settings
     max_retries: int = 3
@@ -47,7 +48,7 @@ class HFAPIConfig:
 
 
 # Global config instance
-_api_config: Optional[HFAPIConfig] = None
+_api_config: HFAPIConfig | None = None
 _api_client = None
 
 
@@ -101,7 +102,7 @@ def get_hf_api_client():
 
 
 def evaluate_toxicity_api(
-    text: str, config: Optional[HFAPIConfig] = None, verbose: bool = False
+    text: str, config: HFAPIConfig | None = None, verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Evaluate text toxicity using HuggingFace Inference API.
@@ -216,7 +217,7 @@ def evaluate_toxicity_api(
 
 
 def evaluate_harm_with_hf_api(
-    text: str, config: Optional[HFAPIConfig] = None, verbose: bool = False
+    text: str, config: HFAPIConfig | None = None, verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Evaluate harm potential using HuggingFace API.
@@ -292,7 +293,7 @@ class HuggingFaceAPIEvaluator:
     def __init__(
         self,
         toxicity_model: str = "unitary/toxic-bert",
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
         toxicity_threshold: float = 0.5,
         enabled: bool = True,
     ):

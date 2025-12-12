@@ -5,7 +5,7 @@ Reduces from 434 lines to ~150 lines by leveraging BaseContrastiveLoss.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn.functional as F
@@ -66,8 +66,8 @@ class CLIPLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
-        similarity_matrix: Optional[torch.Tensor] = None,
+        match_ids: List[str] | None = None,
+        similarity_matrix: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -125,7 +125,7 @@ class CLIPLoss(BaseContrastiveLoss):
         return result
 
     def _create_targets(
-        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
+        self, batch_size: int, match_ids: List[str] | None, device: torch.device
     ) -> tuple:
         """
         Create target indices for vision→text and text→vision.

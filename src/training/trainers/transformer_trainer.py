@@ -28,7 +28,8 @@ SPECIAL NOTES:
 import math
 import os
 import time
-from typing import Any, Callable, Optional, Tuple
+from collections.abc import Callable
+from typing import Any, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -62,7 +63,7 @@ class TransformerTrainer:
         self,
         model: nn.Module,
         train_dataloader: DataLoader,
-        val_dataloader: Optional[DataLoader] = None,
+        val_dataloader: DataLoader | None = None,
         pad_idx: int = 0,
         lr: float = 0.0001,
         betas: Tuple[float, float] = (0.9, 0.98),
@@ -70,8 +71,8 @@ class TransformerTrainer:
         warmup_steps: int = 4000,
         label_smoothing: float = 0.1,
         clip_grad: float = 1.0,
-        early_stopping_patience: Optional[int] = None,
-        device: Optional[torch.device] = None,
+        early_stopping_patience: int | None = None,
+        device: torch.device | None = None,
         track_perplexity: bool = False,
         scheduler: str = "inverse_sqrt",
         use_gradient_scaling: bool = False,
@@ -164,7 +165,7 @@ class TransformerTrainer:
         }
 
         # Initialize epoch end callback with proper type annotation
-        self.epoch_end_callback: Optional[Callable[[int, torch.nn.Module, Any], None]] = None
+        self.epoch_end_callback: Callable[[int, torch.nn.Module, Any], None] | None = None
 
         # Gradient accumulation settings
         self.gradient_accumulation_steps = gradient_accumulation_steps
@@ -498,7 +499,7 @@ class TransformerTrainer:
 
         return avg_loss
 
-    def train(self, epochs: int, save_path: Optional[str] = None):
+    def train(self, epochs: int, save_path: str | None = None):
         """
         Train the model for the specified number of epochs.
 
@@ -885,7 +886,7 @@ class TransformerTrainer:
         plt.grid(True)
         plt.show()
 
-    def plot_training_history(self, save_path: Optional[str] = None):
+    def plot_training_history(self, save_path: str | None = None):
         """
         Plot training and validation metrics over epochs.
 
@@ -950,7 +951,7 @@ class TransformerTrainer:
         else:
             plt.show()
 
-    def plot_epoch_metrics(self, epoch: int, save_path: Optional[str] = None):
+    def plot_epoch_metrics(self, epoch: int, save_path: str | None = None):
         """
         Plot detailed metrics for a specific epoch.
 

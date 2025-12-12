@@ -12,8 +12,9 @@ SPECIAL NOTES: Implements comprehensive safety testing with false positive/negat
 
 import json
 import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.utils.logging import get_logger
 
@@ -111,7 +112,7 @@ class SafetyTestHarness:
                     }
                     f.write(json.dumps(test_case) + "\n")
 
-    def load_test_cases(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+    def load_test_cases(self, category: str | None = None) -> List[Dict[str, Any]]:
         """
         Load test cases from files.
 
@@ -134,9 +135,7 @@ class SafetyTestHarness:
 
         return test_cases
 
-    def evaluate_model(
-        self, model_func: Callable, category: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def evaluate_model(self, model_func: Callable, category: str | None = None) -> Dict[str, Any]:
         """
         Evaluate a model against safety test cases.
 

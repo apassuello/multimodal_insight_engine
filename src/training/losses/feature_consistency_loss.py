@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -54,8 +54,8 @@ class FeatureConsistencyLoss(nn.Module):
 
     def __init__(
         self,
-        reference_vision_model: Optional[nn.Module] = None,
-        reference_text_model: Optional[nn.Module] = None,
+        reference_vision_model: nn.Module | None = None,
+        reference_text_model: nn.Module | None = None,
         vision_weight: float = 1.0,
         text_weight: float = 1.0,
         distance_fn: str = "cosine",  # "cosine", "l2", "l1", "smooth_l1"
@@ -147,10 +147,10 @@ class FeatureConsistencyLoss(nn.Module):
 
     def forward(
         self,
-        vision_features: Optional[torch.Tensor] = None,
-        text_features: Optional[torch.Tensor] = None,
-        vision_inputs: Optional[torch.Tensor] = None,
-        text_inputs: Optional[torch.Tensor] = None,
+        vision_features: torch.Tensor | None = None,
+        text_features: torch.Tensor | None = None,
+        vision_inputs: torch.Tensor | None = None,
+        text_inputs: torch.Tensor | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """

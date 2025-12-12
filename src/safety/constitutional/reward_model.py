@@ -9,7 +9,7 @@ DEPENDENCIES: torch, transformers, typing
 SPECIAL NOTES: Implements Component 2 of Constitutional AI - trains reward model on preference pairs
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -144,7 +144,7 @@ class RewardModel(nn.Module):
             >>> rewards = reward_model.get_rewards(prompts, responses, tokenizer, device)
         """
         # Combine prompts with responses
-        texts = [p + " " + r for p, r in zip(prompts, responses)]
+        texts = [p + " " + r for p, r in zip(prompts, responses, strict=False)]
 
         # Tokenize
         encodings = tokenizer(
@@ -207,8 +207,8 @@ def train_reward_model(
     num_epochs: int = 3,
     batch_size: int = 4,
     learning_rate: float = 1e-5,
-    device: Optional[torch.device] = None,
-    validation_data: Optional[List[Dict[str, Any]]] = None,
+    device: torch.device | None = None,
+    validation_data: List[Dict[str, Any]] | None = None,
     max_length: int = 512,
     gradient_accumulation_steps: int = 1,
     log_interval: int = 10,
@@ -507,7 +507,7 @@ class RewardModelTrainer:
         self,
         reward_model: RewardModel,
         tokenizer,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         learning_rate: float = 1e-5,
         batch_size: int = 4,
     ):
@@ -533,10 +533,10 @@ class RewardModelTrainer:
         training_data: List[Dict[str, Any]],
         num_epochs: int = 3,
         validation_split: float = 0.1,
-        validation_data: Optional[List[Dict[str, Any]]] = None,
-        save_dir: Optional[str] = None,
+        validation_data: List[Dict[str, Any]] | None = None,
+        save_dir: str | None = None,
         save_best_only: bool = True,
-        early_stopping_patience: Optional[int] = None,
+        early_stopping_patience: int | None = None,
     ) -> Dict[str, Any]:
         """
         Train reward model with validation and checkpointing.

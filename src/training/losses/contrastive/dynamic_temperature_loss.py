@@ -9,7 +9,7 @@ positive and negative similarities during training.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 
@@ -56,7 +56,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[List[str]] = None,
+        match_ids: List[str] | None = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -120,7 +120,7 @@ class DynamicTemperatureLoss(BaseContrastiveLoss):
         }
 
     def _create_match_matrix(
-        self, batch_size: int, match_ids: Optional[List[str]], device: torch.device
+        self, batch_size: int, match_ids: List[str] | None, device: torch.device
     ) -> torch.Tensor:
         """Create boolean matrix indicating matches."""
         if match_ids is None:

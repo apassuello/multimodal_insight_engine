@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -50,10 +50,10 @@ class TrainerFactory:
     def create_trainer(
         model: nn.Module,
         train_dataloader: torch.utils.data.DataLoader,
-        val_dataloader: Optional[torch.utils.data.DataLoader] = None,
-        test_dataloader: Optional[torch.utils.data.DataLoader] = None,
-        config: Optional[Dict[str, Any]] = None,
-        device: Optional[torch.device] = None,
+        val_dataloader: torch.utils.data.DataLoader | None = None,
+        test_dataloader: torch.utils.data.DataLoader | None = None,
+        config: Dict[str, Any] | None = None,
+        device: torch.device | None = None,
         **kwargs,
     ) -> Union[MultimodalTrainer, MultistageTrainer]:
         """
@@ -105,10 +105,10 @@ class TrainerFactory:
     def _create_multimodal_trainer(
         model: nn.Module,
         train_dataloader: torch.utils.data.DataLoader,
-        val_dataloader: Optional[torch.utils.data.DataLoader],
-        test_dataloader: Optional[torch.utils.data.DataLoader],
+        val_dataloader: torch.utils.data.DataLoader | None,
+        test_dataloader: torch.utils.data.DataLoader | None,
         config: Dict[str, Any],
-        device: Optional[torch.device],
+        device: torch.device | None,
     ) -> MultimodalTrainer:
         """
         Create a standard multimodal trainer.
@@ -253,10 +253,10 @@ class TrainerFactory:
     def _create_multistage_trainer(
         model: nn.Module,
         train_dataloader: torch.utils.data.DataLoader,
-        val_dataloader: Optional[torch.utils.data.DataLoader],
-        test_dataloader: Optional[torch.utils.data.DataLoader],
+        val_dataloader: torch.utils.data.DataLoader | None,
+        test_dataloader: torch.utils.data.DataLoader | None,
         config: Dict[str, Any],
-        device: Optional[torch.device],
+        device: torch.device | None,
     ) -> MultistageTrainer:
         """
         Create a multistage trainer with appropriate strategies.

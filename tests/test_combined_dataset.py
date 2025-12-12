@@ -30,11 +30,15 @@ def mock_opensubtitles_dataset():
 
 def test_combined_dataset_initialization(mock_europarl_dataset, mock_opensubtitles_dataset):
     """Test basic initialization of CombinedTranslationDataset."""
-    with patch(
-        "src.data.combined_translation_dataset.EuroparlDataset", return_value=mock_europarl_dataset
-    ), patch(
-        "src.data.combined_translation_dataset.OpenSubtitlesDataset",
-        return_value=mock_opensubtitles_dataset,
+    with (
+        patch(
+            "src.data.combined_translation_dataset.EuroparlDataset",
+            return_value=mock_europarl_dataset,
+        ),
+        patch(
+            "src.data.combined_translation_dataset.OpenSubtitlesDataset",
+            return_value=mock_opensubtitles_dataset,
+        ),
     ):
 
         # Test with default parameters

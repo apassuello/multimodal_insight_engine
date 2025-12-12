@@ -8,7 +8,7 @@ with the standard Python logging module.
 import logging as std_logging
 import os
 import sys
-from typing import Optional, Union
+from typing import Union
 
 
 # Re-export NullHandler from standard logging
@@ -42,7 +42,7 @@ class LogManager:
         )
         self.default_format = os.environ.get("LOG_FORMAT", DEFAULT_LOG_FORMAT)
 
-    def get_logger(self, name: str, level: Optional[Union[str, int]] = None) -> std_logging.Logger:
+    def get_logger(self, name: str, level: Union[str, int] | None = None) -> std_logging.Logger:
         """
         Get a logger instance with the specified name.
 

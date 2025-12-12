@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import yaml
 
@@ -67,7 +67,7 @@ class StageConfig:
     evaluation_metrics: List[str] = field(default_factory=lambda: ["val_loss"])
     monitor_metric: str = "val_loss"
     monitor_mode: str = "min"
-    clip_grad_norm: Optional[float] = 1.0
+    clip_grad_norm: float | None = 1.0
     mixed_precision: bool = True
     gradient_accumulation_steps: int = 1
 

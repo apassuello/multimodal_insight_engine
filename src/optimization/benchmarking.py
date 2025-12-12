@@ -2,7 +2,8 @@
 import json
 import os
 import time
-from typing import Any, Callable, Dict, List, Union
+from collections.abc import Callable
+from typing import Any, Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -346,7 +346,7 @@ def test_gradient_clipper_clip(simple_model, device, input_data, target_data, lo
 
     # Check that at least one gradient has changed (clipping occurred)
     any_changed = False
-    for _i, (param, grad_before) in enumerate(zip(model.parameters(), grads_before)):
+    for _i, (param, grad_before) in enumerate(zip(model.parameters(), grads_before, strict=False)):
         if param.grad is not None and not torch.allclose(param.grad, grad_before, atol=1e-6):
             any_changed = True
             break

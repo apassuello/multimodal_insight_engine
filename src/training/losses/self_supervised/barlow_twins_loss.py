@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -32,7 +32,7 @@ class BarlowTwinsLoss(nn.Module):
         correlation_mode: str = "cross_modal",
         use_projection: bool = False,
         projection_dim: int = 8192,
-        input_dim: Optional[int] = None,
+        input_dim: int | None = None,
         normalize_embeddings: bool = True,
     ):
         """

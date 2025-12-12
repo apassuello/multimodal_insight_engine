@@ -7,7 +7,7 @@ tailored for multimodal learning, with appropriate configurations.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -53,7 +53,7 @@ class SimpleContrastiveLoss(nn.Module):
         self,
         vision_features: torch.Tensor,
         text_features: torch.Tensor,
-        match_ids: Optional[torch.Tensor] = None,
+        match_ids: torch.Tensor | None = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -213,7 +213,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_loss_function(
-    args: Any, dataset_size: Optional[int] = None, train_loader: Optional[Any] = None
+    args: Any, dataset_size: int | None = None, train_loader: Any | None = None
 ) -> nn.Module:
     """
     Create the appropriate loss function based on arguments.
