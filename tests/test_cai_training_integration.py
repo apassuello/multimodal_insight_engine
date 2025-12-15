@@ -295,15 +295,15 @@ class TestPhase2Training:
         preference_data = [
             {
                 "prompt": "Test prompt 1",
-                "response_chosen": "Good response",
-                "response_rejected": "Bad response",
+                "chosen": "Good response",
+                "rejected": "Bad response",
                 "chosen_score": 0.8,
                 "rejected_score": 0.2,
             },
             {
                 "prompt": "Test prompt 2",
-                "response_chosen": "Better response",
-                "response_rejected": "Worse response",
+                "chosen": "Better response",
+                "rejected": "Worse response",
                 "chosen_score": 0.9,
                 "rejected_score": 0.1,
             },

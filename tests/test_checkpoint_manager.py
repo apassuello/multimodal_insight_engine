@@ -87,7 +87,7 @@ class TestCheckpointManager:
         assert os.path.exists(checkpoint_path)
 
         # Load and verify contents
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         assert "model_state_dict" in checkpoint
         assert "optimizer_state_dict" in checkpoint
         assert checkpoint["current_epoch"] == 5
@@ -174,7 +174,7 @@ class TestCheckpointManager:
         assert os.path.exists(best_path)
 
         # Load and verify
-        checkpoint = torch.load(best_path, map_location="cpu", weights_only=True)
+        checkpoint = torch.load(best_path, map_location="cpu", weights_only=False)
         assert checkpoint["best_val_metric"] == 0.92
         assert checkpoint["current_epoch"] == 10
         assert checkpoint["global_step"] == 200
@@ -215,7 +215,7 @@ class TestCheckpointManager:
         manager.save_checkpoint(checkpoint_path)
 
         # Verify scheduler state is saved
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         assert "scheduler_state_dict" in checkpoint
 
     def test_load_nonexistent_checkpoint(self, checkpoint_manager):
@@ -260,7 +260,7 @@ class TestCheckpointManager:
             history=history,
         )
 
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         assert checkpoint["current_epoch"] == 7
         assert checkpoint["global_step"] == 150
         assert checkpoint["best_val_metric"] == 0.88
