@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -49,7 +49,7 @@ def create_dataloader(
     num_workers: int = 0,
     pin_memory: bool = True,
     drop_last: bool = False,
-    collate_fn: callable | None = None,
+    collate_fn: Callable | None = None,
 ) -> DataLoader:
     """
     Create a DataLoader from a dataset.
