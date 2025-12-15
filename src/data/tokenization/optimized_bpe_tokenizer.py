@@ -401,14 +401,12 @@ class OptimizedBPETokenizer(BaseTokenizer):
         # For compatibility with tests, ensure text is properly cleaned
         processed = clean_text(text, lower=False)  # Already lowercased if needed
 
-        # Use consistent "_space_" format for spaces
-        processed = processed.replace(" ", "_space_")
-
         # Only remove punctuation if not preserving it
         if not self.preserve_punctuation:
             processed = re.sub(r"[^\w\s]", "", processed)
 
-        return processed
+        # Note: Space replacement with "_space_" happens during tokenization, not preprocessing
+        return processed.strip()
 
     def _tokenize_word_optimized(self, word: str) -> List[str]:
         """

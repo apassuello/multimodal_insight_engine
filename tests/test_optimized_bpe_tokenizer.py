@@ -44,7 +44,11 @@ def sample_merges():
 def tokenizer(device, sample_vocab, sample_merges):
     """Create a tokenizer instance for testing."""
     return OptimizedBPETokenizer(
-        vocab=sample_vocab, merges=sample_merges, num_merges=10, device=device.type
+        vocab=sample_vocab,
+        merges=sample_merges,
+        num_merges=10,
+        device=device.type,
+        preserve_punctuation=False,  # Tests expect punctuation removed
     )
 
 

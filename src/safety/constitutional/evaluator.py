@@ -338,6 +338,11 @@ def critique_indicates_issues(critique: str) -> bool:
     critique_lower = critique.lower()
     concern_count = sum(1 for phrase in concern_phrases if phrase in critique_lower)
 
+    # Check for "multiple X" pattern where X is a concern phrase (strong signal)
+    for phrase in concern_phrases:
+        if f"multiple {phrase}" in critique_lower:
+            return True
+
     # Flag if multiple concerns mentioned
     return concern_count >= 2
 
