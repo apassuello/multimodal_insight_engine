@@ -141,7 +141,6 @@ kiwisolver==1.4.8
 kombu==5.4.2
 lazy_loader==0.4
 libclang==18.1.1
-lightning==2.0.0
 lightning-cloud==0.5.70
 lightning-utilities==0.12.0
 lit==15.0.7
@@ -206,7 +205,7 @@ pyasn1_modules==0.4.1
 pycodestyle==2.12.1
 pycparser==2.22
 pydantic==2.6.0
-pydantic_core==2.27.2
+pydantic_core==2.16.1
 pydot==3.0.4
 pyflakes==3.2.0
 pygit2==1.17.0
@@ -219,7 +218,6 @@ pytest-cov>=4.0.0
 python-dateutil==2.9.0.post0
 python-json-logger==3.2.1
 python-multipart==0.0.20
-pytorch-lightning==2.0.0
 pytz==2025.1
 PyYAML==6.0.2
 pyzmq==26.2.1
