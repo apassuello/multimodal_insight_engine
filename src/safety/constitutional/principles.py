@@ -17,7 +17,7 @@ import re
 from src.utils.logging import get_logger
 
 
-logger = get_logger(__name__)
+_module_logger = get_logger(__name__)
 import json
 from typing import Any, Dict, List
 
@@ -49,7 +49,7 @@ def set_eval_debug_level(level: int) -> None:
     global EVAL_DEBUG_LEVEL
     EVAL_DEBUG_LEVEL = max(0, min(3, level))
     if level > 0:
-        logger.info(f"[CONFIG] Evaluation debug level set to {EVAL_DEBUG_LEVEL}")
+        _module_logger.info(f"[CONFIG] Evaluation debug level set to {EVAL_DEBUG_LEVEL}")
 
 
 def get_eval_debug_level() -> int:
@@ -61,9 +61,9 @@ def _debug_print(message: str, level: int = 1, prefix: str = "") -> None:
     """Print debug message if current debug level is sufficient."""
     if level <= EVAL_DEBUG_LEVEL:
         if prefix:
-            logger.info(f"[{prefix}] {message}")
+            _module_logger.info(f"[{prefix}] {message}")
         else:
-            logger.info(message)
+            _module_logger.info(message)
 
 
 def _print_eval_summary(
@@ -74,7 +74,7 @@ def _print_eval_summary(
         return
 
     status = "⚠ FLAGGED" if flagged else "✓ OK"
-    logger.info(f"  [{principle}] {status}")
+    _module_logger.info(f"  [{principle}] {status}")
 
     if flagged and EVAL_DEBUG_LEVEL >= 1:
         # Show key details for flagged items
@@ -82,11 +82,11 @@ def _print_eval_summary(
             if key in ["flagged", "method", "principle_name", "weight"]:
                 continue
             if isinstance(value, list) and value:
-                logger.info(f"    → {key}: {value[:2]}{'...' if len(value) > 2 else ''}")
+                _module_logger.info(f"    → {key}: {value[:2]}{'...' if len(value) > 2 else ''}")
             elif isinstance(value, str) and len(value) > 100:
-                logger.info(f"    → {key}: {value[:100]}...")
+                _module_logger.info(f"    → {key}: {value[:100]}...")
             elif value and value not in [[], {}, "", 0, 0.0, False]:
-                logger.info(f"    → {key}: {value}")
+                _module_logger.info(f"    → {key}: {value}")
 
 
 # ============================================================================
@@ -347,8 +347,8 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
     Returns:
         Parsed dictionary or default structure
     """
-    logger.info("Parsing JSON response...", level=3, prefix="JSON")
-    logger.info(
+    _debug_print("Parsing JSON response...", level=3, prefix="JSON")
+    _debug_print(
         f"Raw response ({len(response)} chars): {response[:200]}...", level=3, prefix="JSON"
     )
 
@@ -388,11 +388,11 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                             break
 
             if end_idx == -1:
-                logger.info("✗ No matching '}' found, using defaults", level=2, prefix="JSON")
+                _debug_print("✗ No matching '}' found, using defaults", level=2, prefix="JSON")
                 return default_structure
 
             json_str = response[start_idx : end_idx + 1]
-            logger.info(f"Extracted: {json_str[:150]}...", level=3, prefix="JSON")
+            _debug_print(f"Extracted: {json_str[:150]}...", level=3, prefix="JSON")
 
             parsed = json.loads(json_str)
 
@@ -401,14 +401,14 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                 if key not in parsed:
                     parsed[key] = default_structure[key]
 
-            logger.info(f"✓ Parsed: flagged={parsed.get('flagged', 'N/A')}", level=3, prefix="JSON")
+            _debug_print(f"✓ Parsed: flagged={parsed.get('flagged', 'N/A')}", level=3, prefix="JSON")
             return parsed
         else:
-            logger.info("✗ No JSON found, using defaults", level=2, prefix="JSON")
+            _debug_print("✗ No JSON found, using defaults", level=2, prefix="JSON")
             return default_structure
 
     except (json.JSONDecodeError, ValueError) as e:
-        logger.info(f"✗ Parse error: {e}, using defaults", level=2, prefix="JSON")
+        _debug_print(f"✗ Parse error: {e}, using defaults", level=2, prefix="JSON")
         return default_structure
 
 
@@ -436,8 +436,8 @@ def _evaluate_harm_with_ai(
         logger.log_stage("EVAL-INPUT-HARM", text)
 
     prompt = HARM_EVALUATION_PROMPT.format(text=text)
-    logger.info("Evaluating HARM with AI...", level=2, prefix="EVAL")
-    logger.info(f"Text: {text[:100]}...", level=2, prefix="EVAL")
+    _debug_print("Evaluating HARM with AI...", level=2, prefix="EVAL")
+    _debug_print(f"Text: {text[:100]}...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-HARM", prompt, truncate=300)
@@ -448,7 +448,7 @@ def _evaluate_harm_with_ai(
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        logger.info(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-HARM", response)
@@ -471,7 +471,7 @@ def _evaluate_harm_with_ai(
 
         return result
     except (RuntimeError, ValueError, TypeError) as e:
-        logger.info(f"AI eval failed: {e}, using regex", level=1, prefix="EVAL")
+        _debug_print(f"AI eval failed: {e}, using regex", level=1, prefix="EVAL")
         if logger:
             logger.log_stage("EVAL-ERROR-HARM", f"AI evaluation failed: {e}, falling back to regex")
         return _evaluate_harm_with_regex(text)
@@ -607,7 +607,7 @@ def evaluate_harm_potential(
 
         # If regex finds explicit harm, trust it immediately
         if regex_result.get("explicit_harm_detected") or regex_result.get("flagged"):
-            logger.info("Regex detected harm - trusting regex", level=1, prefix="HARM")
+            _debug_print("Regex detected harm - trusting regex", level=1, prefix="HARM")
             regex_result["method"] = "hybrid_regex"
             return regex_result
 
@@ -619,7 +619,7 @@ def evaluate_harm_potential(
 
             # If AI finds something regex missed, use AI result
             if ai_result.get("flagged"):
-                logger.info("AI found subtle harm (regex missed)", level=1, prefix="HARM")
+                _debug_print("AI found subtle harm (regex missed)", level=1, prefix="HARM")
                 ai_result["method"] = "hybrid_ai"
                 return ai_result
 
@@ -736,7 +736,7 @@ def _evaluate_truthfulness_with_ai(
         logger.log_stage("EVAL-INPUT-TRUTH", text)
 
     prompt = TRUTHFULNESS_EVALUATION_PROMPT.format(text=text)
-    logger.info("Evaluating TRUTHFULNESS with AI...", level=2, prefix="EVAL")
+    _debug_print("Evaluating TRUTHFULNESS with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-TRUTH", prompt, truncate=300)
@@ -747,7 +747,7 @@ def _evaluate_truthfulness_with_ai(
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        logger.info(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-TRUTH", response)
@@ -842,7 +842,7 @@ def evaluate_truthfulness(
         regex_result = _evaluate_truthfulness_with_regex(text)
 
         if regex_result.get("flagged"):
-            logger.info(
+            _debug_print(
                 "Regex detected truthfulness issue - trusting regex", level=1, prefix="TRUTH"
             )
             regex_result["method"] = "hybrid_regex"
@@ -856,7 +856,7 @@ def evaluate_truthfulness(
             )
 
             if ai_result.get("flagged"):
-                logger.info("AI found truthfulness issue (regex missed)", level=1, prefix="TRUTH")
+                _debug_print("AI found truthfulness issue (regex missed)", level=1, prefix="TRUTH")
                 ai_result["method"] = "hybrid_ai"
                 return ai_result
 
@@ -984,7 +984,7 @@ def _evaluate_fairness_with_ai(
         logger.log_stage("EVAL-INPUT-FAIRNESS", text)
 
     prompt = FAIRNESS_EVALUATION_PROMPT.format(text=text)
-    logger.info("Evaluating FAIRNESS with AI...", level=2, prefix="EVAL")
+    _debug_print("Evaluating FAIRNESS with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-FAIRNESS", prompt, truncate=300)
@@ -995,7 +995,7 @@ def _evaluate_fairness_with_ai(
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        logger.info(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-FAIRNESS", response)
@@ -1113,7 +1113,7 @@ def evaluate_fairness(
         regex_result = _evaluate_fairness_with_regex(text)
 
         if regex_result.get("flagged"):
-            logger.info("Regex detected fairness issue - trusting regex", level=1, prefix="FAIR")
+            _debug_print("Regex detected fairness issue - trusting regex", level=1, prefix="FAIR")
             regex_result["method"] = "hybrid_regex"
             return regex_result
 
@@ -1123,7 +1123,7 @@ def evaluate_fairness(
             ai_result = _evaluate_fairness_with_ai(text, model, tokenizer, device, logger=logger)
 
             if ai_result.get("flagged"):
-                logger.info("AI found fairness issue (regex missed)", level=1, prefix="FAIR")
+                _debug_print("AI found fairness issue (regex missed)", level=1, prefix="FAIR")
                 ai_result["method"] = "hybrid_ai"
                 return ai_result
 
@@ -1165,7 +1165,7 @@ def _evaluate_autonomy_with_ai(
         logger.log_stage("EVAL-INPUT-AUTONOMY", text)
 
     prompt = AUTONOMY_EVALUATION_PROMPT.format(text=text)
-    logger.info("Evaluating AUTONOMY with AI...", level=2, prefix="EVAL")
+    _debug_print("Evaluating AUTONOMY with AI...", level=2, prefix="EVAL")
 
     if logger:
         logger.log_stage("EVAL-PROMPT-AUTONOMY", prompt, truncate=300)
@@ -1176,7 +1176,7 @@ def _evaluate_autonomy_with_ai(
         with torch.no_grad():
             response = generate_text(model, tokenizer, prompt, config, device)
 
-        logger.info(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
+        _debug_print(f"Response ({len(response)} chars)", level=2, prefix="EVAL")
 
         if logger:
             logger.log_stage("EVAL-RAW-OUTPUT-AUTONOMY", response)
@@ -1289,7 +1289,7 @@ def evaluate_autonomy_respect(
         regex_result = _evaluate_autonomy_with_regex(text)
 
         if regex_result.get("flagged"):
-            logger.info("Regex detected autonomy issue - trusting regex", level=1, prefix="AUTO")
+            _debug_print("Regex detected autonomy issue - trusting regex", level=1, prefix="AUTO")
             regex_result["method"] = "hybrid_regex"
             return regex_result
 
@@ -1299,7 +1299,7 @@ def evaluate_autonomy_respect(
             ai_result = _evaluate_autonomy_with_ai(text, model, tokenizer, device, logger=logger)
 
             if ai_result.get("flagged"):
-                logger.info("AI found autonomy issue (regex missed)", level=1, prefix="AUTO")
+                _debug_print("AI found autonomy issue (regex missed)", level=1, prefix="AUTO")
                 ai_result["method"] = "hybrid_ai"
                 return ai_result
 

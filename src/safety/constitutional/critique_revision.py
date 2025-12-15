@@ -569,12 +569,23 @@ def supervised_finetune(
     valid_data = []
     for idx, item in enumerate(training_data):
         # Check if required fields exist and are non-empty
-        if "prompt" not in item or "response" not in item:
-            _logger.info(f"Warning: Skipping training example {idx}: missing prompt or response")
+        # Support both 'response' and 'revised_response' for backward compatibility
+        if "prompt" not in item:
+            _logger.info(f"Warning: Skipping training example {idx}: missing prompt")
+            continue
+
+        # Accept either 'response' or 'revised_response'
+        response_key = None
+        if "response" in item:
+            response_key = "response"
+        elif "revised_response" in item:
+            response_key = "revised_response"
+        else:
+            _logger.info(f"Warning: Skipping training example {idx}: missing response or revised_response")
             continue
 
         prompt = item.get("prompt", "").strip()
-        response = item.get("response", "").strip()
+        response = item.get(response_key, "").strip()
 
         if not prompt or not response:
             _logger.info(f"Warning: Skipping training example {idx}: empty prompt or response")
@@ -584,6 +595,10 @@ def supervised_finetune(
         if prompt == "nan" or response == "nan" or prompt == "None" or response == "None":
             _logger.info(f"Warning: Skipping training example {idx}: NaN or None value detected")
             continue
+
+        # Normalize to 'response' key for consistency
+        if response_key == "revised_response":
+            item["response"] = item["revised_response"]
 
         valid_data.append(item)
 
