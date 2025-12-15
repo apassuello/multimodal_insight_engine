@@ -36,12 +36,13 @@ dependencies = [
     "pytest-cov>=5.0.0",
     # Image processing and visualization
     "matplotlib>=3.0.0",
-    "torchvision>=0.16.0",
+    "seaborn>=0.12.0",
     "opencv-python>=4.0.0",
     "pillow>=10.0.0",
     "scikit-image>=0.20.0",
     # Demo interface
     "gradio>=4.0.0",
+    # Note: torchvision installed separately in CI from CPU index
 ]
 
 [project.urls]
