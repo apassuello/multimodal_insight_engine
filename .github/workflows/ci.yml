@@ -124,9 +124,8 @@ jobs:
           # Install PyTorch CPU version for faster CI
           pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-          # Install project dependencies (if requirements.txt exists)
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          # Install project from pyproject.toml (modern approach)
+          pip install -e .
 
       - name: Run tests with coverage
         run: |
