@@ -373,9 +373,15 @@ class PreferenceDataset(Dataset):
         """
         item = self.data[idx]
 
+        # Support both key formats for backward compatibility
+        # New format: 'chosen', 'rejected'
+        # Old format: 'response_chosen', 'response_rejected'
+        chosen = item.get("chosen") or item.get("response_chosen")
+        rejected = item.get("rejected") or item.get("response_rejected")
+
         # Combine prompt with responses for full context
-        chosen_text = item["prompt"] + " " + item["response_chosen"]
-        rejected_text = item["prompt"] + " " + item["response_rejected"]
+        chosen_text = item["prompt"] + " " + chosen
+        rejected_text = item["prompt"] + " " + rejected
 
         # Tokenize chosen response
         chosen_encoding = self.tokenizer(

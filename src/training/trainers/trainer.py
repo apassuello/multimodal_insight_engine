@@ -167,17 +167,15 @@ def train_model(
 
         # Print epoch summary
         epoch_time = time.time() - start_time
-        logger.info(
-            f"Epoch {epoch+1}/{epochs} - {epoch_time:.2f}s - loss: {avg_train_loss:.4f}",
-            end="",
-        )
+        # Build complete log message
+        log_msg = f"Epoch {epoch+1}/{epochs} - {epoch_time:.2f}s - loss: {avg_train_loss:.4f}"
         if train_accuracies:
-            logger.info(f" - accuracy: {avg_train_accuracy:.4f}", end="")
+            log_msg += f" - accuracy: {avg_train_accuracy:.4f}"
         if val_dataloader is not None and avg_val_loss is not None:
-            logger.info(f" - val_loss: {avg_val_loss:.4f}", end="")
+            log_msg += f" - val_loss: {avg_val_loss:.4f}"
             if val_accuracies:
-                logger.info(f" - val_accuracy: {avg_val_accuracy:.4f}", end="")
-        logger.info("")
+                log_msg += f" - val_accuracy: {avg_val_accuracy:.4f}"
+        logger.info(log_msg)
 
         # Call callbacks if provided
         if callbacks:
