@@ -41,6 +41,8 @@ dependencies = [
     "pillow>=10.0.0",
     "scikit-image>=0.20.0",
     "scikit-learn>=1.0.0",
+    # NLP utilities
+    "nltk>=3.8.0",
     # CLIP model support
     "open-clip-torch>=2.26.0",
     # Demo interface
