@@ -581,7 +581,9 @@ def supervised_finetune(
         elif "revised_response" in item:
             response_key = "revised_response"
         else:
-            _logger.info(f"Warning: Skipping training example {idx}: missing response or revised_response")
+            _logger.info(
+                f"Warning: Skipping training example {idx}: missing response or revised_response"
+            )
             continue
 
         prompt = item.get("prompt", "").strip()

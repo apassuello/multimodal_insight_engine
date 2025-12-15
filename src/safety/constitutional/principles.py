@@ -401,7 +401,9 @@ def _parse_json_response(response: str, default_structure: Dict[str, Any]) -> Di
                 if key not in parsed:
                     parsed[key] = default_structure[key]
 
-            _debug_print(f"✓ Parsed: flagged={parsed.get('flagged', 'N/A')}", level=3, prefix="JSON")
+            _debug_print(
+                f"✓ Parsed: flagged={parsed.get('flagged', 'N/A')}", level=3, prefix="JSON"
+            )
             return parsed
         else:
             _debug_print("✗ No JSON found, using defaults", level=2, prefix="JSON")

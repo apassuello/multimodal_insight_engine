@@ -25,10 +25,11 @@ class TestGenerationConfig:
         """Test that default values are set correctly."""
         config = GenerationConfig()
 
-        assert config.max_length == 100
+        assert config.max_new_tokens is None  # Defaults to None, 100 used in generation
+        assert config.max_length is None  # Deprecated parameter
         assert config.temperature == 1.0
-        assert config.top_p == 0.9
-        assert config.top_k == 50
+        assert config.top_p == 1.0  # 1.0 = no filtering
+        assert config.top_k == 0  # 0 = no filtering
         assert config.num_return_sequences == 1
         assert config.do_sample is True
         assert config.pad_token_id is None
@@ -37,7 +38,7 @@ class TestGenerationConfig:
     def test_custom_values(self):
         """Test creating config with custom values."""
         config = GenerationConfig(
-            max_length=200,
+            max_new_tokens=200,
             temperature=0.5,
             top_p=0.95,
             top_k=100,
@@ -45,7 +46,7 @@ class TestGenerationConfig:
             do_sample=False,
         )
 
-        assert config.max_length == 200
+        assert config.max_new_tokens == 200
         assert config.temperature == 0.5
         assert config.top_p == 0.95
         assert config.top_k == 100
@@ -54,12 +55,21 @@ class TestGenerationConfig:
 
     def test_partial_override(self):
         """Test overriding only some values."""
-        config = GenerationConfig(max_length=256, temperature=0.8)
+        config = GenerationConfig(max_new_tokens=256, temperature=0.8)
 
-        assert config.max_length == 256
+        assert config.max_new_tokens == 256
         assert config.temperature == 0.8
-        assert config.top_p == 0.9  # Default value
+        assert config.top_p == 1.0  # Default value (no filtering)
+        assert config.top_k == 0  # Default value (no filtering)
         assert config.do_sample is True  # Default value
+
+    def test_backward_compatibility_max_length(self):
+        """Test backward compatibility with deprecated max_length parameter."""
+        config = GenerationConfig(max_length=300, temperature=0.6)
+
+        assert config.max_length == 300
+        assert config.max_new_tokens is None  # New parameter not set
+        assert config.temperature == 0.6
 
 
 class TestLoadModel:
@@ -203,7 +213,7 @@ class TestGenerateText:
 
     def test_uses_custom_generation_config(self):
         """Test generation with custom config."""
-        config = GenerationConfig(max_length=200, temperature=0.5, top_p=0.95)
+        config = GenerationConfig(max_new_tokens=200, temperature=0.5, top_p=0.95)
 
         # Setup mocks
         self.mock_tokenizer.return_value = {
@@ -217,7 +227,7 @@ class TestGenerateText:
 
         # Check that config was used
         call_kwargs = self.mock_model.generate.call_args[1]
-        assert call_kwargs["max_length"] == 200
+        assert call_kwargs["max_new_tokens"] == 200
         assert call_kwargs["temperature"] == 0.5
         assert call_kwargs["top_p"] == 0.95
 
@@ -331,7 +341,7 @@ class TestBatchGenerate:
 
     def test_batch_generate_uses_config(self):
         """Test that generation config is used."""
-        config = GenerationConfig(max_length=150, temperature=0.7)
+        config = GenerationConfig(max_new_tokens=150, temperature=0.7)
 
         # Setup mocks
         self.mock_tokenizer.return_value = {
@@ -351,7 +361,7 @@ class TestBatchGenerate:
 
         # Check config was used
         call_kwargs = self.mock_model.generate.call_args[1]
-        assert call_kwargs["max_length"] == 150
+        assert call_kwargs["max_new_tokens"] == 150
         assert call_kwargs["temperature"] == 0.7
 
     def test_batch_generate_empty_list(self):

@@ -23,8 +23,8 @@ logger = get_logger(__name__)
 class GenerationConfig:
     """Configuration for text generation."""
 
-    max_new_tokens: int = 100  # FIX: Use max_new_tokens instead of max_length
-    max_length: int | None = None  # Deprecated, kept for compatibility
+    max_new_tokens: int | None = None  # Preferred parameter for new code
+    max_length: int | None = None  # Deprecated, kept for backward compatibility
     temperature: float = 1.0
     top_p: float = 1.0  # FIX: Disable top_p filtering (1.0 = no filtering)
     top_k: int = 0  # FIX: Disable top_k filtering (0 = no filtering)

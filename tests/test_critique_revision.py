@@ -179,6 +179,7 @@ class TestCritiqueRevisionPipeline:
 
         # Create mock framework
         self.mock_framework = Mock(spec=ConstitutionalFramework)
+        self.mock_framework.model = None  # Set to None for regex-based evaluation
         self.mock_principle = Mock()
         self.mock_principle.description = "Test principle description"
         self.mock_framework.principles = {"test": self.mock_principle}
