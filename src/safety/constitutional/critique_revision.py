@@ -182,7 +182,7 @@ def generate_critique(
             logger.log_stage("CRITIQUE-GENERATION", critique, silent=True)
 
         return critique
-    except (RuntimeError, ValueError, TypeError) as e:
+    except Exception as e:
         if logger:
             logger.log_stage("CRITIQUE-ERROR", f"Critique generation failed: {e}")
         _logger.info(f"Warning: Critique generation failed: {e}")
@@ -236,7 +236,7 @@ def generate_revision(
             logger.log_stage("REVISION-GENERATION", revision, silent=True)
 
         return revision
-    except (RuntimeError, ValueError, TypeError) as e:
+    except Exception as e:
         if logger:
             logger.log_stage("REVISION-ERROR", f"Revision generation failed: {e}, using original")
         _logger.info(f"Warning: Revision generation failed: {e}")

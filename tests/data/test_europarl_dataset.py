@@ -26,11 +26,15 @@ def create_test_data(temp_dir: str, src_lang: str = "de", tgt_lang: str = "en"):
 
 def test_europarl_dataset_initialization():
     """Test basic initialization of the dataset"""
-    dataset = EuroparlDataset(data_dir="data/europarl/")
-    assert dataset.data_dir == "data/europarl/"
-    assert dataset.src_lang == "de"
-    assert dataset.tgt_lang == "en"
-    assert dataset.max_examples is None
+    with TemporaryDirectory() as temp_dir:
+        # Create minimal test data so initialization succeeds
+        create_test_data(temp_dir)
+
+        dataset = EuroparlDataset(data_dir=temp_dir)
+        assert dataset.data_dir == temp_dir
+        assert dataset.src_lang == "de"
+        assert dataset.tgt_lang == "en"
+        assert dataset.max_examples is None
 
 
 def test_europarl_dataset_loading():
