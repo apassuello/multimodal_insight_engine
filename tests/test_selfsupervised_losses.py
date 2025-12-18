@@ -394,9 +394,16 @@ class TestBarlowTwinsLoss:
 class TestHybridPretrainVICRegLoss:
     """Test suite for HybridPretrainVICRegLoss."""
 
-    def test_basic_forward(self, embeddings_a, embeddings_b, device):
+    def test_basic_forward(self, embeddings_a, embeddings_b, embed_dim, device):
         """Test basic forward pass."""
-        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
+        loss_fn = HybridPretrainVICRegLoss(
+            sim_coeff=10.0,
+            var_coeff=5.0,
+            cov_coeff=1.0,
+            vision_dim=embed_dim,
+            text_dim=embed_dim,
+            fusion_dim=embed_dim,
+        )
 
         result = loss_fn(embeddings_a, embeddings_b)
 
@@ -412,12 +419,19 @@ class TestHybridPretrainVICRegLoss:
         assert not torch.isnan(loss)
         assert not torch.isinf(loss)
 
-    def test_gradient_flow(self, embeddings_a, embeddings_b, device):
+    def test_gradient_flow(self, embeddings_a, embeddings_b, embed_dim, device):
         """Test gradient flow through hybrid loss."""
         embeddings_a = embeddings_a.requires_grad_(True)
         embeddings_b = embeddings_b.requires_grad_(True)
 
-        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
+        loss_fn = HybridPretrainVICRegLoss(
+            sim_coeff=10.0,
+            var_coeff=5.0,
+            cov_coeff=1.0,
+            vision_dim=embed_dim,
+            text_dim=embed_dim,
+            fusion_dim=embed_dim,
+        )
 
         result = loss_fn(embeddings_a, embeddings_b)
         loss = result["loss"] if isinstance(result, dict) else result
@@ -428,9 +442,16 @@ class TestHybridPretrainVICRegLoss:
         assert not torch.all(embeddings_a.grad == 0)
         assert not torch.all(embeddings_b.grad == 0)
 
-    def test_hybrid_components(self, embeddings_a, embeddings_b, device):
+    def test_hybrid_components(self, embeddings_a, embeddings_b, embed_dim, device):
         """Test that hybrid loss combines multiple objectives."""
-        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
+        loss_fn = HybridPretrainVICRegLoss(
+            sim_coeff=10.0,
+            var_coeff=5.0,
+            cov_coeff=1.0,
+            vision_dim=embed_dim,
+            text_dim=embed_dim,
+            fusion_dim=embed_dim,
+        )
 
         result = loss_fn(embeddings_a, embeddings_b)
 
@@ -445,7 +466,14 @@ class TestHybridPretrainVICRegLoss:
         embeddings_a = torch.randn(batch_size, embed_dim, device=device) * 10
         embeddings_b = torch.randn(batch_size, embed_dim, device=device) * 10
 
-        loss_fn = HybridPretrainVICRegLoss(sim_coeff=10.0, var_coeff=5.0, cov_coeff=1.0)
+        loss_fn = HybridPretrainVICRegLoss(
+            sim_coeff=10.0,
+            var_coeff=5.0,
+            cov_coeff=1.0,
+            vision_dim=embed_dim,
+            text_dim=embed_dim,
+            fusion_dim=embed_dim,
+        )
 
         result = loss_fn(embeddings_a, embeddings_b)
         loss = result["loss"] if isinstance(result, dict) else result
