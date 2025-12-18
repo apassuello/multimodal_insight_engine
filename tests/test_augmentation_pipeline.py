@@ -105,7 +105,7 @@ class TestImageAugmentation:
 
         # Apply augmentation
         try:
-            augmented = pipeline(sample_image, "test caption")
+            augmented = pipeline({"image": sample_image, "text": "test caption"})
             if isinstance(augmented, tuple):
                 aug_image, aug_text = augmented
             else:
@@ -123,7 +123,7 @@ class TestImageAugmentation:
             pipeline = MultimodalAugmentationPipeline(image_size=size, image_aug_prob=1.0)
 
             try:
-                pipeline(sample_image, "test")
+                pipeline({"image": sample_image, "text": "test"})
                 # Check size matches expected
                 assert True  # Basic check that it runs
             except Exception:
@@ -139,14 +139,14 @@ class TestImageAugmentation:
         np.random.seed(42)
 
         try:
-            result1 = pipeline(sample_image.copy(), "test")
+            result1 = pipeline({"image": sample_image.copy(), "text": "test"})
 
             # Reset seed and augment again
             random.seed(42)
             torch.manual_seed(42)
             np.random.seed(42)
 
-            result2 = pipeline(sample_image.copy(), "test")
+            result2 = pipeline({"image": sample_image.copy(), "text": "test"})
 
             # Results should be similar (may not be exactly equal due to PIL)
             # Just verify both ran successfully
@@ -178,7 +178,7 @@ class TestImageAugmentation:
         pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, color_jitter_prob=1.0)
 
         try:
-            result = pipeline(sample_image, "test")
+            result = pipeline({"image": sample_image, "text": "test"})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -188,7 +188,7 @@ class TestImageAugmentation:
         pipeline = MultimodalAugmentationPipeline(image_aug_prob=1.0, random_erasing_prob=1.0)
 
         try:
-            result = pipeline(sample_image, "test")
+            result = pipeline({"image": sample_image, "text": "test"})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -207,7 +207,7 @@ class TestTextAugmentation:
         pipeline = MultimodalAugmentationPipeline(text_aug_prob=1.0)  # Always apply
 
         try:
-            result = pipeline(Image.new("RGB", (224, 224)), sample_text)
+            result = pipeline({"image": Image.new("RGB", (224, 224)), "text": sample_text})
             if isinstance(result, tuple):
                 _, aug_text = result
                 assert isinstance(aug_text, str)
@@ -239,7 +239,7 @@ class TestTextAugmentation:
         pipeline = MultimodalAugmentationPipeline(text_aug_prob=1.0)
 
         try:
-            result = pipeline(Image.new("RGB", (224, 224)), sample_text)
+            result = pipeline({"image": Image.new("RGB", (224, 224)), "text": sample_text})
             # Just verify it runs
             assert result is not None
         except Exception:
@@ -261,7 +261,7 @@ class TestConsistencyModes:
         )
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -273,7 +273,7 @@ class TestConsistencyModes:
         )
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -285,7 +285,7 @@ class TestConsistencyModes:
         )
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -306,7 +306,7 @@ class TestBatchProcessing:
         augmented_images = []
         for img in batch_images:
             try:
-                result = pipeline(img, "test")
+                result = pipeline({"image": img, "text": "test"})
                 augmented_images.append(result)
             except Exception:
                 pytest.skip("Pipeline interface different")
@@ -323,7 +323,7 @@ class TestBatchProcessing:
 
         for text in batch_texts:
             try:
-                result = pipeline(dummy_img, text)
+                result = pipeline({"image": dummy_img, "text": text})
                 augmented_texts.append(result)
             except Exception:
                 pytest.skip("Pipeline interface different")
@@ -344,7 +344,7 @@ class TestEdgeCases:
         pipeline = MultimodalAugmentationPipeline()
 
         try:
-            result = pipeline(Image.new("RGB", (224, 224)), "")
+            result = pipeline({"image": Image.new("RGB", (224, 224)), "text": ""})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -356,7 +356,7 @@ class TestEdgeCases:
         long_text = "word " * 1000
 
         try:
-            result = pipeline(Image.new("RGB", (224, 224)), long_text)
+            result = pipeline({"image": Image.new("RGB", (224, 224)), "text": long_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -368,7 +368,7 @@ class TestEdgeCases:
         unicode_text = "Hello 世界 🌍 Привет مرحبا"
 
         try:
-            result = pipeline(Image.new("RGB", (224, 224)), unicode_text)
+            result = pipeline({"image": Image.new("RGB", (224, 224)), "text": unicode_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -380,7 +380,7 @@ class TestEdgeCases:
         small_img = Image.new("RGB", (32, 32))
 
         try:
-            result = pipeline(small_img, "test")
+            result = pipeline({"image": small_img, "text": "test"})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -392,7 +392,7 @@ class TestEdgeCases:
         large_img = Image.new("RGB", (2048, 2048))
 
         try:
-            result = pipeline(large_img, "test")
+            result = pipeline({"image": large_img, "text": "test"})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -404,7 +404,7 @@ class TestEdgeCases:
         gray_img = Image.new("L", (224, 224))
 
         try:
-            result = pipeline(gray_img, "test")
+            result = pipeline({"image": gray_img, "text": "test"})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -423,7 +423,7 @@ class TestDebugMode:
         pipeline = MultimodalAugmentationPipeline(debug_mode=True, image_aug_prob=1.0)
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -433,7 +433,7 @@ class TestDebugMode:
         pipeline = MultimodalAugmentationPipeline(debug_mode=False, image_aug_prob=1.0)
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -452,7 +452,7 @@ class TestSeverityLevels:
         pipeline = MultimodalAugmentationPipeline(severity="light", image_aug_prob=1.0)
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -462,7 +462,7 @@ class TestSeverityLevels:
         pipeline = MultimodalAugmentationPipeline(severity="medium", image_aug_prob=1.0)
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -472,7 +472,7 @@ class TestSeverityLevels:
         pipeline = MultimodalAugmentationPipeline(severity="heavy", image_aug_prob=1.0)
 
         try:
-            result = pipeline(sample_image, sample_text)
+            result = pipeline({"image": sample_image, "text": sample_text})
             assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -508,7 +508,7 @@ class TestAugmentationIntegration:
         # Simulate dataset __getitem__
         try:
             for _i in range(5):
-                result = pipeline(sample_image.copy(), sample_text)
+                result = pipeline({"image": sample_image.copy(), "text": sample_text})
                 assert result is not None
         except Exception:
             pytest.skip("Pipeline interface different")
@@ -525,10 +525,10 @@ class TestAugmentationIntegration:
 
         set_seeds()
         try:
-            result1 = pipeline(sample_image.copy(), sample_text)
+            result1 = pipeline({"image": sample_image.copy(), "text": sample_text})
 
             set_seeds()
-            result2 = pipeline(sample_image.copy(), sample_text)
+            result2 = pipeline({"image": sample_image.copy(), "text": sample_text})
 
             # Both should run successfully
             assert result1 is not None

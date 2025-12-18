@@ -7,7 +7,10 @@ from .contrastive import (
     SimCLRLoss,
 )
 from .contrastive_learning import compute_recall_at_k, nt_xent_loss, supervised_contrastive_loss
+from .decorrelation_loss import DecorrelationLoss
+from .feature_consistency_loss import FeatureConsistencyLoss
 from .hybrid_pretrain_vicreg_loss import HybridPretrainVICRegLoss
+from .loss_factory import create_loss_function
 from .losses import CrossEntropyLoss, MeanSquaredError
 from .multimodal import MixedMultimodalLoss
 from .self_supervised import BarlowTwinsLoss, VICRegLoss
@@ -45,6 +48,9 @@ __all__ = [
     "VICRegLoss",
     "BarlowTwinsLoss",
     "HybridPretrainVICRegLoss",
+    "DecorrelationLoss",
+    "FeatureConsistencyLoss",
+    "create_loss_function",
     "nt_xent_loss",
     "supervised_contrastive_loss",
     "compute_recall_at_k",

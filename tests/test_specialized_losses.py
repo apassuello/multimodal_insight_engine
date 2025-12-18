@@ -4,7 +4,7 @@ Comprehensive tests for specialized loss functions.
 Tests cover:
 - DecorrelationLoss (feature collapse prevention)
 - MultitaskLoss (multi-task learning)
-- CLIPStyleLoss (CLIP-style contrastive)
+- CLIPLoss (CLIP-style contrastive)
 - CombinedLoss (loss combination)
 - LossFactory (loss creation)
 - Other specialized losses
@@ -21,32 +21,32 @@ import torch.nn.functional as F
 
 # Import loss functions
 try:
-    from src.training.losses.decorrelation_loss import DecorrelationLoss
+    from src.training.losses import DecorrelationLoss
 except ImportError:
     DecorrelationLoss = None
 
 try:
-    from src.training.losses.multitask_loss import MultitaskLoss
+    from src.training.losses import MultitaskLoss
 except ImportError:
     MultitaskLoss = None
 
 try:
-    from src.training.losses.clip_style_loss import CLIPStyleLoss
+    from src.training.losses import CLIPLoss
 except ImportError:
-    CLIPStyleLoss = None
+    CLIPLoss = None
 
 try:
-    from src.training.losses.combined_loss import CombinedLoss
+    from src.training.losses import CombinedLoss
 except ImportError:
     CombinedLoss = None
 
 try:
-    from src.training.losses.loss_factory import create_loss
+    from src.training.losses import create_loss_function
 except ImportError:
-    create_loss = None
+    create_loss_function = None
 
 try:
-    from src.training.losses.feature_consistency_loss import FeatureConsistencyLoss
+    from src.training.losses import FeatureConsistencyLoss
 except ImportError:
     FeatureConsistencyLoss = None
 
@@ -347,17 +347,17 @@ class TestMultitaskLoss:
 
 
 # ============================================================================
-# CLIPStyleLoss Tests
+# CLIPLoss Tests
 # ============================================================================
 
 
-@pytest.mark.skipif(CLIPStyleLoss is None, reason="CLIPStyleLoss not available")
-class TestCLIPStyleLoss:
-    """Test suite for CLIPStyleLoss."""
+@pytest.mark.skipif(CLIPLoss is None, reason="CLIPLoss not available")
+class TestCLIPLoss:
+    """Test suite for CLIPLoss."""
 
     def test_basic_forward(self, vision_features, text_features, device):
         """Test basic forward pass."""
-        loss_fn = CLIPStyleLoss(temperature=0.07)
+        loss_fn = CLIPLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features)
 
@@ -375,7 +375,7 @@ class TestCLIPStyleLoss:
 
     def test_with_match_ids(self, vision_features, text_features, match_ids, device):
         """Test with match IDs."""
-        loss_fn = CLIPStyleLoss(temperature=0.07)
+        loss_fn = CLIPLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features, match_ids=match_ids)
 
@@ -388,8 +388,8 @@ class TestCLIPStyleLoss:
 
     def test_temperature_sensitivity(self, vision_features, text_features, device):
         """Test temperature parameter effect."""
-        loss_fn_low = CLIPStyleLoss(temperature=0.01)
-        loss_fn_high = CLIPStyleLoss(temperature=1.0)
+        loss_fn_low = CLIPLoss(temperature=0.01)
+        loss_fn_high = CLIPLoss(temperature=1.0)
 
         result_low = loss_fn_low(vision_features, text_features)
         result_high = loss_fn_high(vision_features, text_features)
@@ -407,7 +407,7 @@ class TestCLIPStyleLoss:
         vision_features = vision_features.requires_grad_(True)
         text_features = text_features.requires_grad_(True)
 
-        loss_fn = CLIPStyleLoss(temperature=0.07)
+        loss_fn = CLIPLoss(temperature=0.07)
 
         result = loss_fn(vision_features, text_features)
         loss = result["loss"] if isinstance(result, dict) else result
@@ -420,8 +420,8 @@ class TestCLIPStyleLoss:
 
     def test_label_smoothing(self, vision_features, text_features, device):
         """Test label smoothing effect."""
-        loss_fn_no_smooth = CLIPStyleLoss(temperature=0.07, label_smoothing=0.0)
-        loss_fn_smooth = CLIPStyleLoss(temperature=0.07, label_smoothing=0.1)
+        loss_fn_no_smooth = CLIPLoss(temperature=0.07, label_smoothing=0.0)
+        loss_fn_smooth = CLIPLoss(temperature=0.07, label_smoothing=0.1)
 
         result_no_smooth = loss_fn_no_smooth(vision_features, text_features)
         result_smooth = loss_fn_smooth(vision_features, text_features)
@@ -440,7 +440,7 @@ class TestCLIPStyleLoss:
         vision_large = torch.ones(batch_size, embed_dim, device=device) * 10
         text_large = torch.ones(batch_size, embed_dim, device=device) * 10
 
-        loss_fn = CLIPStyleLoss(temperature=0.07)
+        loss_fn = CLIPLoss(temperature=0.07)
 
         result = loss_fn(vision_large, text_large)
         loss = result["loss"] if isinstance(result, dict) else result
@@ -508,14 +508,14 @@ class TestCombinedLoss:
 # ============================================================================
 
 
-@pytest.mark.skipif(create_loss is None, reason="Loss factory not available")
+@pytest.mark.skipif(create_loss_function is None, reason="Loss factory not available")
 class TestLossFactory:
     """Test suite for loss factory."""
 
     def test_create_contrastive_loss(self):
         """Test creating contrastive loss from factory."""
         try:
-            loss = create_loss("contrastive", temperature=0.07)
+            loss = create_loss_function("contrastive", temperature=0.07)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -524,7 +524,7 @@ class TestLossFactory:
     def test_create_vicreg_loss(self):
         """Test creating VICReg loss from factory."""
         try:
-            loss = create_loss("vicreg", sim_coeff=10.0)
+            loss = create_loss_function("vicreg", sim_coeff=10.0)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -534,7 +534,7 @@ class TestLossFactory:
         """Test handling of invalid loss type."""
         try:
             with pytest.raises((ValueError, KeyError)):
-                create_loss("invalid_loss_type")
+                create_loss_function("invalid_loss_type")
         except Exception:
             pytest.skip("Loss factory has different interface")
 
