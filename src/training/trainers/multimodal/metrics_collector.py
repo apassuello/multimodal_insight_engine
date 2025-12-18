@@ -191,7 +191,9 @@ class MetricsCollector:
         Args:
             save_dir: Directory to save plots (if None, plots are not saved)
         """
-        if not self.history:
+        # Check if there are any metrics to plot (regular or alignment)
+        has_metrics = bool(self.history) or bool(self._alignment_history["step"])
+        if not has_metrics:
             logger.warning("No metrics to plot")
             return
 
