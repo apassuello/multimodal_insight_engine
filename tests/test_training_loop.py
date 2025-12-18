@@ -230,7 +230,7 @@ class TestTrainingLoop:
 
     def test_with_scheduler(self, model, loss_fn, optimizer, device, dataloader):
         """Test training with learning rate scheduler."""
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
 
         loop = TrainingLoop(
             model=model,
@@ -354,10 +354,10 @@ class TestTrainingLoop:
             def forward(self, output, target):
                 self.call_count += 1
                 # Return NaN on second call
+                loss = nn.functional.mse_loss(output, target)
                 if self.call_count == 2:
-                    loss = torch.tensor(float("nan"))
-                else:
-                    loss = nn.functional.mse_loss(output, target)
+                    # Create NaN while maintaining grad connection
+                    loss = loss * float("nan")
                 return {"loss": loss, "accuracy": 0.85}
 
         anomalous_loss = AnomalousLoss()

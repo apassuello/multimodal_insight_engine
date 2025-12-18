@@ -54,7 +54,7 @@ class TestAccuracy:
 
         metric.update(pred, target)
         acc = metric.compute()
-        assert abs(acc - 0.5) < 1e-6, f"Expected 50% accuracy, got {acc*100}%"
+        assert abs(acc - 0.5) < 1e-6, f"Expected 50% accuracy, got {acc * 100}%"
 
     def test_top_k_accuracy(self):
         """Validate top-k accuracy works."""
@@ -83,7 +83,7 @@ class TestAccuracy:
 
         # Total: 3/5 correct = 60%
         acc = metric.compute()
-        assert abs(acc - 0.6) < 1e-6, f"Expected 60% accuracy, got {acc*100}%"
+        assert abs(acc - 0.6) < 1e-6, f"Expected 60% accuracy, got {acc * 100}%"
 
     def test_reset(self):
         """Validate reset clears state."""
@@ -212,7 +212,7 @@ class TestBLEUScore:
         metric = BLEUScore()
 
         reference = "the cat sat on the mat"
-        hypothesis = "the cat sat"  # First 3 words match
+        hypothesis = "the cat sat on a mat"  # Most words match, one differs
 
         metric.update(hypothesis, reference)
         bleu = metric.compute()
