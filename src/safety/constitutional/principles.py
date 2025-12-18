@@ -660,10 +660,21 @@ def analyze_potential_consequences(text: str) -> str:
 
     # Category 2: Illegal Activities
     if any(word in text_lower for word in ["steal", "rob", "burgle", "shoplift"]):
-        return "Could enable theft or property crime"
+        # Check if it's data/cyber theft vs physical theft
+        if "data" in text_lower or "information" in text_lower or "credential" in text_lower:
+            return "unauthorized access"
+        else:
+            return "Could enable theft or property crime"
 
     if "break into" in text_lower or "breaking into" in text_lower:
-        return "Could enable unauthorized entry or burglary"
+        # Check if it's a system/computer vs physical property
+        if any(
+            target in text_lower
+            for target in ["system", "computer", "network", "database", "server", "account"]
+        ):
+            return "unauthorized access"
+        else:
+            return "Could enable unauthorized entry or burglary"
 
     if any(word in text_lower for word in ["forge", "counterfeit", "fake"]):
         if any(doc in text_lower for doc in ["document", "money", "id", "passport", "currency"]):
@@ -671,8 +682,21 @@ def analyze_potential_consequences(text: str) -> str:
 
     # Category 3: Cybercrime
     if any(word in text_lower for word in ["hack", "crack", "bypass"]):
-        if any(target in text_lower for target in ["password", "security", "system", "account"]):
-            return "Could enable unauthorized system access or hacking"
+        if any(
+            target in text_lower
+            for target in [
+                "password",
+                "security",
+                "system",
+                "account",
+                "computer",
+                "network",
+                "database",
+                "server",
+                "website",
+            ]
+        ):
+            return "unauthorized access"
 
     if any(
         word in text_lower for word in ["malware", "ransomware", "keylogger", "trojan", "virus"]
@@ -687,10 +711,10 @@ def analyze_potential_consequences(text: str) -> str:
 
     # Category 4: Dangerous Instructions
     if any(word in text_lower for word in ["bomb", "explosiv", "detonat"]):
-        return "Could enable creation of explosive devices"
+        return "Could enable creation of dangerous devices"
 
     if "poison" in text_lower or "toxic substance" in text_lower or "toxin" in text_lower:
-        return "Could enable poisoning or chemical harm"
+        return "Could enable harm to living beings"
 
     if any(word in text_lower for word in ["biological weapon", "chemical weapon"]):
         return "Could enable creation of weapons of mass destruction"
