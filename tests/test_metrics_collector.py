@@ -3,6 +3,7 @@
 Tests metrics collection, history tracking, and visualization.
 """
 
+import logging
 import os
 import shutil
 import tempfile
@@ -97,32 +98,38 @@ class TestMetricsCollector:
         latest = metrics_collector.get_latest("nonexistent")
         assert latest is None
 
-    def test_log_metrics(self, metrics_collector, capsys):
+    def test_log_metrics(self, metrics_collector, caplog):
         """Test logging metrics to console."""
+        # Set log level to capture INFO messages
+        caplog.set_level(logging.INFO)
+
         metrics = {"loss": 0.5, "accuracy": 0.85}
         metrics_collector.log_metrics(metrics, prefix="train")
 
-        captured = capsys.readouterr()
-        assert "Train:" in captured.out
-        assert "loss=0.5" in captured.out
-        assert "accuracy=0.85" in captured.out
+        # Check logger output
+        assert "Train:" in caplog.text
+        assert "loss=0.5" in caplog.text or "loss=0.5000" in caplog.text
+        assert "accuracy=0.85" in caplog.text or "accuracy=0.8500" in caplog.text
 
         # Check that metrics were also added to history
         assert metrics_collector.history["train_loss"] == [0.5]
 
-    def test_log_nested_metrics(self, metrics_collector, capsys):
+    def test_log_nested_metrics(self, metrics_collector, caplog):
         """Test logging nested metrics."""
+        # Set log level to capture INFO messages
+        caplog.set_level(logging.INFO)
+
         metrics = {
             "loss": 0.5,
             "recalls": {"top1": 0.8, "top5": 0.95},
         }
         metrics_collector.log_metrics(metrics, prefix="val")
 
-        captured = capsys.readouterr()
-        assert "Val:" in captured.out
-        assert "loss=0.5" in captured.out
-        assert "recalls.top1=0.8" in captured.out
-        assert "recalls.top5=0.95" in captured.out
+        # Check logger output
+        assert "Val:" in caplog.text
+        assert "loss=0.5" in caplog.text or "loss=0.5000" in caplog.text
+        assert "recalls.top1=0.8" in caplog.text or "recalls.top1=0.8000" in caplog.text
+        assert "recalls.top5=0.95" in caplog.text or "recalls.top5=0.9500" in caplog.text
 
     def test_update_alignment_metrics(self, metrics_collector):
         """Test updating alignment metrics."""
