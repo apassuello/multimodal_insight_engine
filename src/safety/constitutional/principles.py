@@ -578,7 +578,7 @@ def evaluate_harm_potential(
     tokenizer: Any | None = None,
     device: torch.device | None = None,
     use_ai: bool = True,
-    hybrid_mode: bool = True,  # NEW: Use regex as safety net
+    hybrid_mode: bool = False,  # NEW: Use regex as safety net
     logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -816,7 +816,7 @@ def evaluate_truthfulness(
     tokenizer: Any | None = None,
     device: torch.device | None = None,
     use_ai: bool = True,
-    hybrid_mode: bool = True,
+    hybrid_mode: bool = False,
     logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -1088,7 +1088,7 @@ def evaluate_fairness(
     tokenizer: Any | None = None,
     device: torch.device | None = None,
     use_ai: bool = True,
-    hybrid_mode: bool = True,
+    hybrid_mode: bool = False,
     logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
@@ -1264,7 +1264,7 @@ def evaluate_autonomy_respect(
     tokenizer: Any | None = None,
     device: torch.device | None = None,
     use_ai: bool = True,
-    hybrid_mode: bool = True,
+    hybrid_mode: bool = False,
     logger=None,  # type: ignore
 ) -> Dict[str, Any]:
     """
