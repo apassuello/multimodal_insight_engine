@@ -39,8 +39,12 @@ from demo.data.test_examples import (
 )
 from demo.utils.content_logger import ContentLogger
 
-from src.safety.constitutional.principles import setup_default_framework
-from src.safety.constitutional.model_utils import generate_text, GenerationConfig
+# NOTE: Constitutional AI has been extracted to standalone repository
+# The demo infrastructure (managers) has been archived to extracted/constitutional-ai/
+# To use this demo, see the standalone repository at:
+# /Users/apa/ml_projects/constitutional-ai
+# from src.safety.constitutional.principles import setup_default_framework
+# from src.safety.constitutional.model_utils import generate_text, GenerationConfig
 
 
 # ============================================================================
