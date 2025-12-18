@@ -312,7 +312,6 @@ class ConstitutionalPipeline:
 
         # Extract training data from result dictionary
         training_data = result["training_data"]
-        preference_pairs = result.get("preference_pairs", [])
 
         self.stats["phase1_samples_processed"] = len(training_data)
         self.stats["phase1_revisions_generated"] = len(training_data) * num_revisions
