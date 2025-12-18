@@ -335,7 +335,8 @@ class TestMultimodalTrainer:
         new_trainer.load_checkpoint(checkpoint_path)
 
         # Verify state was restored
-        assert new_trainer.training_loop.current_epoch == 3  # Ready for next epoch
+        # After training epochs 0 and 1, next epoch is 2 (0-indexed)
+        assert new_trainer.training_loop.current_epoch == 2  # Ready for next epoch
         assert new_trainer.training_loop.global_step > 0
 
     def test_evaluate_test(self, model, dataloaders, temp_dir, device):

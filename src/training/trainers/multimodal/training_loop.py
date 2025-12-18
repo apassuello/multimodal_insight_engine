@@ -490,8 +490,10 @@ class TrainingLoop:
                         nested_metrics[k] = defaultdict(float)
                     for sub_k, sub_v in v.items():
                         nested_metrics[k][sub_k] += sub_v / len(pbar)
-                else:
-                    epoch_metrics[k] += v / len(pbar)
+                elif isinstance(v, (int, float, torch.Tensor)):
+                    # Only accumulate numeric metrics
+                    value = v.item() if isinstance(v, torch.Tensor) else v
+                    epoch_metrics[k] += value / len(pbar)
 
         # Update progress bar based on loss type
         postfix = {"loss": loss_dict["loss"].item()}
