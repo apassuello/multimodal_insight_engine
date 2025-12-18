@@ -237,6 +237,7 @@ filterwarnings = [
 source = ["src"]
 omit = [
     "*/tests/*",
+    "extracted/*",
     "*/__pycache__/*",
     "*/site-packages/*",
     "*/venv/*",

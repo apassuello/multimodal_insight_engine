@@ -8,9 +8,11 @@ A framework for developing, training, and evaluating transformer-based models wi
 ![CI/CD](https://github.com/apassuello/multimodal_insight_engine/workflows/CI%2FCD%20Pipeline/badge.svg)
 [![codecov](https://codecov.io/gh/apassuello/multimodal_insight_engine/branch/main/graph/badge.svg)](https://codecov.io/gh/apassuello/multimodal_insight_engine)
 
+> **📦 Note on Constitutional AI:** Constitutional AI has been **extracted to a standalone repository** for reusability across projects. See [ARCHIVED_COMPONENTS.md](ARCHIVED_COMPONENTS.md) for details. This repository now focuses on **multimodal learning** and **vision-language integration**.
+
 ## 📑 Overview
 
-The MultiModal Insight Engine is an **advanced portfolio project** implementing transformer-based models from scratch with a focus on Constitutional AI safety principles, demonstrating deep ML engineering capabilities.
+The MultiModal Insight Engine is an **advanced portfolio project** implementing transformer-based models from scratch, demonstrating deep ML engineering capabilities with a focus on vision-language understanding.
 
 **Built from first principles to showcase:**
 - ✅ **From-scratch transformer architecture** following Vaswani et al. (2017) - not just API wrappers
