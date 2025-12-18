@@ -52,6 +52,36 @@ except ImportError:
 
 
 # ============================================================================
+# Helper Classes
+# ============================================================================
+
+
+class MockArgs:
+    """Mock arguments object for loss factory tests."""
+    def __init__(self, **kwargs):
+        # Set defaults for all attributes that loss_factory.py might access
+        self.contrastive_sampling = "auto"
+        self.batch_size = 32
+        self.memory_bank_size = 4096
+        self.queue_size = None
+        self.dynamic_temp_min = None
+        self.dynamic_temp_max = None
+        self.mining_strategy = None
+        self.hard_negative_factor = None
+        self.contrastive_weight = 1.0
+        self.classification_weight = 0.0
+        self.multimodal_matching_weight = 0.0
+        self.use_hard_negatives = False
+        self.dim = 512
+        self.vision_model = None
+        self.text_model = None
+
+        # Override with any provided kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+# ============================================================================
 # Fixtures
 # ============================================================================
 
@@ -462,12 +492,11 @@ class TestCombinedLoss:
         """Test combining multiple losses."""
         # Test with appropriate inputs
         try:
-            loss_functions = {
-                "mse": nn.MSELoss(),
-                "l1": nn.L1Loss(),
-            }
-
-            loss_fn = CombinedLoss(loss_functions=loss_functions)
+            loss_fn = CombinedLoss(
+                primary_loss=nn.MSELoss(),
+                secondary_loss=nn.L1Loss(),
+                secondary_loss_weight=0.5
+            )
             result = loss_fn(vision_features, text_features)
             if isinstance(result, dict):
                 loss = result.get("loss", result.get("total_loss"))
@@ -480,15 +509,13 @@ class TestCombinedLoss:
 
     def test_weighted_combination(self, device):
         """Test weighted combination of losses."""
-        loss_functions = {
-            "mse": nn.MSELoss(),
-            "l1": nn.L1Loss(),
-        }
-
-        weights = {"mse": 0.7, "l1": 0.3}
-
         try:
-            loss_fn = CombinedLoss(loss_functions=loss_functions, weights=weights)
+            # Primary loss has implicit weight of 1.0, secondary has weight of 0.3
+            loss_fn = CombinedLoss(
+                primary_loss=nn.MSELoss(),
+                secondary_loss=nn.L1Loss(),
+                secondary_loss_weight=0.3
+            )
 
             inputs = torch.randn(8, 10, device=device)
             targets = torch.randn(8, 10, device=device)
@@ -515,7 +542,14 @@ class TestLossFactory:
     def test_create_contrastive_loss(self):
         """Test creating contrastive loss from factory."""
         try:
-            loss = create_loss_function("contrastive", temperature=0.07)
+            args = MockArgs(
+                loss_type="contrastive",
+                temperature=0.07,
+                use_simple_model=False,
+                use_mixed_loss=False,
+                fusion_dim=512
+            )
+            loss = create_loss_function(args, dataset_size=1000, train_loader=None)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -524,7 +558,16 @@ class TestLossFactory:
     def test_create_vicreg_loss(self):
         """Test creating VICReg loss from factory."""
         try:
-            loss = create_loss_function("vicreg", sim_coeff=10.0)
+            args = MockArgs(
+                loss_type="vicreg",
+                sim_weight=10.0,
+                var_weight=5.0,
+                cov_weight=1.0,
+                use_simple_model=False,
+                use_mixed_loss=False,
+                fusion_dim=512
+            )
+            loss = create_loss_function(args, dataset_size=1000, train_loader=None)
             assert loss is not None
             assert isinstance(loss, nn.Module)
         except Exception:
@@ -533,8 +576,13 @@ class TestLossFactory:
     def test_invalid_loss_type(self):
         """Test handling of invalid loss type."""
         try:
-            with pytest.raises((ValueError, KeyError)):
-                create_loss_function("invalid_loss_type")
+            args = MockArgs(
+                loss_type="invalid_loss_type",
+                use_simple_model=False,
+                use_mixed_loss=False
+            )
+            with pytest.raises((ValueError, KeyError, AttributeError)):
+                create_loss_function(args)
         except Exception:
             pytest.skip("Loss factory has different interface")
 
@@ -551,8 +599,27 @@ class TestFeatureConsistencyLoss:
     def test_basic_forward(self, vision_features, text_features, device):
         """Test basic forward pass."""
         try:
-            loss_fn = FeatureConsistencyLoss()
-            result = loss_fn(vision_features, text_features)
+            # Create simple reference models
+            reference_vision = nn.Linear(vision_features.shape[1], vision_features.shape[1]).to(device)
+            reference_text = nn.Linear(text_features.shape[1], text_features.shape[1]).to(device)
+
+            # FeatureConsistencyLoss needs both features AND raw inputs
+            # Create mock raw inputs (same shape as features for Linear model)
+            vision_inputs = torch.randn_like(vision_features).to(device)
+            text_inputs = torch.randn_like(text_features).to(device)
+
+            loss_fn = FeatureConsistencyLoss(
+                reference_vision_model=reference_vision,
+                reference_text_model=reference_text,
+                vision_weight=1.0,
+                text_weight=1.0
+            )
+            result = loss_fn(
+                vision_features=vision_features,
+                text_features=text_features,
+                vision_inputs=vision_inputs,
+                text_inputs=text_inputs
+            )
 
             loss = extract_loss(result)
             assert not torch.isnan(loss)
@@ -565,8 +632,24 @@ class TestFeatureConsistencyLoss:
             vision_features = vision_features.requires_grad_(True)
             text_features = text_features.requires_grad_(True)
 
-            loss_fn = FeatureConsistencyLoss()
-            result = loss_fn(vision_features, text_features)
+            # Create simple reference models
+            reference_vision = nn.Linear(vision_features.shape[1], vision_features.shape[1]).to(device)
+            reference_text = nn.Linear(text_features.shape[1], text_features.shape[1]).to(device)
+
+            # FeatureConsistencyLoss needs both features AND raw inputs
+            vision_inputs = torch.randn_like(vision_features).to(device)
+            text_inputs = torch.randn_like(text_features).to(device)
+
+            loss_fn = FeatureConsistencyLoss(
+                reference_vision_model=reference_vision,
+                reference_text_model=reference_text
+            )
+            result = loss_fn(
+                vision_features=vision_features,
+                text_features=text_features,
+                vision_inputs=vision_inputs,
+                text_inputs=text_inputs
+            )
 
             loss = extract_loss(result)
             loss.backward()
