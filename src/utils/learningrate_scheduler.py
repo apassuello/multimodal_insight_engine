@@ -63,7 +63,7 @@ class WarmupCosineScheduler(_LRScheduler):
         # Store base LRs for scaling
         self.base_lrs = [group["lr"] for group in optimizer.param_groups]
 
-        super().__init__(optimizer, last_epoch, "verbose")
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> List[float]:
         """
@@ -143,7 +143,7 @@ class LinearWarmupScheduler(_LRScheduler):
         # Store base LRs for scaling
         self.base_lrs = [group["lr"] for group in optimizer.param_groups]
 
-        super().__init__(optimizer, last_epoch, "verbose")
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> List[float]:
         """
