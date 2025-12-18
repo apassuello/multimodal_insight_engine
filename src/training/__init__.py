@@ -12,14 +12,12 @@ from .trainers.trainer import train_model
 from .trainers.transformer_trainer import TransformerTrainer
 
 
-# Optional Constitutional AI trainer
-try:
-    from .trainers.constitutional_trainer import ConstitutionalTrainer
-
-    CONSTITUTIONAL_TRAINER_AVAILABLE = True
-except ImportError:
-    CONSTITUTIONAL_TRAINER_AVAILABLE = False
-    ConstitutionalTrainer = None
+# NOTE: Constitutional AI trainer has been extracted to standalone repository
+# Location: extracted/constitutional-ai/
+# Standalone repo: /Users/apa/ml_projects/constitutional-ai
+# For Constitutional AI training functionality, use the standalone repository
+CONSTITUTIONAL_TRAINER_AVAILABLE = False
+ConstitutionalTrainer = None
 
 # Import loss functions
 from .losses import (

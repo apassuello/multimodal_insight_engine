@@ -9,20 +9,11 @@ managing data for various model architectures.
 # Import dataset classes
 from .combined_dataset import CombinedDataset
 
-# Import constitutional AI dataset utilities
-from .constitutional_dataset import (
-    CHAT_PROMPT_TEMPLATE,
-    CONSTITUTIONAL_CRITIQUE_TEMPLATE,
-    DEFAULT_PROMPT_TEMPLATE,
-    INSTRUCTION_PROMPT_TEMPLATE,
-    ConstitutionalTrainingDataset,
-    PromptDataset,
-    PromptResponseDataset,
-    PromptTemplate,
-    create_default_prompts,
-    load_huggingface_dataset,
-    save_prompts_to_file,
-)
+# NOTE: Constitutional AI dataset has been extracted to standalone repository
+# Location: extracted/constitutional-ai/
+# Standalone repo: /Users/apa/ml_projects/constitutional-ai
+# For Constitutional AI dataset functionality, use the standalone repository
+
 from .dataloader import create_dataloader
 from .language_modeling import LanguageModelingDataset
 
@@ -47,16 +38,4 @@ __all__ = [
     "BPETokenizer",
     "BaseTokenizer",
     "Vocabulary",
-    # Constitutional AI datasets
-    "PromptDataset",
-    "PromptResponseDataset",
-    "ConstitutionalTrainingDataset",
-    "PromptTemplate",
-    "load_huggingface_dataset",
-    "create_default_prompts",
-    "save_prompts_to_file",
-    "DEFAULT_PROMPT_TEMPLATE",
-    "INSTRUCTION_PROMPT_TEMPLATE",
-    "CHAT_PROMPT_TEMPLATE",
-    "CONSTITUTIONAL_CRITIQUE_TEMPLATE",
 ]
