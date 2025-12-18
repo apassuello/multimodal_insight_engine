@@ -63,8 +63,7 @@ def test_manager_instantiation():
             TrainingManager,
             ComparisonEngine
         )
-        # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.principles import setup_default_framework
+        from src.safety.constitutional.principles import setup_default_framework
 
         # Instantiate managers
         model_manager = ModelManager()

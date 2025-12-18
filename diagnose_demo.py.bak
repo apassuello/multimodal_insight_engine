@@ -16,8 +16,7 @@ print()
 # Test 1: Import all required modules
 print("[1/7] Testing imports...")
 try:
-    # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.principles import (
+    from src.safety.constitutional.principles import (
         evaluate_harm_potential,
         evaluate_truthfulness,
         evaluate_fairness,
@@ -25,10 +24,8 @@ try:
         setup_default_framework,
         _evaluate_harm_with_regex
     )
-    # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.framework import ConstitutionalFramework
-    # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.model_utils import generate_text, GenerationConfig
+    from src.safety.constitutional.framework import ConstitutionalFramework
+    from src.safety.constitutional.model_utils import generate_text, GenerationConfig
     from demo.data.test_examples import EVALUATION_EXAMPLES
     print("✓ All imports successful")
 except ImportError as e:
@@ -111,8 +108,7 @@ print()
 print("[6/7] Testing model loading (optional, may take time)...")
 print("  Attempting to load gpt2...")
 try:
-    # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.model_utils import load_model
+    from src.safety.constitutional.model_utils import load_model
     model, tokenizer = load_model("gpt2", device=torch.device("cpu"))
     print(f"✓ Model loaded successfully")
     print(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")

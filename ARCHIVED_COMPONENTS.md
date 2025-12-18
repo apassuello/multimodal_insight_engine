@@ -128,6 +128,72 @@ See investigation findings:
 
 ---
 
+## Dead Code (Removed from Coverage)
+
+**Status:** 🗑️ Archived (Unused Code)
+**Date:** December 18, 2025
+**Reason:** Zero imports found in codebase, superseded by other implementations, or redundant
+
+### Files Archived
+
+#### 1. `archived/utils/feature_attribution.py` (585 lines)
+- **Why removed:** Interpretability/explainability code that was never used
+- **Contains:** GradCAM, IntegratedGradients, SaliencyMap, AttributionVisualizer classes
+- **Imports found:** 0 (completely unused)
+- **Recommendation:** If interpretability is needed in future, consider modern libraries like Captum
+
+#### 2. `archived/models/activations.py` (81 lines)
+- **Why removed:** Redundant wrapper around PyTorch's built-in GELU
+- **Contains:** GELU activation class
+- **Imports found:** 0 (completely unused)
+- **Recommendation:** Use `torch.nn.functional.gelu()` directly
+
+#### 3. `archived/data/augmentation.py` (88 lines)
+- **Why removed:** Superseded by `src/data/augmentation_pipeline.py` (759 lines)
+- **Contains:** Early/simple version of multimodal augmentation
+- **Imports found:** 0 (completely unused)
+- **Recommendation:** Use `MultimodalAugmentationPipeline` from augmentation_pipeline.py
+
+#### 4. `archived/data/image_dataset.py` (177 lines)
+- **Why removed:** No imports found anywhere
+- **Contains:** Image dataset loader
+- **Imports found:** 0 (completely unused)
+- **Recommendation:** Use modern dataset loaders from `src/data/multimodal_dataset.py`
+
+#### 5. `archived/evaluation/translation_metrics.py` (146 lines)
+- **Why removed:** Functions (`calculate_bleu`, `calculate_ter`) are redefined in demos, never imported
+- **Contains:** Translation evaluation metrics
+- **Imports found:** 0 (referenced but never imported)
+- **Recommendation:** Demo scripts have their own implementations
+
+### Impact
+
+**Coverage Cleanup:**
+- **Total dead code lines:** 1,077 lines
+- **Files archived:** 5 files
+- **Coverage impact:** Reduces false-positive 0% coverage by ~24-33%
+- **Benefit:** Clearer picture of actual coverage gaps vs. dead code
+
+**Before Archival:**
+- Files with 0% coverage: 24 files
+- Dead code contributing to 0% metric: 5 files (20% of 0% files)
+
+**After Archival:**
+- Active files with 0% coverage: 19 files (legitimate gaps needing tests)
+- Dead code removed from statistics
+
+### Discovery Process
+
+Dead code identified through systematic import analysis:
+1. Searched for `from src.path.module import` patterns across all Python files
+2. Checked test files, demos, and documentation
+3. Verified __init__.py references
+4. Categorized as DEAD_CODE only if zero imports found
+
+**Tool:** AI agent-powered codebase exploration (Explore subagent)
+
+---
+
 ## Future Extractions
 
 This section will track any future components extracted to standalone repositories.
