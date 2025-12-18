@@ -379,6 +379,18 @@ class PreferenceDataset(Dataset):
         chosen = item.get("chosen") or item.get("response_chosen")
         rejected = item.get("rejected") or item.get("response_rejected")
 
+        # Validate required keys are present
+        if chosen is None:
+            raise KeyError(
+                f"Missing required key: item must have either 'chosen' or 'response_chosen'. "
+                f"Available keys: {list(item.keys())}"
+            )
+        if rejected is None:
+            raise KeyError(
+                f"Missing required key: item must have either 'rejected' or 'response_rejected'. "
+                f"Available keys: {list(item.keys())}"
+            )
+
         # Combine prompt with responses for full context
         chosen_text = item["prompt"] + " " + chosen
         rejected_text = item["prompt"] + " " + rejected

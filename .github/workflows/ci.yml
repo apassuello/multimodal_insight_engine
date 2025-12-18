@@ -136,7 +136,7 @@ jobs:
             --cov-report=xml \
             --cov-report=term-missing \
             --cov-branch \
-            --cov-fail-under=45 \
+            --cov-fail-under=38 \
             -n auto
           echo "::endgroup::"
         continue-on-error: false

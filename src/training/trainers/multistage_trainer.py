@@ -608,7 +608,7 @@ class MultistageTrainer:
             return
 
         # Load checkpoint
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
         # Load model state
         self.model.load_state_dict(checkpoint["model_state_dict"])

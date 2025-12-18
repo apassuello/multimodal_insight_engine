@@ -123,7 +123,7 @@ class CheckpointManager:
             logger.warning(f"Checkpoint not found: {path}")
             return {}
 
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
         # Load model weights
         self.model.load_state_dict(checkpoint["model_state_dict"])

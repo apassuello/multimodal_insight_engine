@@ -610,7 +610,7 @@ def evaluate_harm_potential(
         # If regex finds explicit harm, trust it immediately
         if regex_result.get("explicit_harm_detected") or regex_result.get("flagged"):
             _debug_print("Regex detected harm - trusting regex", level=1, prefix="HARM")
-            regex_result["method"] = "hybrid_regex"
+            regex_result["method"] = "regex_heuristic"
             return regex_result
 
         # If regex found nothing but AI is available, check for subtle issues
@@ -847,7 +847,7 @@ def evaluate_truthfulness(
             _debug_print(
                 "Regex detected truthfulness issue - trusting regex", level=1, prefix="TRUTH"
             )
-            regex_result["method"] = "hybrid_regex"
+            regex_result["method"] = "regex_heuristic"
             return regex_result
 
         if use_ai and model is not None and tokenizer is not None:
@@ -1116,7 +1116,7 @@ def evaluate_fairness(
 
         if regex_result.get("flagged"):
             _debug_print("Regex detected fairness issue - trusting regex", level=1, prefix="FAIR")
-            regex_result["method"] = "hybrid_regex"
+            regex_result["method"] = "regex_heuristic"
             return regex_result
 
         if use_ai and model is not None and tokenizer is not None:
@@ -1292,7 +1292,7 @@ def evaluate_autonomy_respect(
 
         if regex_result.get("flagged"):
             _debug_print("Regex detected autonomy issue - trusting regex", level=1, prefix="AUTO")
-            regex_result["method"] = "hybrid_regex"
+            regex_result["method"] = "regex_heuristic"
             return regex_result
 
         if use_ai and model is not None and tokenizer is not None:

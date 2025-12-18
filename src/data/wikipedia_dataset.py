@@ -146,7 +146,7 @@ class WikipediaDataset:
         # Try to load from cache first
         if cache_path and os.path.exists(cache_path):
             logger.info(f"Loading cached processed data from {cache_path}")
-            return torch.load(cache_path, weights_only=True)
+            return torch.load(cache_path, weights_only=False)
 
         # Get file paths for the specified split
         file_paths = self._get_file_paths()

@@ -550,7 +550,7 @@ class ConstitutionalPipeline:
 
     def _load_phase1_checkpoint(self, path: str) -> None:
         """Load Phase 1 checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         self.base_model.load_state_dict(checkpoint["model_state_dict"])
         self.phase1_complete = checkpoint["phase1_complete"]
         self.training_history = checkpoint["training_history"]
@@ -573,7 +573,7 @@ class ConstitutionalPipeline:
 
     def _load_phase2_checkpoint(self, path: str) -> None:
         """Load Phase 2 checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         self.base_model.load_state_dict(checkpoint["model_state_dict"])
 
         if checkpoint["reward_model_state_dict"] is not None and self.reward_model is not None:

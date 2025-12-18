@@ -659,7 +659,7 @@ class TransformerTrainer:
         """
         logger.info(f"Loading checkpoint from {path}...")
         try:
-            checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+            checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
             # Check what's in the checkpoint
             checkpoint_contains = list(checkpoint.keys())
@@ -765,7 +765,7 @@ class TransformerTrainer:
         logger.info(f"Restoring training state from: {path}")
 
         try:
-            checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+            checkpoint = torch.load(path, map_location=self.device, weights_only=False)
 
             # Validate checkpoint contents
             if "model_state_dict" not in checkpoint:

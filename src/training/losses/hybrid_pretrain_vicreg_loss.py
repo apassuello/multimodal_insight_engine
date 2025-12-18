@@ -123,9 +123,9 @@ class HybridPretrainVICRegLoss(nn.Module):
             # Configure contrastive loss with NO projection since dimensions already match
             self.contrastive_loss = ContrastiveLoss(
                 temperature=temperature,
-                add_projection=True,
+                add_projection=False,  # FIX: Don't add projection when dimensions match
                 projection_dim=fusion_dim,
-                input_dim=vision_dim,  # Will be used for vision projection
+                input_dim=vision_dim,
             )
 
         # Print confirmation

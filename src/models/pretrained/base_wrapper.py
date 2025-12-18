@@ -38,7 +38,7 @@ class PretrainedModelWrapper(nn.Module):
 
     def load(self, path: str, map_location: str | None = None) -> Dict[str, Any]:
         """Load wrapper configuration and model weights."""
-        checkpoint = torch.load(path, map_location=map_location, weights_only=True)
+        checkpoint = torch.load(path, map_location=map_location, weights_only=False)
 
         self.model_name = checkpoint.get("model_name", self.model_name)
         self.config = checkpoint.get("config", {})
