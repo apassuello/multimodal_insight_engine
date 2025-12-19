@@ -13,6 +13,7 @@ KEY COMPONENTS:
     - Tools for monitoring curriculum progression and statistics
 """
 
+import os
 from collections import Counter
 from typing import Any, Dict, List
 
@@ -24,7 +25,6 @@ from src.utils.logging import get_logger
 
 
 logger = get_logger(__name__)
-import os
 
 
 class CurriculumTranslationDataset(Dataset):

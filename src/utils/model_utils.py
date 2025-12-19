@@ -28,12 +28,12 @@ import os
 from typing import Any
 
 import torch
+import torch.nn as nn
 
 from src.utils.logging import get_logger
 
 
 logger = get_logger(__name__)
-import torch.nn as nn
 
 
 def count_parameters(model: nn.Module) -> int:

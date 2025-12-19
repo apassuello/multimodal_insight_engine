@@ -17,27 +17,28 @@ DEPENDENCIES:
 """
 
 import json
+import logging
 import os
 import pickle  # Used for backward compatibility with old caches
 import random
 import time
+from collections import defaultdict
 from collections.abc import Callable
 from typing import Dict, List, Union
 
+import numpy as np
 import PIL.Image as Image
 import torch
 import torchvision.transforms as transforms
+from datasets import load_dataset
 from torch.utils.data import Dataset
 
 from src.utils.logging import get_logger
 
+from ..models.vision.image_preprocessing import ImagePreprocessor
+
 
 logger = get_logger(__name__)
-from collections import defaultdict
-
-import numpy as np
-
-from ..models.vision.image_preprocessing import ImagePreprocessor
 
 
 class MultimodalDataset(Dataset):
@@ -726,14 +727,6 @@ class Flickr30kDataset(MultimodalDataset):
             logger.info(f"Saved synthetic data to cache at {cache_dir}")
         except Exception as e:
             logger.warning(f"Error saving synthetic data to cache: {str(e)}")
-
-
-import logging
-
-from datasets import load_dataset
-
-
-logger = logging.getLogger(__name__)
 
 
 class EnhancedMultimodalDataset(Dataset):

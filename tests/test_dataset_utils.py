@@ -436,7 +436,7 @@ class TestFixedSemanticBatchSampler:
     def test_verbose_logging(self, mock_logger):
         """Test that verbose mode logs information."""
         dataset = SemanticDataset(size=100, num_groups=20)
-        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, verbose=True)
+        _sampler = FixedSemanticBatchSampler(dataset, batch_size=16, verbose=True)
 
         # Should have logged information
         assert mock_logger.info.call_count > 0

@@ -155,7 +155,7 @@ class FixedSemanticBatchSampler(Sampler):
 
         return valid_groups
 
-    def _build_batches(self) -> List[List[int]]:
+    def _build_batches(self) -> List[List[int]]:  # noqa: C901
         """Build batches by grouping examples with the same match_id."""
         batches = []
 

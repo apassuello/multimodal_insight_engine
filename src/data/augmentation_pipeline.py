@@ -254,7 +254,7 @@ class MultimodalAugmentationPipeline:
             # For now, we'll assume the model will retokenize the raw text
             return updated_data
 
-    def __call__(
+    def __call__(  # noqa: C901
         self, batch: Dict[str, Union[torch.Tensor, Dict]]
     ) -> Dict[str, Union[torch.Tensor, Dict]]:
         """

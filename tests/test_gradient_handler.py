@@ -342,10 +342,10 @@ class TestGradientBalancing:
 
         # Learning rates should have been adjusted
         # (exact values depend on dampening, so just check they changed)
-        lrs_changed = False
+        _lrs_changed = False
         for group in optimizer.param_groups:
             if group.get("lr") != 0.001:
-                lrs_changed = True
+                _lrs_changed = True
                 break
 
         # Note: LRs may or may not change depending on gradient balance
