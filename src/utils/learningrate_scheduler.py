@@ -96,7 +96,9 @@ class WarmupCosineScheduler(_LRScheduler):
                 lr = base_lr
             else:
                 # Cosine annealing phase
-                progress = (current_step - self.warmup_steps) / (self.total_steps - self.warmup_steps)
+                progress = (current_step - self.warmup_steps) / (
+                    self.total_steps - self.warmup_steps
+                )
                 cos_output = 0.5 * (1.0 + math.cos(math.pi * progress))
                 lr = self.min_lr + (base_lr - self.min_lr) * cos_output
 
@@ -177,7 +179,9 @@ class LinearWarmupScheduler(_LRScheduler):
                 lr = base_lr
             else:
                 # Linear decay phase
-                progress = (current_epoch - self.warmup_epochs) / (self.total_epochs - self.warmup_epochs)
+                progress = (current_epoch - self.warmup_epochs) / (
+                    self.total_epochs - self.warmup_epochs
+                )
                 lr = base_lr + (self.final_lr - base_lr) * progress
 
             lrs.append(lr)
