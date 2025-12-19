@@ -146,13 +146,14 @@ jobs:
 
       - name: Upload coverage to Codecov (Python 3.10 only)
         if: matrix.python-version == '3.10'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false  # Don't fail if Codecov is down
-          token: ${{ secrets.CODECOV_TOKEN }}
+          # No token needed - using Codecov GitHub App
+          verbose: true
 
   # ==============================================================================
   # Security Scanning

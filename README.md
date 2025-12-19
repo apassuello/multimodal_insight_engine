@@ -3,10 +3,10 @@
 A framework for developing, training, and evaluating transformer-based models with a focus on safety, optimization, and multimodal capabilities.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.5%2B-orange.svg)
 ![CI/CD](https://github.com/apassuello/multimodal_insight_engine/workflows/CI%2FCD%20Pipeline/badge.svg)
-[![codecov](https://codecov.io/gh/apassuello/multimodal_insight_engine/branch/main/graph/badge.svg)](https://codecov.io/gh/apassuello/multimodal_insight_engine)
+[![codecov](https://codecov.io/gh/apassuello/multimodal_insight_engine/graph/badge.svg)](https://codecov.io/gh/apassuello/multimodal_insight_engine)
 
 > **📦 Note on Constitutional AI:** Constitutional AI has been **extracted to a standalone repository** for reusability across projects. See [ARCHIVED_COMPONENTS.md](ARCHIVED_COMPONENTS.md) for details. This repository now focuses on **multimodal learning** and **vision-language integration**.
 
