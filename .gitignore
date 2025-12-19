@@ -14,6 +14,12 @@ build/
 env/
 venv/
 .git/*
+
+# Claude Code local settings and sensitive files
+.claude/settings.local.json
+secrets/
+credentials/
+
 # Local VSCode settings
 .vscode/
 
