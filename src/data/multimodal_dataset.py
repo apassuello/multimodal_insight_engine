@@ -166,6 +166,29 @@ class MultimodalDataset(Dataset):
                     image_path = os.path.join(self.image_dir, image_path)
                     sample[self.image_key] = image_path
 
+                # Security: Validate path to prevent directory traversal
+                try:
+                    # Resolve to absolute path and check it's within allowed directory
+                    resolved_path = os.path.realpath(image_path)
+                    allowed_dir = os.path.realpath(self.data_root)
+
+                    # Normalize paths for comparison
+                    # Ensure allowed_dir ends with separator for proper prefix check
+                    if not allowed_dir.endswith(os.sep):
+                        allowed_dir_check = allowed_dir + os.sep
+                    else:
+                        allowed_dir_check = allowed_dir
+
+                    # Check if resolved path is within the data_root directory
+                    if not (
+                        resolved_path == allowed_dir or resolved_path.startswith(allowed_dir_check)
+                    ):
+                        logger.warning(f"Skipping sample with path outside data_root: {image_path}")
+                        continue
+                except (ValueError, OSError) as e:
+                    logger.warning(f"Invalid path {image_path}: {e}")
+                    continue
+
                 # Check if image exists
                 if os.path.exists(image_path):
                     valid_samples.append(sample)
