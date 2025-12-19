@@ -12,12 +12,12 @@ Target: 90%+ coverage (pure math, no I/O)
 import pytest
 import torch
 import torch.nn as nn
-from torch.optim import Adam, SGD
+from torch.optim import SGD, Adam
 
 from src.utils.learningrate_scheduler import (
-    WarmupCosineScheduler,
-    LinearWarmupScheduler,
     LayerwiseLRScheduler,
+    LinearWarmupScheduler,
+    WarmupCosineScheduler,
 )
 
 
@@ -44,10 +44,12 @@ def multi_group_optimizer(simple_model):
     layer1 = nn.Linear(10, 10)
     layer2 = nn.Linear(10, 5)
 
-    return Adam([
-        {'params': layer1.parameters(), 'lr': 1e-3, 'name': 'layer1'},
-        {'params': layer2.parameters(), 'lr': 5e-4, 'name': 'layer2'}
-    ])
+    return Adam(
+        [
+            {"params": layer1.parameters(), "lr": 1e-3, "name": "layer1"},
+            {"params": layer2.parameters(), "lr": 5e-4, "name": "layer2"},
+        ]
+    )
 
 
 # ============================================================================
@@ -60,12 +62,7 @@ class TestWarmupCosineScheduler:
 
     def test_initialization(self, optimizer):
         """Test scheduler initializes correctly."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=100,
-            total_steps=1000,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=100, total_steps=1000, min_lr=0.0)
 
         assert scheduler.warmup_steps == 100
         assert scheduler.total_steps == 1000
@@ -76,11 +73,7 @@ class TestWarmupCosineScheduler:
     def test_warmup_phase_increases_lr(self, optimizer):
         """Test that LR increases linearly during warmup."""
         scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=100,
-            total_steps=1000,
-            min_lr=0.0,
-            warmup_start_factor=0.1
+            optimizer, warmup_steps=100, total_steps=1000, min_lr=0.0, warmup_start_factor=0.1
         )
 
         # Collect LRs during warmup (first 100 steps)
@@ -100,10 +93,7 @@ class TestWarmupCosineScheduler:
         """Test warmup_start_factor controls initial LR."""
         # With warmup_start_factor=0.1, should start at 10% of base_lr
         scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            warmup_start_factor=0.1
+            optimizer, warmup_steps=10, total_steps=100, warmup_start_factor=0.1
         )
 
         scheduler.step()
@@ -115,12 +105,7 @@ class TestWarmupCosineScheduler:
 
     def test_cosine_phase_decreases_lr(self, optimizer):
         """Test that LR decreases with cosine after warmup."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=10, total_steps=100, min_lr=0.0)
 
         # Skip warmup
         for _ in range(10):
@@ -140,10 +125,7 @@ class TestWarmupCosineScheduler:
         """Test that LR never goes below min_lr."""
         min_lr = 1e-6
         scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=min_lr
+            optimizer, warmup_steps=10, total_steps=100, min_lr=min_lr
         )
 
         # Run entire schedule
@@ -156,10 +138,7 @@ class TestWarmupCosineScheduler:
         """Test that LR reaches min_lr at end of schedule."""
         min_lr = 1e-6
         scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=min_lr
+            optimizer, warmup_steps=10, total_steps=100, min_lr=min_lr
         )
 
         # Run to end
@@ -172,12 +151,7 @@ class TestWarmupCosineScheduler:
 
     def test_state_dict_save_and_load(self, optimizer):
         """Test scheduler state can be saved and restored."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=10, total_steps=100, min_lr=0.0)
 
         # Run 50 steps
         for _ in range(50):
@@ -188,12 +162,7 @@ class TestWarmupCosineScheduler:
         lr_at_50 = scheduler.get_last_lr()[0]
 
         # Create new scheduler and load state
-        scheduler2 = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
-        )
+        scheduler2 = WarmupCosineScheduler(optimizer, warmup_steps=10, total_steps=100, min_lr=0.0)
         scheduler2.load_state_dict(state)
 
         # LR should match
@@ -202,10 +171,7 @@ class TestWarmupCosineScheduler:
     def test_multiple_parameter_groups(self, multi_group_optimizer):
         """Test scheduler works with multiple parameter groups."""
         scheduler = WarmupCosineScheduler(
-            multi_group_optimizer,
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
+            multi_group_optimizer, warmup_steps=10, total_steps=100, min_lr=0.0
         )
 
         assert len(scheduler.base_lrs) == 2
@@ -231,11 +197,7 @@ class TestLinearWarmupScheduler:
     def test_initialization(self, optimizer):
         """Test scheduler initializes correctly."""
         scheduler = LinearWarmupScheduler(
-            optimizer,
-            warmup_epochs=10,
-            total_epochs=100,
-            init_lr=0.0,
-            final_lr=1e-6
+            optimizer, warmup_epochs=10, total_epochs=100, init_lr=0.0, final_lr=1e-6
         )
 
         assert scheduler.warmup_epochs == 10
@@ -246,11 +208,7 @@ class TestLinearWarmupScheduler:
     def test_warmup_phase_linear_increase(self, optimizer):
         """Test linear warmup increases LR linearly."""
         scheduler = LinearWarmupScheduler(
-            optimizer,
-            warmup_epochs=10,
-            total_epochs=100,
-            init_lr=0.0,
-            final_lr=0.0
+            optimizer, warmup_epochs=10, total_epochs=100, init_lr=0.0, final_lr=0.0
         )
 
         # Collect LRs during warmup
@@ -270,11 +228,7 @@ class TestLinearWarmupScheduler:
     def test_linear_decay_phase(self, optimizer):
         """Test linear decay decreases LR linearly."""
         scheduler = LinearWarmupScheduler(
-            optimizer,
-            warmup_epochs=10,
-            total_epochs=100,
-            init_lr=0.0,
-            final_lr=0.0
+            optimizer, warmup_epochs=10, total_epochs=100, init_lr=0.0, final_lr=0.0
         )
 
         # Skip warmup
@@ -298,11 +252,7 @@ class TestLinearWarmupScheduler:
         """Test that scheduler reaches final_lr at end."""
         final_lr = 1e-6
         scheduler = LinearWarmupScheduler(
-            optimizer,
-            warmup_epochs=10,
-            total_epochs=100,
-            init_lr=0.0,
-            final_lr=final_lr
+            optimizer, warmup_epochs=10, total_epochs=100, init_lr=0.0, final_lr=final_lr
         )
 
         # Run to end
@@ -315,11 +265,7 @@ class TestLinearWarmupScheduler:
         """Test that warmup starts from init_lr."""
         init_lr = 1e-4
         scheduler = LinearWarmupScheduler(
-            optimizer,
-            warmup_epochs=10,
-            total_epochs=100,
-            init_lr=init_lr,
-            final_lr=0.0
+            optimizer, warmup_epochs=10, total_epochs=100, init_lr=init_lr, final_lr=0.0
         )
 
         scheduler.step()
@@ -344,37 +290,33 @@ class TestLayerwiseLRScheduler:
         manager = LayerwiseLRScheduler(multi_group_optimizer)
 
         assert len(manager.param_groups) == 2
-        assert 'layer1' in manager.param_groups
-        assert 'layer2' in manager.param_groups
+        assert "layer1" in manager.param_groups
+        assert "layer2" in manager.param_groups
 
     def test_add_scheduler_warmup_cosine(self, multi_group_optimizer):
         """Test adding warmup_cosine scheduler for a group."""
         manager = LayerwiseLRScheduler(multi_group_optimizer)
 
         manager.add_scheduler(
-            'layer1',
-            scheduler_type='warmup_cosine',
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
+            "layer1", scheduler_type="warmup_cosine", warmup_steps=10, total_steps=100, min_lr=0.0
         )
 
-        assert 'layer1' in manager.schedulers
+        assert "layer1" in manager.schedulers
 
     def test_add_scheduler_linear_warmup(self, multi_group_optimizer):
         """Test adding linear_warmup scheduler for a group."""
         manager = LayerwiseLRScheduler(multi_group_optimizer)
 
         manager.add_scheduler(
-            'layer2',
-            scheduler_type='linear_warmup',
+            "layer2",
+            scheduler_type="linear_warmup",
             warmup_epochs=10,
             total_epochs=100,
             init_lr=0.0,
-            final_lr=0.0
+            final_lr=0.0,
         )
 
-        assert 'layer2' in manager.schedulers
+        assert "layer2" in manager.schedulers
 
     def test_add_scheduler_unknown_group(self, multi_group_optimizer):
         """Test adding scheduler for unknown group logs warning."""
@@ -382,24 +324,18 @@ class TestLayerwiseLRScheduler:
 
         # Should not raise, just log warning
         manager.add_scheduler(
-            'unknown_group',
-            scheduler_type='warmup_cosine',
-            warmup_steps=10,
-            total_steps=100
+            "unknown_group", scheduler_type="warmup_cosine", warmup_steps=10, total_steps=100
         )
 
         # Unknown group should not be added
-        assert 'unknown_group' not in manager.schedulers
+        assert "unknown_group" not in manager.schedulers
 
     def test_add_scheduler_unsupported_type(self, multi_group_optimizer):
         """Test adding unsupported scheduler type raises error."""
         manager = LayerwiseLRScheduler(multi_group_optimizer)
 
         with pytest.raises(ValueError, match="Unsupported scheduler type"):
-            manager.add_scheduler(
-                'layer1',
-                scheduler_type='unsupported_scheduler'
-            )
+            manager.add_scheduler("layer1", scheduler_type="unsupported_scheduler")
 
     def test_step_updates_all_schedulers(self, multi_group_optimizer):
         """Test step() updates all group schedulers."""
@@ -407,19 +343,15 @@ class TestLayerwiseLRScheduler:
 
         # Add different schedulers for each group
         manager.add_scheduler(
-            'layer1',
-            scheduler_type='warmup_cosine',
-            warmup_steps=10,
-            total_steps=100,
-            min_lr=0.0
+            "layer1", scheduler_type="warmup_cosine", warmup_steps=10, total_steps=100, min_lr=0.0
         )
         manager.add_scheduler(
-            'layer2',
-            scheduler_type='linear_warmup',
+            "layer2",
+            scheduler_type="linear_warmup",
             warmup_epochs=10,
             total_epochs=100,
             init_lr=0.0,
-            final_lr=0.0
+            final_lr=0.0,
         )
 
         # Get initial LRs
@@ -432,8 +364,8 @@ class TestLayerwiseLRScheduler:
         new_lrs = manager.get_last_lrs()
 
         # LRs should have changed
-        assert new_lrs['layer1'] != initial_lrs['layer1']
-        assert new_lrs['layer2'] != initial_lrs['layer2']
+        assert new_lrs["layer1"] != initial_lrs["layer1"]
+        assert new_lrs["layer2"] != initial_lrs["layer2"]
 
     def test_get_last_lrs_all_groups(self, multi_group_optimizer):
         """Test get_last_lrs returns LRs for all groups."""
@@ -441,17 +373,14 @@ class TestLayerwiseLRScheduler:
 
         # Only add scheduler for layer1
         manager.add_scheduler(
-            'layer1',
-            scheduler_type='warmup_cosine',
-            warmup_steps=10,
-            total_steps=100
+            "layer1", scheduler_type="warmup_cosine", warmup_steps=10, total_steps=100
         )
 
         lrs = manager.get_last_lrs()
 
         # Should return LRs for both groups
-        assert 'layer1' in lrs
-        assert 'layer2' in lrs
+        assert "layer1" in lrs
+        assert "layer2" in lrs
 
     def test_different_schedules_per_group(self, multi_group_optimizer):
         """Test different groups can have different schedules."""
@@ -459,19 +388,15 @@ class TestLayerwiseLRScheduler:
 
         # Add different schedulers
         manager.add_scheduler(
-            'layer1',
-            scheduler_type='warmup_cosine',
-            warmup_steps=5,
-            total_steps=50,
-            min_lr=0.0
+            "layer1", scheduler_type="warmup_cosine", warmup_steps=5, total_steps=50, min_lr=0.0
         )
         manager.add_scheduler(
-            'layer2',
-            scheduler_type='linear_warmup',
+            "layer2",
+            scheduler_type="linear_warmup",
             warmup_epochs=20,
             total_epochs=50,
             init_lr=0.0,
-            final_lr=0.0
+            final_lr=0.0,
         )
 
         # Run 10 steps
@@ -486,14 +411,23 @@ class TestLayerwiseLRScheduler:
 
         # Get initial comparison
         manager2 = LayerwiseLRScheduler(multi_group_optimizer)
-        manager2.add_scheduler('layer1', scheduler_type='warmup_cosine', warmup_steps=5, total_steps=50, min_lr=0.0)
-        manager2.add_scheduler('layer2', scheduler_type='linear_warmup', warmup_epochs=20, total_epochs=50, init_lr=0.0, final_lr=0.0)
+        manager2.add_scheduler(
+            "layer1", scheduler_type="warmup_cosine", warmup_steps=5, total_steps=50, min_lr=0.0
+        )
+        manager2.add_scheduler(
+            "layer2",
+            scheduler_type="linear_warmup",
+            warmup_epochs=20,
+            total_epochs=50,
+            init_lr=0.0,
+            final_lr=0.0,
+        )
 
         manager2.step()
         lrs_step1 = manager2.get_last_lrs()
 
         # After 10 steps, layer1 should be lower than after 1 step
-        assert lrs['layer1'] < lrs_step1['layer1']
+        assert lrs["layer1"] < lrs_step1["layer1"]
 
 
 # ============================================================================
@@ -506,12 +440,7 @@ class TestEdgeCases:
 
     def test_zero_warmup_steps(self, optimizer):
         """Test scheduler with zero warmup steps."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=0,
-            total_steps=100,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=0, total_steps=100, min_lr=0.0)
 
         scheduler.step()
         lr = scheduler.get_last_lr()[0]
@@ -521,12 +450,7 @@ class TestEdgeCases:
 
     def test_warmup_equals_total_steps(self, optimizer):
         """Test when warmup_steps == total_steps (no cosine phase)."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=100,
-            total_steps=100,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=100, total_steps=100, min_lr=0.0)
 
         # Run full schedule
         for _ in range(100):
@@ -538,12 +462,7 @@ class TestEdgeCases:
 
     def test_single_step_schedule(self, optimizer):
         """Test scheduler with total_steps=1."""
-        scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=0,
-            total_steps=1,
-            min_lr=0.0
-        )
+        scheduler = WarmupCosineScheduler(optimizer, warmup_steps=0, total_steps=1, min_lr=0.0)
 
         scheduler.step()
         lr = scheduler.get_last_lr()[0]
@@ -554,10 +473,7 @@ class TestEdgeCases:
     def test_very_large_total_steps(self, optimizer):
         """Test scheduler handles large step counts."""
         scheduler = WarmupCosineScheduler(
-            optimizer,
-            warmup_steps=1000,
-            total_steps=1000000,  # 1 million steps
-            min_lr=1e-7
+            optimizer, warmup_steps=1000, total_steps=1000000, min_lr=1e-7  # 1 million steps
         )
 
         # Should initialize without overflow

@@ -793,12 +793,8 @@ class TestDecoupledContrastiveLoss(unittest.TestCase):
         match_ids = ["A", "A", "B", "B", "C", "C"]
 
         # Test with different lambda values
-        loss_fn_high = DecoupledContrastiveLoss(
-            temperature=0.07, lambda_v=2.0, lambda_t=2.0
-        )
-        loss_fn_low = DecoupledContrastiveLoss(
-            temperature=0.07, lambda_v=0.1, lambda_t=0.1
-        )
+        loss_fn_high = DecoupledContrastiveLoss(temperature=0.07, lambda_v=2.0, lambda_t=2.0)
+        loss_fn_low = DecoupledContrastiveLoss(temperature=0.07, lambda_v=0.1, lambda_t=0.1)
 
         results_high = loss_fn_high(vision_features, text_features, match_ids)
         results_low = loss_fn_low(vision_features, text_features, match_ids)

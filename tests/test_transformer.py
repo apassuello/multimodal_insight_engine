@@ -307,8 +307,9 @@ def test_transformer_causal_attention(transformer, batch_size, tgt_seq_len, devi
     tgt_modified[: batch_size // 2, 0] = (tgt[: batch_size // 2, 0] + 600) % 1200
 
     # Verify that the inputs are actually different
-    assert not torch.equal(tgt[: batch_size // 2, 0], tgt_modified[: batch_size // 2, 0]), \
-        "Modified inputs should be different from originals"
+    assert not torch.equal(
+        tgt[: batch_size // 2, 0], tgt_modified[: batch_size // 2, 0]
+    ), "Modified inputs should be different from originals"
 
     # Create source sequence
     src = torch.randint(0, 1000, (batch_size, 15)).to(device)
@@ -328,15 +329,18 @@ def test_transformer_causal_attention(transformer, batch_size, tgt_seq_len, devi
     # Check if outputs are different at the last position where causal effect is strongest
     # Use a more lenient check - just verify outputs are not exactly identical
     last_pos = tgt_seq_len - 1
-    max_diff = torch.max(torch.abs(
-        output_original[: batch_size // 2, last_pos, :] -
-        output_modified[: batch_size // 2, last_pos, :]
-    )).item()
+    max_diff = torch.max(
+        torch.abs(
+            output_original[: batch_size // 2, last_pos, :]
+            - output_modified[: batch_size // 2, last_pos, :]
+        )
+    ).item()
 
     # With causal attention, outputs should differ by at least a tiny amount
     # Allow for very small differences due to softmax normalization effects
-    assert max_diff > 1e-8, \
-        f"Outputs are identical (max_diff={max_diff}), causal attention may not be working"
+    assert (
+        max_diff > 1e-8
+    ), f"Outputs are identical (max_diff={max_diff}), causal attention may not be working"
 
     # But for the unmodified sequences, outputs should be identical
     assert torch.allclose(
