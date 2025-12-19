@@ -22,7 +22,9 @@
       "Bash(rm -rf *)",
       "Bash(sudo *)",
       "Bash(pip install *)",
-      "Bash(pip uninstall *)"
+      "Bash(pip uninstall *)",
+      "Read(.env*)",
+      "Write(.env*)"
     ],
     "ask": []
   },
