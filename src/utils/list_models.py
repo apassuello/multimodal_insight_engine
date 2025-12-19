@@ -15,7 +15,7 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-def main(args):
+def main(args):  # noqa: C901
     """List available models and their information."""
     # Create model loader
     loader = ModelLoader()

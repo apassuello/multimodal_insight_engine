@@ -514,7 +514,7 @@ class MetricsTracker:
 
         return latest_metrics
 
-    def check_for_issues(self) -> List[str]:
+    def check_for_issues(self) -> List[str]:  # noqa: C901
         """
         Check for potential training issues based on metric patterns.
 

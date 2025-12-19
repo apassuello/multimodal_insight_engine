@@ -18,25 +18,21 @@ DEPENDENCIES:
 import logging
 import os
 import random
+from collections import defaultdict
 from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
+from torch.utils.data import BatchSampler, DataLoader, Sampler, SubsetRandomSampler
 
 from src.utils.logging import get_logger
-
-
-logger = get_logger(__name__)
-from collections import defaultdict
-from dataclasses import dataclass
-
-from torch.utils.data import BatchSampler, DataLoader, Sampler, SubsetRandomSampler
 
 from .multimodal_dataset import EnhancedMultimodalDataset
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Key implementation details only, not full code

@@ -2,10 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.data.combined_translation_dataset import CombinedTranslationDataset
 
-
-# Mock the OpenSubtitlesDataset import
+# Mock the OpenSubtitlesDataset import before importing
 with patch("src.data.combined_translation_dataset.OpenSubtitlesDataset", Mock):
     from src.data.combined_translation_dataset import CombinedTranslationDataset
 

@@ -142,7 +142,7 @@ class IWSLTDataset:
         else:
             return None
 
-    def _download_from_huggingface(self, year=None):
+    def _download_from_huggingface(self, year=None):  # noqa: C901
         """Download dataset from HuggingFace datasets."""
         requested_year = year or self.year
         actual_year = requested_year  # Track which year's dataset was actually loaded
