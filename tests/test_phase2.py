@@ -12,6 +12,7 @@ Tests:
 import sys
 import traceback
 
+
 def test_imports():
     """Test that all required imports work."""
     print("Testing imports...")
@@ -20,30 +21,30 @@ def test_imports():
         import gradio as gr
         import torch
 
-        # Manager imports
-        from demo.managers import (
-            ModelManager,
-            ModelStatus,
-            EvaluationManager,
-            TrainingManager,
-            TrainingConfig,
-            ComparisonEngine,
-            ComparisonResult,
-            PrincipleComparison,
-            ExampleComparison
-        )
+        # Main import
+        from demo import create_demo
 
         # Data imports
         from demo.data import (
             EVALUATION_EXAMPLES,
             TEST_SUITES,
             TRAINING_CONFIGS,
+            get_adversarial_prompts,
             get_training_prompts,
-            get_adversarial_prompts
         )
 
-        # Main import
-        from demo import create_demo
+        # Manager imports
+        from demo.managers import (
+            ComparisonEngine,
+            ComparisonResult,
+            EvaluationManager,
+            ExampleComparison,
+            ModelManager,
+            ModelStatus,
+            PrincipleComparison,
+            TrainingConfig,
+            TrainingManager,
+        )
 
         print("✓ All imports successful")
         return True
@@ -58,13 +59,11 @@ def test_manager_instantiation():
     print("\nTesting manager instantiation...")
     try:
         from demo.managers import (
-            ModelManager,
+            ComparisonEngine,
             EvaluationManager,
+            ModelManager,
             TrainingManager,
-            ComparisonEngine
         )
-        # Constitutional AI extracted - see extracted/constitutional-ai/
-# from src.safety.constitutional.principles import setup_default_framework
 
         # Instantiate managers
         model_manager = ModelManager()
@@ -76,10 +75,9 @@ def test_manager_instantiation():
         training_manager = TrainingManager()
         print("  ✓ TrainingManager instantiated")
 
-        # Create framework for ComparisonEngine
-        framework = setup_default_framework()
-        comparison_engine = ComparisonEngine(framework)
-        print("  ✓ ComparisonEngine instantiated")
+        # ComparisonEngine requires Constitutional AI framework (extracted)
+        # See: extracted/constitutional-ai/
+        print("  ⚠ ComparisonEngine skipped (requires extracted Constitutional AI)")
 
         print("✓ All managers instantiated successfully")
         return True
@@ -100,6 +98,7 @@ def test_demo_creation():
 
         # Check that demo is a Gradio Blocks object
         import gradio as gr
+
         if isinstance(demo, gr.Blocks):
             print("  ✓ Demo is valid Gradio Blocks instance")
         else:
@@ -124,7 +123,7 @@ def test_test_suites():
             "harmful_content",
             "stereotyping",
             "truthfulness",
-            "autonomy_manipulation"
+            "autonomy_manipulation",
         ]
 
         for suite_name in expected_suites:
@@ -157,7 +156,7 @@ def main():
         ("Imports", test_imports),
         ("Manager Instantiation", test_manager_instantiation),
         ("Demo Creation", test_demo_creation),
-        ("Test Suites", test_test_suites)
+        ("Test Suites", test_test_suites),
     ]
 
     results = []

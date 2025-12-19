@@ -11,33 +11,33 @@ SPECIAL NOTES: Phase 2 implementation with Impact Analysis tab (VR6)
 
 import argparse
 import os
-import yaml
-from pathlib import Path
-import gradio as gr
-import torch
 import threading
 import time
-from typing import Dict, List, Any, Tuple, Optional
+from pathlib import Path
+from typing import Any, Dict, Tuple
 
-from demo.managers.model_manager import ModelManager, ModelStatus
-from demo.managers.evaluation_manager import EvaluationManager
-from demo.managers.training_manager import TrainingManager, TrainingConfig
-from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
-from demo.managers.multi_model_manager import (
-    MultiModelManager,
-    RECOMMENDED_CONFIGS,
-    get_evaluation_model_choices,
-    get_generation_model_choices,
-    get_all_model_choices
-)
+import gradio as gr
+import torch
+import yaml
+
 from demo.data.test_examples import (
     EVALUATION_EXAMPLES,
-    get_training_prompts,
-    get_adversarial_prompts,
+    TEST_SUITES,
     TRAINING_CONFIGS,
-    TEST_SUITES
+    get_adversarial_prompts,
 )
+from demo.managers.comparison_engine import ComparisonEngine, ComparisonResult
+from demo.managers.evaluation_manager import EvaluationManager
+from demo.managers.model_manager import ModelManager, ModelStatus
+from demo.managers.multi_model_manager import (
+    MultiModelManager,
+    get_all_model_choices,
+    get_evaluation_model_choices,
+    get_generation_model_choices,
+)
+from demo.managers.training_manager import TrainingConfig, TrainingManager
 from demo.utils.content_logger import ContentLogger
+
 
 # NOTE: Constitutional AI has been extracted to standalone repository
 # The demo infrastructure (managers) has been archived to extracted/constitutional-ai/
@@ -53,12 +53,12 @@ from demo.utils.content_logger import ContentLogger
 # Input validation limits to prevent DoS attacks
 MAX_INPUT_LENGTH = 10000  # Maximum characters for text/prompt input
 MAX_PROMPT_LENGTH = 5000  # Maximum characters for generation prompts
-MIN_INPUT_LENGTH = 1      # Minimum characters for valid input
+MIN_INPUT_LENGTH = 1  # Minimum characters for valid input
 
 # Rate limiting configuration
-RATE_LIMIT_TRAINING_SECONDS = 60      # Minimum seconds between training requests
-RATE_LIMIT_COMPARISON_SECONDS = 30    # Minimum seconds between comparison requests
-MAX_CONCURRENT_OPERATIONS = 1         # Maximum concurrent expensive operations
+RATE_LIMIT_TRAINING_SECONDS = 60  # Minimum seconds between training requests
+RATE_LIMIT_COMPARISON_SECONDS = 30  # Minimum seconds between comparison requests
+MAX_CONCURRENT_OPERATIONS = 1  # Maximum concurrent expensive operations
 
 
 # Global managers
@@ -76,18 +76,17 @@ _rate_limit_lock = threading.Lock()
 _operation_semaphore = threading.Semaphore(MAX_CONCURRENT_OPERATIONS)
 
 # Security: Thread safety locks for global managers
-_model_manager_lock = threading.Lock()       # Protects model_manager operations
-_multi_model_manager_lock = threading.Lock() # Protects multi_model_manager operations
+_model_manager_lock = threading.Lock()  # Protects model_manager operations
+_multi_model_manager_lock = threading.Lock()  # Protects multi_model_manager operations
 
 
 # ============================================================================
 # Security Helper Functions
 # ============================================================================
 
+
 def validate_input_length(
-    text: str,
-    max_length: int = MAX_INPUT_LENGTH,
-    input_name: str = "Input"
+    text: str, max_length: int = MAX_INPUT_LENGTH, input_name: str = "Input"
 ) -> Tuple[bool, str]:
     """
     Validate input text length to prevent DoS attacks.
@@ -103,7 +102,10 @@ def validate_input_length(
         Tuple of (is_valid, error_message)
     """
     if not text or len(text) < MIN_INPUT_LENGTH:
-        return False, f"✗ Security: {input_name} is empty or too short (minimum {MIN_INPUT_LENGTH} characters)"
+        return (
+            False,
+            f"✗ Security: {input_name} is empty or too short (minimum {MIN_INPUT_LENGTH} characters)",
+        )
 
     if len(text) > max_length:
         return False, (
@@ -170,6 +172,7 @@ def release_operation_slot() -> None:
 # Model Management Functions
 # ============================================================================
 
+
 def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, str]:
     """
     Handle model loading request.
@@ -185,7 +188,7 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
     with _model_manager_lock:
         success, message = model_manager.load_model_from_pretrained(
             model_name=model_name,
-            prefer_device=device_preference if device_preference != "auto" else None
+            prefer_device=device_preference if device_preference != "auto" else None,
         )
 
         if success:
@@ -193,7 +196,7 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
             eval_success, eval_msg = evaluation_manager.initialize_frameworks(
                 model=model_manager.model,
                 tokenizer=model_manager.tokenizer,
-                device=model_manager.device
+                device=model_manager.device,
             )
 
             if not eval_success:
@@ -215,6 +218,7 @@ def load_model_handler(model_name: str, device_preference: str) -> Tuple[str, st
 # Logger Control Functions
 # ============================================================================
 
+
 def update_logger_verbosity(verbosity: int) -> str:
     """
     Update content logger verbosity level.
@@ -232,7 +236,7 @@ def update_logger_verbosity(verbosity: int) -> str:
         0: "Off (no logging)",
         1: "Summary only",
         2: "Key stages (default)",
-        3: "Full pipeline"
+        3: "Full pipeline",
     }
 
     return f"✓ Logging verbosity set to level {verbosity}: {levels.get(verbosity, 'Unknown')}"
@@ -252,7 +256,6 @@ def export_logs_handler() -> Tuple[str, str]:
 
     # Export to file
     import tempfile
-    import json
     from datetime import datetime
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -271,6 +274,7 @@ def export_logs_handler() -> Tuple[str, str]:
 # ============================================================================
 # Dual Model Management Functions
 # ============================================================================
+
 
 def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
     """
@@ -299,9 +303,7 @@ def load_evaluation_model_handler(model_key: str) -> Tuple[str, str]:
                 # Initialize evaluation framework with local model
                 eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
                 eval_success, eval_msg = evaluation_manager.initialize_frameworks(
-                    model=eval_model,
-                    tokenizer=eval_tokenizer,
-                    device=multi_model_manager.device
+                    model=eval_model, tokenizer=eval_tokenizer, device=multi_model_manager.device
                 )
 
             if not eval_success:
@@ -366,10 +368,8 @@ def load_generation_model_handler(model_key: str) -> Tuple[str, str]:
 # Evaluation Tab Functions
 # ============================================================================
 
-def evaluate_text_handler(
-    text: str,
-    mode: str
-) -> Tuple[str, str]:
+
+def evaluate_text_handler(text: str, mode: str) -> Tuple[str, str]:
     """
     Handle text evaluation request.
 
@@ -399,9 +399,7 @@ def evaluate_text_handler(
         # Re-initialize evaluation manager with dual model
         eval_model, eval_tokenizer = multi_model_manager.get_evaluation_model()
         init_success, init_msg = evaluation_manager.initialize_frameworks(
-            model=eval_model,
-            tokenizer=eval_tokenizer,
-            device=multi_model_manager.device
+            model=eval_model, tokenizer=eval_tokenizer, device=multi_model_manager.device
         )
 
         # If initialization fails, fall back to regex evaluation or return error
@@ -409,11 +407,7 @@ def evaluate_text_handler(
             return f"✗ Failed to initialize evaluation manager: {init_msg}", ""
 
     # Map display names to internal modes
-    mode_map = {
-        "AI Evaluation": "ai",
-        "Regex Evaluation": "regex",
-        "Both (Comparison)": "both"
-    }
+    mode_map = {"AI Evaluation": "ai", "Regex Evaluation": "regex", "Both (Comparison)": "both"}
     internal_mode = mode_map.get(mode, "regex")
 
     # Special handling for HF API evaluation
@@ -425,14 +419,14 @@ def evaluate_text_handler(
                 "any_flagged": hf_result.get("flagged", False),
                 "evaluation_method": "hf_api",
                 "evaluation_time": 0.0,
-                "flagged_principles": ["Harm Prevention"] if hf_result.get("flagged") else []
+                "flagged_principles": ["Harm Prevention"] if hf_result.get("flagged") else [],
             },
             "principles": {
                 "Harm Prevention": {
                     "flagged": hf_result.get("flagged", False),
-                    "reasoning": hf_result.get("reasoning", "No reasoning available")
+                    "reasoning": hf_result.get("reasoning", "No reasoning available"),
                 }
-            }
+            },
         }
         success = True
         message = "✓ Evaluation complete (HF API)"
@@ -465,11 +459,11 @@ def format_evaluation_results(result: Dict[str, Any]) -> str:
     output += f"**Evaluation Time:** {summary.get('evaluation_time', 0):.2f}s\n\n"
 
     if summary.get("any_flagged", False):
-        output += f"**⚠️ VIOLATIONS DETECTED**\n"
+        output += "**⚠️ VIOLATIONS DETECTED**\n"
         output += f"Flagged Principles: {', '.join(summary.get('flagged_principles', []))}\n"
         output += f"Weighted Score: {summary.get('weighted_score', 0):.2f}\n\n"
     else:
-        output += f"**✓ NO VIOLATIONS DETECTED**\n\n"
+        output += "**✓ NO VIOLATIONS DETECTED**\n\n"
 
     # Per-principle results
     output += "## Principle Details\n\n"
@@ -514,15 +508,15 @@ def format_comparison_results(result: Dict[str, Any]) -> str:
     output += f"- **Regex Detected:** {comparison.get('regex_flagged_count', 0)} violations\n"
     output += f"- **Agreement:** {comparison.get('agreement', 0):.1%}\n\n"
 
-    if comparison.get('only_ai_detected'):
+    if comparison.get("only_ai_detected"):
         output += f"**AI Advantage:** Detected {len(comparison['only_ai_detected'])} violations missed by regex\n"
         output += f"Principles: {', '.join(comparison['only_ai_detected'])}\n\n"
 
-    if comparison.get('only_regex_detected'):
+    if comparison.get("only_regex_detected"):
         output += f"**Regex Advantage:** Detected {len(comparison['only_regex_detected'])} violations missed by AI\n"
         output += f"Principles: {', '.join(comparison['only_regex_detected'])}\n\n"
 
-    if comparison.get('both_flagged'):
+    if comparison.get("both_flagged"):
         output += f"**Agreement:** Both detected violations in: {', '.join(comparison['both_flagged'])}\n\n"
 
     return output
@@ -540,10 +534,8 @@ def load_example_handler(example_name: str) -> str:
 # Training Tab Functions
 # ============================================================================
 
-def start_training_handler(
-    training_mode: str,
-    progress=gr.Progress()
-) -> Tuple[str, str, str]:
+
+def start_training_handler(training_mode: str, progress=gr.Progress()) -> Tuple[str, str, str]:
     """
     Handle training start request.
 
@@ -565,7 +557,9 @@ def start_training_handler(
 
     try:
         # Check if we have dual models loaded
-        use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+        use_dual_models = (
+            multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+        )
 
         if not use_dual_models and not model_manager.is_ready():
             return "✗ Please load models first (either single model or dual models)", "", ""
@@ -576,7 +570,7 @@ def start_training_handler(
         # Get training configuration
         mode_map = {
             "Quick Demo (2 epochs, 20 examples, ~10-15 min)": "quick_demo",
-            "Standard (5 epochs, 50 examples, ~25-35 min)": "standard"
+            "Standard (5 epochs, 50 examples, ~25-35 min)": "standard",
         }
         mode_key = mode_map.get(training_mode, "quick_demo")
         config_dict = TRAINING_CONFIGS[mode_key]
@@ -586,7 +580,7 @@ def start_training_handler(
             num_examples=config_dict["num_examples"],
             batch_size=config_dict["batch_size"],
             learning_rate=config_dict["learning_rate"],
-            mode=mode_key
+            mode=mode_key,
         )
 
         # Get training prompts
@@ -601,9 +595,7 @@ def start_training_handler(
 
             # Setup framework with evaluation model
             framework = setup_default_framework(
-                model=eval_model,
-                tokenizer=eval_tokenizer,
-                device=device
+                model=eval_model, tokenizer=eval_tokenizer, device=device
             )
 
             # Train the generation model
@@ -614,7 +606,7 @@ def start_training_handler(
             framework = setup_default_framework(
                 model=model_manager.model,
                 tokenizer=model_manager.tokenizer,
-                device=model_manager.device
+                device=model_manager.device,
             )
             train_model = model_manager.model
             train_tokenizer = model_manager.tokenizer
@@ -643,7 +635,7 @@ def start_training_handler(
             config=config,
             progress_callback=progress_callback,
             checkpoint_callback=checkpoint_callback,
-            logger=content_logger
+            logger=content_logger,
         )
 
         # Reset model status
@@ -655,8 +647,7 @@ def start_training_handler(
             if not use_dual_models:
                 # Single model mode: save to model_manager
                 model_manager.save_trained_checkpoint(
-                    epoch=config.num_epochs,
-                    metrics=result.get("metrics", {})
+                    epoch=config.num_epochs, metrics=result.get("metrics", {})
                 )
             else:
                 # Dual model mode: copy trained gen_model to model_manager for comparison
@@ -664,8 +655,7 @@ def start_training_handler(
                 model_manager.model = multi_model_manager.gen_model
                 model_manager.tokenizer = multi_model_manager.gen_tokenizer
                 model_manager.save_trained_checkpoint(
-                    epoch=config.num_epochs,
-                    metrics=result.get("metrics", {})
+                    epoch=config.num_epochs, metrics=result.get("metrics", {})
                 )
 
             # Format metrics
@@ -699,13 +689,13 @@ def format_training_metrics(result: Dict[str, Any]) -> str:
     output = "# Training Metrics\n\n"
 
     config = result.get("config", {})
-    output += f"**Configuration:**\n"
+    output += "**Configuration:**\n"
     output += f"- Epochs: {config.get('num_epochs', 0)}\n"
     output += f"- Examples: {config.get('num_examples', 0)}\n"
     output += f"- Batch Size: {config.get('batch_size', 0)}\n"
     output += f"- Learning Rate: {config.get('learning_rate', 0)}\n\n"
 
-    output += f"**Timing:**\n"
+    output += "**Timing:**\n"
     output += f"- Data Generation: {result.get('data_generation_time', 0):.1f}s\n"
     output += f"- Fine-tuning: {result.get('training_time', 0):.1f}s\n"
     output += f"- Total: {result.get('total_time', 0):.1f}s\n\n"
@@ -714,7 +704,7 @@ def format_training_metrics(result: Dict[str, Any]) -> str:
     losses = metrics.get("losses", [])
 
     if losses:
-        output += f"**Loss Progress:**\n"
+        output += "**Loss Progress:**\n"
         for i, (epoch, loss) in enumerate(zip(metrics.get("epochs", []), losses)):
             output += f"- Epoch {epoch}: {loss:.4f}\n"
 
@@ -729,11 +719,9 @@ def format_training_metrics(result: Dict[str, Any]) -> str:
 # Phase 2: RLAIF Training Functions
 # ============================================================================
 
+
 def start_rlaif_training_handler(
-    num_ppo_steps: int,
-    batch_size: int,
-    learning_rate: float,
-    progress=gr.Progress()
+    num_ppo_steps: int, batch_size: int, learning_rate: float, progress=gr.Progress()
 ) -> Tuple[str, str]:
     """
     Handle Phase 2 (RLAIF) training request.
@@ -763,11 +751,13 @@ def start_rlaif_training_handler(
                 "✗ No preference pairs available.\n"
                 "Please run Phase 1 (SFT) training first in the Training tab.\n"
                 "Phase 1 collects preference pairs needed for RLAIF.",
-                ""
+                "",
             )
 
         # Check if we have models loaded (both gen and eval required for dual mode)
-        use_dual_models = multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+        use_dual_models = (
+            multi_model_manager.gen_model is not None and multi_model_manager.eval_model is not None
+        )
         if not use_dual_models and not model_manager.is_ready():
             return "✗ Please load models first", ""
 
@@ -783,9 +773,7 @@ def start_rlaif_training_handler(
 
             # Setup framework
             framework = setup_default_framework(
-                model=eval_model,
-                tokenizer=eval_tokenizer,
-                device=device
+                model=eval_model, tokenizer=eval_tokenizer, device=device
             )
             train_model = gen_model
             train_tokenizer = gen_tokenizer
@@ -793,7 +781,7 @@ def start_rlaif_training_handler(
             framework = setup_default_framework(
                 model=model_manager.model,
                 tokenizer=model_manager.tokenizer,
-                device=model_manager.device
+                device=model_manager.device,
             )
             train_model = model_manager.model
             train_tokenizer = model_manager.tokenizer
@@ -808,7 +796,7 @@ def start_rlaif_training_handler(
             num_ppo_steps=num_ppo_steps,
             batch_size=batch_size,
             learning_rate=learning_rate,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
         )
 
         if success:
@@ -830,28 +818,28 @@ def format_rlaif_metrics(result: Dict[str, Any]) -> str:
     output += f"**Training Time:** {result.get('training_time', 0):.1f}s\n\n"
 
     # Reward model metrics
-    reward_metrics = result.get('reward_model_metrics', {})
+    reward_metrics = result.get("reward_model_metrics", {})
     if reward_metrics:
         output += "## Reward Model Training\n\n"
-        if 'final_accuracy' in reward_metrics:
+        if "final_accuracy" in reward_metrics:
             output += f"- **Final Accuracy:** {reward_metrics['final_accuracy']:.2%}\n"
-        if 'final_loss' in reward_metrics:
+        if "final_loss" in reward_metrics:
             output += f"- **Final Loss:** {reward_metrics['final_loss']:.4f}\n"
         output += "\n"
 
     # PPO metrics (nested: result['ppo_results']['ppo_results'] from RLAIFTrainer → ppo_trainer)
-    ppo_results = result.get('ppo_results', {}).get('ppo_results', {})
+    ppo_results = result.get("ppo_results", {}).get("ppo_results", {})
     if ppo_results:
         output += "## PPO Training\n\n"
-        if 'final_avg_reward' in ppo_results:
+        if "final_avg_reward" in ppo_results:
             output += f"- **Final Avg Reward:** {ppo_results['final_avg_reward']:.4f}\n"
-        if 'final_kl_divergence' in ppo_results:
+        if "final_kl_divergence" in ppo_results:
             output += f"- **Final KL Divergence:** {ppo_results['final_kl_divergence']:.4f}\n"
 
         # Training history
-        history = ppo_results.get('training_history', {})
-        if history.get('step_avg_rewards'):
-            rewards = history['step_avg_rewards']
+        history = ppo_results.get("training_history", {})
+        if history.get("step_avg_rewards"):
+            rewards = history["step_avg_rewards"]
             if len(rewards) > 1:
                 improvement = rewards[-1] - rewards[0]
                 output += f"- **Reward Improvement:** {improvement:+.4f}\n"
@@ -879,10 +867,9 @@ def get_preference_pairs_status() -> str:
 # Generation Tab Functions
 # ============================================================================
 
+
 def generate_comparison_handler(
-    prompt: str,
-    temperature: float,
-    max_length: int
+    prompt: str, temperature: float, max_length: int
 ) -> Tuple[str, str, str, str]:
     """
     Generate text from both base and trained models for comparison.
@@ -924,32 +911,24 @@ def generate_comparison_handler(
         gen_config = GenerationConfig(
             max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
-            do_sample=True
+            do_sample=True,
         )
 
         # Generate from base
         base_output = generate_text(
-            base_model,
-            base_tokenizer,
-            prompt,
-            gen_config,
-            model_manager.device
+            base_model, base_tokenizer, prompt, gen_config, model_manager.device
         )
 
         # Generate from trained
         trained_output = generate_text(
-            trained_model,
-            trained_tokenizer,
-            prompt,
-            gen_config,
-            model_manager.device
+            trained_model, trained_tokenizer, prompt, gen_config, model_manager.device
         )
 
         # Evaluate both outputs
         framework = setup_default_framework(
             model=model_manager.model,
             tokenizer=model_manager.tokenizer,
-            device=model_manager.device
+            device=model_manager.device,
         )
 
         base_eval_result = framework.evaluate_text(base_output)
@@ -986,10 +965,11 @@ def generate_comparison_handler(
         # Clear GPU/MPS cache if available
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             # Also try MPS cache clear (if available in PyTorch version)
-            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+            if hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
                 torch.mps.empty_cache()
         except Exception as e:
             cleanup_errors.append(f"Failed to clear cache: {e}")
@@ -997,6 +977,7 @@ def generate_comparison_handler(
         # Garbage collection
         try:
             import gc
+
             gc.collect()
         except Exception as e:
             cleanup_errors.append(f"Failed to run garbage collection: {e}")
@@ -1004,6 +985,7 @@ def generate_comparison_handler(
         # Log any cleanup errors for debugging (but don't raise them)
         if cleanup_errors:
             import logging
+
             for error in cleanup_errors:
                 logging.warning(f"Cleanup issue: {error}")
 
@@ -1025,6 +1007,7 @@ def format_generation_evaluation(eval_result: Dict[str, Any], model_type: str) -
 def load_adversarial_prompt_handler() -> str:
     """Load a random adversarial prompt."""
     import random
+
     prompts = get_adversarial_prompts("all")
     if prompts:
         return random.choice(prompts)
@@ -1035,11 +1018,9 @@ def load_adversarial_prompt_handler() -> str:
 # Impact Tab Functions
 # ============================================================================
 
+
 def run_comparison_handler(
-    test_suite_name: str,
-    temperature: float,
-    max_length: int,
-    progress=gr.Progress()
+    test_suite_name: str, temperature: float, max_length: int, progress=gr.Progress()
 ) -> Tuple[str, str, str, str]:
     """
     Run comparison between base and trained models on selected test suite.
@@ -1115,7 +1096,7 @@ def run_comparison_handler(
                 "Harmful Content": "harmful_content",
                 "Stereotyping & Bias": "stereotyping",
                 "Truthfulness": "truthfulness",
-                "Autonomy & Manipulation": "autonomy_manipulation"
+                "Autonomy & Manipulation": "autonomy_manipulation",
             }
             suite_key = suite_key_map.get(test_suite_name)
             if not suite_key:
@@ -1136,7 +1117,7 @@ def run_comparison_handler(
         framework = setup_default_framework(
             model=model_manager.model,
             tokenizer=model_manager.tokenizer,
-            device=model_manager.device
+            device=model_manager.device,
         )
 
         # Create comparison engine
@@ -1151,7 +1132,7 @@ def run_comparison_handler(
         gen_config = GenerationConfig(
             max_new_tokens=max_length,  # User expects this many NEW tokens
             temperature=temperature,
-            do_sample=True
+            do_sample=True,
         )
 
         result = engine.compare_models(
@@ -1164,7 +1145,7 @@ def run_comparison_handler(
             generation_config=gen_config,
             test_suite_name=test_suite_name,
             progress_callback=progress_callback,
-            logger=content_logger
+            logger=content_logger,
         )
 
         progress(0.95, desc="Formatting results...")
@@ -1185,12 +1166,13 @@ def run_comparison_handler(
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+            if hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
                 torch.mps.empty_cache()
         except:
             pass
 
         import gc
+
         gc.collect()
 
         return summary, detailed, export_json, export_csv
@@ -1198,8 +1180,9 @@ def run_comparison_handler(
     except Exception as e:
         # Security: Don't expose full traceback to users (CRIT-01 fix)
         # Log the full error for debugging but show user-friendly message
-        import traceback
         import logging
+        import traceback
+
         logging.error(f"Comparison failed: {traceback.format_exc()}")
 
         error_msg = f"✗ Comparison failed: {str(e)}\n\n"
@@ -1285,8 +1268,8 @@ def format_detailed_examples(result: ComparisonResult) -> str:
         if example.improved:
             output += "**Status:** ✅ Improved\n\n"
         else:
-            base_score = example.base_evaluation.get('weighted_score', 0)
-            trained_score = example.trained_evaluation.get('weighted_score', 0)
+            base_score = example.base_evaluation.get("weighted_score", 0)
+            trained_score = example.trained_evaluation.get("weighted_score", 0)
             if trained_score > base_score:
                 output += "**Status:** ❌ Degraded\n\n"
             else:
@@ -1297,7 +1280,7 @@ def format_detailed_examples(result: ComparisonResult) -> str:
         # Base output
         output += "**Base Model Output:**\n"
         output += f"> {example.base_output}\n\n"
-        base_flagged = example.base_evaluation.get('flagged_principles', [])
+        base_flagged = example.base_evaluation.get("flagged_principles", [])
         if base_flagged:
             output += f"⚠️ Violations: {', '.join(base_flagged)}\n\n"
         else:
@@ -1306,7 +1289,7 @@ def format_detailed_examples(result: ComparisonResult) -> str:
         # Trained output
         output += "**Trained Model Output:**\n"
         output += f"> {example.trained_output}\n\n"
-        trained_flagged = example.trained_evaluation.get('flagged_principles', [])
+        trained_flagged = example.trained_evaluation.get("flagged_principles", [])
         if trained_flagged:
             output += f"⚠️ Violations: {', '.join(trained_flagged)}\n\n"
         else:
@@ -1331,13 +1314,13 @@ def format_export_data(result: ComparisonResult) -> str:
         "overall_metrics": {
             "alignment_before": result.overall_alignment_before,
             "alignment_after": result.overall_alignment_after,
-            "improvement_pct": result.alignment_improvement
+            "improvement_pct": result.alignment_improvement,
         },
         "principle_results": {
             name: {
                 "violations_before": comp.violations_before,
                 "violations_after": comp.violations_after,
-                "improvement_pct": comp.improvement_pct
+                "improvement_pct": comp.improvement_pct,
             }
             for name, comp in result.principle_results.items()
         },
@@ -1347,12 +1330,12 @@ def format_export_data(result: ComparisonResult) -> str:
                 "base_output": ex.base_output,
                 "trained_output": ex.trained_output,
                 "improved": ex.improved,
-                "base_violations": ex.base_evaluation.get('flagged_principles', []),
-                "trained_violations": ex.trained_evaluation.get('flagged_principles', [])
+                "base_violations": ex.base_evaluation.get("flagged_principles", []),
+                "trained_violations": ex.trained_evaluation.get("flagged_principles", []),
             }
             for ex in result.examples
         ],
-        "errors": result.errors
+        "errors": result.errors,
     }
 
     return json.dumps(export_dict, indent=2)
@@ -1383,33 +1366,39 @@ def format_export_csv(result: ComparisonResult) -> str:
     writer.writerow(["Principle", "Violations Before", "Violations After", "Improvement (%)"])
     for principle_name in sorted(result.principle_results.keys()):
         comp = result.principle_results[principle_name]
-        writer.writerow([
-            principle_name,
-            comp.violations_before,
-            comp.violations_after,
-            f"{comp.improvement_pct:+.2f}"
-        ])
+        writer.writerow(
+            [
+                principle_name,
+                comp.violations_before,
+                comp.violations_after,
+                f"{comp.improvement_pct:+.2f}",
+            ]
+        )
     writer.writerow([])  # Blank line
 
     # Example comparisons section
     writer.writerow(["# Example Comparisons"])
-    writer.writerow([
-        "Prompt",
-        "Base Output",
-        "Trained Output",
-        "Improved",
-        "Base Violations",
-        "Trained Violations"
-    ])
+    writer.writerow(
+        [
+            "Prompt",
+            "Base Output",
+            "Trained Output",
+            "Improved",
+            "Base Violations",
+            "Trained Violations",
+        ]
+    )
     for example in result.examples:
-        writer.writerow([
-            example.prompt,
-            example.base_output,
-            example.trained_output,
-            "Yes" if example.improved else "No",
-            ", ".join(example.base_evaluation.get('flagged_principles', [])),
-            ", ".join(example.trained_evaluation.get('flagged_principles', []))
-        ])
+        writer.writerow(
+            [
+                example.prompt,
+                example.base_output,
+                example.trained_output,
+                "Yes" if example.improved else "No",
+                ", ".join(example.base_evaluation.get("flagged_principles", [])),
+                ", ".join(example.trained_evaluation.get("flagged_principles", [])),
+            ]
+        )
 
     # Errors section (if any)
     if result.errors:
@@ -1425,6 +1414,7 @@ def format_export_csv(result: ComparisonResult) -> str:
 # ============================================================================
 # Gradio Interface
 # ============================================================================
+
 
 def create_demo() -> gr.Blocks:
     """Create the Gradio demo interface."""
@@ -1454,7 +1444,7 @@ def create_demo() -> gr.Blocks:
         .gradio-container {
             max-width: 1400px !important;
         }
-        """
+        """,
     ) as demo:
         gr.Markdown("# Constitutional AI Interactive Demo")
         gr.Markdown("Demonstration of AI-based constitutional principle evaluation and training")
@@ -1468,20 +1458,16 @@ def create_demo() -> gr.Blocks:
                 model_dropdown = gr.Dropdown(
                     choices=get_all_model_choices(),
                     value="phi-3-mini-instruct",
-                    label="Model Selection (Legacy - Use Dual Models Below)"
+                    label="Model Selection (Legacy - Use Dual Models Below)",
                 )
                 device_dropdown = gr.Dropdown(
-                    choices=["auto", "mps", "cuda", "cpu"],
-                    value="auto",
-                    label="Device Preference"
+                    choices=["auto", "mps", "cuda", "cpu"], value="auto", label="Device Preference"
                 )
                 load_model_btn = gr.Button("Load Model", variant="primary")
 
             with gr.Column(scale=1):
                 model_status = gr.Textbox(
-                    label="Model Status",
-                    value="No model loaded",
-                    interactive=False
+                    label="Model Status", value="No model loaded", interactive=False
                 )
 
         # Logging controls
@@ -1493,26 +1479,24 @@ def create_demo() -> gr.Blocks:
                     value=2,
                     step=1,
                     label="Content Logging Verbosity (0=off, 1=summary, 2=key stages, 3=full pipeline)",
-                    info="Controls how much detail is logged to the terminal during evaluation and training"
+                    info="Controls how much detail is logged to the terminal during evaluation and training",
                 )
                 verbosity_status = gr.Textbox(
                     label="Logging Status",
                     value="✓ Logging verbosity set to level 2: Key stages (default)",
-                    interactive=False
+                    interactive=False,
                 )
 
             with gr.Column(scale=1):
                 export_logs_btn = gr.Button("📥 Export Logs", variant="secondary")
                 export_status = gr.Textbox(
-                    label="Export Status",
-                    value="No logs to export yet",
-                    interactive=False,
-                    lines=3
+                    label="Export Status", value="No logs to export yet", interactive=False, lines=3
                 )
 
         # Dual model configuration (advanced)
         with gr.Accordion("🔬 Advanced: Dual Model Architecture", open=True):
-            gr.Markdown("""
+            gr.Markdown(
+                """
             **Dual Model System**: Use separate models for evaluation and generation/training for improved performance.
             - **Evaluation Model**: Instruction-tuned models recommended (Phi-3-mini or Qwen2.5-3B)
             - **Generation Model**: For training/fine-tuning (Phi-3-mini or Qwen2.5-3B recommended)
@@ -1521,7 +1505,8 @@ def create_demo() -> gr.Blocks:
             - 🥇 **Tier 1 (Recommended)**: phi-3-mini-instruct (~7.6GB), qwen2.5-3b-instruct (~6GB)
             - 🥈 **Tier 2 (More capable)**: mistral-7b-instruct (~14GB), qwen2.5-7b-instruct (~14GB)
             - 🥉 **Tier 3 (Limited resources)**: qwen2.5-1.5b-instruct (~3GB), tinyllama-chat (~2.2GB)
-            """)
+            """
+            )
 
             with gr.Row():
                 with gr.Column():
@@ -1530,14 +1515,14 @@ def create_demo() -> gr.Blocks:
                         choices=get_evaluation_model_choices(),
                         value="phi-3-mini-instruct",
                         label="Select Evaluation Model",
-                        info="Instruction-tuned models recommended for reliable JSON output"
+                        info="Instruction-tuned models recommended for reliable JSON output",
                     )
                     load_eval_model_btn = gr.Button("Load Evaluation Model", variant="primary")
                     eval_load_status = gr.Textbox(
                         label="Status",
                         value="No evaluation model loaded",
                         interactive=False,
-                        lines=2
+                        lines=2,
                     )
 
                 with gr.Column():
@@ -1546,21 +1531,21 @@ def create_demo() -> gr.Blocks:
                         choices=get_generation_model_choices(),
                         value="phi-3-mini-gen",
                         label="Select Generation Model",
-                        info="Used for training and text generation"
+                        info="Used for training and text generation",
                     )
                     load_gen_model_btn = gr.Button("Load Generation Model", variant="primary")
                     gen_load_status = gr.Textbox(
                         label="Status",
                         value="No generation model loaded",
                         interactive=False,
-                        lines=2
+                        lines=2,
                     )
 
             dual_model_status = gr.Textbox(
                 label="Dual Model System Status",
                 value="No dual models loaded. Using single model system.",
                 interactive=False,
-                lines=4
+                lines=4,
             )
 
         load_status = gr.Textbox(label="Status Messages", interactive=False)
@@ -1569,33 +1554,29 @@ def create_demo() -> gr.Blocks:
         load_model_btn.click(
             fn=load_model_handler,
             inputs=[model_dropdown, device_dropdown],
-            outputs=[load_status, model_status]
+            outputs=[load_status, model_status],
         )
 
         # Logger control handlers
         verbosity_slider.change(
-            fn=update_logger_verbosity,
-            inputs=[verbosity_slider],
-            outputs=[verbosity_status]
+            fn=update_logger_verbosity, inputs=[verbosity_slider], outputs=[verbosity_status]
         )
 
         export_logs_btn.click(
-            fn=export_logs_handler,
-            inputs=[],
-            outputs=[verbosity_status, export_status]
+            fn=export_logs_handler, inputs=[], outputs=[verbosity_status, export_status]
         )
 
         # Dual model handlers
         load_eval_model_btn.click(
             fn=load_evaluation_model_handler,
             inputs=[eval_model_dropdown],
-            outputs=[eval_load_status, dual_model_status]
+            outputs=[eval_load_status, dual_model_status],
         )
 
         load_gen_model_btn.click(
             fn=load_generation_model_handler,
             inputs=[gen_model_dropdown],
-            outputs=[gen_load_status, dual_model_status]
+            outputs=[gen_load_status, dual_model_status],
         )
 
         # Tabs
@@ -1611,20 +1592,20 @@ def create_demo() -> gr.Blocks:
                         eval_text = gr.Textbox(
                             label="Text to Evaluate",
                             placeholder="Enter text to evaluate...",
-                            lines=6
+                            lines=6,
                         )
 
                         with gr.Row():
                             eval_mode = gr.Radio(
                                 choices=["AI Evaluation", "Regex Evaluation", "Both (Comparison)"],
                                 value="AI Evaluation",
-                                label="Evaluation Mode"
+                                label="Evaluation Mode",
                             )
 
                         with gr.Row():
                             example_dropdown = gr.Dropdown(
                                 choices=[ex["name"] for ex in EVALUATION_EXAMPLES],
-                                label="Load Example"
+                                label="Load Example",
                             )
                             load_example_btn = gr.Button("Load")
 
@@ -1636,15 +1617,13 @@ def create_demo() -> gr.Blocks:
 
                 # Event handlers
                 load_example_btn.click(
-                    fn=load_example_handler,
-                    inputs=[example_dropdown],
-                    outputs=[eval_text]
+                    fn=load_example_handler, inputs=[example_dropdown], outputs=[eval_text]
                 )
 
                 evaluate_btn.click(
                     fn=evaluate_text_handler,
                     inputs=[eval_text, eval_mode],
-                    outputs=[eval_status, eval_results]
+                    outputs=[eval_status, eval_results],
                 )
 
             # ================================================================
@@ -1652,20 +1631,22 @@ def create_demo() -> gr.Blocks:
             # ================================================================
             with gr.Tab("🔧 Phase 1: SFT"):
                 gr.Markdown("## Phase 1: Supervised Fine-Tuning (Critique-Revision)")
-                gr.Markdown("""
+                gr.Markdown(
+                    """
                 **Phase 1** generates training data via critique-revision and fine-tunes the model.
                 This also collects **preference pairs** for Phase 2 (RLAIF).
-                """)
+                """
+                )
 
                 with gr.Row():
                     with gr.Column():
                         training_mode_radio = gr.Radio(
                             choices=[
                                 "Quick Demo (2 epochs, 20 examples, ~10-15 min)",
-                                "Standard (5 epochs, 50 examples, ~25-35 min)"
+                                "Standard (5 epochs, 50 examples, ~25-35 min)",
                             ],
                             value="Quick Demo (2 epochs, 20 examples, ~10-15 min)",
-                            label="Training Mode"
+                            label="Training Mode",
                         )
 
                         start_training_btn = gr.Button("Start Training", variant="primary")
@@ -1679,7 +1660,7 @@ def create_demo() -> gr.Blocks:
                 start_training_btn.click(
                     fn=start_training_handler,
                     inputs=[training_mode_radio],
-                    outputs=[training_status, training_metrics, checkpoint_info]
+                    outputs=[training_status, training_metrics, checkpoint_info],
                 )
 
             # ================================================================
@@ -1687,7 +1668,8 @@ def create_demo() -> gr.Blocks:
             # ================================================================
             with gr.Tab("🚀 Phase 2: RLAIF"):
                 gr.Markdown("## Reinforcement Learning from AI Feedback (RLAIF)")
-                gr.Markdown("""
+                gr.Markdown(
+                    """
                 **Phase 2** uses the preference pairs collected during Phase 1 to train a reward model,
                 then uses PPO (Proximal Policy Optimization) to further align the model.
 
@@ -1699,7 +1681,8 @@ def create_demo() -> gr.Blocks:
                 **Prerequisites:**
                 - Complete Phase 1 training first to collect preference pairs
                 - Requires more memory (policy + reference + reward models)
-                """)
+                """
+                )
 
                 with gr.Row():
                     with gr.Column():
@@ -1708,7 +1691,7 @@ def create_demo() -> gr.Blocks:
                             label="Preference Pairs Status",
                             value="⚠ No preference pairs available. Run Phase 1 training first.",
                             interactive=False,
-                            lines=3
+                            lines=3,
                         )
 
                         refresh_status_btn = gr.Button("🔄 Refresh Status", variant="secondary")
@@ -1721,7 +1704,7 @@ def create_demo() -> gr.Blocks:
                             value=50,
                             step=10,
                             label="PPO Training Steps",
-                            info="More steps = better alignment but slower"
+                            info="More steps = better alignment but slower",
                         )
 
                         rlaif_batch_size = gr.Slider(
@@ -1730,7 +1713,7 @@ def create_demo() -> gr.Blocks:
                             value=4,
                             step=1,
                             label="Batch Size",
-                            info="Reduce if running out of memory"
+                            info="Reduce if running out of memory",
                         )
 
                         rlaif_learning_rate = gr.Slider(
@@ -1739,37 +1722,30 @@ def create_demo() -> gr.Blocks:
                             value=1e-6,
                             step=1e-7,
                             label="Learning Rate",
-                            info="Lower = more stable, higher = faster learning"
+                            info="Lower = more stable, higher = faster learning",
                         )
 
                         start_rlaif_btn = gr.Button(
-                            "🚀 Start RLAIF Training",
-                            variant="primary",
-                            size="lg"
+                            "🚀 Start RLAIF Training", variant="primary", size="lg"
                         )
 
                     with gr.Column():
                         rlaif_status = gr.Textbox(
-                            label="Training Status",
-                            interactive=False,
-                            lines=6
+                            label="Training Status", interactive=False, lines=6
                         )
                         rlaif_metrics = gr.Markdown(
-                            label="Training Metrics",
-                            value="*Run RLAIF training to see metrics*"
+                            label="Training Metrics", value="*Run RLAIF training to see metrics*"
                         )
 
                 # Event handlers
                 refresh_status_btn.click(
-                    fn=get_preference_pairs_status,
-                    inputs=[],
-                    outputs=[rlaif_pairs_status]
+                    fn=get_preference_pairs_status, inputs=[], outputs=[rlaif_pairs_status]
                 )
 
                 start_rlaif_btn.click(
                     fn=start_rlaif_training_handler,
                     inputs=[rlaif_ppo_steps, rlaif_batch_size, rlaif_learning_rate],
-                    outputs=[rlaif_status, rlaif_metrics]
+                    outputs=[rlaif_status, rlaif_metrics],
                 )
 
             # ================================================================
@@ -1781,27 +1757,17 @@ def create_demo() -> gr.Blocks:
                 with gr.Row():
                     with gr.Column():
                         gen_prompt = gr.Textbox(
-                            label="Prompt",
-                            placeholder="Enter a prompt...",
-                            lines=3
+                            label="Prompt", placeholder="Enter a prompt...", lines=3
                         )
 
                         load_adversarial_btn = gr.Button("Load Adversarial Prompt")
 
                         with gr.Row():
                             temperature_slider = gr.Slider(
-                                minimum=0.1,
-                                maximum=2.0,
-                                value=0.7,
-                                step=0.1,
-                                label="Temperature"
+                                minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"
                             )
                             max_length_slider = gr.Slider(
-                                minimum=50,
-                                maximum=500,
-                                value=150,
-                                step=50,
-                                label="Max Length"
+                                minimum=50, maximum=500, value=150, step=50, label="Max Length"
                             )
 
                         generate_btn = gr.Button("Generate from Both Models", variant="primary")
@@ -1814,20 +1780,20 @@ def create_demo() -> gr.Blocks:
 
                     with gr.Column():
                         gr.Markdown("### Trained Model Output")
-                        trained_output = gr.Textbox(label="Generated Text", lines=6, interactive=False)
+                        trained_output = gr.Textbox(
+                            label="Generated Text", lines=6, interactive=False
+                        )
                         trained_eval = gr.Markdown(label="Evaluation")
 
                 # Event handlers
                 load_adversarial_btn.click(
-                    fn=load_adversarial_prompt_handler,
-                    inputs=[],
-                    outputs=[gen_prompt]
+                    fn=load_adversarial_prompt_handler, inputs=[], outputs=[gen_prompt]
                 )
 
                 generate_btn.click(
                     fn=generate_comparison_handler,
                     inputs=[gen_prompt, temperature_slider, max_length_slider],
-                    outputs=[base_output, trained_output, base_eval, trained_eval]
+                    outputs=[base_output, trained_output, base_eval, trained_eval],
                 )
 
             # ================================================================
@@ -1835,7 +1801,9 @@ def create_demo() -> gr.Blocks:
             # ================================================================
             with gr.Tab("📊 Impact"):
                 gr.Markdown("## Model Training Impact Analysis")
-                gr.Markdown("Compare base and trained models on standardized test suites to measure improvement.")
+                gr.Markdown(
+                    "Compare base and trained models on standardized test suites to measure improvement."
+                )
 
                 with gr.Row():
                     with gr.Column(scale=2):
@@ -1846,34 +1814,29 @@ def create_demo() -> gr.Blocks:
                                 "Stereotyping & Bias",
                                 "Truthfulness",
                                 "Autonomy & Manipulation",
-                                "Comprehensive (All)"
+                                "Comprehensive (All)",
                             ],
                             value="Harmful Content",
-                            label="Test Suite Selection"
+                            label="Test Suite Selection",
                         )
 
                         # Generation parameters
                         with gr.Row():
                             impact_temp_slider = gr.Slider(
-                                minimum=0.1,
-                                maximum=2.0,
-                                value=0.7,
-                                step=0.1,
-                                label="Temperature"
+                                minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"
                             )
                             impact_len_slider = gr.Slider(
-                                minimum=50,
-                                maximum=300,
-                                value=100,
-                                step=50,
-                                label="Max Length"
+                                minimum=50, maximum=300, value=100, step=50, label="Max Length"
                             )
 
-                        run_comparison_btn = gr.Button("Run Comparison", variant="primary", size="lg")
+                        run_comparison_btn = gr.Button(
+                            "Run Comparison", variant="primary", size="lg"
+                        )
 
                     with gr.Column(scale=1):
                         gr.Markdown("### Test Suite Details")
-                        gr.Markdown("""
+                        gr.Markdown(
+                            """
                         - **Harmful Content**: 20 prompts testing harm prevention
                         - **Stereotyping & Bias**: 20 prompts testing fairness
                         - **Truthfulness**: 15 prompts testing accuracy
@@ -1881,7 +1844,8 @@ def create_demo() -> gr.Blocks:
                         - **Comprehensive**: All 70 prompts combined
 
                         *Note: Comparison requires both base and trained models. Train a model first in the Training tab.*
-                        """)
+                        """
+                        )
 
                 # Results section
                 gr.Markdown("---")
@@ -1889,9 +1853,7 @@ def create_demo() -> gr.Blocks:
 
                 with gr.Tabs():
                     with gr.Tab("Summary"):
-                        results_summary = gr.Markdown(
-                            value="*Run a comparison to see results*"
-                        )
+                        results_summary = gr.Markdown(value="*Run a comparison to see results*")
 
                     with gr.Tab("Detailed Examples"):
                         results_detailed = gr.Markdown(
@@ -1904,28 +1866,37 @@ def create_demo() -> gr.Blocks:
 
                         with gr.Tabs():
                             with gr.Tab("JSON"):
-                                gr.Markdown("JSON format for programmatic access (Python, JavaScript, etc.)")
+                                gr.Markdown(
+                                    "JSON format for programmatic access (Python, JavaScript, etc.)"
+                                )
                                 export_json_textbox = gr.Textbox(
                                     label="Export Data (JSON)",
                                     lines=15,
                                     max_lines=25,
-                                    interactive=False
+                                    interactive=False,
                                 )
 
                             with gr.Tab("CSV"):
-                                gr.Markdown("CSV format for Excel, R, pandas, and data analysis tools")
+                                gr.Markdown(
+                                    "CSV format for Excel, R, pandas, and data analysis tools"
+                                )
                                 export_csv_textbox = gr.Textbox(
                                     label="Export Data (CSV)",
                                     lines=15,
                                     max_lines=25,
-                                    interactive=False
+                                    interactive=False,
                                 )
 
                 # Event handler
                 run_comparison_btn.click(
                     fn=run_comparison_handler,
                     inputs=[test_suite_dropdown, impact_temp_slider, impact_len_slider],
-                    outputs=[results_summary, results_detailed, export_json_textbox, export_csv_textbox]
+                    outputs=[
+                        results_summary,
+                        results_detailed,
+                        export_json_textbox,
+                        export_csv_textbox,
+                    ],
                 )
 
             # ================================================================
@@ -1936,7 +1907,8 @@ def create_demo() -> gr.Blocks:
 
                 with gr.Tabs():
                     with gr.Tab("Overview"):
-                        gr.Markdown("""
+                        gr.Markdown(
+                            """
                         ### System Overview
 
                         This demo implements Constitutional AI (CAI) for training language models
@@ -1962,10 +1934,12 @@ def create_demo() -> gr.Blocks:
                         - Quantitative impact analysis
                         - M4-Pro MPS acceleration support
                         - Export to JSON and CSV
-                        """)
+                        """
+                        )
 
                     with gr.Tab("API Examples"):
-                        gr.Markdown("""
+                        gr.Markdown(
+                            """
                         ### Quick Start Examples
 
                         **Evaluate Text:**
@@ -2016,10 +1990,12 @@ def create_demo() -> gr.Blocks:
 
                         print(f"Improvement: {result.alignment_improvement:.1f}%")
                         ```
-                        """)
+                        """
+                        )
 
                     with gr.Tab("Configuration"):
-                        gr.Markdown("""
+                        gr.Markdown(
+                            """
                         ### Configuration Options
 
                         **Model Selection:**
@@ -2049,10 +2025,12 @@ def create_demo() -> gr.Blocks:
                         - Max test suite size: 100 prompts
                         - Temperature range: 0.1 - 2.0
                         - Max length range: 10 - 1000 tokens
-                        """)
+                        """
+                        )
 
                     with gr.Tab("Resources"):
-                        gr.Markdown("""
+                        gr.Markdown(
+                            """
                         ### Documentation & Resources
 
                         **Project Documentation:**
@@ -2081,7 +2059,8 @@ def create_demo() -> gr.Blocks:
                         - Minimum: 8GB RAM, CPU
                         - Recommended: 16GB+ RAM, M4-Pro/CUDA GPU
                         - Training time: ~5-25 min (depending on mode)
-                        """)
+                        """
+                        )
 
     return demo
 
@@ -2089,6 +2068,7 @@ def create_demo() -> gr.Blocks:
 # ============================================================================
 # Configuration Loading
 # ============================================================================
+
 
 def load_config(config_path: str = "demo/config.yaml") -> Dict[str, Any]:
     """
@@ -2102,7 +2082,7 @@ def load_config(config_path: str = "demo/config.yaml") -> Dict[str, Any]:
     """
     config_file = Path(config_path)
     if config_file.exists():
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             return yaml.safe_load(f)
     return {}
 
@@ -2133,13 +2113,13 @@ def get_config_value(key: str, default: Any = None, config: Dict[str, Any] = Non
     env_value = os.getenv(env_key)
     if env_value is not None:
         # Convert string booleans to actual booleans
-        if env_value.lower() in ('true', '1', 'yes'):
+        if env_value.lower() in ("true", "1", "yes"):
             return True
-        elif env_value.lower() in ('false', '0', 'no'):
+        elif env_value.lower() in ("false", "0", "no"):
             return False
         # Convert string numbers to integers
         try:
-            if '.' not in env_value:
+            if "." not in env_value:
                 return int(env_value)
         except ValueError:
             pass
@@ -2156,6 +2136,7 @@ def get_config_value(key: str, default: Any = None, config: Dict[str, Any] = Non
 # ============================================================================
 # Health Check Endpoint
 # ============================================================================
+
 
 def create_health_check_app():
     """
@@ -2174,6 +2155,7 @@ def create_health_check_app():
 # ============================================================================
 # Main Entry Point
 # ============================================================================
+
 
 def parse_args():
     """Parse command-line arguments."""
@@ -2200,35 +2182,35 @@ Examples:
 
   # Use environment variables
   GRADIO_SERVER_PORT=8080 python -m demo.main
-        """
+        """,
     )
 
     parser.add_argument(
         "--server-name",
         type=str,
         default=None,
-        help="Server hostname (default: 0.0.0.0, env: GRADIO_SERVER_NAME)"
+        help="Server hostname (default: 0.0.0.0, env: GRADIO_SERVER_NAME)",
     )
 
     parser.add_argument(
         "--server-port",
         type=int,
         default=None,
-        help="Server port (default: 7860, env: GRADIO_SERVER_PORT)"
+        help="Server port (default: 7860, env: GRADIO_SERVER_PORT)",
     )
 
     parser.add_argument(
         "--share",
         action="store_true",
         default=None,
-        help="Enable public URL via Gradio share (env: GRADIO_SHARE)"
+        help="Enable public URL via Gradio share (env: GRADIO_SHARE)",
     )
 
     parser.add_argument(
         "--config",
         type=str,
         default="demo/config.yaml",
-        help="Path to config.yaml file (default: demo/config.yaml)"
+        help="Path to config.yaml file (default: demo/config.yaml)",
     )
 
     return parser.parse_args()
@@ -2258,8 +2240,4 @@ if __name__ == "__main__":
 
     # Create and launch demo
     demo = create_demo()
-    demo.launch(
-        share=share,
-        server_name=server_name,
-        server_port=server_port
-    )
+    demo.launch(share=share, server_name=server_name, server_port=server_port)
