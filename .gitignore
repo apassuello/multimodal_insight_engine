@@ -8,8 +8,16 @@ __pycache__/
 dist/
 build/
 
+# Testing artifacts
+.pytest_cache/
+htmlcov/
+
+# Python type checking cache
+.mypy_cache/
+
 # Local environment files
-.env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -51,6 +59,12 @@ safety_data/logs/
 *.tmp
 *.log
 *.csv
+
+# Editor temporary files
+*.swp
+*~
+.*.sw[a-p]
+
 # macOS files
 .DS_Store
 
@@ -106,4 +120,5 @@ multimodal_outputs/demo_results.json
 multimodal_outputs/test_metrics.json
 multimodal_outputs/logs/history.json
 .coverage
+.coverage.*
 coverage_html/
