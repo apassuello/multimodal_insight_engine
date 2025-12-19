@@ -234,13 +234,15 @@ class CLIPLoss(BaseContrastiveLoss):
         Returns:
             Smoothed label distribution
         """
+        # Calculate confidence (must be defined before use)
+        confidence = 1.0 - smoothing
+
         # Check cache first
         cache_key = (batch_size, smoothing, device)
         if self.cache_labels and cache_key in self._labels_cache:
             base_smooth = self._labels_cache[cache_key]
         else:
             # Create base smooth distribution
-            confidence = 1.0 - smoothing
             base_smooth = torch.ones(batch_size, device=device) * (smoothing / batch_size)
             if self.cache_labels:
                 self._labels_cache[cache_key] = base_smooth
