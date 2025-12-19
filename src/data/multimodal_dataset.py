@@ -17,7 +17,6 @@ DEPENDENCIES:
 """
 
 import json
-import logging
 import os
 import pickle  # Used for backward compatibility with old caches
 import random

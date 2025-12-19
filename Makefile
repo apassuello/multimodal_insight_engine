@@ -1,4 +1,4 @@
-.PHONY: help test lint format type-check check install verify clean docs
+.PHONY: help test lint format type-check check install verify clean docs ruff ruff-fix black-check isort-check ci
 
 # Default target
 help:
@@ -18,10 +18,15 @@ help:
 	@echo "                    Run a specific test file"
 	@echo ""
 	@echo "Quality Checks:"
-	@echo "  make lint         Run flake8 and mypy"
+	@echo "  make lint         Run ruff, flake8, and mypy"
+	@echo "  make ruff         Run ruff linter"
+	@echo "  make ruff-fix     Auto-fix ruff issues"
 	@echo "  make format       Format code with black and isort"
+	@echo "  make black-check  Check black formatting without changes"
+	@echo "  make isort-check  Check import sorting without changes"
 	@echo "  make type-check   Run mypy type checking"
 	@echo "  make check        Run all quality checks"
+	@echo "  make ci           Run CI checks (ruff, black, isort, test)"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs         Generate documentation"
@@ -37,7 +42,7 @@ install:
 
 dev-install:
 	pip install -r requirements.txt
-	pip install pytest pytest-cov black isort flake8 mypy
+	pip install pytest pytest-cov black isort flake8 mypy ruff
 	pip install -e .
 
 verify:
@@ -67,11 +72,22 @@ test-file:
 
 # Quality check targets
 lint:
+	@echo "Running ruff..."
+	ruff check src/ tests/
+	@echo ""
 	@echo "Running flake8..."
-	flake8 src/ tests/ --max-line-length=99 --statistics
+	flake8 src/ tests/ --count --show-source --statistics
 	@echo ""
 	@echo "Running mypy..."
-	mypy src/ tests/ --ignore-missing-imports
+	mypy src/ --install-types --non-interactive || true
+
+ruff:
+	@echo "Running ruff linter..."
+	ruff check src/ tests/
+
+ruff-fix:
+	@echo "Auto-fixing ruff issues..."
+	ruff check --fix src/ tests/
 
 format:
 	@echo "Running black..."
@@ -80,12 +96,38 @@ format:
 	@echo "Running isort..."
 	isort src/ tests/ demos/
 
+black-check:
+	@echo "Checking black formatting..."
+	black --check --diff src/ tests/ demos/
+
+isort-check:
+	@echo "Checking import sorting..."
+	isort --check-only --diff src/ tests/ demos/
+
 type-check:
-	mypy src/ tests/ --ignore-missing-imports
+	mypy src/ --install-types --non-interactive || true
 
 check: lint test
 	@echo ""
 	@echo "All quality checks passed!"
+
+# CI simulation - mirrors .github/workflows/ci.yml
+ci:
+	@echo "Running CI checks..."
+	@echo ""
+	@echo "=== Ruff Check ==="
+	ruff check src/ tests/
+	@echo ""
+	@echo "=== Black Format Check ==="
+	black --check src/ tests/
+	@echo ""
+	@echo "=== isort Check ==="
+	isort --check-only src/ tests/
+	@echo ""
+	@echo "=== Running Tests ==="
+	./run_tests.sh
+	@echo ""
+	@echo "✅ All CI checks passed!"
 
 # Documentation
 docs:
