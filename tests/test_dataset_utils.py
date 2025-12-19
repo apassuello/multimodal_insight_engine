@@ -8,19 +8,14 @@ Tests cover:
 - Semantic batch sampling strategies
 """
 
-import pytest
-import torch
-from torch.utils.data import Dataset, DataLoader
 from unittest.mock import MagicMock, patch
 
-from src.data.dataset_wrapper import (
-    DictionaryDataset,
-    create_dictionary_dataloader,
-)
-from src.data.fixed_semantic_sampler import (
-    FixedSemanticBatchSampler,
-    create_semantic_dataloader,
-)
+import pytest
+import torch
+from torch.utils.data import DataLoader, Dataset
+
+from src.data.dataset_wrapper import DictionaryDataset, create_dictionary_dataloader
+from src.data.fixed_semantic_sampler import FixedSemanticBatchSampler, create_semantic_dataloader
 
 
 # ============================================================================
@@ -277,9 +272,7 @@ class TestCreateDictionaryDataloader:
     def test_dataloader_shuffle_parameter(self):
         """Test that shuffle parameter is respected."""
         dataset = TupleDataset(size=100)
-        loader = create_dictionary_dataloader(
-            dataset, batch_size=10, shuffle=True, num_workers=0
-        )
+        loader = create_dictionary_dataloader(dataset, batch_size=10, shuffle=True, num_workers=0)
 
         # Check that the loader's sampler reflects shuffle setting
         # When shuffle=True, a RandomSampler should be used
@@ -373,16 +366,16 @@ class TestFixedSemanticBatchSampler:
         """Test that batches are created."""
         # Use larger dataset with more samples per group
         dataset = SemanticDataset(size=200, num_groups=10)  # 20 samples per group
-        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, min_samples_per_group=5, shuffle=False)
+        sampler = FixedSemanticBatchSampler(
+            dataset, batch_size=16, min_samples_per_group=5, shuffle=False
+        )
 
         assert len(sampler.batches) > 0
 
     def test_build_batches_respects_batch_size(self):
         """Test that batches respect the batch size."""
         dataset = SemanticDataset(size=100, num_groups=20)
-        sampler = FixedSemanticBatchSampler(
-            dataset, batch_size=16, shuffle=False, drop_last=True
-        )
+        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, shuffle=False, drop_last=True)
 
         for batch in sampler.batches:
             assert len(batch) == 16
@@ -390,9 +383,7 @@ class TestFixedSemanticBatchSampler:
     def test_build_batches_drop_last_false(self):
         """Test that batches with drop_last=False may have varying sizes."""
         dataset = SemanticDataset(size=100, num_groups=20)
-        sampler = FixedSemanticBatchSampler(
-            dataset, batch_size=16, shuffle=False, drop_last=False
-        )
+        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, shuffle=False, drop_last=False)
 
         # Last batch might be smaller or padded
         assert len(sampler.batches) > 0
@@ -410,7 +401,9 @@ class TestFixedSemanticBatchSampler:
     def test_iter_yields_batches(self):
         """Test that __iter__ yields batches."""
         dataset = SemanticDataset(size=200, num_groups=10)  # 20 samples per group
-        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, min_samples_per_group=5, shuffle=False)
+        sampler = FixedSemanticBatchSampler(
+            dataset, batch_size=16, min_samples_per_group=5, shuffle=False
+        )
 
         batches = list(sampler)
 
@@ -427,7 +420,9 @@ class TestFixedSemanticBatchSampler:
     def test_shuffle_batches_on_iter(self):
         """Test that batches are shuffled on each iteration when shuffle=True."""
         dataset = SemanticDataset(size=200, num_groups=10)  # 20 samples per group
-        sampler = FixedSemanticBatchSampler(dataset, batch_size=16, min_samples_per_group=5, shuffle=True)
+        sampler = FixedSemanticBatchSampler(
+            dataset, batch_size=16, min_samples_per_group=5, shuffle=True
+        )
 
         # Get batches from two iterations
         batches1 = [batch.copy() for batch in sampler]
@@ -437,7 +432,7 @@ class TestFixedSemanticBatchSampler:
         assert len(batches1) > 0
         assert len(batches2) > 0
 
-    @patch('src.data.fixed_semantic_sampler.logger')
+    @patch("src.data.fixed_semantic_sampler.logger")
     def test_verbose_logging(self, mock_logger):
         """Test that verbose mode logs information."""
         dataset = SemanticDataset(size=100, num_groups=20)
@@ -458,18 +453,14 @@ class TestCreateSemanticDataloader:
     def test_creates_dataloader(self):
         """Test that a DataLoader is created successfully."""
         dataset = SemanticDataset(size=100, num_groups=20)
-        loader = create_semantic_dataloader(
-            dataset, batch_size=16, shuffle=False, num_workers=0
-        )
+        loader = create_semantic_dataloader(dataset, batch_size=16, shuffle=False, num_workers=0)
 
         assert isinstance(loader, DataLoader)
 
     def test_dataloader_uses_semantic_sampling(self):
         """Test that DataLoader uses semantic batch sampling."""
         dataset = SemanticDataset(size=100, num_groups=20)
-        loader = create_semantic_dataloader(
-            dataset, batch_size=16, shuffle=False, num_workers=0
-        )
+        loader = create_semantic_dataloader(dataset, batch_size=16, shuffle=False, num_workers=0)
 
         # Check that batch_sampler is FixedSemanticBatchSampler
         assert isinstance(loader.batch_sampler, FixedSemanticBatchSampler)
@@ -508,6 +499,7 @@ class TestEdgeCases:
 
     def test_empty_dataset(self):
         """Test handling of empty dataset."""
+
         class EmptyDataset(Dataset):
             def __len__(self):
                 return 0
@@ -531,6 +523,7 @@ class TestEdgeCases:
 
     def test_semantic_sampler_with_single_group(self):
         """Test semantic sampler with only one semantic group."""
+
         class SingleGroupDataset(Dataset):
             def __init__(self, size=50):
                 self.size = size
@@ -557,6 +550,7 @@ class TestEdgeCases:
 
     def test_integration_dictionary_dataset_with_semantic_sampler(self):
         """Test using DictionaryDataset with semantic sampling."""
+
         # Create a tuple dataset
         class TupleSemanticDataset(Dataset):
             def __init__(self, size=200):
@@ -575,6 +569,8 @@ class TestEdgeCases:
         wrapper = DictionaryDataset(base_dataset, keys=["image", "match_id"])
 
         # Use semantic sampling
-        sampler = FixedSemanticBatchSampler(wrapper, batch_size=16, min_samples_per_group=5, shuffle=False)
+        sampler = FixedSemanticBatchSampler(
+            wrapper, batch_size=16, min_samples_per_group=5, shuffle=False
+        )
 
         assert len(sampler.batches) > 0

@@ -9,7 +9,7 @@ Target: 80%+ coverage
 
 import os
 import tempfile
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import torch
@@ -27,6 +27,7 @@ from src.utils.gradient_handler import GradientHandler
 @pytest.fixture
 def simple_model():
     """Create a simple multimodal model for testing."""
+
     class SimpleMultimodalModel(nn.Module):
         def __init__(self):
             super().__init__()
@@ -35,10 +36,7 @@ def simple_model():
             self.fusion = nn.Linear(20, 10)
 
         def forward(self, x):
-            return self.fusion(torch.cat([
-                self.vision_model(x),
-                self.text_model(x)
-            ], dim=1))
+            return self.fusion(torch.cat([self.vision_model(x), self.text_model(x)], dim=1))
 
     return SimpleMultimodalModel()
 
@@ -155,8 +153,10 @@ class TestGradientClipping:
         handler.clip_gradients()
 
         # Calculate total norm after clipping
-        total_norm = sum(p.grad.norm().item() ** 2 for p in simple_model.parameters() if p.grad is not None)
-        total_norm = total_norm ** 0.5
+        total_norm = sum(
+            p.grad.norm().item() ** 2 for p in simple_model.parameters() if p.grad is not None
+        )
+        total_norm = total_norm**0.5
 
         # After clipping, total norm should be <= clip_value
         assert total_norm <= 1.0 + 1e-6  # Small tolerance for floating point
@@ -221,7 +221,7 @@ class TestGradientAnalysis:
         """Test that analysis detects NaN gradients."""
         # Set NaN gradient with correct shape
         for param in simple_model.parameters():
-            param.grad = torch.full_like(param, float('nan'))
+            param.grad = torch.full_like(param, float("nan"))
             break  # Just set one
 
         handler = GradientHandler(simple_model)
@@ -233,7 +233,7 @@ class TestGradientAnalysis:
         """Test that analysis detects infinite gradients."""
         # Set infinite gradient with correct shape
         for param in simple_model.parameters():
-            param.grad = torch.full_like(param, float('inf'))
+            param.grad = torch.full_like(param, float("inf"))
             break  # Just set one
 
         handler = GradientHandler(simple_model)
@@ -263,7 +263,7 @@ class TestGradientAnalysis:
         # Ratio should be non-negative
         assert stats["vision_text_ratio"] >= 0
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_analyze_gradients_logs_periodically(self, mock_logger, model_with_gradients):
         """Test that gradient stats are logged at log_frequency."""
         handler = GradientHandler(model_with_gradients, log_frequency=2)
@@ -291,11 +291,11 @@ class TestGradientBalancing:
         optimizer = Adam(model_with_gradients.parameters(), lr=0.001)
 
         # Should not modify optimizer
-        original_lrs = [g['lr'] for g in optimizer.param_groups]
+        original_lrs = [g["lr"] for g in optimizer.param_groups]
 
         handler.balance_component_gradients(optimizer)
 
-        new_lrs = [g['lr'] for g in optimizer.param_groups]
+        new_lrs = [g["lr"] for g in optimizer.param_groups]
         assert original_lrs == new_lrs
 
     def test_balance_disabled_when_flag_false(self, model_with_gradients):
@@ -303,39 +303,39 @@ class TestGradientBalancing:
         handler = GradientHandler(
             model_with_gradients,
             balance_modalities=False,
-            component_ratios={"vision": 1.0, "text": 1.0}
+            component_ratios={"vision": 1.0, "text": 1.0},
         )
         optimizer = Adam(model_with_gradients.parameters(), lr=0.001)
 
-        original_lrs = [g['lr'] for g in optimizer.param_groups]
+        original_lrs = [g["lr"] for g in optimizer.param_groups]
 
         handler.balance_component_gradients(optimizer)
 
-        new_lrs = [g['lr'] for g in optimizer.param_groups]
+        new_lrs = [g["lr"] for g in optimizer.param_groups]
         assert original_lrs == new_lrs
 
     def test_balance_adjusts_learning_rates(self, simple_model):
         """Test that balancing adjusts learning rates for components."""
         # Create gradients with different magnitudes for different components
         for name, param in simple_model.named_parameters():
-            if 'vision' in name:
+            if "vision" in name:
                 param.grad = torch.ones_like(param) * 10.0  # Large gradient
-            elif 'text' in name:
+            elif "text" in name:
                 param.grad = torch.ones_like(param) * 1.0  # Small gradient
             else:
                 param.grad = torch.ones_like(param) * 5.0
 
         # Create optimizer with named parameter groups
-        optimizer = Adam([
-            {'params': simple_model.vision_model.parameters(), 'lr': 0.001, 'name': 'vision'},
-            {'params': simple_model.text_model.parameters(), 'lr': 0.001, 'name': 'text'},
-            {'params': simple_model.fusion.parameters(), 'lr': 0.001, 'name': 'fusion'}
-        ])
+        optimizer = Adam(
+            [
+                {"params": simple_model.vision_model.parameters(), "lr": 0.001, "name": "vision"},
+                {"params": simple_model.text_model.parameters(), "lr": 0.001, "name": "text"},
+                {"params": simple_model.fusion.parameters(), "lr": 0.001, "name": "fusion"},
+            ]
+        )
 
         handler = GradientHandler(
-            simple_model,
-            balance_modalities=True,
-            component_ratios={"vision": 1.0, "text": 1.0}
+            simple_model, balance_modalities=True, component_ratios={"vision": 1.0, "text": 1.0}
         )
 
         handler.balance_component_gradients(optimizer)
@@ -344,7 +344,7 @@ class TestGradientBalancing:
         # (exact values depend on dampening, so just check they changed)
         lrs_changed = False
         for group in optimizer.param_groups:
-            if group.get('lr') != 0.001:
+            if group.get("lr") != 0.001:
                 lrs_changed = True
                 break
 
@@ -352,13 +352,13 @@ class TestGradientBalancing:
         # The important thing is the function runs without error
         assert True  # Just verify no exception
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_balance_warns_missing_component(self, mock_logger, model_with_gradients):
         """Test that balancing warns when component is missing."""
         handler = GradientHandler(
             model_with_gradients,
             balance_modalities=True,
-            component_ratios={"nonexistent_component": 1.0}
+            component_ratios={"nonexistent_component": 1.0},
         )
         optimizer = Adam(model_with_gradients.parameters(), lr=0.001)
 
@@ -378,23 +378,23 @@ class TestGradientBalancing:
         for param in simple_model.text_model.parameters():
             param.grad = torch.ones_like(param)
 
-        optimizer = Adam([
-            {'params': simple_model.vision_model.parameters(), 'lr': 0.001, 'name': 'vision'},
-            {'params': simple_model.text_model.parameters(), 'lr': 0.001, 'name': 'text'}
-        ])
-
-        handler = GradientHandler(
-            simple_model,
-            balance_modalities=True,
-            component_ratios={"vision": 1.0, "text": 1.0}
+        optimizer = Adam(
+            [
+                {"params": simple_model.vision_model.parameters(), "lr": 0.001, "name": "vision"},
+                {"params": simple_model.text_model.parameters(), "lr": 0.001, "name": "text"},
+            ]
         )
 
-        original_lrs = [g['lr'] for g in optimizer.param_groups]
+        handler = GradientHandler(
+            simple_model, balance_modalities=True, component_ratios={"vision": 1.0, "text": 1.0}
+        )
+
+        original_lrs = [g["lr"] for g in optimizer.param_groups]
 
         handler.balance_component_gradients(optimizer)
 
         # Should not modify LRs when one component has zero gradient
-        new_lrs = [g['lr'] for g in optimizer.param_groups]
+        new_lrs = [g["lr"] for g in optimizer.param_groups]
         assert original_lrs == new_lrs
 
 
@@ -406,7 +406,7 @@ class TestGradientBalancing:
 class TestGradientLogging:
     """Test gradient logging functionality."""
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_log_gradient_stats_basic(self, mock_logger, model_with_gradients):
         """Test basic gradient statistics logging."""
         handler = GradientHandler(model_with_gradients)
@@ -417,11 +417,11 @@ class TestGradientLogging:
         # Should have logged info
         assert mock_logger.info.call_count > 0
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_log_gradient_stats_logs_nan_error(self, mock_logger, simple_model):
         """Test that NaN gradients are logged as error."""
         for param in simple_model.parameters():
-            param.grad = torch.full_like(param, float('nan'))
+            param.grad = torch.full_like(param, float("nan"))
             break
 
         handler = GradientHandler(simple_model)
@@ -433,11 +433,11 @@ class TestGradientLogging:
         error_msg = str(mock_logger.error.call_args)
         assert "NaN" in error_msg
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_log_gradient_stats_logs_inf_error(self, mock_logger, simple_model):
         """Test that infinite gradients are logged as error."""
         for param in simple_model.parameters():
-            param.grad = torch.full_like(param, float('inf'))
+            param.grad = torch.full_like(param, float("inf"))
             break
 
         handler = GradientHandler(simple_model)
@@ -449,14 +449,14 @@ class TestGradientLogging:
         error_msg = str(mock_logger.error.call_args)
         assert "Infinite" in error_msg or "inf" in error_msg.lower()
 
-    @patch('src.utils.gradient_handler.logger')
+    @patch("src.utils.gradient_handler.logger")
     def test_log_gradient_stats_warns_unbalanced(self, mock_logger, simple_model):
         """Test warning for highly unbalanced gradients."""
         # Create very unbalanced gradients
         for name, param in simple_model.named_parameters():
-            if 'vision' in name:
+            if "vision" in name:
                 param.grad = torch.ones_like(param) * 100.0  # Very large
-            elif 'text' in name:
+            elif "text" in name:
                 param.grad = torch.ones_like(param) * 1.0  # Small
             else:
                 param.grad = torch.ones_like(param) * 5.0
@@ -467,7 +467,9 @@ class TestGradientLogging:
 
         # Should warn about unbalanced gradients if ratio > 10 or < 0.1
         # Check if warning was called
-        if stats.get("vision_text_ratio", 0) > 10 or (stats.get("vision_text_ratio", 1) < 0.1 and stats.get("vision_text_ratio", 0) > 0):
+        if stats.get("vision_text_ratio", 0) > 10 or (
+            stats.get("vision_text_ratio", 1) < 0.1 and stats.get("vision_text_ratio", 0) > 0
+        ):
             mock_logger.warning.assert_called()
 
 
@@ -479,7 +481,7 @@ class TestGradientLogging:
 class TestGradientVisualization:
     """Test gradient visualization functionality."""
 
-    @patch('src.utils.gradient_handler.plt')
+    @patch("src.utils.gradient_handler.plt")
     def test_visualize_gradients_disabled_when_no_dir(self, mock_plt, model_with_gradients):
         """Test that visualization is disabled when no directory is set."""
         handler = GradientHandler(model_with_gradients)
@@ -489,8 +491,10 @@ class TestGradientVisualization:
         # Should not create plots
         mock_plt.subplots.assert_not_called()
 
-    @patch('src.utils.gradient_handler.plt')
-    def test_visualize_gradients_disabled_when_no_history(self, mock_plt, model_with_gradients, temp_viz_dir):
+    @patch("src.utils.gradient_handler.plt")
+    def test_visualize_gradients_disabled_when_no_history(
+        self, mock_plt, model_with_gradients, temp_viz_dir
+    ):
         """Test that visualization is disabled when history is empty."""
         handler = GradientHandler(model_with_gradients, visualization_dir=temp_viz_dir)
 
@@ -502,9 +506,10 @@ class TestGradientVisualization:
         # Should not create plots when no history
         mock_plt.subplots.assert_not_called()
 
-    @patch('src.utils.gradient_handler.plt')
+    @patch("src.utils.gradient_handler.plt")
     def test_visualize_gradients_creates_plots(self, mock_plt, model_with_gradients, temp_viz_dir):
         """Test that visualization creates plots when enabled."""
+
         # Mock the subplot structure - create a class that supports both list and tuple indexing
         class MockAxesArray:
             def __init__(self):
@@ -538,9 +543,12 @@ class TestGradientVisualization:
         # Should close figure
         mock_plt.close.assert_called_once_with(mock_fig)
 
-    @patch('src.utils.gradient_handler.plt')
-    def test_visualize_gradients_saves_to_correct_location(self, mock_plt, model_with_gradients, temp_viz_dir):
+    @patch("src.utils.gradient_handler.plt")
+    def test_visualize_gradients_saves_to_correct_location(
+        self, mock_plt, model_with_gradients, temp_viz_dir
+    ):
         """Test that visualization saves to correct directory."""
+
         class MockAxesArray:
             def __init__(self):
                 self.axes = [[MagicMock(), MagicMock()], [MagicMock(), MagicMock()]]
@@ -565,9 +573,12 @@ class TestGradientVisualization:
         assert temp_viz_dir in save_call
         assert "gradients_step_" in save_call
 
-    @patch('src.utils.gradient_handler.plt')
-    def test_visualize_gradients_includes_step_in_filename(self, mock_plt, model_with_gradients, temp_viz_dir):
+    @patch("src.utils.gradient_handler.plt")
+    def test_visualize_gradients_includes_step_in_filename(
+        self, mock_plt, model_with_gradients, temp_viz_dir
+    ):
         """Test that step number is included in filename."""
+
         class MockAxesArray:
             def __init__(self):
                 self.axes = [[MagicMock(), MagicMock()], [MagicMock(), MagicMock()]]
@@ -622,17 +633,19 @@ class TestGradientHandlerIntegration:
         for param in simple_model.parameters():
             param.grad = torch.randn_like(param)
 
-        optimizer = Adam([
-            {'params': simple_model.vision_model.parameters(), 'lr': 0.001, 'name': 'vision'},
-            {'params': simple_model.text_model.parameters(), 'lr': 0.001, 'name': 'text'},
-            {'params': simple_model.fusion.parameters(), 'lr': 0.001, 'name': 'fusion'}
-        ])
+        optimizer = Adam(
+            [
+                {"params": simple_model.vision_model.parameters(), "lr": 0.001, "name": "vision"},
+                {"params": simple_model.text_model.parameters(), "lr": 0.001, "name": "text"},
+                {"params": simple_model.fusion.parameters(), "lr": 0.001, "name": "fusion"},
+            ]
+        )
 
         handler = GradientHandler(
             simple_model,
             clip_value=5.0,
             balance_modalities=True,
-            component_ratios={"vision": 1.0, "text": 1.0}
+            component_ratios={"vision": 1.0, "text": 1.0},
         )
 
         # Full workflow
@@ -642,9 +655,10 @@ class TestGradientHandlerIntegration:
         # Should complete without error
         assert handler.step_count > 0
 
-    @patch('src.utils.gradient_handler.plt')
+    @patch("src.utils.gradient_handler.plt")
     def test_full_workflow_with_visualization(self, mock_plt, model_with_gradients, temp_viz_dir):
         """Test full workflow with periodic visualization."""
+
         class MockAxesArray:
             def __init__(self):
                 self.axes = [[MagicMock(), MagicMock()], [MagicMock(), MagicMock()]]
@@ -660,9 +674,7 @@ class TestGradientHandlerIntegration:
         mock_plt.subplots.return_value = (mock_fig, mock_axs)
 
         handler = GradientHandler(
-            model_with_gradients,
-            visualization_dir=temp_viz_dir,
-            log_frequency=2
+            model_with_gradients, visualization_dir=temp_viz_dir, log_frequency=2
         )
 
         # Analyze twice (should trigger visualization on step 2)
@@ -716,6 +728,7 @@ class TestEdgeCases:
 
     def test_handler_with_empty_model(self):
         """Test handler with model that has no parameters."""
+
         class EmptyModel(nn.Module):
             def forward(self, x):
                 return x
