@@ -269,6 +269,26 @@ directory = "htmlcov"
 output = "coverage.xml"
 
 # ==============================================================================
+# Pyright - Static Type Checker (Alternative to MyPy)
+# ==============================================================================
+[tool.pyright]
+include = ["src", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/.venv",
+    "**/venv",
+    "**/build",
+    "**/dist",
+]
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
+
+# ==============================================================================
 # isort - Import Sorting (backup to Ruff)
 # ==============================================================================
 [tool.isort]

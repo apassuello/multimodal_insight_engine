@@ -18,7 +18,7 @@ help:
 	@echo "                    Run a specific test file"
 	@echo ""
 	@echo "Quality Checks:"
-	@echo "  make lint         Run ruff, flake8, and mypy"
+	@echo "  make lint         Run ruff and mypy"
 	@echo "  make ruff         Run ruff linter"
 	@echo "  make ruff-fix     Auto-fix ruff issues"
 	@echo "  make format       Format code with black and isort"
@@ -37,16 +37,14 @@ help:
 
 # Installation targets
 install:
-	pip install -r requirements.txt
 	pip install -e .
 
 dev-install:
-	pip install -r requirements.txt
-	pip install pytest pytest-cov black isort flake8 mypy ruff
+	pip install pytest pytest-cov black isort mypy ruff
 	pip install -e .
 
 verify:
-	python verify_install.py
+	python scripts/verify_install.py
 
 # Test targets
 test:
@@ -75,9 +73,6 @@ lint:
 	@echo "Running ruff..."
 	ruff check src/ tests/
 	@echo ""
-	@echo "Running flake8..."
-	flake8 src/ tests/ --count --show-source --statistics
-	@echo ""
 	@echo "Running mypy..."
 	mypy src/ --install-types --non-interactive || true
 
@@ -91,18 +86,18 @@ ruff-fix:
 
 format:
 	@echo "Running black..."
-	black src/ tests/ demos/
+	black src/ tests/ demo/
 	@echo ""
 	@echo "Running isort..."
-	isort src/ tests/ demos/
+	isort src/ tests/ demo/
 
 black-check:
 	@echo "Checking black formatting..."
-	black --check --diff src/ tests/ demos/
+	black --check --diff src/ tests/ demo/
 
 isort-check:
 	@echo "Checking import sorting..."
-	isort --check-only --diff src/ tests/ demos/
+	isort --check-only --diff src/ tests/ demo/
 
 type-check:
 	mypy src/ --install-types --non-interactive || true
@@ -125,7 +120,7 @@ ci:
 	isort --check-only src/ tests/
 	@echo ""
 	@echo "=== Running Tests ==="
-	./run_tests.sh
+	python -m pytest tests/ --cov=src --cov-report=term-missing -v
 	@echo ""
 	@echo "✅ All CI checks passed!"
 
