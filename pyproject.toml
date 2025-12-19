@@ -120,7 +120,7 @@ ignore = [
     "UP006",  # Use `list` instead of `List` for type annotations
     "UP007",  # Use `X | Y` for type annotations
     "UP035",  # typing.Dict/List/Tuple → dict/list/tuple (postpone modernization)
-    "UP038",  # Use `X | Y` in isinstance (subjective preference, tuple syntax clearer)
+    # UP038 removed in newer ruff versions
     "TC003",  # Move stdlib imports into TYPE_CHECKING block (postpone optimization)
 ]
 
@@ -128,6 +128,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Unused imports, import *
 "tests/*" = ["E402", "F401", "F811", "F841", "N806"]  # E402: sys.path manipulation, F401: unused imports, F811: redefined fixtures, F841: unused vars, N806: non-lowercase vars
+"demo/main.py" = ["F821", "E722", "B905", "F841"]  # F821: Undefined names (extracted Constitutional AI), E722: bare except, B905: zip strict, F841: unused var
 
 # Import sorting configuration
 [tool.ruff.lint.isort]

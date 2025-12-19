@@ -7,10 +7,11 @@ DEPENDENCIES: typing, dataclasses, time, json
 SPECIAL NOTES: Designed to answer "what's actually happening?" not just "what function is running?"
 """
 
-import time
 import json
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, asdict
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
 
 # Maximum number of log entries to prevent unbounded memory growth
 MAX_LOGS = 1000
@@ -19,6 +20,7 @@ MAX_LOGS = 1000
 @dataclass
 class ContentLog:
     """Single log entry with content visibility."""
+
     stage: str
     content: str
     metadata: Dict[str, Any]
@@ -59,9 +61,9 @@ class ContentLogger:
         self,
         stage: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Dict[str, Any] | None = None,
         truncate: int = 500,
-        silent: bool = False
+        silent: bool = False,
     ):
         """
         Log a pipeline stage with content visibility.
@@ -74,12 +76,9 @@ class ContentLogger:
             silent: If True, store log but don't print (for avoiding duplicates)
         """
         # Always store (even when verbosity=0 or silent=True)
-        self.logs.append(ContentLog(
-            stage=stage,
-            content=content,
-            metadata=metadata or {},
-            timestamp=time.time()
-        ))
+        self.logs.append(
+            ContentLog(stage=stage, content=content, metadata=metadata or {}, timestamp=time.time())
+        )
 
         # Trim oldest entries if we exceed max_logs to prevent memory growth
         if len(self.logs) > self.max_logs:
@@ -104,7 +103,7 @@ class ContentLogger:
 
         # Show metadata if verbosity >= 2
         if metadata and self.verbosity >= 2:
-            print(f"\nMetadata:")
+            print("\nMetadata:")
             for key, value in metadata.items():
                 # Truncate long metadata values
                 if isinstance(value, str) and len(value) > 100:
@@ -120,7 +119,7 @@ class ContentLogger:
         text1: str,
         label2: str,
         text2: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Dict[str, Any] | None = None,
     ):
         """
         Log side-by-side comparison of two texts.
@@ -151,7 +150,7 @@ class ContentLogger:
 
         # Show comparison metrics
         if metadata:
-            print(f"\nComparison Metrics:")
+            print("\nComparison Metrics:")
             for key, value in metadata.items():
                 print(f"  {key}: {value}")
 
@@ -159,13 +158,15 @@ class ContentLogger:
         self._highlight_differences(text1, text2)
 
         # Store in logs
-        self.logs.append(ContentLog(
-            stage="COMPARISON",
-            content=f"{label1}: {text1}\n\n{label2}: {text2}",
-            metadata=metadata or {},
-            timestamp=time.time()
-        ))
-        
+        self.logs.append(
+            ContentLog(
+                stage="COMPARISON",
+                content=f"{label1}: {text1}\n\n{label2}: {text2}",
+                metadata=metadata or {},
+                timestamp=time.time(),
+            )
+        )
+
         # Trim oldest entries if we exceed max_logs to prevent memory growth
         if len(self.logs) > self.max_logs:
             excess = len(self.logs) - self.max_logs
@@ -185,7 +186,7 @@ class ContentLogger:
 
         differences_found = False
 
-        print(f"\n[DIFF] Auto-detected improvements:")
+        print("\n[DIFF] Auto-detected improvements:")
 
         # Prescriptive to suggestive
         if "should" in text1_lower and "consider" in text2_lower:
@@ -233,7 +234,7 @@ class ContentLogger:
         stages = {}
         for log in self.logs:
             # Extract stage category (before first hyphen)
-            stage_type = log.stage.split('-')[0] if '-' in log.stage else log.stage
+            stage_type = log.stage.split("-")[0] if "-" in log.stage else log.stage
             stages[stage_type] = stages.get(stage_type, 0) + 1
 
         summary = "=" * 60 + "\n"
@@ -264,21 +265,23 @@ class ContentLogger:
         # Convert logs to JSON-serializable format
         logs_data = []
         for log in self.logs:
-            logs_data.append({
-                "stage": log.stage,
-                "content": log.content,
-                "metadata": log.metadata,
-                "timestamp": log.timestamp
-            })
+            logs_data.append(
+                {
+                    "stage": log.stage,
+                    "content": log.content,
+                    "metadata": log.metadata,
+                    "timestamp": log.timestamp,
+                }
+            )
 
         # Write to file with error handling for non-serializable objects
         try:
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 json.dump(logs_data, f, indent=2, default=str)
         except (TypeError, ValueError) as e:
             # If serialization fails, try again with more aggressive fallback
             print(f"Warning: JSON serialization issue: {e}")
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 # Convert all values to strings as last resort
                 safe_logs_data = []
                 for log in logs_data:
@@ -286,7 +289,7 @@ class ContentLogger:
                         "stage": str(log["stage"]),
                         "content": str(log["content"]),
                         "metadata": {k: str(v) for k, v in log["metadata"].items()},
-                        "timestamp": log["timestamp"]
+                        "timestamp": log["timestamp"],
                     }
                     safe_logs_data.append(safe_log)
                 json.dump(safe_logs_data, f, indent=2)
