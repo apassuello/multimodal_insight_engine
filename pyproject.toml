@@ -120,8 +120,7 @@ ignore = [
     "UP006",  # Use `list` instead of `List` for type annotations
     "UP007",  # Use `X | Y` for type annotations
     "UP035",  # typing.Dict/List/Tuple → dict/list/tuple (postpone modernization)
-    "UP038",  # Use `X | Y` in isinstance instead of `(X, Y)` (postpone modernization)
-    "TCH003", # Move stdlib imports into TYPE_CHECKING block (postpone optimization)
+    "TC003",  # Move stdlib imports into TYPE_CHECKING block (postpone optimization)
 ]
 
 # Per-file ignores
