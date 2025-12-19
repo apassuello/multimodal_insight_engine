@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest*)",
+      "Bash(python -m coverage*)",
+      "Bash(python src/*)",
+      "Bash(python -m pip*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(grep*)",
+      "Bash(find*)",
+      "Bash(wc*)",
+      "Bash(head*)",
+      "Bash(tail*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(pip install *)",
+      "Bash(pip uninstall *)"
+    ],
+    "ask": []
+  },
+  "env": {
+    "PYTHONPATH": "src",
+    "PYTORCH_ENABLE_MPS_FALLBACK": "1"
+  },
+  "hooks": {},
+  "mcpServers": {}
+}
