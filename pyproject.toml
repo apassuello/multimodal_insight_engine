@@ -107,7 +107,7 @@ ignore = [
     "B904",   # raise-without-from-inside-except (not always applicable)
     "B017",   # assert-raises-exception (pytest pattern)
     "B027",   # empty-method-without-abstract-decorator (intentional abstract patterns)
-    "C901",   # Too complex (we have complex ML code)
+    "C901",   # Too complex (we have complex ML code) - See C901_COMPLEXITY_ASSESSMENT.md for refactoring plan
     "E203",   # Whitespace before ':' (conflicts with Black)
     "N803",   # Invalid argument name (ML papers use single-letter args: x, y, z)
     "N806",   # Non-lowercase variable in function (ML constants: T_max, learning_rate)
@@ -127,7 +127,7 @@ ignore = [
 # Per-file ignores
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Unused imports, import *
-"tests/*" = ["F401", "F811", "F841", "N806"]  # Unused imports, redefined fixtures, unused vars, non-lowercase vars
+"tests/*" = ["E402", "F401", "F811", "F841", "N806"]  # E402: sys.path manipulation, F401: unused imports, F811: redefined fixtures, F841: unused vars, N806: non-lowercase vars
 
 # Import sorting configuration
 [tool.ruff.lint.isort]

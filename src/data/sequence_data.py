@@ -1,18 +1,16 @@
 # src/data/sequence_data.py
+import os
 from typing import Any, Dict, List
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from src.data.curriculum_dataset import CurriculumTranslationDataset
 from src.utils.logging import get_logger
 
 
 logger = get_logger(__name__)
-import os
-
-import numpy as np
-
-from src.data.curriculum_dataset import CurriculumTranslationDataset
 
 
 def transformer_collate_fn(
