@@ -122,3 +122,12 @@ multimodal_outputs/logs/history.json
 .coverage
 .coverage.*
 coverage_html/
+coverage.xml
+
+# Generated metadata and tool files
+project_metadata.json
+claude_tools.json
+metadata.json
+
+# Output directories (experiment results, debug outputs)
+outputs/

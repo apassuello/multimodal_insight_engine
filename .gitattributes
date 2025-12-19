@@ -1,3 +1,0 @@
-# Extracted components - exclude from GitHub statistics
-extracted/* linguist-vendored
-extracted/* linguist-documentation=false
